@@ -3,6 +3,7 @@ import { join } from 'path';
 import { installCommand } from './commands/install.js';
 import { listCommand } from './commands/list.js';
 import { searchCommand } from './commands/search.js';
+import { mcpCommand } from './commands/mcp.js';
 
 function getPackageVersion(): string {
   try {
@@ -30,9 +31,25 @@ Commands:
   search <query>        Search for available tools
                        Example: matimo search slack
   
+  mcp                   Start MCP server (Model Context Protocol)
+                       Example: matimo mcp
+                       Example: matimo mcp --transport http --port 3000
+  
+  mcp setup             Generate config for Claude Desktop / Cursor
+                       Example: matimo mcp setup
+  
   help                  Show this help message
   
   version               Show version information
+
+MCP Options:
+  --transport <type>    Transport mode: stdio (default) or http
+  --port <number>       HTTP port (default: 3000)
+  --tools <list>        Comma-separated tool allowlist
+  --exclude <list>      Comma-separated tool denylist
+  --secrets <list>      Secret resolvers: env,dotenv,vault,aws
+  --token <string>      Bearer token for HTTP mode
+  --env-file <path>     Path to .env file
 
 Examples:
   # Install new tools
@@ -44,7 +61,15 @@ Examples:
   
   # Search for tools
   $ matimo search email
-  $ matimo search database
+  
+  # Start MCP server for Claude Desktop
+  $ matimo mcp
+  
+  # Start MCP HTTP server with auth
+  $ MATIMO_MCP_TOKEN=secret matimo mcp --transport http
+  
+  # Generate Claude Desktop config
+  $ matimo mcp setup
 
 Documentation: https://github.com/tallclub/matimo#readme
 Issues: https://github.com/tallclub/matimo/issues
@@ -75,6 +100,9 @@ export async function main(cliArgs?: string[]): Promise<void> {
       case 'search':
         await searchCommand(params[0] || '');
         break;
+      case 'mcp':
+        await mcpCommand(params);
+        break;
       case 'help':
       case '-h':
       case '--help':
@@ -94,4 +122,17 @@ export async function main(cliArgs?: string[]): Promise<void> {
     console.error('❌ Error:', error instanceof Error ? error.message : String(error));
     process.exit(1);
   }
+}
+
+// Auto-execute when run directly (e.g., via tsx src/cli.ts)
+// When imported by bin.ts, process.argv[1] is 'bin.js', not 'cli.js'
+// When run by Jest, process.argv[1] is the Jest worker path
+/* istanbul ignore next */
+const isRunDirectly = process.argv[1]?.endsWith('/cli.js') || process.argv[1]?.endsWith('/cli.ts');
+/* istanbul ignore next */
+if (isRunDirectly) {
+  main().catch((error) => {
+    console.error('❌ Fatal error:', error);
+    process.exit(1);
+  });
 }
