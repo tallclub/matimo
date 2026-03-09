@@ -10,6 +10,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./mcp": {
+      "types": "./dist/mcp/index.d.ts",
+      "default": "./dist/mcp/index.js"
     }
   },
   "engines": {
@@ -74,6 +78,18 @@
     "winston": "^3.19.0",
     "yaml": "^2.8.2",
     "zod": "^4.3.6"
+  },
+  "peerDependencies": {
+    "node-vault": ">=0.10.0",
+    "@aws-sdk/client-secrets-manager": ">=3.0.0"
+  },
+  "peerDependenciesMeta": {
+    "node-vault": {
+      "optional": true
+    },
+    "@aws-sdk/client-secrets-manager": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@commitlint/cli": "^20.3.1",
