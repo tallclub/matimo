@@ -9,4 +9,5 @@ packages:
   - "packages/twilio"
   - "packages/cli"
   - "examples/tools"
+  - "examples/mcp"
   - "packages/postgres"
