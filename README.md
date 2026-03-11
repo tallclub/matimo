@@ -46,7 +46,7 @@ const matimo = await MatimoInstance.init({
   autoDiscover: true,
 });
 
-const result = await matimo.execute('slack-send-message', {
+const result = await matimo.execute('slack_send_channel_message', {
   channel: '#general',
   text: 'Hello from Matimo!',
 });
@@ -59,13 +59,17 @@ See [Three Integration Patterns](#three-integration-patterns) and [examples/](./
 Matimo ships with built-in support for:
 
 - **Core Tools**: File I/O, Web fetch, Command execution, Code search
-- **Slack Integration**: Send messages, manage channels, read threads
-- **Gmail Integration**: Send/read email, manage threads
-- **GitHub Integration**: Issues, pull requests, releases
+- **MCP Server**: Expose all tools via stdio or Streamable HTTP to Claude Desktop, Cursor, Windsurf, and any MCP client (`npx matimo mcp`)
+- **Slack Integration**: Send messages, manage channels, reactions, threads, DMs
+- **Gmail Integration**: Send/read email, manage threads, drafts
+- **GitHub Integration**: Issues, pull requests, releases, code search
+- **Notion Integration**: Pages, databases, blocks, search
+- **HubSpot Tools**: Contacts, companies, deals, tickets
 - **Postgres Tools**: Query/modify data with safety checks
-- **HubSpot Tools**: Read/Write data to Hubspot CRM
-- **Auto-Discovery**: Automatic detection of @matimo/\* providers from npm
-- **Matimo CLI**: Tool discovery, installation, and management
+- **Twilio Tools**: Send SMS/MMS, manage messages
+- **Mailchimp Tools**: Audiences, subscribers, email campaigns
+- **Auto-Discovery**: Automatic detection of `@matimo/*` providers from npm
+- **Matimo CLI**: Tool discovery, setup wizard, MCP config generation
 - **OAuth2 Support**: Provider-agnostic authorization for Slack, Gmail, GitHub, etc.
 - **Framework Support**: Factory pattern, Decorator pattern, LangChain, CrewAI
 - **TypeScript SDK**: Full type safety and IDE support
@@ -98,7 +102,7 @@ const result = await matimo.execute('calculator', { operation: 'add', a: 5, b: 3
 ### 2️⃣ Decorator Pattern (Class-Based)
 
 ```typescript
-@tool('slack-send-message')
+@tool('slack_send_channel_message')
 async sendMessage(channel: string, text: string) { /* Auto-executed */ }
 ```
 
@@ -111,7 +115,22 @@ const tools = matimo.listTools().map(tool => ({
 }));
 ```
 
-See [SDK Usage Patterns](./docs/user-guide/SDK_PATTERNS.md) and [LangChain Integration](./docs/framework-integrations/LANGCHAIN.md) for details.
+### 4️⃣ MCP Server (Claude Desktop, Cursor, Windsurf, any MCP client)
+
+```bash
+# Expose all installed @matimo/* tools via MCP in one command
+npx matimo mcp
+
+# Run the setup wizard to get a ready-to-paste client config
+npx matimo mcp setup
+
+# HTTP mode for remote access / Docker
+npx matimo mcp --transport http --port 3000 --self-signed
+```
+
+See [MCP Docs](./docs/MCP.md) for the full reference.
+
+See [SDK Usage Patterns](./docs/user-guide/SDK_PATTERNS.md), [LangChain Integration](./docs/framework-integrations/LANGCHAIN.md), and [MCP Server](./docs/MCP.md) for details.
 
 ---
 
@@ -157,10 +176,9 @@ cd examples/tools && pnpm install && pnpm agent:factory
 
 ## Features **Coming Soon:**
 
-- More tool providers (Stripe, Twilio, Notion, etc.)
+- More tool providers (Stripe, Jira, Linear, etc.)
 - Python SDK
 - Custom Tool Marketplace
-- MCP Server support
 
 ---
 

@@ -18,16 +18,33 @@ export class ToolLoader {
   private static discoveredPathsCache: string[] | null = null;
   /**
    * Discover packages using only fs and path (no createRequire needed)
-   * Searches for tools in node_modules/@matimo/* and workspace packages
+   * Searches for tools in node_modules/@matimo/* and workspace packages.
+   * Tries process.cwd() first, then falls back to __dirname-based discovery
+   * (critical for Claude Desktop where cwd may be '/' on macOS).
    */
   private getNodeModulesPath(): string | null {
     try {
-      // Start from current working directory and search upwards
+      // Strategy 1: Walk up from process.cwd()
       let currentPath = process.cwd();
       for (let i = 0; i < 15; i++) {
         const nodeModules = path.join(currentPath, 'node_modules');
         if (fs.existsSync(nodeModules)) {
-          // Verify @matimo scope exists
+          const matimoScope = path.join(nodeModules, '@matimo');
+          if (fs.existsSync(matimoScope)) {
+            return nodeModules;
+          }
+        }
+        currentPath = path.dirname(currentPath);
+      }
+
+      // Strategy 2: Walk up from this file's location (__dirname)
+      // When this code is in node_modules/@matimo/core/dist/core/tool-loader.js,
+      // walking up will find the node_modules directory directly.
+      // When in monorepo at packages/core/src/core/, it will find root node_modules.
+      currentPath = __dirname;
+      for (let i = 0; i < 10; i++) {
+        const nodeModules = path.join(currentPath, 'node_modules');
+        if (fs.existsSync(nodeModules)) {
           const matimoScope = path.join(nodeModules, '@matimo');
           if (fs.existsSync(matimoScope)) {
             return nodeModules;
@@ -185,16 +202,22 @@ export class ToolLoader {
         }
       }
 
-      // If not found in node_modules, try workspace
+      // If not found in node_modules, try workspace (from cwd and __dirname)
       if (discoveredPaths.length === 0) {
-        let currentPath = process.cwd();
-        for (let i = 0; i < 20; i++) {
-          const coreToolsPath = path.join(currentPath, 'packages', 'core', 'tools');
-          if (fs.existsSync(coreToolsPath)) {
-            discoveredPaths.push(coreToolsPath);
-            break;
+        const searchRoots = [process.cwd(), __dirname];
+        let found = false;
+        for (const root of searchRoots) {
+          if (found) break;
+          let currentPath = root;
+          for (let i = 0; i < 20; i++) {
+            const coreToolsPath = path.join(currentPath, 'packages', 'core', 'tools');
+            if (fs.existsSync(coreToolsPath)) {
+              discoveredPaths.push(coreToolsPath);
+              found = true;
+              break;
+            }
+            currentPath = path.dirname(currentPath);
           }
-          currentPath = path.dirname(currentPath);
         }
       }
     } catch {
