@@ -64,14 +64,17 @@ export function parameterToZod(param: Parameter): z.ZodType<unknown> {
     schema = schema.describe(param.description);
   }
 
-  // Apply default if present
-  if (param.default !== undefined) {
-    schema = schema.default(param.default);
-  }
-
-  // Make optional if not required
+  // Make optional before applying default.
+  // Order matters: .optional().default(val) produces ZodDefault(ZodOptional(...)),
+  // so parse(undefined) triggers the default. Reversing the order wraps ZodDefault
+  // in ZodOptional, causing undefined to be absorbed before the default is reached.
   if (!param.required) {
     schema = schema.optional();
+  }
+
+  // Apply default after optional so parse(undefined) returns the default value.
+  if (param.default !== undefined) {
+    schema = schema.default(param.default);
   }
 
   return schema;

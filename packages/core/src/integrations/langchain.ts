@@ -116,13 +116,14 @@ function parameterToZod(param: Parameter): z.ZodType<unknown> {
     schema = schema.describe(param.description);
   }
 
-  // Apply default value if present
-  if (param.default !== undefined) {
-    schema = schema.default(param.default);
-  }
-
+  // Make optional before applying default — same ordering rule as tool-converter.ts:
+  // .optional().default(val) → ZodDefault(ZodOptional), so parse(undefined) returns the default.
   if (!param.required) {
     schema = schema.optional();
+  }
+
+  if (param.default !== undefined) {
+    schema = schema.default(param.default);
   }
 
   return schema;
