@@ -126,6 +126,13 @@ jest.mock('../../../src/logging/winston-logger', () => ({
   })),
 }));
 
+// Mock child_process so tests can control execFileSync without requiring openssl binary
+const mockExecFileSync = jest.fn();
+jest.mock('child_process', () => ({
+  ...jest.requireActual('child_process'),
+  execFileSync: (...args: unknown[]) => mockExecFileSync(...args),
+}));
+
 import { MCPServer, createMCPServer } from '../../../src/mcp/mcp-server';
 import type { ToolDefinition } from '../../../src/core/schema';
 
@@ -765,6 +772,23 @@ describe('MCPServer — HTTP transport', () => {
       await server.stop();
     });
 
+    it('should return 400 with JSON-RPC parse error for POST /mcp with invalid JSON body', async () => {
+      const server = await startHttpServer();
+      const port = getServerPort(server);
+
+      const res = await httpRequest(port, 'POST', '/mcp', {
+        headers: { Authorization: `Bearer ${TOKEN}` },
+        body: 'this is not valid json {{{',
+      });
+
+      expect(res.status).toBe(400);
+      const body = JSON.parse(res.body);
+      expect(body.jsonrpc).toBe('2.0');
+      expect(body.error?.code).toBe(-32700); // JSON-RPC Parse Error code
+      expect(body.error?.message).toMatch(/invalid json/i);
+      await server.stop();
+    });
+
     it('should return 400 for POST /mcp with non-initialize body', async () => {
       mockIsInitializeRequest.mockReturnValue(false);
       const server = await startHttpServer();
@@ -965,6 +989,37 @@ describe('MCPServer — HTTPS / TLS error paths', () => {
       expect.any(Function)
     );
     await server.stop();
+  });
+
+  it('should throw MatimoError with openssl failure reason when execFileSync throws', async () => {
+    // No cached certs — empty temp dir, so generateSelfSignedCert falls through to createSelfSignedCertViaCli
+    const emptyCertsRoot = pathJoin(tmpdir(), `matimo-no-cache-${Date.now()}`);
+    mkdirSync(emptyCertsRoot, { recursive: true });
+    const cwdSpy = jest.spyOn(process, 'cwd').mockReturnValue(emptyCertsRoot);
+
+    // Simulate openssl not being available
+    mockExecFileSync.mockImplementationOnce(() => {
+      throw new Error('openssl: command not found');
+    });
+
+    const server = new MCPServer({
+      transport: 'http',
+      port: 9558,
+      autoDiscover: false,
+      mcpToken: 'test-token',
+      selfSigned: true,
+    });
+
+    await expect(server.start()).rejects.toThrow(
+      'Failed to generate self-signed certificate: openssl: command not found. Install openssl or provide --cert and --key paths.'
+    );
+
+    cwdSpy.mockRestore();
+    try {
+      rmSync(emptyCertsRoot, { recursive: true, force: true });
+    } catch {
+      /* ignore */
+    }
   });
 
   it('should use cached self-signed certs from .matimo/certs/ without calling openssl', async () => {

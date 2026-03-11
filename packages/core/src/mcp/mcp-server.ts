@@ -451,21 +451,33 @@ export class MCPServer {
         // Parse request body for POST requests
         let body: unknown;
         if (req.method === 'POST') {
-          body = await new Promise<unknown>((resolve, reject) => {
-            let data = '';
-            req.on('data', (chunk: string) => {
-              data += chunk;
+          try {
+            body = await new Promise<unknown>((resolve, reject) => {
+              let data = '';
+              req.on('data', (chunk: string) => {
+                data += chunk;
+              });
+              req.on('end', () => {
+                try {
+                  resolve(JSON.parse(data));
+                } catch {
+                  reject(new Error('Invalid JSON'));
+                }
+              });
+              req.on('error', reject);
             });
-            req.on('end', () => {
-              try {
-                resolve(JSON.parse(data));
-              } catch {
-                // istanbul ignore next -- defensive error handling, hard to trigger in tests
-                reject(new Error('Invalid JSON'));
-              }
-            });
-            req.on('error', reject);
-          });
+          } catch (parseErr) {
+            const message = parseErr instanceof Error ? parseErr.message : 'Invalid request body';
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(
+              JSON.stringify({
+                jsonrpc: '2.0',
+                error: { code: -32700, message },
+                id: null,
+              })
+            );
+            return;
+          }
         }
 
         const sessionId = req.headers['mcp-session-id'] as string | undefined;
@@ -504,7 +516,12 @@ export class MCPServer {
           return;
         }
 
-        // New session: create a fresh McpServer + transport
+        // New session: create a fresh McpServer + transport.
+        // Declare mcpServer before constructing the transport so the onsessioninitialized
+        // closure captures the variable reference rather than an uninitialized binding (TDZ).
+        // eslint-disable-next-line prefer-const
+        let mcpServer: Awaited<ReturnType<typeof this.createMcpServerWithTools>>;
+
         const transport = new StreamableHTTPServerTransport({
           sessionIdGenerator: () => randomUUID(),
           onsessioninitialized: (sid: string) => {
@@ -522,7 +539,7 @@ export class MCPServer {
           }
         };
 
-        const mcpServer = await this.createMcpServerWithTools();
+        mcpServer = await this.createMcpServerWithTools();
         await mcpServer.connect(transport);
 
         // Handle the initialization request
@@ -638,11 +655,11 @@ export class MCPServer {
 
   /**
    * Create a self-signed certificate using openssl CLI.
-   * Falls back to Node.js built-in X509Certificate if openssl is unavailable.
+   * Throws if openssl is unavailable or fails — provide --cert and --key paths as an alternative.
    */
   // istanbul ignore next -- requires openssl CLI; covered by integration tests
   private async createSelfSignedCertViaCli(keyPem: string): Promise<string> {
-    const { execSync } = await import('child_process');
+    const { execFileSync } = await import('child_process');
     const { tmpdir } = await import('os');
     const { randomBytes } = await import('crypto');
 
@@ -652,18 +669,34 @@ export class MCPServer {
     try {
       writeFileSync(tmpKey, keyPem, { mode: 0o600 });
 
-      execSync(
-        `openssl req -new -x509 -key "${tmpKey}" -out "${tmpCert}" -days 365 ` +
-          `-subj "/CN=localhost/O=Matimo MCP Server" ` +
-          `-addext "subjectAltName=DNS:localhost,IP:127.0.0.1" 2>/dev/null`,
+      // Use execFileSync with an args array to avoid shell-specific redirection (e.g. 2>/dev/null)
+      // which is POSIX-only. stderr is suppressed via stdio: 'pipe'.
+      execFileSync(
+        'openssl',
+        [
+          'req',
+          '-new',
+          '-x509',
+          '-key',
+          tmpKey,
+          '-out',
+          tmpCert,
+          '-days',
+          '365',
+          '-subj',
+          '/CN=localhost/O=Matimo MCP Server',
+          '-addext',
+          'subjectAltName=DNS:localhost,IP:127.0.0.1',
+        ],
         { stdio: 'pipe' }
       );
 
       const cert = readFileSync(tmpCert, 'utf-8');
       return cert;
-    } catch {
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err);
       throw new MatimoError(
-        'Failed to generate self-signed certificate. Install openssl or provide --cert and --key paths.',
+        `Failed to generate self-signed certificate: ${reason}. Install openssl or provide --cert and --key paths.`,
         ErrorCode.EXECUTION_FAILED
       );
     } finally {
