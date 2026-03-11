@@ -726,11 +726,29 @@ export class MCPServer {
       this.mcpServer = null;
     }
 
-    // Close HTTP server
+    // Close HTTP server.
+    // Proactively drain keep-alive and SSE connections so close() can complete.
+    // closeIdleConnections() (Node ≥ 18.2) ends idle keep-alive sockets; if active
+    // SSE streams are still open, closeAllConnections() (Node ≥ 18.2) forces them
+    // closed so the callback is guaranteed to fire.
     if (this.httpServer) {
-      const server = this.httpServer as { close: (cb: () => void) => void };
-      await new Promise<void>((resolve) => {
-        server.close(() => resolve());
+      const server = this.httpServer as Http.Server & {
+        closeAllConnections?: () => void;
+        closeIdleConnections?: () => void;
+      };
+      if (typeof server.closeIdleConnections === 'function') {
+        server.closeIdleConnections();
+      }
+      if (typeof server.closeAllConnections === 'function') {
+        server.closeAllConnections();
+      }
+      await new Promise<void>((resolve, reject) => {
+        server.close((err?: Error) => {
+          if (err) {
+            return reject(err);
+          }
+          resolve();
+        });
       });
       this.httpServer = null;
     }
