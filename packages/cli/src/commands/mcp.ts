@@ -36,6 +36,15 @@ function parseArgs(params: string[]): McpArgs {
     port: 3000,
   };
 
+  /** Assert that a value-consuming flag was given an argument, not another flag or end-of-input. */
+  const requireValue = (flag: string, value: string | undefined): string => {
+    if (!value || value.startsWith('-')) {
+      console.error(`❌ ${flag} requires a value`);
+      process.exit(1);
+    }
+    return value;
+  };
+
   for (let i = 0; i < params.length; i++) {
     const flag = params[i];
     const next = params[i + 1];
@@ -63,42 +72,50 @@ function parseArgs(params: string[]): McpArgs {
         break;
 
       case '--tools':
-        args.tools = next.split(',').map((s) => s.trim());
+        args.tools = requireValue('--tools', next)
+          .split(',')
+          .map((s) => s.trim());
         i++;
         break;
 
       case '--exclude':
-        args.excludeTools = next.split(',').map((s) => s.trim());
+        args.excludeTools = requireValue('--exclude', next)
+          .split(',')
+          .map((s) => s.trim());
         i++;
         break;
 
       case '--secrets':
-        args.secrets = next.split(',').map((s) => s.trim());
+        args.secrets = requireValue('--secrets', next)
+          .split(',')
+          .map((s) => s.trim());
         i++;
         break;
 
       case '--env-file':
-        args.envFile = next;
+        args.envFile = requireValue('--env-file', next);
         i++;
         break;
 
       case '--vault-path':
-        args.vaultPath = next;
+        args.vaultPath = requireValue('--vault-path', next);
         i++;
         break;
 
       case '--aws-secret-id':
-        args.awsSecretId = next;
+        args.awsSecretId = requireValue('--aws-secret-id', next);
         i++;
         break;
 
       case '--token':
-        args.token = next;
+        args.token = requireValue('--token', next);
         i++;
         break;
 
       case '--tool-paths':
-        args.toolPaths = next.split(',').map((s) => s.trim());
+        args.toolPaths = requireValue('--tool-paths', next)
+          .split(',')
+          .map((s) => s.trim());
         i++;
         break;
 
@@ -112,13 +129,13 @@ function parseArgs(params: string[]): McpArgs {
         break;
 
       case '--cert':
-        args.certPath = next;
+        args.certPath = requireValue('--cert', next);
         args.https = true;
         i++;
         break;
 
       case '--key':
-        args.keyPath = next;
+        args.keyPath = requireValue('--key', next);
         args.https = true;
         i++;
         break;
