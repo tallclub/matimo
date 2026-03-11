@@ -147,7 +147,9 @@ export function toolToMcpRegistration(tool: ToolDefinition): {
  */
 export function extractAuthPlaceholders(tool: ToolDefinition): string[] {
   const placeholders: string[] = [];
-  const placeholderRegex = /\{([^}]+)\}/g;
+  // Use \w+ (word chars only) instead of [^}]+ to avoid polynomial backtracking (ReDoS) on
+  // uncontrolled input — placeholder names are always alphanumeric identifiers anyway.
+  const placeholderRegex = /\{(\w+)\}/g;
   const execution = tool.execution;
 
   const scanString = (str: string) => {

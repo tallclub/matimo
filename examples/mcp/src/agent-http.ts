@@ -81,21 +81,6 @@ async function runMcpHttpAgent() {
   const serverUrl = process.env.MCP_SERVER_URL || 'https://localhost:3555/mcp';
   const bearerToken = process.env.MCP_BEARER_TOKEN || process.env.MATIMO_MCP_TOKEN;
 
-  // Only disable TLS certificate validation when explicitly opted in via MCP_INSECURE=true.
-  // Never set this automatically — it disables certificate checks for the entire Node process,
-  // enabling MITM attacks on any HTTPS connection (not just the MCP server).
-  if (process.env.MCP_INSECURE === 'true') {
-    if (!serverUrl.startsWith('https')) {
-      console.warn('⚠️  MCP_INSECURE=true has no effect for non-HTTPS URLs.');
-    } else {
-      process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-      console.warn(
-        '⚠️  MCP_INSECURE=true: TLS certificate validation disabled.\n' +
-          '   Only use this in local development with self-signed certs.\n'
-      );
-    }
-  }
-
   console.info(`🤖 Using OpenAI (GPT-4o-mini) as the AI agent`);
   console.info(`🔌 Transport: HTTP → ${serverUrl}`);
   if (bearerToken) console.info('🔑 Using bearer token authentication');

@@ -841,8 +841,7 @@ const client = new MultiServerMCPClient({
     matimo: {
       transport: 'streamable_http',
       url: 'https://localhost:3000/mcp',
-      // Pass the agent via fetch options if your MCP client supports it,
-      // or use the MCP_INSECURE=true env var in the provided example scripts.
+      // Pass the agent via fetch options if your MCP client supports it.
     },
   },
 });
