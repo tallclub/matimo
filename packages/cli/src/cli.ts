@@ -124,12 +124,18 @@ export async function main(cliArgs?: string[]): Promise<void> {
   }
 }
 
-// Auto-execute when run directly (e.g., via tsx src/cli.ts)
-// When imported by bin.ts, process.argv[1] is 'bin.js', not 'cli.js'
-// When run by Jest, process.argv[1] is the Jest worker path
-// Use basename() to normalise path separators (POSIX / and Windows \)
+// Auto-execute when run directly (e.g., via tsx src/cli.ts or through bin.ts).
+// bin.ts spawns: node <tsx-cli.mjs> <cli.js> ...args
+// - When tsx shifts its own entry out of argv: process.argv[1] == cli.js
+// - When tsx does NOT shift argv:              process.argv[2] == cli.js
+// Checking both slots handles either tsx version. When imported as a module
+// (tests, bin.ts import) neither slot contains 'cli.js'.
+// Use basename() to normalise path separators (POSIX / and Windows \).
 /* istanbul ignore next */
-const isRunDirectly = basename(process.argv[1] ?? '').replace(/\.ts$/, '.js') === 'cli.js';
+const toCliJs = (s: string) => basename(s).replace(/\.ts$/, '.js');
+/* istanbul ignore next */
+const isRunDirectly =
+  toCliJs(process.argv[1] ?? '') === 'cli.js' || toCliJs(process.argv[2] ?? '') === 'cli.js';
 /* istanbul ignore next */
 if (isRunDirectly) {
   main().catch((error) => {
