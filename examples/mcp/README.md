@@ -220,7 +220,14 @@ This channel is then used for all subsequent tasks in the same run.
 - Check port matches `MCP_SERVER_URL` (default `3555`).
 
 **Self-signed certificate errors**
-- The HTTP agent sets `NODE_TLS_REJECT_UNAUTHORIZED=0` automatically for `https://` URLs in development.
+- Set `MCP_INSECURE=true` in your `.env` to disable TLS certificate validation when connecting to a
+  server with a self-signed cert in local development:
+  ```
+  MCP_INSECURE=true
+  ```
+  > **Warning:** This disables certificate checks for the *entire* Node process. Never use it in
+  > production or over an untrusted network — a valid, trusted certificate (e.g. from Let's Encrypt)
+  > should be used instead.
 
 **`slack_create_channel` / `slack_add_reaction` / `slack_get_user_info` fail**
 - Your Slack bot token is missing OAuth scopes. In your Slack app settings ([api.slack.com/apps](https://api.slack.com/apps)):
