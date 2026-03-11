@@ -1,3 +1,133 @@
+## v0.1.0-alpha.12
+
+> Release: First-Class MCP Support — Standalone server, pluggable secrets, Claude Desktop integration, comprehensive examples
+
+**Released**: March 11, 2026
+
+### 🚀 Major Features: MCP is Here
+
+**MCP Server Implementation** (`@matimo/core/mcp`)
+
+- **Dual-transport support**:
+  - **Stdio transport** — Lightweight, no networking, perfect for Claude Desktop and local agents
+  - **Streamable HTTP transport** — Remote deployment ready, bearer token auth, reconnect logic
+- **Tool discovery & execution** — MCP protocol compliant; Claude instantly sees all loaded tools
+- **Session management** — Handles MCP client lifecycle, graceful shutdown with active connection draining
+- **Zero configuration** — Works with default YAML tool definitions; no MCP-specific schema needed
+
+**Pluggable Secret Resolution** (`SecretResolverChain`)
+
+- **Multiple backends supported**:
+  - `env` — Load from environment variables (fastest, default)
+  - `dotenv` — Load from `.env` file (development friendly)
+  - `vault` — HashiCorp Vault integration (enterprise secrets)
+  - `aws` — AWS Secrets Manager integration (cloud-native)
+- **Automatic injection** — Tool parameters matching auth patterns (token, key, secret, etc.) auto-resolved server-side
+- **Chain resolution** — Try resolvers in order; fall back gracefully if missing
+
+**CLI Commands: MCP First Class**
+
+- **`matimo mcp`** — Start MCP server
+  - `--transport stdio` — Default, no networking
+  - `--transport http --port 3000` — Remote, auth-ready
+  - `--tools slack,gmail` — Tool allowlist/denylist
+  - `--secrets env,dotenv,vault` — Enable secret backends
+- **`matimo mcp setup`** — Generate Claude Desktop config
+  - Auto-discovers Matimo bin path
+  - Generates valid `claude_desktop_config.json`
+  - Writes to `~/.config/Claude/claude_desktop_config.json` (macOS/Linux)
+
+**New Examples: Complete MCP Integration**
+
+- **`examples/mcp/`** — Full-featured MCP demo
+  - `agent-stdio.ts` — Claude Desktop integration via stdio
+  - `agent-http.ts` — LangChain agent via HTTP transport
+  - `agent.ts` — Unified agent supporting both transports
+  - `README.md` — Step-by-step setup with real Slack tools
+  - `.env.example` — All environment variables documented
+  - `package.json` scripts — `pnpm agent:stdio`, `pnpm agent:http`, `pnpm mcp:start:http`
+
+### 📚 Documentation
+
+- **`docs/MCP.md`** — Complete MCP architecture guide
+  - Endpoints reference (GET /mcp for health, SSE for streams)
+  - MCP spec compliance notes
+  - TLS setup (mkcert recommended for local HTTPS)
+  - Troubleshooting guide
+- **`examples/mcp/README.md`** — Quick start (5 minutes to Langchain Agent with Slack integration via mcp)
+  - Prerequisites (Node, npm, OpenAI key, Slack token)
+  - Quick Start section with 2 patterns (stdio, HTTP)
+  - Environment variable reference
+  - Troubleshooting (connection, token, tools)
+
+### 🔐 Security & Quality Improvements
+
+**CodeQL Fixes**
+
+- **Polynomial regex (ReDoS)** — Fixed `/\{([^}]+)\}/g` → `/\{(\w+)\}/g` in `tool-converter.ts`
+- **TLS bypass removed** — Deleted `NODE_TLS_REJECT_UNAUTHORIZED = '0'` from examples; plain HTTP default for localhost
+- **HTTP server shutdown** — Added `closeIdleConnections()` + `closeAllConnections()` to drain active SSE streams before closing
+
+**CLI Robustness**
+
+- **Flag validation** — All value-consuming flags now guard against missing args with clear error messages
+- **Auto-execution detection** — Fixed to handle different `tsx` versions' argv-shifting behavior
+
+**Schema Fixes**
+
+- **Zod optional-before-default** — Fixed parameter-to-Zod conversion so defaults apply correctly to non-required params
+
+### 📦 Packages
+
+All packages bumped to v0.1.0-alpha.12:
+
+- `@matimo/core` — New `mcp` exports; schema/security fixes
+- `matimo-cli` — New `mcp` and `mcp setup` commands; updated help
+- `matimo-mcp-examples` — New project with full MCP integration
+
+### 🎯 Key Achievements
+
+✅ Claude Desktop integration works out-of-the-box  
+✅ HTTP transport for remote/docker/network use cases  
+✅ Pluggable secrets (env, dotenv, vault, AWS)  
+✅ Zero configuration needed beyond YAML tool definitions  
+✅ Full test coverage for MCP flows  
+✅ Production-ready examples for all patterns  
+✅ Comprehensive troubleshooting documentation  
+✅ Security fixes from CodeQL review
+
+### ⚠️ Breaking Changes
+
+None. MCP is additive; existing SDK patterns (Factory, Decorator, LangChain) unchanged.
+
+### 📝 Migration & Quick Start
+
+**Try MCP in 5 minutes:**
+
+```bash
+# 1. Start MCP server (stdio — Claude Desktop compatible)
+npx matimo mcp
+
+# 2. In another terminal, generate Claude Desktop config
+npx matimo mcp setup
+
+# 3. Restart Claude Desktop, tools appear in Tools panel
+```
+
+**For HTTP (remote/docker):**
+
+```bash
+# Server
+MATIMO_MCP_TOKEN=secret npx matimo mcp --transport http --port 3000
+
+# Client (LangChain agent example)
+cd examples/mcp
+pnpm install
+MATIMO_MCP_TOKEN=secret pnpm agent:http
+```
+
+---
+
 ## v0.1.0-alpha.11
 
 > Release: Twilio SMS/MMS provider, Mailchimp email marketing provider, native Basic Auth support, enhanced HTTP executor form-encoding, comprehensive test coverage, production-ready examples.
