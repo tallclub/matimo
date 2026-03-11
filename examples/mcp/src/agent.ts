@@ -180,9 +180,14 @@ function buildHttpConfig(url: string, token?: string) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  // Allow self-signed certs in development
-  if (url.startsWith('https') && !process.env.NODE_TLS_REJECT_UNAUTHORIZED) {
+  // Only disable TLS certificate validation when explicitly opted in via MCP_INSECURE=true.
+  // Never set this automatically — it disables certificate checks for the entire Node process.
+  if (process.env.MCP_INSECURE === 'true' && url.startsWith('https')) {
     process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+    console.warn(
+      '⚠️  MCP_INSECURE=true: TLS certificate validation disabled.\n' +
+        '   Only use this in local development with self-signed certs.\n'
+    );
   }
 
   return {

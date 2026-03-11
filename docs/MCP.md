@@ -381,7 +381,9 @@ HTTP mode runs a stateful HTTP server for remote access, Docker containers, or M
 
 | Method | Path | Auth Required | Description |
 |--------|------|---------------|-------------|
-| `POST` | `/mcp` or `/` | Yes | MCP protocol endpoint (JSON-RPC + SSE) |
+| `POST` | `/mcp` (or `/`) | Yes | Start a new MCP session (JSON-RPC initialize) |
+| `GET` | `/mcp` (or `/`) | Yes | Open SSE stream for an existing session (`Mcp-Session-Id` header required) |
+| `DELETE` | `/mcp` (or `/`) | Yes | Close an existing session (`Mcp-Session-Id` header required) |
 | `GET` | `/health` | No | Health check — returns `{"status":"ok","tools":<count>}` |
 | `OPTIONS` | `*` | No | CORS preflight |
 
@@ -401,15 +403,41 @@ Clients must include `Authorization: Bearer <token>` in every request (except `/
 # Test health (no auth needed)
 curl http://localhost:3000/health
 
-# Test auth
+# Test auth — initialize a new session
 curl -H "Authorization: Bearer <token>" \
      -H "Content-Type: application/json" \
      -H "Accept: application/json, text/event-stream" \
+     -H "MCP-Protocol-Version: 2025-11-25" \
      -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"test","version":"0.1.0"}}}' \
      http://localhost:3000/mcp
 ```
 
+> **Note:** The [MCP spec](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#protocol-version-header)
+> requires clients to include an `MCP-Protocol-Version` header on all requests after initialization.
+> The server currently accepts requests without this header for backwards compatibility.
+
 > **Tip:** For production, set a fixed token with `MATIMO_MCP_TOKEN` or `--token` so it survives server restarts.
+
+### MCP Spec Compliance Notes
+
+Matimo HTTP mode is built on the official `@modelcontextprotocol/sdk` and implements the
+[Streamable HTTP transport](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#streamable-http)
+specification. The following areas are fully compliant:
+
+- ✅ Stateful sessions via `Mcp-Session-Id` (SDK-managed)
+- ✅ Per-session `McpServer` instance (not shared across clients)
+- ✅ Bearer token authentication
+- ✅ `POST /mcp` for JSON-RPC, `GET /mcp` for SSE, `DELETE /mcp` for session close
+- ✅ `isError: true` in tool failure responses
+- ✅ stdio mode: no non-JSON-RPC output on stdout (logger silenced)
+
+Known gaps against the spec (tracked for a future release):
+
+| Gap | Spec requirement | Impact |
+|-----|-----------------|--------|
+| `Origin` header not validated | [Spec §2.0.1](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#security-warning): servers **MUST** validate `Origin` to prevent DNS rebinding | Local-only servers using `--self-signed` are lower risk; production servers behind a reverse proxy should add `Origin` validation at the proxy layer |
+| Binds to all interfaces (`0.0.0.0`) | Spec §2.0.1: servers **SHOULD** bind to `127.0.0.1` when running locally | Avoid exposing the port publicly without a firewall rule or reverse proxy |
+| `MCP-Protocol-Version` header not enforced | [Spec §2.7](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#protocol-version-header): invalid version must return `400` | No impact with current MCP SDK clients; all known clients send a valid version |
 
 ### HTTPS
 
@@ -421,10 +449,12 @@ Enable HTTPS for encrypted connections. Two options:
 npx matimo mcp --transport http --self-signed
 ```
 
-- Generates an RSA 2048 key + X.509 certificate via `openssl`
-- Certificate is valid for `localhost` and `127.0.0.1` (365 days)
+- Generates an RSA 2048 key + X.509 certificate via `openssl` (key via Node.js `crypto`)
+- SAN covers `DNS:localhost` and `IP:127.0.0.1`, valid for 365 days
 - Cached in `.matimo/certs/` — reused across restarts
-- Clients must skip certificate verification (`curl -k`, Node `rejectUnauthorized: false`)
+- Because the cert is self-signed, clients won't trust it by default — see
+  [HTTPS client can't connect (self-signed cert)](#https-client-cant-connect-self-signed-cert)
+  for options ranked by security
 
 Output:
 
@@ -743,15 +773,86 @@ npx matimo mcp --transport http --cert cert.pem --key key.pem
 
 ### HTTPS client can't connect (self-signed cert)
 
-Self-signed certificates are not trusted by default. Tell your client to skip verification:
+Self-signed certificates are not trusted by default. There are several ways to handle this,
+ordered from **most** to **least** secure.
+
+---
+
+#### ✅ Option 1 — Use a locally trusted certificate (recommended)
+
+[`mkcert`](https://github.com/FiloSottile/mkcert) creates certificates signed by a local CA that
+your OS and browser trust automatically. No bypass needed, no security warnings.
 
 ```bash
-# curl
-curl -k https://localhost:3000/health
+# Install mkcert
+brew install mkcert          # macOS
+sudo apt install mkcert      # Linux (or build from source)
 
-# Node.js
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+# One-time: trust the local CA system-wide
+mkcert -install
+
+# Generate a cert for localhost
+mkcert localhost 127.0.0.1 ::1
+# → produces localhost+2.pem and localhost+2-key.pem
+
+# Start Matimo MCP with the trusted cert
+npx matimo mcp --transport http --cert localhost+2.pem --key localhost+2-key.pem
 ```
+
+All clients (curl, Node.js, browsers) on the same machine now connect without any special flags.
+
+---
+
+#### ✅ Option 2 — Use a CA-trusted certificate
+
+For staging or shared environments, use a certificate from a public CA (e.g. Let's Encrypt) or
+your organisation's internal CA. Pass it to the server:
+
+```bash
+npx matimo mcp --transport http --cert cert.pem --key key.pem
+```
+
+---
+
+#### ⚠️ Option 3 — Narrow TLS bypass for development clients only
+
+If you can't use a trusted certificate, scope the bypass to **only** the MCP connection rather
+than the entire Node process.
+
+**curl** — the `-k` / `--insecure` flag applies to that request only:
+
+```bash
+curl -k https://localhost:3000/health
+```
+
+**Node.js** — pass a custom `https.Agent` scoped to your MCP client.
+Never set `process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'`; it disables certificate validation
+globally for every HTTPS request in the process, including requests to OpenAI, Slack, or any
+other service.
+
+```ts
+import https from 'https';
+
+// ⚠️ Development only — never use rejectUnauthorized: false in production
+const devAgent = new https.Agent({ rejectUnauthorized: false });
+
+const client = new MultiServerMCPClient({
+  mcpServers: {
+    matimo: {
+      transport: 'streamable_http',
+      url: 'https://localhost:3000/mcp',
+      // Pass the agent via fetch options if your MCP client supports it,
+      // or use the MCP_INSECURE=true env var in the provided example scripts.
+    },
+  },
+});
+```
+
+> **Security note:** Disabling certificate verification, even for a single connection, allows
+> an attacker on the same network to impersonate the server, intercept the bearer token, and
+> issue arbitrary tool calls. Only ever do this on a loopback interface (`localhost` /
+> `127.0.0.1`) in a controlled local development environment. **Never use it in production,
+> CI/CD pipelines, or shared environments.**
 
 ### Debug logging
 
