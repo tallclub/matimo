@@ -80,7 +80,7 @@ export async function mcpSetupCommand(): Promise<void> {
     // Generate Claude Desktop config
     const envBlock: Record<string, string> = {};
     for (const v of authVars) {
-      envBlock[v] = process.env[v] || '<your-token>';
+      envBlock[v] = process.env[v] || process.env[`MATIMO_${v}`] || '<your-token>';
     }
 
     const claudeConfig = {

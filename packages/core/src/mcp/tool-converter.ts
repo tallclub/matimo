@@ -19,8 +19,13 @@ export function parameterToZod(param: Parameter): z.ZodType<unknown> {
 
   // Handle enum constraints
   if (param.enum && param.enum.length > 0) {
-    const enumSchemas = param.enum.map((value) => z.literal(value));
-    schema = z.union(enumSchemas as unknown as [z.ZodTypeAny, ...z.ZodTypeAny[]]);
+    if (param.enum.length === 1) {
+      // z.union requires at least 2 schemas — handle single-value enum explicitly
+      schema = z.literal(param.enum[0]);
+    } else {
+      const enumSchemas = param.enum.map((value) => z.literal(value));
+      schema = z.union(enumSchemas as unknown as [z.ZodTypeAny, ...z.ZodTypeAny[]]);
+    }
   } else {
     switch (param.type) {
       case 'string':
@@ -77,24 +82,22 @@ export function parameterToZod(param: Parameter): z.ZodType<unknown> {
  * Parameters matching these are excluded from the MCP input schema
  * because they are injected server-side by the secret resolver.
  */
-const AUTH_PATTERNS = [
-  'token',
-  'key',
-  'secret',
-  'password',
-  'credential',
-  'auth',
-  'bearer',
-  'api_key',
-];
+const AUTH_PATTERNS = ['token', 'key', 'secret', 'password', 'credential', 'auth', 'bearer'];
 
 /**
  * Check if a parameter name looks like a secret/auth parameter.
- * Uses word-boundary matching to avoid false positives.
+ * Normalises camelCase to segments first (e.g. apiKey → ['api','key']),
+ * then splits on word separators (_ - .) and checks each segment for an
+ * exact match against AUTH_PATTERNS, preventing false positives such as
+ * "monkey" matching "key" or "author" matching "auth".
  */
 function isAuthParameter(paramName: string): boolean {
-  const lowerName = paramName.toLowerCase();
-  return AUTH_PATTERNS.some((pattern) => lowerName.includes(pattern));
+  const segments = paramName
+    .replace(/([a-z])([A-Z])/g, '$1_$2') // camelCase → snake_case (apiKey → api_Key)
+    .toLowerCase()
+    .split(/[_\-.]+/)
+    .filter(Boolean);
+  return segments.some((segment) => AUTH_PATTERNS.includes(segment));
 }
 
 /**
@@ -148,6 +151,7 @@ export function extractAuthPlaceholders(tool: ToolDefinition): string[] {
   const execution = tool.execution;
 
   const scanString = (str: string) => {
+    placeholderRegex.lastIndex = 0; // reset before each scan to avoid stale lastIndex from /g flag
     let match;
     while ((match = placeholderRegex.exec(str)) !== null) {
       const name = match[1];

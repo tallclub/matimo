@@ -76,6 +76,18 @@ describe('parameterToZod', () => {
     expect(() => schema.parse('divide')).toThrow();
   });
 
+  it('should handle single-value enum without throwing', () => {
+    const param: Parameter = {
+      type: 'string',
+      required: true,
+      description: 'Fixed value',
+      enum: ['only'],
+    };
+    const schema = parameterToZod(param);
+    expect(schema.parse('only')).toBe('only');
+    expect(() => schema.parse('other')).toThrow();
+  });
+
   it('should apply description metadata', () => {
     const param: Parameter = { type: 'string', required: true, description: 'User name' };
     const schema = parameterToZod(param);
@@ -121,7 +133,7 @@ describe('convertParametersToMcpSchema', () => {
     expect(Object.keys(schema)).toEqual(['channel', 'text']);
   });
 
-  it('should exclude auth-like parameters', () => {
+  it('should exclude auth-like parameters (snake_case)', () => {
     const parameters: Record<string, Parameter> = {
       channel: { type: 'string', required: true, description: 'Channel' },
       api_key: { type: 'string', required: true, description: 'Key' },
@@ -134,6 +146,30 @@ describe('convertParametersToMcpSchema', () => {
 
     const schema = convertParametersToMcpSchema(parameters);
     expect(Object.keys(schema)).toEqual(['channel']);
+  });
+
+  it('should exclude auth-like parameters (camelCase)', () => {
+    const parameters: Record<string, Parameter> = {
+      channel: { type: 'string', required: true, description: 'Channel' },
+      apiKey: { type: 'string', required: true, description: 'Key' },
+      bearerToken: { type: 'string', required: true, description: 'Token' },
+      accessToken: { type: 'string', required: true, description: 'Access' },
+      clientSecret: { type: 'string', required: true, description: 'Secret' },
+    };
+
+    const schema = convertParametersToMcpSchema(parameters);
+    expect(Object.keys(schema)).toEqual(['channel']);
+  });
+
+  it('should not exclude non-auth parameters that contain auth substrings', () => {
+    const parameters: Record<string, Parameter> = {
+      monkey: { type: 'string', required: true, description: 'Not a key' },
+      author_name: { type: 'string', required: true, description: 'Author' },
+      turkey: { type: 'string', required: true, description: 'Not a key' },
+    };
+
+    const schema = convertParametersToMcpSchema(parameters);
+    expect(Object.keys(schema)).toEqual(['monkey', 'author_name', 'turkey']);
   });
 
   it('should handle empty parameters', () => {
