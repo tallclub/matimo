@@ -82,3 +82,22 @@ export type { LangChainTool } from './integrations/langchain';
 // Single approval callback handles all tools - no per-provider logic needed
 export { ApprovalHandler, getGlobalApprovalHandler } from './approval/approval-handler';
 export type { ApprovalRequest, ApprovalCallback } from './approval/approval-handler';
+
+// MCP Server - Model Context Protocol integration
+// Exposes all Matimo tools via MCP for Claude Desktop, Cursor, etc.
+export { MCPServer, createMCPServer } from './mcp/index';
+export type { MCPServerOptions } from './mcp/index';
+
+// Secret Resolvers - pluggable secret management
+export type { SecretResolver, SecretResolverConfig, SecretResolverChainConfig } from './mcp/index';
+export {
+  EnvSecretResolver,
+  DotenvSecretResolver,
+  SecretResolverChain,
+  createResolverChain,
+} from './mcp/index';
+export {
+  convertParametersToMcpSchema,
+  toolToMcpRegistration,
+  extractAuthPlaceholders,
+} from './mcp/index';

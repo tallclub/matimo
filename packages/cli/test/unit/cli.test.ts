@@ -4,10 +4,12 @@ import { main, showHelp } from '../../src/cli';
 jest.mock('../../src/commands/install.ts');
 jest.mock('../../src/commands/list.ts');
 jest.mock('../../src/commands/search.ts');
+jest.mock('../../src/commands/mcp.ts');
 
 const { installCommand } = require('../../src/commands/install.ts');
 const { listCommand } = require('../../src/commands/list.ts');
 const { searchCommand } = require('../../src/commands/search.ts');
+const { mcpCommand } = require('../../src/commands/mcp.ts');
 
 describe('CLI Main', () => {
   let consoleErrorSpy: jest.SpyInstance;
@@ -24,6 +26,7 @@ describe('CLI Main', () => {
     installCommand.mockResolvedValue(undefined);
     listCommand.mockResolvedValue(undefined);
     searchCommand.mockResolvedValue(undefined);
+    mcpCommand.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -266,6 +269,27 @@ describe('CLI Main', () => {
     await main(['search']);
 
     expect(searchCommand).toHaveBeenCalledWith('');
+  });
+
+  it('should route to mcp command', async () => {
+    await main(['mcp', '--transport', 'http']);
+
+    expect(mcpCommand).toHaveBeenCalledWith(['--transport', 'http']);
+  });
+
+  it('should handle getPackageVersion returning "unknown" when package.json is unreadable', async () => {
+    const fsSpy = jest.spyOn(require('fs'), 'readFileSync').mockImplementationOnce(() => {
+      throw new Error('ENOENT: no such file');
+    });
+
+    try {
+      await main(['version']);
+    } catch {
+      // Expected if process.exit throws
+    }
+
+    expect(consoleInfoSpy).toHaveBeenCalledWith(expect.stringContaining('vunknown'));
+    fsSpy.mockRestore();
   });
 });
 

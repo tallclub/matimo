@@ -1,9 +1,12 @@
 {
   "name": "matimo",
-  "version": "0.1.0-alpha.11",
+  "version": "0.1.0-alpha.12",
   "description": "Universal tool provider SDK: Framework-agnostic YAML-driven tool ecosystem for AI agents. Execute a library of pre-built tools (Slack, Gmail, GitHub, AWS, etc.) or define your own in YAML.",
   "main": "packages/core/dist/index.js",
   "types": "packages/core/dist/index.d.ts",
+  "bin": {
+    "matimo": "packages/cli/dist/bin.js"
+  },
   "type": "module",
   "packageManager": "pnpm@8.15.0",
   "private": false,
@@ -64,7 +67,6 @@
   "files": [
     "packages/core/dist",
     "packages/cli/dist",
-    "packages/cli/bin",
     "README.md",
     "LICENSE"
   ],

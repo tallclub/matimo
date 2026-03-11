@@ -1,25 +1,24 @@
 {
   "name": "@matimo/cli",
-  "version": "0.1.0-alpha.11",
+  "version": "0.1.0-alpha.12",
   "description": "CLI tools for managing Matimo tool installations",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",
   "bin": {
-    "matimo": "bin/matimo.cjs"
+    "matimo": "dist/bin.js"
   },
   "files": [
-    "bin",
     "dist",
     "README.md"
   ],
   "dependencies": {
-    "@matimo/core": "workspace:*"
+    "@matimo/core": "workspace:*",
+    "tsx": "^4.21.0"
   },
   "devDependencies": {
     "@types/node": "^25.1.0",
-    "typescript": "^5.9.3",
-    "tsx": "^4.21.0"
+    "typescript": "^5.9.3"
   },
    "peerDependencies": {
     "matimo": "workspace:*"

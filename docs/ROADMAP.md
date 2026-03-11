@@ -2,7 +2,7 @@
 
 ## Current Status
 
-**Latest Release**: v0.1.0-alpha.11 (February 27, 2026)
+**Latest Release**: v0.1.0-alpha.12 (March 11, 2026)
 
 ✅ **Completed Features**:
 
@@ -71,25 +71,27 @@ Full-featured Python implementation with feature parity:
 - 80%+ test coverage
 - Full documentation with examples
 
-### Priority 3: MCP (Model Context Protocol) Server
+### Priority 3: MCP (Model Context Protocol) Server ✅ SHIPPED (v0.1.0-alpha.12)
 
 Enable Claude and other MCP clients to use Matimo tools:
 
-- [ ] **MCP Server** — Standalone MCP server implementation
-- [ ] **Tool Discovery** — Expose all loaded tools via MCP protocol
-- [ ] **Tool Execution** — Execute tools through MCP interface
-- [ ] **Session Management** — Handle MCP client sessions
-- [ ] **Authentication** — Secure access to tools
-- [ ] **Docker Container** — MCP server in Docker for easy deployment
-- [ ] **Claude Integration** — Works natively with Claude via MCP
+- [x] **MCP Server** — Dual-transport (stdio + Streamable HTTP) implementation (v0.1.0-alpha.12)
+- [x] **Tool Discovery** — Expose all loaded tools via MCP protocol (v0.1.0-alpha.12)
+- [x] **Tool Execution** — Execute tools through MCP interface with parameter templating (v0.1.0-alpha.12)
+- [x] **Session Management** — Handle MCP client lifecycle with graceful shutdown (v0.1.0-alpha.12)
+- [x] **Authentication** — Pluggable secret resolution (env, dotenv, Vault, AWS) + bearer token auth (v0.1.0-alpha.12)
+- [x] **Claude Integration** — Works with Claude Desktop via `matimo mcp setup` command (v0.1.0-alpha.12)
+- [x] **Comprehensive Examples** — Complete examples for stdio and HTTP transports (v0.1.0-alpha.12)
+- [ ] **Docker Container** — MCP server in Docker for easy deployment (Future)
 
-**Acceptance Criteria**:
+**Completed in v0.1.0-alpha.12**:
 
-- Server implements MCP spec correctly
-- Works with Claude and other MCP clients
-- All tools discoverable and callable
-- Proper error handling
-- Documented deployment guide
+- Dual-transport MCP server (stdio for Claude Desktop, HTTP for remote)
+- Pluggable secret resolution chain (env/dotenv/Vault/AWS)
+- New CLI commands: `matimo mcp` and `matimo mcp setup`
+- Full examples with LangChain integration
+- Comprehensive MCP documentation
+- Security fixes (ReDoS, TLS bypass, HTTP shutdown, flag validation, Zod ordering)
 
 ### Priority 4: Logging & Monitoring
 
@@ -112,14 +114,8 @@ Production-ready observability:
 - Performance metrics dashboard-ready format
 - Admin command for viewing logs
 
-### Priority 5: Skills (Tool Composition & Workflows)
+### Priority 5: Skills (Native to Matimo)
 
-Advanced capabilities for complex automation:
-
-- [ ] **Skill Definition** — Define workflows that chain multiple tools
-- [ ] **Conditional Logic** — If/else/switch based on tool output
-- [ ] **Loops & Iteration** — Process lists or repeat actions
-- [ ] **Error Handling** — Catch and recover from tool failures
 - [ ] **Skill Registry** — Store and reuse skills across projects
 - [ ] **Skill Examples** — Pre-built skills for common tasks
 - [ ] **Skill Versioning** — Multiple versions per skill
@@ -132,7 +128,7 @@ Advanced capabilities for complex automation:
 
 **Acceptance Criteria**:
 
-- Skill definition format (YAML or JSON)
+- Skill definition format (markdown)
 - Skill execution engine working correctly
 - Error recovery on tool failures
 - Documented skill specification
@@ -193,17 +189,23 @@ Alpha Phase (✅ Completed)
   v0.1.0-alpha.8  Feb 18, 2026  (GitHub tools, unified approval)
   v0.1.0-alpha.9  Feb 19, 2026  (HubSpot tools)
   v0.1.0-alpha.10 Feb 21, 2026  (Notion tools)
-  v0.1.0-alpha.11 Feb 27, 2026  (Twilio & Mailchimp tools) ← Current
+  v0.1.0-alpha.11 Feb 27, 2026  (Twilio & Mailchimp tools)
+  v0.1.0-alpha.12 Mar 11, 2026  (🚀 MCP Server — stdio + HTTP, secrets, Claude integration) ← Current
 
-v0.1.0 Release (📅 Coming)
-  Priorities:
-    1. More 3rd party tools   March 2026
-    2. Python SDK             March 2026
-    3. MCP Server             April-May 2026
-    4. Logging & Monitoring   May 2026
-    5. Skills/Workflows       May 2026
+v0.1.0 Release (📅 Late March 2026)
+  ✅ Completed:
+    - MCP Server (dual-transport, pluggable secrets)
+    - Claude Desktop integration
+    - Comprehensive MCP examples & docs
+    - Security fixes (CodeQL)
+  
+  Remaining priorities:
+    1. More 3rd party tools     (Stripe, Airtable, etc.)     March 2026
+    2. Python SDK               March-April 2026
+    3. Logging & Monitoring     April 2026
+    4. Skills/Workflows         April-May 2026
 
-  v0.1.0-rc.1     Early March 2026
+  v0.1.0-rc.1     Late March 2026
   v0.1.0          March 2026 ← Stable Release
 
 Post-Release (🎯 Future)
