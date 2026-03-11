@@ -32,10 +32,6 @@ module.exports = {
     '/node_modules/',
     '/dist/'
   ],
-  // Force exit after all tests complete — integration tests can leave open TCP
-  // connections (e.g. axios keep-alive sockets after real API calls) that prevent
-  // the worker from exiting naturally.
-  forceExit: true,
   transform: {
     '^.+\\.ts$': ['ts-jest', {
       tsconfig: {

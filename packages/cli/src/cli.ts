@@ -1,5 +1,5 @@
 import { readFileSync } from 'fs';
-import { join } from 'path';
+import { join, basename } from 'path';
 import { installCommand } from './commands/install.js';
 import { listCommand } from './commands/list.js';
 import { searchCommand } from './commands/search.js';
@@ -127,8 +127,9 @@ export async function main(cliArgs?: string[]): Promise<void> {
 // Auto-execute when run directly (e.g., via tsx src/cli.ts)
 // When imported by bin.ts, process.argv[1] is 'bin.js', not 'cli.js'
 // When run by Jest, process.argv[1] is the Jest worker path
+// Use basename() to normalise path separators (POSIX / and Windows \)
 /* istanbul ignore next */
-const isRunDirectly = process.argv[1]?.endsWith('/cli.js') || process.argv[1]?.endsWith('/cli.ts');
+const isRunDirectly = basename(process.argv[1] ?? '').replace(/\.ts$/, '.js') === 'cli.js';
 /* istanbul ignore next */
 if (isRunDirectly) {
   main().catch((error) => {
