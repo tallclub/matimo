@@ -10,7 +10,7 @@
     "agent:http": "tsx src/agent-http.ts",
     "agent": "tsx src/agent.ts",
     "mcp:start": "matimo mcp",
-    "mcp:start:http": "matimo mcp --transport http --port 3555 --self-signed"
+    "mcp:start:http": "matimo mcp --transport http --port 3555"
   },
   "dependencies": {
     "@langchain/core": "^1.1.19",

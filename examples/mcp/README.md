@@ -57,11 +57,15 @@ pnpm agent:stdio -- --channel=C0123456789
 
 ```bash
 pnpm mcp:start:http
-# equivalent: npx matimo mcp --transport http --port 3555 --self-signed
+# equivalent: npx matimo mcp --transport http --port 3555
 ```
 
-The server reads `MATIMO_MCP_TOKEN` from your `.env` automatically and starts on **HTTPS** with
-a self-signed certificate stored in `.matimo/certs/`.
+The server reads `MATIMO_MCP_TOKEN` from your `.env` automatically and starts on **plain HTTP**
+on `localhost:3555`. This is the recommended setup for local development — no TLS required.
+
+> **Want HTTPS locally?** Run `matimo mcp --transport http --port 3555 --self-signed` and
+> set `MCP_SERVER_URL=https://localhost:3555/mcp` in `.env`. You'll need to trust the generated
+> cert (`mkcert -install`) — see the [TLS troubleshooting guide](../../docs/MCP.md#https-client-cant-connect-self-signed-cert).
 
 **Step 2 — Run the agent:**
 
@@ -72,10 +76,10 @@ pnpm agent:http
 pnpm agent:http -- --channel=C0123456789
 ```
 
-Verify the server is up before running the agent (`-k` skips self-signed cert check for curl only):
+Verify the server is up before running the agent:
 
 ```bash
-curl -k https://localhost:3555/health
+curl http://localhost:3555/health
 # → {"status":"ok","tools":27}
 ```
 
@@ -198,7 +202,7 @@ This channel is then used for all subsequent tasks in the same run.
 | `SLACK_BOT_TOKEN` | Slack bot token (`xoxb-…`) | ✅ |
 | `MATIMO_MCP_TOKEN` | Bearer token shared between server and HTTP agent | HTTP only |
 | `TEST_CHANNEL` | Slack channel ID to use (`C…`) | Optional |
-| `MCP_SERVER_URL` | Override HTTP server URL | Optional (default: `https://localhost:3555/mcp`) |
+| `MCP_SERVER_URL` | Override HTTP server URL | Optional (default: `http://localhost:3555/mcp`) |
 | `MCP_BEARER_TOKEN` | Alias for `MATIMO_MCP_TOKEN` (takes precedence) | Optional |
 | `OPENAI_MODEL` | OpenAI model name | Optional (default: `gpt-4o-mini`) |
 

@@ -78,7 +78,7 @@ async function runMcpHttpAgent() {
     process.exit(1);
   }
 
-  const serverUrl = process.env.MCP_SERVER_URL || 'https://localhost:3555/mcp';
+  const serverUrl = process.env.MCP_SERVER_URL || 'http://localhost:3555/mcp';
   const bearerToken = process.env.MCP_BEARER_TOKEN || process.env.MATIMO_MCP_TOKEN;
 
   console.info(`🤖 Using OpenAI (GPT-4o-mini) as the AI agent`);
