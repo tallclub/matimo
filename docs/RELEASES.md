@@ -34,12 +34,6 @@
 - Credential key reference table for all Slack tools
 - Script: `pnpm credentials:example`
 
-**Package-Level Release Workflow**
-
-- Replaced monolithic tag-based `npm-release.yml` with [Changesets](https://github.com/changesets/changesets) action
-- Triggers on `push` to `main`; opens a "Version Packages" PR for pending changesets
-- On merge of the version PR, publishes only changed packages with per-package GitHub release tags
-- `.changeset/config.json` initialised with `access: public`
 
 ### 🧪 Test Coverage
 
