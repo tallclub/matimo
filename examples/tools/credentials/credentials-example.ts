@@ -122,7 +122,9 @@ async function main() {
     }
 
     if (missing.length > 0) {
-      console.warn(`   ⚠️  [${tenant.name}] Missing keys for '${toolName}': ${missing.join(', ')}`);
+      console.warn(
+        `   ⚠️  [${tenant.name}] Missing ${missing.length} credential key(s) for '${toolName}'.`
+      );
     }
 
     console.info(
@@ -203,7 +205,9 @@ async function main() {
   for (const tool of slackTools.slice(0, 5)) {
     const keys = matimo.getRequiredCredentials(tool.name);
     console.info(`   ${tool.name}`);
-    console.info(`     credentials keys: ${keys.length ? keys.join(', ') : '(none required)'}`);
+    console.info(
+      `     credentials required: ${keys.length ? `${keys.length} key(s)` : '(none required)'}`
+    );
   }
   if (slackTools.length > 5) {
     console.info(`   … and ${slackTools.length - 5} more Slack tools`);

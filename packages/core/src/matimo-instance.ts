@@ -240,13 +240,21 @@ export class MatimoInstance {
       }
 
       const credentials = options?.credentials;
+      const timeoutOverride = options?.timeout;
 
       // Auto-inject authentication parameters. When per-call credentials are
       // supplied they take precedence over process.env (multi-tenant support).
       const finalParams = this.injectAuthParameters(tool, params, credentials);
 
-      const executor = this.getExecutor(tool);
-      const result = await executor.execute(tool, finalParams, credentials);
+      // Apply per-call timeout override if provided. Create a shallow copy so the
+      // registered tool definition is never mutated between calls.
+      const effectiveTool =
+        timeoutOverride !== undefined
+          ? { ...tool, execution: { ...tool.execution, timeout: timeoutOverride } }
+          : tool;
+
+      const executor = this.getExecutor(effectiveTool);
+      const result = await executor.execute(effectiveTool, finalParams, credentials);
 
       this.logger.debug(`Tool executed successfully: ${toolName}`, {
         toolName,

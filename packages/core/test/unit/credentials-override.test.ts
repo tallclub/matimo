@@ -477,6 +477,86 @@ describe('ExecuteOptions – type export', () => {
   });
 });
 
+// ─── options.timeout override ─────────────────────────────────────────────────
+
+describe('MatimoInstance.execute() – options.timeout override', () => {
+  let instance: MatimoInstance;
+  const toolsPath = require('path').join(__dirname, '../fixtures/tools');
+
+  beforeAll(async () => {
+    instance = await MatimoInstance.init(toolsPath);
+  });
+
+  it('should apply options.timeout to the HTTP executor request config', async () => {
+    // Spy on axios.request to capture the resolved config
+    const requestSpy = jest.spyOn(axios, 'request').mockResolvedValue({
+      status: 200,
+      data: { ok: true },
+    });
+
+    try {
+      await instance.execute('http-with-auth', { API_KEY: 'k', query: 'q' }, { timeout: 7500 });
+    } catch {
+      // result shape mismatch is acceptable; we only need the spy call
+    }
+
+    const config = requestSpy.mock.calls[0]?.[0] as { timeout?: number } | undefined;
+    expect(config?.timeout).toBe(7500);
+
+    requestSpy.mockRestore();
+  });
+
+  it('should use the tool YAML timeout when options.timeout is not provided', async () => {
+    const requestSpy = jest.spyOn(axios, 'request').mockResolvedValue({
+      status: 200,
+      data: { ok: true },
+    });
+
+    try {
+      await instance.execute('http-with-auth', { API_KEY: 'k', query: 'q' });
+    } catch {
+      // acceptable
+    }
+
+    const config = requestSpy.mock.calls[0]?.[0] as { timeout?: number } | undefined;
+    // http-with-auth fixture has no explicit timeout in YAML → axios config timeout
+    // should be undefined (not overridden to 7500)
+    expect(config?.timeout).not.toBe(7500);
+
+    requestSpy.mockRestore();
+  });
+
+  it('should not mutate the registered tool definition when timeout override is applied', async () => {
+    const toolBefore = instance.getTool('http-with-auth');
+    const originalTimeout =
+      toolBefore?.execution && 'timeout' in toolBefore.execution
+        ? (toolBefore.execution as { timeout?: number }).timeout
+        : undefined;
+
+    const requestSpy = jest.spyOn(axios, 'request').mockResolvedValue({
+      status: 200,
+      data: { ok: true },
+    });
+
+    try {
+      await instance.execute('http-with-auth', { API_KEY: 'k', query: 'q' }, { timeout: 9999 });
+    } catch {
+      // acceptable
+    }
+
+    const toolAfter = instance.getTool('http-with-auth');
+    const afterTimeout =
+      toolAfter?.execution && 'timeout' in toolAfter.execution
+        ? (toolAfter.execution as { timeout?: number }).timeout
+        : undefined;
+
+    // Registry copy must be unchanged
+    expect(afterTimeout).toBe(originalTimeout);
+
+    requestSpy.mockRestore();
+  });
+});
+
 // ─── getRequiredCredentials() ─────────────────────────────────────────────────
 
 describe('MatimoInstance.getRequiredCredentials()', () => {
