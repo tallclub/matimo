@@ -113,8 +113,11 @@ function encodeMimeRfc2822(sourceValues: Record<string, unknown>): string {
 
   // Convert to base64url
   const base64 = Buffer.from(message).toString('base64');
-  // Replace standard base64 characters with URL-safe variants
-  return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  // Replace standard base64 characters with URL-safe variants, then strip
+  // trailing padding. Use while+endsWith instead of a regex to avoid ReDoS.
+  let result = base64.replace(/\+/g, '-').replace(/\//g, '_');
+  while (result.endsWith('=')) result = result.slice(0, -1);
+  return result;
 }
 
 /**
