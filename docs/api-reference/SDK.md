@@ -7,6 +7,7 @@ Complete reference for the Matimo TypeScript SDK. For a simpler introduction, se
 - [MatimoInstance](#matimoinstance)
   - [init()](#initoptions)
   - [execute()](#executetoolname-params)
+  - [getRequiredCredentials()](#getrequiredcredentialstoolname)
   - [listTools()](#listtools)
   - [getTool()](#gettoolname)
   - [searchTools()](#searchtoolsquery)
@@ -80,8 +81,20 @@ Execute a tool by name with parameters.
 async execute(
   toolName: string,
   params: Record<string, unknown>,
-  options?: { timeout?: number }
+  options?: ExecuteOptions
 ): Promise<unknown>
+
+interface ExecuteOptions {
+  /** Execution timeout in milliseconds. */
+  timeout?: number;
+  /**
+   * Per-call credential overrides for multi-tenant use.
+   * Keys must match the env-var names the tool references (e.g. `SLACK_BOT_TOKEN`).
+   * When provided, they take precedence over `process.env` for that single call.
+   * Values are never logged and are held in memory only for the duration of the call.
+   */
+  credentials?: Record<string, string>;
+}
 ```
 
 **Parameters:**
@@ -89,6 +102,7 @@ async execute(
 - `toolName` (string, required) - Exact name of the tool to execute
 - `params` (object, required) - Tool parameters (must match tool's parameter schema)
 - `options.timeout` (number, optional) - Execution timeout in milliseconds
+- `options.credentials` (object, optional) - Per-call credential overrides (see Multi-tenant Usage below)
 
 **Returns:** `Promise<unknown>` - Tool result (validated against output schema)
 
@@ -100,7 +114,7 @@ async execute(
 - `MatimoError(AUTH_FAILED)` - If authentication fails
 - `MatimoError(TIMEOUT)` - If execution exceeds timeout
 
-**Example:**
+**Example (single-tenant):**
 
 ```typescript
 import { MatimoInstance, MatimoError } from 'matimo';
@@ -108,7 +122,7 @@ import { MatimoInstance, MatimoError } from 'matimo';
 const matimo = await MatimoInstance.init({ autoDiscover: true });
 
 try {
-  // Execute calculator tool
+  // Credentials read from process.env (SLACK_BOT_TOKEN, etc.)
   const result = await matimo.execute('calculator', {
     operation: 'add',
     a: 10,
@@ -116,7 +130,6 @@ try {
   });
   console.log('Result:', result); // { result: 15 }
 
-  // Execute another tool
   const slackResult = await matimo.execute('slack-send-message', {
     channel: '#general',
     text: 'Hello',
@@ -126,6 +139,128 @@ try {
   if (error instanceof MatimoError) {
     console.error(`Error [${error.code}]:`, error.message);
   }
+}
+```
+
+**Multi-tenant Usage:**
+
+Different tenants can supply their own credentials **per call** without touching
+`process.env`. This lets a single process serve many tenants safely.
+
+```typescript
+import { MatimoInstance } from 'matimo';
+
+const matimo = await MatimoInstance.init({ autoDiscover: true });
+
+// Tenant A — uses their own Slack token
+await matimo.execute(
+  'slack-send-message',
+  { channel: '#general', text: 'Hello from Tenant A' },
+  { credentials: { SLACK_BOT_TOKEN: 'xoxb-tenant-a-token' } }
+);
+
+// Tenant B — same process, completely isolated credentials
+await matimo.execute(
+  'slack-send-message',
+  { channel: '#general', text: 'Hello from Tenant B' },
+  { credentials: { SLACK_BOT_TOKEN: 'xoxb-tenant-b-token' } }
+);
+
+// Timeout + credentials together
+await matimo.execute(
+  'github-create-issue',
+  { repo: 'myorg/myrepo', title: 'Bug report' },
+  {
+    timeout: 10_000,
+    credentials: { GITHUB_ACCESS_TOKEN: 'ghp-tenant-c-token' },
+  }
+);
+```
+
+**Credential key naming convention:**
+
+Credential keys must match the env-var names the tool's YAML definition
+references (e.g. `SLACK_BOT_TOKEN`, `GITHUB_ACCESS_TOKEN`). The credential
+value is resolved in this order for each placeholder found in the tool YAML:
+
+1. `credentials[paramName]` — per-call override (highest priority)
+2. `credentials[MATIMO_${paramName}]` — prefixed per-call override
+3. `process.env[MATIMO_${paramName}]` — prefixed env var
+4. `process.env[paramName]` — direct env var (lowest priority)
+
+**Security notes:**
+- Credential values are **never logged** by the Matimo SDK.
+- Credentials are **never persisted** — held in memory only for the life of the call.
+- `process.env` is **never modified** — each call's credentials are isolated.
+- For `command` tools, credentials are merged into the child-process environment
+  (`{ ...process.env, ...credentials }`) and not leaked back to the parent process.
+
+---
+
+### `getRequiredCredentials(toolName)`
+
+Return the credential key names a tool needs, so callers know exactly what to
+put in `options.credentials` without reading the tool YAML.
+
+This is the primary discovery API for multi-tenant platforms: call this once
+when building your tenant-credential collection step, then pass the result
+directly to `execute()`.
+
+**Signature:**
+
+```typescript
+getRequiredCredentials(toolName: string): string[]
+```
+
+**Parameters:**
+
+- `toolName` (string, required) — Exact tool name
+
+**Returns:** `string[]` — Array of credential key names the tool requires (empty if the tool needs no auth)
+
+**Throws:** `MatimoError(TOOL_NOT_FOUND)` if the tool doesn't exist
+
+**Example:**
+
+```typescript
+const matimo = await MatimoInstance.init({ autoDiscover: true });
+
+// 1. Discover what credentials this tool needs
+const keys = matimo.getRequiredCredentials('slack-send-message');
+console.log(keys); // → ['SLACK_BOT_TOKEN']
+
+// 2. Collect those values from your secrets store / tenant config
+const credentials = Object.fromEntries(
+  keys.map((key) => [key, tenant.vault.get(key)])
+);
+
+// 3. Execute with isolated per-tenant credentials
+await matimo.execute('slack-send-message', params, { credentials });
+```
+
+**Multi-tool credential prep:**
+
+```typescript
+// Build a credential map for every installed tool at startup
+const credentialManifest = Object.fromEntries(
+  matimo.listTools().map((tool) => [
+    tool.name,
+    matimo.getRequiredCredentials(tool.name),
+  ])
+);
+
+// credentialManifest looks like:
+// {
+//   'slack-send-message':   ['SLACK_BOT_TOKEN'],
+//   'github-create-issue':  ['GITHUB_ACCESS_TOKEN'],
+//   'twilio-send-sms':      ['TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN'],
+// }
+
+// When a request comes in for tenant X, collect only what that tool needs:
+async function runForTenant(toolName: string, params: Record<string, unknown>, tenant: Tenant) {
+  const keys = credentialManifest[toolName];
+  const credentials = Object.fromEntries(keys.map((k) => [k, tenant.secrets[k]]));
+  return matimo.execute(toolName, params, { credentials });
 }
 ```
 

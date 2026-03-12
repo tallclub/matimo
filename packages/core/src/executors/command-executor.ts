@@ -15,9 +15,20 @@ export class CommandExecutor {
   }
 
   /**
-   * Execute a tool that runs a shell command
+   * Execute a tool that runs a shell command.
+   *
+   * @param tool - Tool definition
+   * @param params - Tool parameters
+   * @param credentials - Optional per-call credential overrides. Keys must match the env-var
+   *   names used by the tool (e.g. `SLACK_BOT_TOKEN`). When provided they are merged on top of
+   *   `process.env` inside the child process so the spawned script sees them as normal env vars.
+   *   Values are never logged. Falls back to the current environment when not provided.
    */
-  async execute(tool: ToolDefinition, params: Record<string, unknown>): Promise<unknown> {
+  async execute(
+    tool: ToolDefinition,
+    params: Record<string, unknown>,
+    credentials?: Record<string, string>
+  ): Promise<unknown> {
     if (tool.execution.type !== 'command') {
       throw new MatimoError('Tool execution type is not command', ErrorCode.EXECUTION_FAILED, {
         expectedType: 'command',
@@ -36,6 +47,11 @@ export class CommandExecutor {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const spawnOptions: any = {
         stdio: ['pipe', 'pipe', 'pipe'],
+        // Merge per-call credentials on top of the current environment so that
+        // the spawned process sees them as ordinary env vars. This is safe:
+        // values are held only in memory for the duration of the spawn setup
+        // and are never written to disk or logged.
+        env: credentials ? { ...process.env, ...credentials } : process.env,
       };
 
       // Set working directory if provided

@@ -48,6 +48,7 @@
     "twilio:factory": "tsx twilio/twilio-factory.ts",
     "twilio:decorator": "tsx twilio/twilio-decorator.ts",
     "twilio:langchain": "tsx twilio/twilio-langchain.ts",
+    "credentials:example": "tsx credentials/credentials-example.ts",
     "build": "tsc",
     "clean": "rm -rf dist"
   },
@@ -56,6 +57,7 @@
     "@langchain/openai": "^1.2.4",
     "langchain": "^1.2.16",
     "matimo": "workspace:*",
+    "@matimo/core": "workspace:*",
     "@matimo/slack": "workspace:*",
     "@matimo/gmail": "workspace:*",
     "@matimo/postgres": "workspace:*",

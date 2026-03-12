@@ -16,6 +16,7 @@ export type {
   RateLimitConfig,
   ErrorHandlingConfig,
   ToolDefinition,
+  ExecuteOptions,
 } from './core/types';
 export { ParameterSchema, AuthConfigSchema, ExecutionConfigSchema } from './core/schema';
 export { ToolLoader } from './core/tool-loader';

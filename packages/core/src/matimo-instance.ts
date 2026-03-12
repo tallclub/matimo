@@ -14,6 +14,7 @@ import {
   setGlobalMatimoLogger,
 } from './logging';
 import { ApprovalHandler, getGlobalApprovalHandler } from './approval/approval-handler';
+import type { ExecuteOptions } from './core/types';
 
 /**
  * Options for MatimoInstance initialization
@@ -162,12 +163,23 @@ export class MatimoInstance {
   }
 
   /**
-   * Execute a tool by name with parameters
+   * Execute a tool by name with parameters.
+   *
    * @param toolName - Name of the tool to execute
    * @param params - Tool parameters
+   * @param options - Optional execution options
+   * @param options.timeout - Execution timeout in milliseconds
+   * @param options.credentials - Per-call credential overrides (multi-tenant support).
+   *   Keys must match the env-var names the tool references (e.g. `SLACK_BOT_TOKEN`).
+   *   When provided, they take precedence over `process.env` for that single call.
+   *   Values are never logged and held in memory only for the duration of the call.
    * @returns Tool execution result
    */
-  async execute(toolName: string, params: Record<string, unknown>): Promise<unknown> {
+  async execute(
+    toolName: string,
+    params: Record<string, unknown>,
+    options?: ExecuteOptions
+  ): Promise<unknown> {
     const tool = this.registry.get(toolName);
     if (!tool) {
       const availableTools = this.registry.getAll().map((t) => t.name);
@@ -227,11 +239,14 @@ export class MatimoInstance {
         this.logger.info(`Destructive operation approved: ${toolName}`, { toolName });
       }
 
-      // Auto-inject authentication parameters from environment variables
-      const finalParams = this.injectAuthParameters(tool, params);
+      const credentials = options?.credentials;
+
+      // Auto-inject authentication parameters. When per-call credentials are
+      // supplied they take precedence over process.env (multi-tenant support).
+      const finalParams = this.injectAuthParameters(tool, params, credentials);
 
       const executor = this.getExecutor(tool);
-      const result = await executor.execute(tool, finalParams);
+      const result = await executor.execute(tool, finalParams, credentials);
 
       this.logger.debug(`Tool executed successfully: ${toolName}`, {
         toolName,
@@ -292,26 +307,89 @@ export class MatimoInstance {
   }
 
   /**
+   * Return the credential key names that a tool expects.
+   *
+   * This lets multi-tenant callers know exactly what to put in `options.credentials`
+   * without having to read the tool's YAML definition.
+   *
+   * The returned strings are the keys you pass to `execute()`:
+   * ```typescript
+   * const keys = matimo.getRequiredCredentials('slack-send-message');
+   * // → ['SLACK_BOT_TOKEN']
+   *
+   * // Then collect from your secrets store:
+   * const credentials = Object.fromEntries(
+   *   keys.map(k => [k, tenant.secrets[k]])
+   * );
+   * await matimo.execute('slack-send-message', params, { credentials });
+   * ```
+   *
+   * @param toolName - Exact tool name
+   * @returns Array of credential key names (may be empty if the tool needs no auth)
+   * @throws `MatimoError(TOOL_NOT_FOUND)` if the tool doesn't exist
+   */
+  getRequiredCredentials(toolName: string): string[] {
+    const tool = this.registry.get(toolName);
+    if (!tool) {
+      throw new MatimoError(`Tool '${toolName}' not found in registry`, ErrorCode.TOOL_NOT_FOUND, {
+        toolName,
+        availableTools: this.registry.getAll().map((t) => t.name),
+      });
+    }
+
+    const authPatterns = [
+      'token',
+      'key',
+      'secret',
+      'password',
+      'credential',
+      'auth',
+      'bearer',
+      'api_key',
+    ];
+
+    const referencedParams = this.extractParameterPlaceholders(tool);
+    const credentialKeys: string[] = [];
+
+    for (const paramName of referencedParams) {
+      const lowerName = paramName.toLowerCase();
+      if (authPatterns.some((pattern) => lowerName.includes(pattern))) {
+        credentialKeys.push(paramName);
+      }
+    }
+
+    // Also include basic-auth env var names declared in authentication config
+    const auth = tool.authentication;
+    if (auth?.type === 'basic') {
+      if (auth.username_env && !credentialKeys.includes(auth.username_env)) {
+        credentialKeys.push(auth.username_env);
+      }
+      if (auth.password_env && !credentialKeys.includes(auth.password_env)) {
+        credentialKeys.push(auth.password_env);
+      }
+    }
+
+    return credentialKeys;
+  }
+
+  /**
    * Automatically inject parameters from environment variables
    * Uses a YAML-native, scale-friendly approach:
    *
    * 1. Scans the execution config for all parameter placeholders
    * 2. For each parameter not provided by user, checks if it looks like auth (TOKEN, KEY, SECRET, etc.)
-   * 3. If yes, attempts to load from environment: MATIMO_<PARAM_NAME> or <PARAM_NAME>
+   * 3. If yes, attempts to load from (in order of priority):
+   *    a. `credentials[paramName]`          — per-call override (multi-tenant)
+   *    b. `credentials[MATIMO_${paramName}]` — prefixed per-call override
+   *    c. `process.env[MATIMO_${paramName}]` — prefixed env var
+   *    d. `process.env[paramName]`           — direct env var
    *
-   * This works for ANY tool with ANY auth parameter name - no hardcoding needed.
-   * Scales to unlimited tools - contributors just submit YAML.
-   *
-   * Examples:
-   * - GMAIL_ACCESS_TOKEN → looks in env vars
-   * - GITHUB_TOKEN → looks in env vars
-   * - SLACK_BOT_TOKEN → looks in env vars
-   * - MY_CUSTOM_API_KEY → looks in env vars
-   * - ANY_SECRET → looks in env vars
+   * Credential values are never logged.
    */
   private injectAuthParameters(
     tool: ToolDefinition,
-    params: Record<string, unknown>
+    params: Record<string, unknown>,
+    credentials?: Record<string, string>
   ): Record<string, unknown> {
     const result = { ...params };
 
@@ -341,18 +419,23 @@ export class MatimoInstance {
       const isAuthParam = authPatterns.some((pattern) => lowerName.includes(pattern));
 
       if (isAuthParam) {
-        // Try to load from environment
-        // First try MATIMO_ prefixed version for organization
-        let envValue = process.env[`MATIMO_${paramName}`];
+        // Lookup order:
+        // 1. Per-call credentials (multi-tenant override — never touches process.env)
+        // 2. Per-call credentials with MATIMO_ prefix
+        // 3. Environment variable with MATIMO_ prefix
+        // 4. Environment variable with the exact param name
+        let resolvedValue: string | undefined;
 
-        // If not found, try the parameter name directly
-        if (!envValue) {
-          envValue = process.env[paramName];
+        if (credentials) {
+          resolvedValue = credentials[paramName] ?? credentials[`MATIMO_${paramName}`];
         }
 
-        // If found, inject it
-        if (envValue) {
-          result[paramName] = envValue;
+        if (!resolvedValue) {
+          resolvedValue = process.env[`MATIMO_${paramName}`] ?? process.env[paramName];
+        }
+
+        if (resolvedValue) {
+          result[paramName] = resolvedValue;
         }
       }
     }
