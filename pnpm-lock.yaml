@@ -124,6 +124,9 @@ importers:
       '@langchain/openai':
         specifier: ^1.2.4
         version: 1.2.5(@langchain/core@1.1.19)
+      '@matimo/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@matimo/github':
         specifier: workspace:*
         version: link:../../packages/github
