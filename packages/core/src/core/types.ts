@@ -185,3 +185,41 @@ export interface ValidationResult {
   valid: boolean;
   errors: ValidationError[];
 }
+
+/**
+ * Options for MatimoInstance.execute()
+ *
+ * @example
+ * // Single-tenant (reads from process.env)
+ * await matimo.execute('slack-send-message', { channel: '#general', text: 'Hello' });
+ *
+ * // Multi-tenant (credentials supplied per call — never touches process.env)
+ * await matimo.execute('slack-send-message', { channel: '#general', text: 'Hello' }, {
+ *   credentials: { SLACK_BOT_TOKEN: 'xoxb-tenant-a-token' },
+ * });
+ */
+export interface ExecuteOptions {
+  /**
+   * Maximum time (ms) to wait for the tool to complete.
+   * Overrides the timeout defined in the tool's YAML definition.
+   */
+  timeout?: number;
+  /**
+   * Per-call credential overrides. Keys must match the env-var names that the
+   * tool's YAML references (e.g. `SLACK_BOT_TOKEN`, `GITHUB_ACCESS_TOKEN`).
+   *
+   * When provided:
+   * - **HttpExecutor**: used for Authorization headers / query params / Basic Auth
+   *   instead of `process.env`.
+   * - **CommandExecutor**: injected as environment variables into the child process
+   *   (`{ ...process.env, ...credentials }`), so spawned scripts see them normally.
+   * - **FunctionExecutor**: passed as `context.credentials` to the tool function.
+   *
+   * When NOT provided the current behaviour is unchanged — credentials are read
+   * from `process.env` as before (fully backward-compatible).
+   *
+   * SECURITY: values are never logged, never persisted, and held only for the
+   * duration of the execute() call.
+   */
+  credentials?: Record<string, string>;
+}

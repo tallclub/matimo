@@ -1,3 +1,68 @@
+## v0.1.0-alpha.12.1
+
+> Release: Per-Execution Credential Override — Multi-tenant credential injection, `getRequiredCredentials()` DX helper, package-level release workflow (Changesets), improved test coverage
+
+**Released**: March 12, 2026
+
+### 🚀 Features
+
+**Per-Execution Credential Override** (`@matimo/core`)
+
+- **`ExecuteOptions.credentials`** — Pass `Record<string, string>` per `execute()` call; credentials are scoped to that execution and never written to `process.env`
+- **Priority lookup chain**: `credentials[key]` → `credentials[MATIMO_key]` → `process.env[MATIMO_key]` → `process.env[key]`
+- **All executor types updated**: `HttpExecutor`, `CommandExecutor`, `FunctionExecutor` all accept and forward per-call credentials
+- **Fully backward compatible**: existing code without `options` is unaffected
+
+**`getRequiredCredentials(toolName)` DX Helper** (`@matimo/core`)
+
+- Returns the exact credential key names a tool expects (`string[]`)
+- Scans `{PLACEHOLDER}` patterns in headers, URL, body, and `query_params` for auth-pattern names
+- Also includes `username_env` / `password_env` from `authentication.type: basic` config
+- Throws `MatimoError(TOOL_NOT_FOUND)` for unknown tool names
+- Enables multi-tenant credential manifest pattern:
+  ```typescript
+  const keys = matimo.getRequiredCredentials('slack-send-message');
+  // → ['SLACK_BOT_TOKEN']
+  const credentials = Object.fromEntries(keys.map(k => [k, tenant.secrets[k]]));
+  await matimo.execute('slack-send-message', params, { credentials });
+  ```
+
+**New Example: Multi-Tenant Credentials** (`examples/tools/credentials/`)
+
+- Runnable demo showing per-tenant credential isolation with `Promise.all` parallel execution
+- Verifies `process.env` immutability and env-var fallback behaviour
+- Credential key reference table for all Slack tools
+- Script: `pnpm credentials:example`
+
+
+### 🧪 Test Coverage
+
+- **26 new tests** in `credentials-override.test.ts` covering all executors, credential priority, `getRequiredCredentials()`, and `process.env` immutability
+- **8 new branch-coverage tests** in `matimo-instance.test.ts` targeting previously uncovered paths:
+  - `params.command` scan for command-type tools
+  - `params.sql` destructive-keyword scan
+  - `MATIMO_APPROVAL_SCAN_ALL_PARAMS=true` path
+  - Approval callback invocation
+  - Basic-auth `username_env`/`password_env` in `getRequiredCredentials()`
+  - `scanObjectForParams` non-object early return & circular reference guard
+  - `getExecutor` unsupported-type throw
+- `matimo-instance.ts` statements and lines: **100%** (up from 88.81% / 89.74%)
+- Full suite: **1298+ tests passing**
+
+### 📦 Packages
+
+All packages bumped to v0.1.0-alpha.12.1:
+
+- `@matimo/core` — `ExecuteOptions`, `getRequiredCredentials()`, new tests
+- `@matimo/cli` — Version sync
+- `@matimo/slack`, `@matimo/github`, `@matimo/gmail`, `@matimo/hubspot`, `@matimo/mailchimp`, `@matimo/notion`, `@matimo/postgres`, `@matimo/twilio` — Version sync
+
+### ⚠️ Breaking Changes
+
+None. The `options` parameter on `execute()` is optional; all existing call sites continue to work unchanged.
+
+---
+
 ## v0.1.0-alpha.12
 
 > Release: First-Class MCP Support — Standalone server, pluggable secrets, Claude Desktop integration, comprehensive examples

@@ -25,10 +25,21 @@ export class FunctionExecutor {
   }
 
   /**
-   * Execute a tool that runs an async function
-   * Supports both embedded code and external .ts/.js files
+   * Execute a tool that runs an async function.
+   * Supports both embedded code and external .ts/.js files.
+   *
+   * @param tool - Tool definition
+   * @param params - Tool parameters
+   * @param credentials - Optional per-call credential overrides passed as `context.credentials`
+   *   to the tool function. The function can use them with:
+   *   `const token = context?.credentials?.MY_TOKEN ?? process.env.MY_TOKEN;`
+   *   Values are never logged. Falls back to undefined when not provided.
    */
-  async execute(tool: ToolDefinition, params: Record<string, unknown>): Promise<unknown> {
+  async execute(
+    tool: ToolDefinition,
+    params: Record<string, unknown>,
+    credentials?: Record<string, string>
+  ): Promise<unknown> {
     if (tool.execution.type !== 'function') {
       throw new MatimoError('Tool execution type is not function', ErrorCode.EXECUTION_FAILED, {
         expectedType: 'function',
@@ -140,9 +151,10 @@ export class FunctionExecutor {
           import(fileUrl)
             .then((module) => {
               const fn = (module.default || module) as (
-                input: Record<string, unknown>
+                input: Record<string, unknown>,
+                context?: { credentials?: Record<string, string> }
               ) => Promise<unknown>;
-              const result = fn(params);
+              const result = fn(params, credentials ? { credentials } : undefined);
 
               // Handle both Promise and non-Promise returns
               if (result instanceof Promise) {

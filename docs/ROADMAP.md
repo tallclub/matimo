@@ -2,7 +2,7 @@
 
 ## Current Status
 
-**Latest Release**: v0.1.0-alpha.12 (March 11, 2026)
+**Latest Release**: v0.1.0-alpha.12.1 (March 12, 2026)
 
 ✅ **Completed Features**:
 
@@ -13,10 +13,14 @@
 - Core tools suite (execute, read, edit, search, web, calculator)
 - Provider integrations (Slack with 16+ tools, Gmail with 5 tools, GitHub, HubSpot with 50+ tools, Notion with 7 tools)
 - CLI tool management (list, search, install, help)
-- 800+ comprehensive test suite with 85%+ coverage
+- 1298+ comprehensive test suite with 100% line/statement coverage on core
 - Complete documentation and examples
 - Structured error handling with MatimoError and error chaining
 - Enhanced HTTP executor with parameter embedding (objects, arrays)
+- MCP Server (dual-transport stdio + HTTP, pluggable secrets, Claude Desktop integration)
+- **Per-execution credential override** — multi-tenant `options.credentials` on `execute()`
+- **`getRequiredCredentials()`** — DX helper to discover required credential keys per tool
+- Package-level release workflow via Changesets
 
 **See [RELEASES.md](./RELEASES.md)** for detailed release notes on completed features.
 
@@ -190,7 +194,8 @@ Alpha Phase (✅ Completed)
   v0.1.0-alpha.9  Feb 19, 2026  (HubSpot tools)
   v0.1.0-alpha.10 Feb 21, 2026  (Notion tools)
   v0.1.0-alpha.11 Feb 27, 2026  (Twilio & Mailchimp tools)
-  v0.1.0-alpha.12 Mar 11, 2026  (🚀 MCP Server — stdio + HTTP, secrets, Claude integration) ← Current
+  v0.1.0-alpha.12   Mar 11, 2026  (🚀 MCP Server — stdio + HTTP, secrets, Claude integration)
+  v0.1.0-alpha.12.1 Mar 12, 2026  (🔑 Per-execution credential override, getRequiredCredentials(), Changesets release workflow) ← Current
 
 v0.1.0 Release (📅 Late March 2026)
   ✅ Completed:
@@ -204,6 +209,7 @@ v0.1.0 Release (📅 Late March 2026)
     2. Python SDK               March-April 2026
     3. Logging & Monitoring     April 2026
     4. Skills/Workflows         April-May 2026
+    5. Changeset-driven package releases (in progress)
 
   v0.1.0-rc.1     Late March 2026
   v0.1.0          March 2026 ← Stable Release

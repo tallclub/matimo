@@ -1,6 +1,6 @@
 {
   "name": "matimo-mcp-examples",
-  "version": "0.1.0-alpha.12",
+  "version": "0.1.0-alpha.12.1",
   "description": "Matimo MCP examples - LangChain agents via stdio and Streamable HTTP",
   "type": "module",
   "scripts": {

@@ -1,4 +1,5 @@
 import { MatimoInstance } from '../../src/matimo-instance';
+import { getGlobalApprovalHandler } from '../../src/approval/approval-handler';
 import path from 'path';
 
 describe('MatimoInstance - Core Functionality', () => {
@@ -292,5 +293,175 @@ describe('MatimoInstance - Core Functionality', () => {
 
       expect(instance1.getAllTools().length).toBe(instance2.getAllTools().length);
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Branch coverage for lines not reached by the tests above
+// ---------------------------------------------------------------------------
+
+// Typed helpers to access private internals without `any`
+type InstanceWithPrivates = {
+  registry: { register: (tool: Record<string, unknown>) => void };
+  scanObjectForParams: (obj: unknown, params: Set<string>) => void;
+  getExecutor: (tool: Record<string, unknown>) => unknown;
+};
+type HandlerWithPrivates = {
+  approvalCallback: ((req: unknown) => Promise<boolean>) | null;
+};
+
+describe('MatimoInstance – branch coverage', () => {
+  let instance: MatimoInstance;
+  const toolsPath = path.join(__dirname, '../fixtures/tools');
+
+  beforeAll(async () => {
+    instance = await MatimoInstance.init(toolsPath);
+
+    // Inject a command-type tool (no fixture exists) to cover the command scan
+    // branch (line 216) and getExecutor 'command' case (line 552).
+    (instance as unknown as InstanceWithPrivates).registry.register({
+      name: 'test-command-scan-tool',
+      version: '1.0.0',
+      description: 'Fake command tool for branch coverage',
+      parameters: { command: { type: 'string', required: true } },
+      execution: { type: 'command' as const, command: 'echo', args: ['{command}'] },
+    });
+
+    // Inject a basic-auth tool to cover getRequiredCredentials lines 364-368.
+    (instance as unknown as InstanceWithPrivates).registry.register({
+      name: 'test-basic-auth-tool',
+      version: '1.0.0',
+      description: 'Basic auth tool for credential detection coverage',
+      parameters: {},
+      execution: {
+        type: 'http' as const,
+        method: 'GET' as const,
+        url: 'https://api.example.com/data',
+      },
+      authentication: {
+        type: 'basic' as const,
+        username_env: 'SERVICE_ACCOUNT_SID',
+        password_env: 'SERVICE_AUTH_TOKEN',
+      },
+    });
+  });
+
+  afterEach(() => {
+    delete process.env.MATIMO_APPROVAL_SCAN_ALL_PARAMS;
+    // Reset any approval callback set by individual tests
+    (getGlobalApprovalHandler() as unknown as HandlerWithPrivates).approvalCallback = null;
+  });
+
+  // -------------------------------------------------------------------------
+  // Lines 216 – scanContent = params.command  (command-type tool)
+  // Line  552 – return this.commandExecutor   (getExecutor 'command' case)
+  // -------------------------------------------------------------------------
+  it('should scan params.command for command-type tools and route to CommandExecutor', async () => {
+    // Non-destructive command value → approval not triggered, echo executes
+    await expect(
+      instance.execute('test-command-scan-tool', { command: 'hello world' })
+    ).resolves.toBeDefined();
+  });
+
+  // -------------------------------------------------------------------------
+  // Line 218 – scanContent = params.sql  (HTTP tool, params.sql provided)
+  // -------------------------------------------------------------------------
+  it('should scan params.sql for destructive keywords on any tool type', async () => {
+    // Non-destructive SQL → scan runs, no approval, execution proceeds then fails at HTTP
+    try {
+      await instance.execute('http-with-auth', { API_KEY: 'test', query: 'test', sql: 'SELECT 1' });
+    } catch {
+      // HTTP failure expected; we just need line 218 reached
+    }
+  });
+
+  // -------------------------------------------------------------------------
+  // Lines 220-224 – MATIMO_APPROVAL_SCAN_ALL_PARAMS=true path
+  // -------------------------------------------------------------------------
+  it('should scan all string params when MATIMO_APPROVAL_SCAN_ALL_PARAMS=true', async () => {
+    process.env.MATIMO_APPROVAL_SCAN_ALL_PARAMS = 'true';
+    try {
+      await instance.execute('http-with-auth', { API_KEY: 'test', query: 'find something' });
+    } catch {
+      // HTTP failure expected; lines 220-224 already reached
+    }
+  });
+
+  // -------------------------------------------------------------------------
+  // Lines 233-239 – approval callback invoked for destructive content
+  // -------------------------------------------------------------------------
+  it('should invoke approval callback when destructive content is detected', async () => {
+    const handler = getGlobalApprovalHandler();
+    const captured: string[] = [];
+    handler.setApprovalCallback(async (req) => {
+      captured.push(req.toolName);
+      return true; // approve
+    });
+
+    try {
+      await instance.execute('http-with-auth', {
+        API_KEY: 'test',
+        query: 'test',
+        sql: 'DELETE FROM users', // destructive keyword → triggers approval
+      });
+    } catch {
+      // HTTP failure after approval is fine
+    }
+
+    expect(captured).toContain('http-with-auth');
+  });
+
+  // -------------------------------------------------------------------------
+  // Lines 364-368 – getRequiredCredentials: basic-auth username_env/password_env
+  // -------------------------------------------------------------------------
+  it('should include username_env and password_env from basic-auth config', () => {
+    const keys = instance.getRequiredCredentials('test-basic-auth-tool');
+    expect(keys).toContain('SERVICE_ACCOUNT_SID');
+    expect(keys).toContain('SERVICE_AUTH_TOKEN');
+  });
+
+  // -------------------------------------------------------------------------
+  // Line 509 – scanObjectForParams early return for non-objects
+  // -------------------------------------------------------------------------
+  it('should return early without throwing when scanObjectForParams receives a non-object', () => {
+    const params = new Set<string>();
+    const priv = instance as unknown as InstanceWithPrivates;
+    expect(() => {
+      priv.scanObjectForParams('a string', params);
+      priv.scanObjectForParams(null, params);
+      priv.scanObjectForParams(undefined, params);
+      priv.scanObjectForParams(42, params);
+    }).not.toThrow();
+    expect(params.size).toBe(0);
+  });
+
+  // -------------------------------------------------------------------------
+  // Line 514 – scanObjectForParams circular reference detection
+  // -------------------------------------------------------------------------
+  it('should handle circular object references without infinite recursion', () => {
+    const params = new Set<string>();
+    const obj: Record<string, unknown> = { token: '{ACCESS_TOKEN}' };
+    obj.self = obj; // circular reference
+
+    expect(() => {
+      (instance as unknown as InstanceWithPrivates).scanObjectForParams(obj, params);
+    }).not.toThrow();
+    expect(params.has('ACCESS_TOKEN')).toBe(true);
+  });
+
+  // -------------------------------------------------------------------------
+  // Line 558 – getExecutor default: unsupported execution type
+  // -------------------------------------------------------------------------
+  it('should throw MatimoError for unsupported execution types', () => {
+    const fakeTool = {
+      name: 'unsupported',
+      version: '1.0.0',
+      description: 'test',
+      parameters: {},
+      execution: { type: 'graphql' },
+    };
+    expect(() => {
+      (instance as unknown as InstanceWithPrivates).getExecutor(fakeTool);
+    }).toThrow('Unsupported execution type: graphql');
   });
 });

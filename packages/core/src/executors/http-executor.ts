@@ -10,9 +10,21 @@ import { MatimoError, ErrorCode, fromHttpError } from '../errors/matimo-error';
 
 export class HttpExecutor {
   /**
-   * Execute a tool that makes an HTTP request
+   * Execute a tool that makes an HTTP request.
+   *
+   * @param tool - Tool definition
+   * @param params - Tool parameters (already env-injected by MatimoInstance)
+   * @param credentials - Optional per-call credential overrides. Used for
+   *   `authentication.type: basic` (username_env / password_env keys) instead of
+   *   reading from `process.env`. Other auth schemes (bearer, api_key) are handled
+   *   upstream via parameter templating in MatimoInstance.injectAuthParameters().
+   *   Values are never logged.
    */
-  async execute(tool: ToolDefinition, params: Record<string, unknown>): Promise<unknown> {
+  async execute(
+    tool: ToolDefinition,
+    params: Record<string, unknown>,
+    credentials?: Record<string, string>
+  ): Promise<unknown> {
     if (tool.execution.type !== 'http') {
       throw new MatimoError('Tool execution type is not http', ErrorCode.EXECUTION_FAILED, {
         expectedType: 'http',
@@ -57,7 +69,8 @@ export class HttpExecutor {
     // Natively handle HTTP Basic Auth when authentication.type === 'basic' and
     // username_env/password_env are declared. This eliminates the need for
     // developers to pre-compute base64 credentials as a separate env var step.
-    this.applyBasicAuth(tool, templatedHeaders as Record<string, string>);
+    // Credentials override takes precedence over process.env when provided.
+    this.applyBasicAuth(tool, templatedHeaders as Record<string, string>, credentials);
     const templatedBody =
       body && typeof body === 'object'
         ? this.templateObject(body as Record<string, unknown>, finalParams, tool.parameters)
@@ -133,15 +146,28 @@ export class HttpExecutor {
    * This is a zero-friction pattern: developers only set two natural env vars
    * (e.g. TWILIO_ACCOUNT_SID + TWILIO_AUTH_TOKEN) and Matimo handles encoding.
    * No pre-computed base64 credential string required.
+   *
+   * When `credentials` is provided the lookup order is:
+   *   1. `credentials[envVarName]`  (per-call override — multi-tenant use)
+   *   2. `process.env[envVarName]`  (singleton / single-tenant fallback)
+   *
+   * Credential values are never logged or included in error details.
    */
-  private applyBasicAuth(tool: ToolDefinition, headers: Record<string, string>): void {
+  private applyBasicAuth(
+    tool: ToolDefinition,
+    headers: Record<string, string>,
+    credentials?: Record<string, string>
+  ): void {
     const auth = tool.authentication;
     if (auth?.type !== 'basic' || !auth.username_env || !auth.password_env) {
       return;
     }
 
-    const username = process.env[auth.username_env];
-    const password = process.env[auth.password_env];
+    // Prefer per-call credentials, fall back to process.env
+    const username =
+      (credentials && credentials[auth.username_env]) ?? process.env[auth.username_env];
+    const password =
+      (credentials && credentials[auth.password_env]) ?? process.env[auth.password_env];
 
     if (!username || !password) {
       throw new MatimoError(
