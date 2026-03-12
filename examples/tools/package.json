@@ -1,6 +1,6 @@
 {
   "name": "matimo-examples",
-  "version": "0.1.0-alpha.12",
+  "version": "0.1.0-alpha.12.1",
   "description": "Matimo SDK examples - Factory Pattern, Decorator Pattern, and LangChain integration with Slack and Gmail",
   "type": "module",
   "scripts": {
