@@ -49,6 +49,8 @@
     "twilio:decorator": "tsx twilio/twilio-decorator.ts",
     "twilio:langchain": "tsx twilio/twilio-langchain.ts",
     "credentials:example": "tsx credentials/credentials-example.ts",
+    "policy:demo": "tsx policy/policy-demo.ts",
+    "skills:demo": "tsx skills/skills-demo.ts",
     "build": "tsc",
     "clean": "rm -rf dist"
   },
