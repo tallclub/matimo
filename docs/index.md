@@ -82,7 +82,35 @@ Then explore [Three Integration Patterns](./architecture/OVERVIEW.md#three-integ
   - Token management
   - Security best practices
 
-### 🔴 **Advanced Topics**
+### � **Policy & Lifecycle (Security)**
+
+- **[Policy Engine & Tool Lifecycle](./tool-development/POLICY_AND_LIFECYCLE.md)** — Complete security guide
+  - PolicyConfig setup and immutability
+  - Content Validator (9 security rules)
+  - Risk classification levels
+  - Tool lifecycle: create → approve → reload → use
+  - Approval system (interactive, auto-approve, MCP)
+  - Integrity tracking (SHA-256, HMAC)
+  - RBAC & access control
+  - Audit events
+
+- **[Meta-Tools Reference](./tool-development/META_TOOLS.md)** — Built-in tool management tools
+  - `matimo_validate_tool` — Validate YAML against schema + policy
+  - `matimo_create_tool` — Create tools with safety enforcement
+  - `matimo_approve_tool` — Promote draft tools with HMAC signing
+  - `matimo_reload_tools` — Hot-reload the live registry
+  - `matimo_list_user_tools` — Discover tools with metadata
+  - `matimo_create_skill` — Create SKILL.md files
+  - `matimo_list_skills` — List skills in a directory
+  - `matimo_get_skill` — Read a skill's content by name
+  - `matimo_validate_skill` — Validate a skill against the Agent Skills spec
+
+- **[Approval System](./APPROVAL-SYSTEM.md)** — Approval handler configuration
+  - Auto-approve and interactive approval
+  - Environment variables
+  - Callback patterns
+
+### �🔴 **Advanced Topics**
 
 - **[OAuth Architecture](./architecture/OAUTH.md)** — Deep dive into OAuth2
   - Protocol flow details
@@ -192,7 +220,14 @@ Then explore [Three Integration Patterns](./architecture/OVERVIEW.md#three-integ
 2. [Framework Integrations](./framework-integrations/LANGCHAIN.md) — Integration examples
 3. [SDK Patterns](./user-guide/SDK_PATTERNS.md) — Best practices
 
-### 👨‍💻 Contributing Code
+### � Securing Agent Tool Usage
+1. [Policy & Lifecycle Guide](./tool-development/POLICY_AND_LIFECYCLE.md) — Full security setup
+2. [Meta-Tools Reference](./tool-development/META_TOOLS.md) — Built-in management tools
+3. [Approval System](./APPROVAL-SYSTEM.md) — Approval handler config
+4. [Policy Demo](https://github.com/tallclub/matimo/tree/main/examples/tools/policy) — 11-mission autonomous agent demo
+5. [Skills Demo](https://github.com/tallclub/matimo/tree/main/examples/tools/skills) — 5-mission skills lifecycle demo
+
+### �👨‍💻 Contributing Code
 1. **Start here:** [Contributing Guidelines](https://github.com/tallclub/matimo/blob/main/CONTRIBUTING.md)
 2. Clone repo and set up locally
 3. [Commit Guidelines](./community/COMMIT_GUIDELINES.md) — Proper commit format
