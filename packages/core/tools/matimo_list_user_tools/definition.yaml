@@ -1,0 +1,32 @@
+name: matimo_list_user_tools
+version: '1.0.0'
+description: List all user-created tools in a directory with risk classification, approval status, and metadata.
+requires_approval: false
+tags:
+  - matimo
+  - meta
+  - discovery
+
+parameters:
+  tool_dir:
+    type: string
+    required: false
+    description: Directory to scan for tools (default ./matimo-tools)
+  include_drafts:
+    type: boolean
+    required: false
+    description: Whether to include draft tools in the listing (default true)
+
+execution:
+  type: function
+  code: './matimo_list_user_tools.ts'
+
+output_schema:
+  type: object
+  properties:
+    tools:
+      type: array
+      description: List of discovered tools
+    total:
+      type: number
+      description: Total number of tools found
