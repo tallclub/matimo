@@ -6,6 +6,7 @@ module.exports = {
   moduleFileExtensions: ['ts', 'js', 'json'],
   moduleNameMapper: {
     '^matimo$': '<rootDir>/packages/core/src/index.ts',
+    '^@matimo/core$': '<rootDir>/packages/core/src/index.ts',
     // Map relative .js imports to .ts files for ESM compatibility (only local imports)
     '^(\\.{1,2}/.*)\\.js$': '$1'
   },

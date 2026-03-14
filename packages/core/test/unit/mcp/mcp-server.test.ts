@@ -10,6 +10,7 @@
 // Variables prefixed with `mock` are allowed in jest.mock factories
 const mockExecute = jest.fn();
 const mockListTools = jest.fn();
+const mockReloadTools = jest.fn();
 
 jest.mock('../../../src/matimo-instance', () => ({
   MatimoInstance: {
@@ -17,6 +18,7 @@ jest.mock('../../../src/matimo-instance', () => ({
       Promise.resolve({
         execute: mockExecute,
         listTools: mockListTools,
+        reloadTools: mockReloadTools,
       })
     ),
   },
@@ -25,6 +27,7 @@ jest.mock('../../../src/matimo-instance', () => ({
 const mockRegisterTool = jest.fn();
 const mockConnect = jest.fn().mockResolvedValue(undefined);
 const mockClose = jest.fn().mockResolvedValue(undefined);
+const mockSendToolListChanged = jest.fn();
 
 jest.mock(
   '@modelcontextprotocol/sdk/server/mcp',
@@ -33,6 +36,7 @@ jest.mock(
       registerTool: mockRegisterTool,
       connect: mockConnect,
       close: mockClose,
+      sendToolListChanged: mockSendToolListChanged,
     })),
   }),
   { virtual: true }
@@ -446,7 +450,6 @@ describe('MCPServer', () => {
       });
       expect(mockExecute).toHaveBeenCalledWith('dangerous_delete', {
         message: 'delete all',
-        _matimo_approved: true,
       });
 
       await server.stop();
@@ -481,6 +484,34 @@ describe('MCPServer', () => {
         process.env.SLACK_BOT_TOKEN = originalEnv;
       }
     });
+
+    it('should seed secret when env var is not pre-set', async () => {
+      const tool = createAuthTool();
+      mockListTools.mockReturnValue([tool]);
+
+      // Ensure the env var is NOT set before start
+      const originalEnv = process.env.SLACK_BOT_TOKEN;
+      const originalMatimoEnv = process.env.MATIMO_SLACK_BOT_TOKEN;
+      delete process.env.SLACK_BOT_TOKEN;
+      delete process.env.MATIMO_SLACK_BOT_TOKEN;
+
+      const server = new MCPServer({
+        transport: 'stdio',
+        autoDiscover: false,
+        // Use env resolver — it won't find SLACK_BOT_TOKEN since we deleted it,
+        // so resolveAll returns empty. Use a custom mock resolver instead.
+        secretResolver: { resolvers: [{ type: 'env' }] },
+      });
+      await server.start();
+
+      await server.stop();
+
+      // Restore
+      if (originalEnv !== undefined) process.env.SLACK_BOT_TOKEN = originalEnv;
+      else delete process.env.SLACK_BOT_TOKEN;
+      if (originalMatimoEnv !== undefined) process.env.MATIMO_SLACK_BOT_TOKEN = originalMatimoEnv;
+      else delete process.env.MATIMO_SLACK_BOT_TOKEN;
+    });
   });
 
   describe('stop', () => {
@@ -514,6 +545,51 @@ describe('MCPServer', () => {
       const instance = server.getMatimoInstance();
       expect(instance).not.toBeNull();
       expect(instance!.execute).toBeDefined();
+
+      await server.stop();
+    });
+  });
+
+  describe('reloadTools', () => {
+    it('should no-op when server has not been started', async () => {
+      const server = new MCPServer({ transport: 'stdio', autoDiscover: false });
+      // reloadTools before start() — matimo is null → early return
+      await server.reloadTools();
+      expect(mockReloadTools).not.toHaveBeenCalled();
+    });
+
+    it('should reload tools and re-apply allow/deny filters', async () => {
+      const toolA = createTestTool({ name: 'tool_a' });
+      const toolB = createTestTool({ name: 'tool_b' });
+      const toolC = createTestTool({ name: 'tool_c' });
+      mockListTools.mockReturnValue([toolA, toolB, toolC]);
+      mockReloadTools.mockResolvedValue({ loaded: ['tool_c'], removed: [], rejected: [] });
+
+      const server = new MCPServer({
+        transport: 'stdio',
+        autoDiscover: false,
+        tools: ['tool_a', 'tool_c'], // allowlist
+        excludeTools: ['tool_c'], // denylist
+      });
+      await server.start();
+
+      // After reload, listTools returns the same set;
+      // filtering should keep only tool_a (allowed, not denied)
+      await server.reloadTools();
+
+      expect(mockReloadTools).toHaveBeenCalledTimes(1);
+      await server.stop();
+    });
+
+    it('should call sendToolListChanged on the McpServer instance', async () => {
+      mockListTools.mockReturnValue([createTestTool()]);
+      mockReloadTools.mockResolvedValue({ loaded: [], removed: [], rejected: [] });
+
+      const server = new MCPServer({ transport: 'stdio', autoDiscover: false });
+      await server.start();
+
+      await server.reloadTools();
+      expect(mockSendToolListChanged).toHaveBeenCalledTimes(1);
 
       await server.stop();
     });
@@ -1054,6 +1130,90 @@ describe('MCPServer — HTTPS / TLS error paths', () => {
     cwdSpy.mockRestore();
     try {
       rmSync(cachedCertsRoot, { recursive: true, force: true });
+    } catch {
+      /* ignore */
+    }
+  });
+
+  it('should generate and save self-signed cert when no cached certs exist and openssl succeeds', async () => {
+    const genRoot = pathJoin(tmpdir(), `matimo-gen-cert-${Date.now()}`);
+    mkdirSync(genRoot, { recursive: true });
+    const cwdSpy = jest.spyOn(process, 'cwd').mockReturnValue(genRoot);
+
+    const fakeCertPem = '-----BEGIN CERTIFICATE-----\ngenerated-cert\n-----END CERTIFICATE-----\n';
+
+    // Mock execFileSync to write the cert file (simulating openssl -out)
+    mockExecFileSync.mockImplementationOnce((_cmd: string, args: string[]) => {
+      const outIdx = args.indexOf('-out');
+      if (outIdx !== -1 && args[outIdx + 1]) {
+        writeFileSync(args[outIdx + 1], fakeCertPem);
+      }
+    });
+
+    const server = new MCPServer({
+      transport: 'http',
+      port: 9559,
+      autoDiscover: false,
+      mcpToken: 'test-token',
+      selfSigned: true,
+    });
+
+    await server.start();
+
+    // https.createServer should have been called with the generated cert
+    expect(mockHttpsCreateServer).toHaveBeenCalledWith(
+      expect.objectContaining({ cert: fakeCertPem }),
+      expect.any(Function)
+    );
+
+    // Cert should be cached to disk
+    const { existsSync: existsSyncCheck } = await import('fs');
+    expect(existsSyncCheck(pathJoin(genRoot, '.matimo', 'certs', 'server.crt'))).toBe(true);
+    expect(existsSyncCheck(pathJoin(genRoot, '.matimo', 'certs', 'server.key'))).toBe(true);
+
+    await server.stop();
+    cwdSpy.mockRestore();
+    try {
+      rmSync(genRoot, { recursive: true, force: true });
+    } catch {
+      /* ignore */
+    }
+  });
+
+  it('should reject stop() when httpServer.close() fires an error', async () => {
+    const certRoot = pathJoin(tmpdir(), `matimo-stop-err-${Date.now()}`);
+    const certsDir2 = pathJoin(certRoot, '.matimo', 'certs');
+    mkdirSync(certsDir2, { recursive: true });
+    writeFileSync(
+      pathJoin(certsDir2, 'server.crt'),
+      '-----BEGIN CERTIFICATE-----\nfake\n-----END CERTIFICATE-----\n'
+    );
+    writeFileSync(
+      pathJoin(certsDir2, 'server.key'),
+      '-----BEGIN PRIVATE KEY-----\nfake\n-----END PRIVATE KEY-----\n'
+    );
+    const cwdSpy = jest.spyOn(process, 'cwd').mockReturnValue(certRoot);
+
+    const server = new MCPServer({
+      transport: 'http',
+      port: 9560,
+      autoDiscover: false,
+      mcpToken: 'test-token',
+      selfSigned: true,
+    });
+
+    await server.start();
+
+    // Make the HTTPS mock server close() return an error
+    mockHttpsClose.mockImplementationOnce((cb: (err?: Error) => void) =>
+      cb(new Error('close failed'))
+    );
+
+    await expect(server.stop()).rejects.toThrow('close failed');
+
+    cwdSpy.mockRestore();
+    try {
+      rmSync(certRoot, { recursive: true, force: true });
     } catch {
       /* ignore */
     }

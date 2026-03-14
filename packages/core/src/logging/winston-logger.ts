@@ -20,9 +20,17 @@ export class WinstonMatimoLogger implements MatimoLogger {
 
     this.winstonLogger = winston.createLogger({
       level: winstonLevel,
+      // When logLevel is 'silent', suppress ALL output. This is critical for
+      // MCP stdio transport where stdout is reserved for JSON-RPC messages —
+      // any non-JSON output (even error logs) corrupts the protocol.
+      silent: config.logLevel === 'silent',
       format,
       transports: [
         new winston.transports.Console({
+          // Write ALL log levels to stderr instead of stdout. This prevents
+          // log output from corrupting stdio-based protocols (e.g., MCP)
+          // where stdout is reserved for structured messages.
+          stderrLevels: ['error', 'warn', 'info', 'debug'],
           format: winston.format.combine(winston.format.colorize(), format),
         }),
       ],
@@ -31,7 +39,7 @@ export class WinstonMatimoLogger implements MatimoLogger {
 
   private mapLogLevel(level: LogLevel): string {
     const levelMap: Record<LogLevel, string> = {
-      silent: 'error', // Log errors even in silent mode (they'll be filtered at transport level)
+      silent: 'error', // Winston level when silent — actual suppression handled by silent: true
       error: 'error',
       warn: 'warn',
       info: 'info',

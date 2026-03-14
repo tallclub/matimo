@@ -23,6 +23,7 @@ import { toolToMcpRegistration, extractAuthPlaceholders } from './tool-converter
 import { createResolverChain, SecretResolverChain } from './secrets/resolver-chain';
 import type { SecretResolverChainConfig } from './secrets/types';
 import type { ToolDefinition } from '../core/schema';
+import { getGlobalApprovalHandler } from '../approval/approval-handler';
 
 // ─── Types ──────────────────────────────────────────────────────────────
 
@@ -51,6 +52,16 @@ export interface MCPServerOptions {
   keyPath?: string;
   /** Auto-generate self-signed certificate. Default: false. Certs stored in .matimo/certs/ */
   selfSigned?: boolean;
+  /** Policy configuration for tool filtering. Creates a DefaultPolicyEngine. */
+  policyConfig?: import('../policy/types').PolicyConfig;
+  /** Policy context applied to all MCP tool filtering. */
+  policyContext?: import('../policy/types').PolicyContext;
+  /** Paths containing untrusted (agent-created) tools. Subject to policy validation on reload. */
+  untrustedPaths?: string[];
+  /** HMAC secret for approval manifest. */
+  approvalSecret?: string;
+  /** Directory for .matimo-approvals.json. */
+  approvalDir?: string;
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────
@@ -151,6 +162,43 @@ export class MCPServer {
   }
 
   /**
+   * Hot-reload tools via MatimoInstance and re-register them on the MCP server.
+   * In stdio mode, calls sendToolListChanged() to notify the connected client.
+   */
+  async reloadTools(): Promise<void> {
+    if (!this.matimo) return;
+    const logger = getGlobalMatimoLogger();
+
+    const result = await this.matimo.reloadTools();
+    logger.info('MCPServer: tools reloaded via MatimoInstance', {
+      loaded: result.loaded,
+      removed: result.removed,
+      rejected: result.rejected.length,
+    });
+
+    // Re-filter tools applying allowSet/denySet
+    let tools = this.matimo.listTools();
+    if (this.options.tools && this.options.tools.length > 0) {
+      const allowSet = new Set(this.options.tools);
+      tools = tools.filter((t) => allowSet.has(t.name));
+    }
+    if (this.options.excludeTools && this.options.excludeTools.length > 0) {
+      const denySet = new Set(this.options.excludeTools);
+      tools = tools.filter((t) => !denySet.has(t.name));
+    }
+    this.filteredTools = tools;
+
+    // Notify MCP clients of tool list change (stdio only — single server)
+    if (
+      this.mcpServer &&
+      typeof (this.mcpServer as Record<string, unknown>).sendToolListChanged === 'function'
+    ) {
+      (this.mcpServer as { sendToolListChanged: () => void }).sendToolListChanged();
+      logger.debug('Notified MCP client of tool list change');
+    }
+  }
+
+  /**
    * Start the MCP server.
    *
    * 1. Initialize secret resolver chain
@@ -186,6 +234,10 @@ export class MCPServer {
       toolPaths: this.options.toolPaths,
       autoDiscover: this.options.autoDiscover,
       ...(this.options.transport === 'stdio' ? { logLevel: 'silent' as const } : {}),
+      ...(this.options.policyConfig ? { policyConfig: this.options.policyConfig } : {}),
+      ...(this.options.untrustedPaths ? { untrustedPaths: this.options.untrustedPaths } : {}),
+      ...(this.options.approvalSecret ? { approvalSecret: this.options.approvalSecret } : {}),
+      ...(this.options.approvalDir ? { approvalDir: this.options.approvalDir } : {}),
     });
 
     // Re-set silent logger after init (MatimoInstance.init overwrites the global logger)
@@ -317,7 +369,24 @@ export class MCPServer {
                 }
               }
 
-              const result = await matimo.execute(tool.name, args);
+              // Strip _matimo_approved from args before passing to execute.
+              // When MCP already confirmed approval, temporarily set an
+              // auto-approve callback so MatimoInstance.execute() doesn't
+              // re-prompt via the interactive handler.
+              const { _matimo_approved, ...cleanArgs } = args;
+              const approvalHandler = getGlobalApprovalHandler();
+              let result: unknown;
+              if (_matimo_approved) {
+                const prevCallback = approvalHandler.getApprovalCallback();
+                approvalHandler.setApprovalCallback(async () => true);
+                try {
+                  result = await matimo.execute(tool.name, cleanArgs);
+                } finally {
+                  approvalHandler.setApprovalCallback(prevCallback);
+                }
+              } else {
+                result = await matimo.execute(tool.name, cleanArgs);
+              }
 
               return {
                 content: [
@@ -386,13 +455,13 @@ export class MCPServer {
   private async connectHttp(): Promise<void> {
     const http = await import('http');
     const { StreamableHTTPServerTransport } = (await import(
-      // @ts-expect-error - optional peer dependency subpath not typed
+      // @ts-ignore — subpath types not available with bundler moduleResolution
       '@modelcontextprotocol/sdk/server/streamableHttp'
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     )) as any;
     const { randomUUID } = await import('crypto');
     const { isInitializeRequest } = (await import(
-      // @ts-expect-error - optional peer dependency subpath not typed
+      // @ts-ignore — subpath types not available with bundler moduleResolution
       '@modelcontextprotocol/sdk/types'
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     )) as any;
