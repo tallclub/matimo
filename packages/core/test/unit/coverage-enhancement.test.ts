@@ -119,7 +119,7 @@ description: A tool, not a provider`
     });
 
     it('should filter out non-YAML/JSON files', async () => {
-      const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tool-loader-test-'));
+      const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tool-loader-test-filter-'));
       try {
         // Create various files
         await fs.writeFile(path.join(tempDir, 'readme.md'), '# README');

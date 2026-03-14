@@ -132,8 +132,12 @@ describe('Mailchimp Tools Integration', () => {
   });
 
   it('should not expose API key in error output', async () => {
-    const apiKey = process.env.MAILCHIMP_API_KEY || 'test-key-us6';
-    const serverPrefix = 'us6';
+    const apiKey = process.env.MAILCHIMP_API_KEY;
+    if (!apiKey) {
+      console.info('Skipping live test - MAILCHIMP_API_KEY not set');
+      return;
+    }
+    const serverPrefix = apiKey.split('-').pop() || 'us6';
 
     try {
       await matimo.execute('mailchimp-get-list-members', {
@@ -143,9 +147,7 @@ describe('Mailchimp Tools Integration', () => {
       });
     } catch (error: unknown) {
       const errorString = JSON.stringify(error);
-      if (apiKey !== 'test-key-us6') {
-        expect(errorString).not.toContain(apiKey);
-      }
+      expect(errorString).not.toContain(apiKey);
       // Error is expected - just verify no key exposure
     }
   }, 15000);
