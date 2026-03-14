@@ -138,6 +138,13 @@ export interface ToolDefinition {
    */
   requires_approval?: boolean;
   /**
+   * Tool lifecycle status. Tools without a status are treated as 'approved'.
+   * - draft: Agent-created, not yet human-reviewed
+   * - approved: Human-reviewed and ready for use
+   * - deprecated: Scheduled for removal
+   */
+  status?: 'draft' | 'approved' | 'deprecated';
+  /**
    * Internal: Path to the tool definition file (set by ToolLoader)
    * Used to resolve relative paths for function executors
    */
@@ -222,4 +229,9 @@ export interface ExecuteOptions {
    * duration of the execute() call.
    */
   credentials?: Record<string, string>;
+  /**
+   * Policy context for the current execution. When a PolicyEngine is active,
+   * this context is checked against the tool's requirements before execution.
+   */
+  context?: import('../policy/types').PolicyContext;
 }

@@ -15,6 +15,21 @@ import {
 } from './logging';
 import { ApprovalHandler, getGlobalApprovalHandler } from './approval/approval-handler';
 import type { ExecuteOptions } from './core/types';
+import type { PolicyEngine, PolicyContext, PolicyConfig } from './policy/types';
+import { DefaultPolicyEngine } from './policy/default-policy';
+import { ToolIntegrityTracker } from './policy/integrity-tracker';
+import { ApprovalManifest } from './policy/approval-manifest';
+import type { MatimoEvent, MatimoEventHandler } from './policy/events';
+
+/**
+ * Result of a hot-reload operation
+ */
+export interface ReloadResult {
+  loaded: number;
+  removed: number;
+  revalidated: number;
+  rejected: string[];
+}
 
 /**
  * Options for MatimoInstance initialization
@@ -23,6 +38,20 @@ export interface InitOptions extends LoggerConfig {
   toolPaths?: string[];
   autoDiscover?: boolean;
   includeCore?: boolean;
+  /** Custom PolicyEngine implementation. Mutually exclusive with policyConfig. */
+  policy?: PolicyEngine;
+  /** Shorthand to create a DefaultPolicyEngine. Ignored if `policy` is provided. */
+  policyConfig?: PolicyConfig;
+  /** Paths containing trusted (developer-authored) tools. Defaults to auto-discovered @matimo/* paths. */
+  trustedPaths?: string[];
+  /** Paths containing untrusted (agent-created) tools. These tools undergo content validation. */
+  untrustedPaths?: string[];
+  /** HMAC secret for approval manifest. Overrides MATIMO_APPROVAL_SECRET env. */
+  approvalSecret?: string;
+  /** Directory for .matimo-approvals.json. Defaults to process.cwd(). */
+  approvalDir?: string;
+  /** Event handler for audit events (tool creation, approval, execution, etc.) */
+  onEvent?: MatimoEventHandler;
 }
 
 /**
@@ -39,7 +68,26 @@ export class MatimoInstance {
   private logger: MatimoLogger;
   private approvalHandler: ApprovalHandler;
 
-  private constructor(toolPaths: string[], logger: MatimoLogger) {
+  // Policy engine fields — runtime-enforced encapsulation via ES #private
+  #policy: PolicyEngine | null;
+  #integrityTracker: ToolIntegrityTracker;
+  #approvalManifest: ApprovalManifest | null;
+  #onEvent: MatimoEventHandler | null;
+  #trustedPaths: string[];
+  #untrustedPaths: string[];
+
+  private constructor(
+    toolPaths: string[],
+    logger: MatimoLogger,
+    policyOptions?: {
+      policy?: PolicyEngine | null;
+      trustedPaths?: string[];
+      untrustedPaths?: string[];
+      approvalSecret?: string;
+      approvalDir?: string;
+      onEvent?: MatimoEventHandler;
+    }
+  ) {
     this.toolPaths = toolPaths;
     this.logger = logger;
     this.loader = new ToolLoader();
@@ -50,6 +98,26 @@ export class MatimoInstance {
     this.httpExecutor = new HttpExecutor();
     this.functionExecutor = new FunctionExecutor(toolPaths[0] || '');
     this.approvalHandler = getGlobalApprovalHandler();
+
+    // Policy engine setup
+    this.#policy = policyOptions?.policy ?? null;
+    this.#trustedPaths = policyOptions?.trustedPaths ?? [];
+    this.#untrustedPaths = policyOptions?.untrustedPaths ?? [];
+    this.#integrityTracker = new ToolIntegrityTracker();
+    this.#onEvent = policyOptions?.onEvent ?? null;
+
+    // Approval manifest
+    if (this.#policy) {
+      const approvalDir = policyOptions?.approvalDir ?? process.cwd();
+      this.#approvalManifest = new ApprovalManifest(approvalDir, policyOptions?.approvalSecret);
+    } else {
+      this.#approvalManifest = null;
+    }
+
+    // Freeze policy to prevent runtime mutation
+    if (this.#policy) {
+      Object.freeze(this.#policy);
+    }
   }
 
   /**
@@ -132,7 +200,22 @@ export class MatimoInstance {
       logger.debug(`Auto-discovered tool paths`, { count: discoveredPaths.length });
     }
 
-    const instance = new MatimoInstance(toolPaths, logger);
+    // Build policy engine
+    let policy: PolicyEngine | null = null;
+    if (finalOptions.policy) {
+      policy = finalOptions.policy;
+    } else if (finalOptions.policyConfig) {
+      policy = new DefaultPolicyEngine(finalOptions.policyConfig);
+    }
+
+    const instance = new MatimoInstance(toolPaths, logger, {
+      policy,
+      trustedPaths: finalOptions.trustedPaths,
+      untrustedPaths: finalOptions.untrustedPaths,
+      approvalSecret: finalOptions.approvalSecret,
+      approvalDir: finalOptions.approvalDir,
+      onEvent: finalOptions.onEvent,
+    });
 
     // Load tools from all paths
     const allTools = instance.loader.loadToolsFromMultiplePaths(toolPaths);
@@ -199,6 +282,26 @@ export class MatimoInstance {
     });
 
     try {
+      // Policy check: enforce RBAC and tool status before any execution
+      if (this.#policy) {
+        const policyContext: PolicyContext = options?.context ?? {};
+        const decision = this.#policy.canExecute(policyContext, tool);
+        if (!decision.allowed) {
+          this.#emitEvent({
+            type: 'tool:execution_denied',
+            toolName,
+            reason: decision.reason,
+            agentId: policyContext.agentId,
+            timestamp: new Date().toISOString(),
+          });
+          throw new MatimoError(
+            `Policy denied execution of '${toolName}': ${decision.reason}`,
+            ErrorCode.POLICY_DENIED,
+            { toolName, reason: decision.reason, riskLevel: decision.riskLevel }
+          );
+        }
+      }
+
       // Simple approval flow:
       // 1. Check if tool requires approval (from YAML or keyword detection)
       // 2. Check if pre-approved via env vars
@@ -248,6 +351,28 @@ export class MatimoInstance {
 
       // Apply per-call timeout override if provided. Create a shallow copy so the
       // registered tool definition is never mutated between calls.
+      // Built-in interception: matimo_reload_tools must run on the instance
+      // itself because reloadTools() clears/rebuilds the in-memory registry.
+      // The function executor has no reference to the MatimoInstance, so we
+      // handle it directly here. This works identically for SDK, LangChain,
+      // and MCP callers.
+      if (toolName === 'matimo_reload_tools') {
+        const reloadResult = await this.reloadTools();
+        this.logger.info('matimo_reload_tools: reload completed', {
+          loaded: reloadResult.loaded,
+          removed: reloadResult.removed,
+          rejected: reloadResult.rejected.length,
+        });
+        return {
+          success: true,
+          loaded: reloadResult.loaded,
+          removed: reloadResult.removed,
+          revalidated: reloadResult.revalidated,
+          rejected: reloadResult.rejected,
+          message: `Reload complete. ${reloadResult.loaded} tools loaded, ${reloadResult.removed} removed, ${reloadResult.rejected.length} rejected.`,
+        };
+      }
+
       const effectiveTool =
         timeoutOverride !== undefined
           ? { ...tool, execution: { ...tool.execution, timeout: timeoutOverride } }
@@ -281,19 +406,24 @@ export class MatimoInstance {
   }
 
   /**
-   * List all available tools
+   * List all available tools, optionally filtered by policy.
+   * @param context - PolicyContext for filtering. If omitted and policy is active, returns all tools (backward compatible).
    * @returns Array of tool definitions
    */
-  listTools(): ToolDefinition[] {
-    return this.registry.getAll();
+  listTools(context?: PolicyContext): ToolDefinition[] {
+    const tools = this.registry.getAll();
+    if (this.#policy && context) {
+      return this.#policy.filterForAgent(context, tools);
+    }
+    return tools;
   }
 
   /**
    * Get all available tools (alias for listTools)
    * @returns Array of tool definitions
    */
-  getAllTools(): ToolDefinition[] {
-    return this.registry.getAll();
+  getAllTools(context?: PolicyContext): ToolDefinition[] {
+    return this.listTools(context);
   }
 
   /**
@@ -301,8 +431,12 @@ export class MatimoInstance {
    * @param query - Search query
    * @returns Matching tools
    */
-  searchTools(query: string): ToolDefinition[] {
-    return this.registry.search(query);
+  searchTools(query: string, context?: PolicyContext): ToolDefinition[] {
+    const results = this.registry.search(query);
+    if (this.#policy && context) {
+      return this.#policy.filterForAgent(context, results);
+    }
+    return results;
   }
 
   /**
@@ -310,8 +444,12 @@ export class MatimoInstance {
    * @param tag - Tag to search for
    * @returns Tools with the given tag
    */
-  getToolsByTag(tag: string): ToolDefinition[] {
-    return this.registry.getByTag(tag);
+  getToolsByTag(tag: string, context?: PolicyContext): ToolDefinition[] {
+    const results = this.registry.getByTag(tag);
+    if (this.#policy && context) {
+      return this.#policy.filterForAgent(context, results);
+    }
+    return results;
   }
 
   /**
@@ -569,6 +707,126 @@ export class MatimoInstance {
           { executionType }
         );
     }
+  }
+
+  /**
+   * Emit an audit event to the registered handler.
+   */
+  #emitEvent(event: MatimoEvent): void {
+    if (this.#onEvent) {
+      try {
+        this.#onEvent(event);
+      } catch {
+        // Never let event handler errors break SDK execution
+      }
+    }
+  }
+
+  /**
+   * Hot-reload tools from all configured paths.
+   * Re-validates untrusted tools via content validator and integrity tracker.
+   * Tools that fail validation are rejected and not loaded.
+   */
+  async reloadTools(): Promise<ReloadResult> {
+    const previousNames = new Set(this.registry.getAll().map((t) => t.name));
+    this.registry.clear();
+
+    const result: ReloadResult = {
+      loaded: 0,
+      removed: 0,
+      revalidated: 0,
+      rejected: [],
+    };
+
+    // Load tools from all paths
+    const allTools = this.loader.loadToolsFromMultiplePaths(this.toolPaths);
+    const untrustedSet = new Set(this.#untrustedPaths);
+
+    for (const [, tool] of allTools) {
+      const defPath = tool._definitionPath ?? '';
+      const isUntrusted =
+        untrustedSet.size > 0 && this.#untrustedPaths.some((up) => defPath.startsWith(up));
+
+      if (isUntrusted && this.#policy) {
+        // Run policy validation on untrusted tools
+        const policyDecision = this.#policy.canCreate({}, tool);
+        if (!policyDecision.allowed) {
+          result.rejected.push(tool.name);
+          this.#emitEvent({
+            type: 'tool:rejected',
+            toolName: tool.name,
+            violations: [
+              { rule: 'policy-denied', severity: 'high', message: policyDecision.reason },
+            ],
+            timestamp: new Date().toISOString(),
+          });
+          this.logger.warn(`Tool rejected during reload: ${tool.name}`, {
+            reason: policyDecision.reason,
+          });
+          continue;
+        }
+        result.revalidated++;
+      }
+
+      this.registry.register(tool);
+      const source = isUntrusted ? 'untrusted' : 'trusted';
+      this.#integrityTracker.record(tool.name, JSON.stringify(tool), source);
+      result.loaded++;
+    }
+
+    // Calculate removed tools
+    const currentNames = new Set(this.registry.getAll().map((t) => t.name));
+    for (const name of previousNames) {
+      if (!currentNames.has(name)) {
+        result.removed++;
+        this.#integrityTracker.removeEntry(name);
+      }
+    }
+
+    this.#emitEvent({
+      type: 'tools:reloaded',
+      loaded: result.loaded,
+      removed: result.removed,
+      rejected: result.rejected,
+      timestamp: new Date().toISOString(),
+    });
+
+    this.logger.info('Tools reloaded', {
+      loaded: result.loaded,
+      removed: result.removed,
+      revalidated: result.revalidated,
+      rejected: result.rejected.length,
+    });
+
+    return result;
+  }
+
+  /**
+   * Check if a policy engine is active.
+   */
+  hasPolicy(): boolean {
+    return this.#policy !== null;
+  }
+
+  /**
+   * Get the approval manifest (if policy engine is active).
+   */
+  getApprovalManifest(): ApprovalManifest | null {
+    return this.#approvalManifest;
+  }
+
+  /**
+   * Get the integrity tracker.
+   */
+  getIntegrityTracker(): ToolIntegrityTracker {
+    return this.#integrityTracker;
+  }
+
+  /**
+   * Get the tool registry (for advanced use cases).
+   */
+  getRegistry(): ToolRegistry {
+    return this.registry;
   }
 }
 

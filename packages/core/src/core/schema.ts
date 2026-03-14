@@ -133,6 +133,7 @@ export const ToolDefinitionSchema = z.object({
   deprecated: z.boolean().optional(),
   tags: z.array(z.string()).optional(),
   deprecation_message: z.string().optional(),
+  status: z.enum(['draft', 'approved', 'deprecated']).optional(),
   // _definitionPath: z.string().optional(), // Internal use for tracking source file path
 });
 

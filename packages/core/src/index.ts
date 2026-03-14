@@ -78,6 +78,30 @@ export { OAuth2Handler } from './auth/oauth2-handler';
 export { convertToolsToLangChain } from './integrations/langchain';
 export type { LangChainTool } from './integrations/langchain';
 
+// Policy engine
+export type {
+  PolicyEngine,
+  PolicyContext,
+  PolicyDecision,
+  PolicyConfig,
+  RiskLevel,
+  Violation,
+  ValidationResult,
+  ValidationContext,
+} from './policy/types';
+export { DefaultPolicyEngine } from './policy/default-policy';
+export { validateToolContent, isSSRFTarget } from './policy/content-validator';
+export { classifyRisk } from './policy/risk-classifier';
+export { ToolIntegrityTracker } from './policy/integrity-tracker';
+export { ApprovalManifest } from './policy/approval-manifest';
+export type { MatimoEvent, MatimoEventHandler } from './policy/events';
+
+// Schema validation
+export { ToolDefinitionSchema, validateToolDefinition } from './core/schema';
+
+// Hot-reload
+export type { ReloadResult } from './matimo-instance';
+
 // Generic Approval System - Simple, scalable flow for any tool
 // Tools declare requires_approval in YAML, or system detects destructive keywords
 // Single approval callback handles all tools - no per-provider logic needed
