@@ -1,0 +1,16 @@
+name: slack-messaging
+description: |
+  Sends a text message to a specified Slack channel or user. 
+  Use this tool to notify humans about task completion, ask for permission, or post alerts.
+parameters:
+  type: object
+  required:
+    - channel
+    - message
+  properties:
+    channel:
+      type: string
+      description: The ID or name of the Slack channel (e.g., '#general' or 'C123456').
+    message:
+      type: string
+      description: The formatted text message to send. Supports standard markdown.
