@@ -1,0 +1,15 @@
+name: timestamp
+description: Returns the current timestamp
+version: "1.0.0"
+
+parameters: {}
+
+execution:
+  type: command
+  command: node timestamp.js
+
+output_schema:
+  type: object
+  properties:
+    timestamp:
+      type: string
