@@ -1,12 +1,12 @@
 name: timestamp
-description: Returns the current timestamp
+description: Returns the current ISO timestamp
 version: "1.0.0"
 
 parameters: {}
 
 execution:
   type: command
-  command: node timestamp.js
+  command: node timestamp.ts
 
 output_schema:
   type: object
