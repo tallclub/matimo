@@ -1,0 +1,42 @@
+name: json_processor
+version: '1.0.0'
+description: 'Parse, validate, and transform JSON data. Supports formatting, minification, and key extraction.'
+
+parameters:
+  json:
+    type: string
+    description: 'JSON string input'
+    required: true
+  action:
+    type: string
+    description: 'Action to perform: validate, pretty, minify, keys'
+    required: true
+
+execution:
+  type: function
+  code: './jsonProcessor.ts'
+
+output_schema:
+  type: object
+  properties:
+    valid:
+      type: boolean
+    result:
+      type: string
+    keys:
+      type: array
+      items:
+        type: string
+
+examples:
+  - name: 'Validate JSON'
+    params:
+      json: '{"key":"value"}'
+      action: 'validate'
+
+  - name: 'Pretty print JSON'
+    params:
+      json: '{"key":"value"}'
+      action: 'pretty'
+
+tags: [json, data, processing]

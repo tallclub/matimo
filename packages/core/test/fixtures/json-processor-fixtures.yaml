@@ -1,0 +1,12 @@
+name: json processor extract test
+
+tool: json_processor
+
+params:
+  json: '{"user":{"name":"Alex","age":25}}'
+  action: 'extract'
+  path: 'user.name'
+
+expected:
+  valid: true
+  result: '"Alex"'
