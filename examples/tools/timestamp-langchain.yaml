@@ -1,0 +1,8 @@
+name: "Timestamp Tool"
+description: "Example of an AI agent requesting the current time"
+input: "What is the current date and time?"
+output: |
+  {
+    "timestamp": "2026-03-17T21:18:58.000Z"
+  }
+explanation: "The agent invokes the timestamp tool to retrieve the current ISO 8601 string."

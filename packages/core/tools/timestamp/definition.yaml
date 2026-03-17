@@ -6,7 +6,7 @@ parameters: {}
 
 execution:
   type: command
-  command: node timestamp.ts
+  command: pnpm ts-node timestamp.ts
 
 output_schema:
   type: object
