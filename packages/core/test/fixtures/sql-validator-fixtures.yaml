@@ -1,0 +1,17 @@
+tool: sql-validator
+
+cases:
+  - input:
+      query: "SELECT * FROM users"
+    expected:
+      valid: true
+
+  - input:
+      query: "DELETE FROM users"
+    expected:
+      valid: false
+
+  - input:
+      query: "SELECT name FROM users LIMIT 10"
+    expected:
+      valid: true

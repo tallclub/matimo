@@ -1,0 +1,30 @@
+name: sql-validator
+version: "1.0.0"
+description: Validates and suggests optimizations for SQL queries
+
+input:
+  type: object
+  properties:
+    query:
+      type: string
+      description: SQL query to validate
+  required:
+    - query
+
+output:
+  type: object
+  properties:
+    valid:
+      type: boolean
+    issues:
+      type: array
+      items:
+        type: string
+    suggestions:
+      type: array
+      items:
+        type: string
+
+execution:
+  type: function
+  code: './index.ts'
