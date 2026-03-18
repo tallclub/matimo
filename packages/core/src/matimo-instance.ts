@@ -17,6 +17,7 @@ import { ApprovalHandler, getGlobalApprovalHandler } from './approval/approval-h
 import type { ExecuteOptions } from './core/types';
 import type { PolicyEngine, PolicyContext, PolicyConfig } from './policy/types';
 import { DefaultPolicyEngine } from './policy/default-policy';
+import { loadPolicyFromFile } from './policy/policy-loader';
 import { ToolIntegrityTracker } from './policy/integrity-tracker';
 import { ApprovalManifest } from './policy/approval-manifest';
 import type { MatimoEvent, MatimoEventHandler } from './policy/events';
@@ -29,6 +30,8 @@ export interface ReloadResult {
   removed: number;
   revalidated: number;
   rejected: string[];
+  /** True if a mid-load failure caused the registry to be restored to its previous state. */
+  rolledBack?: boolean;
 }
 
 /**
@@ -38,10 +41,12 @@ export interface InitOptions extends LoggerConfig {
   toolPaths?: string[];
   autoDiscover?: boolean;
   includeCore?: boolean;
-  /** Custom PolicyEngine implementation. Mutually exclusive with policyConfig. */
+  /** Custom PolicyEngine implementation. Mutually exclusive with policyConfig and policyFile. */
   policy?: PolicyEngine;
   /** Shorthand to create a DefaultPolicyEngine. Ignored if `policy` is provided. */
   policyConfig?: PolicyConfig;
+  /** Path to a policy.yaml file. Loaded into a DefaultPolicyEngine. Ignored if `policy` is provided. */
+  policyFile?: string;
   /** Paths containing trusted (developer-authored) tools. Defaults to auto-discovered @matimo/* paths. */
   trustedPaths?: string[];
   /** Paths containing untrusted (agent-created) tools. These tools undergo content validation. */
@@ -204,6 +209,8 @@ export class MatimoInstance {
     let policy: PolicyEngine | null = null;
     if (finalOptions.policy) {
       policy = finalOptions.policy;
+    } else if (finalOptions.policyFile) {
+      policy = loadPolicyFromFile(finalOptions.policyFile);
     } else if (finalOptions.policyConfig) {
       policy = new DefaultPolicyEngine(finalOptions.policyConfig);
     }
@@ -348,6 +355,10 @@ export class MatimoInstance {
       // Auto-inject authentication parameters. When per-call credentials are
       // supplied they take precedence over process.env (multi-tenant support).
       const finalParams = this.injectAuthParameters(tool, params, credentials);
+
+      // After injection, detect any auth-looking placeholders that are still unfilled.
+      // This gives a clear actionable error instead of silently sending a bad header to the API.
+      this.assertAuthParamsFilled(tool, finalParams, credentials);
 
       // Apply per-call timeout override if provided. Create a shallow copy so the
       // registered tool definition is never mutated between calls.
@@ -590,6 +601,71 @@ export class MatimoInstance {
   }
 
   /**
+   * After injectAuthParameters(), verify no auth-looking placeholders remain unfilled.
+   * Only checks HTTP headers (where auth credentials are injected) — not query params or body.
+   * Throws AUTH_FAILED with actionable guidance naming the missing env var(s).
+   */
+  private assertAuthParamsFilled(
+    tool: ToolDefinition,
+    finalParams: Record<string, unknown>,
+    credentials?: Record<string, string>
+  ): void {
+    const execution = tool.execution;
+    if (!('headers' in execution) || !execution.headers) return;
+
+    const authPatterns = [
+      'token',
+      'key',
+      'secret',
+      'password',
+      'credential',
+      'auth',
+      'bearer',
+      'api_key',
+    ];
+    const placeholderRegex = /\{([^}]+)\}/g;
+    const missing: string[] = [];
+
+    // Only inspect headers — auth credentials belong there, not in query_params or body
+    for (const [headerName, headerValue] of Object.entries(execution.headers)) {
+      if (typeof headerValue !== 'string') continue;
+      // Only check headers that look auth-related (Authorization, X-API-Key, etc.)
+      const lowerHeader = headerName.toLowerCase();
+      const isAuthHeader =
+        lowerHeader === 'authorization' ||
+        lowerHeader.includes('auth') ||
+        lowerHeader.includes('token') ||
+        lowerHeader.includes('key') ||
+        lowerHeader.includes('secret');
+      if (!isAuthHeader) continue;
+
+      let match: RegExpExecArray | null;
+      placeholderRegex.lastIndex = 0;
+      while ((match = placeholderRegex.exec(headerValue)) !== null) {
+        const paramName = match[1];
+        if (paramName in finalParams) continue;
+        const lowerName = paramName.toLowerCase();
+        if (authPatterns.some((p) => lowerName.includes(p))) {
+          missing.push(paramName);
+        }
+      }
+    }
+
+    if (missing.length === 0) return;
+
+    const hints = missing
+      .map((n) => `  • ${n}  →  MATIMO_${n} (or pass via credentials option)`)
+      .join('\n');
+    const credentialsHint = credentials ? '' : '  (No per-call credentials were supplied.)';
+
+    throw new MatimoError(
+      `Authentication credentials are missing for tool "${tool.name}".\n${hints}\n${credentialsHint}`.trim(),
+      ErrorCode.AUTH_FAILED,
+      { toolName: tool.name, missingCredentials: missing }
+    );
+  }
+
+  /**
    * Extract all parameter placeholders from execution config
    * Scans headers, body, URL, and query_params for {paramName} patterns
    */
@@ -726,9 +802,15 @@ export class MatimoInstance {
    * Hot-reload tools from all configured paths.
    * Re-validates untrusted tools via content validator and integrity tracker.
    * Tools that fail validation are rejected and not loaded.
+   *
+   * Atomic: if loading fails mid-way (e.g. I/O error), the registry is restored
+   * to its previous state and `rolledBack: true` is included in the result.
    */
   async reloadTools(): Promise<ReloadResult> {
     const previousNames = new Set(this.registry.getAll().map((t) => t.name));
+    // Snapshot the previous registry state for rollback on partial failure
+    const snapshot = this.registry.getAll();
+
     this.registry.clear();
 
     const result: ReloadResult = {
@@ -736,10 +818,22 @@ export class MatimoInstance {
       removed: 0,
       revalidated: 0,
       rejected: [],
+      rolledBack: false,
     };
 
-    // Load tools from all paths
-    const allTools = this.loader.loadToolsFromMultiplePaths(this.toolPaths);
+    let allTools: Map<string, ToolDefinition>;
+    try {
+      allTools = this.loader.loadToolsFromMultiplePaths(this.toolPaths);
+    } catch (err) {
+      // I/O failure during load — restore snapshot and signal rollback
+      this.registry.registerAll(snapshot);
+      result.rolledBack = true;
+      this.logger.error('reloadTools: failed to load tools, rolled back to previous state', {
+        error: (err as Error).message,
+      });
+      return result;
+    }
+
     const untrustedSet = new Set(this.#untrustedPaths);
 
     for (const [, tool] of allTools) {

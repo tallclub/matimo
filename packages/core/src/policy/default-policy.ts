@@ -6,9 +6,16 @@
  */
 
 import type { ToolDefinition } from '../core/schema';
-import type { PolicyEngine, PolicyContext, PolicyDecision, PolicyConfig } from './types';
+import type {
+  PolicyEngine,
+  PolicyContext,
+  PolicyDecision,
+  PolicyConfig,
+  PolicyTier,
+} from './types';
 import { validateToolContent } from './content-validator';
 import { classifyRisk } from './risk-classifier';
+import { extractAuthPlaceholders } from '../mcp/tool-converter';
 
 const DEFAULT_CONFIG: Required<PolicyConfig> = {
   allowedDomains: [],
@@ -28,9 +35,45 @@ export class DefaultPolicyEngine implements PolicyEngine {
 
   /**
    * Check whether a tool definition may be created/proposed.
-   * Runs ContentValidator rules against the definition.
+   * First applies the tier gate (fast early-return for TIER 3 blocked tools),
+   * then runs ContentValidator rules.
    */
   canCreate(context: PolicyContext, toolDef: ToolDefinition): PolicyDecision {
+    // Hard TIER 3 gate — blocked regardless of content validator.
+    // Each check uses a reason string that the policy tests assert (.toContain).
+    const protectedNamespaces = this.config.protectedNamespaces;
+    if (protectedNamespaces.some((ns) => toolDef.name.startsWith(ns))) {
+      return {
+        allowed: false,
+        reason: `reserved-namespace: Tool "${toolDef.name}" uses a protected namespace (${protectedNamespaces.join(', ')})`,
+        riskLevel: 'critical',
+      };
+    }
+    if (toolDef.execution.type === 'function') {
+      return {
+        allowed: false,
+        reason: `no-function-execution: Agent-created tools may not use execution type "function"`,
+        riskLevel: 'critical',
+      };
+    }
+    if (toolDef.execution.type === 'command') {
+      return {
+        allowed: false,
+        reason: `no-command-execution: Agent-created tools may not use execution type "command"`,
+        riskLevel: 'critical',
+      };
+    }
+    if (toolDef.execution.type === 'http') {
+      const url = toolDef.execution.url ?? '';
+      if (isBlockedUrl(url)) {
+        return {
+          allowed: false,
+          reason: `no-ssrf: URL "${url}" targets a blocked internal/metadata address`,
+          riskLevel: 'critical',
+        };
+      }
+    }
+
     const result = validateToolContent(toolDef, {
       source: 'untrusted',
       policy: this.config,
@@ -124,5 +167,59 @@ export class DefaultPolicyEngine implements PolicyEngine {
   /** Expose the resolved config (read-only snapshot). */
   getConfig(): Readonly<Required<PolicyConfig>> {
     return { ...this.config };
+  }
+}
+
+/**
+ * Pure utility: classify an agent-proposed tool into a policy tier.
+ *
+ * - `blocked`: reserved namespace, function/command execution type, SSRF URL
+ * - `approval-required`: any auth credential, non-GET HTTP method, any data write
+ * - `auto`: low-risk read-only HTTP GET with no auth
+ *
+ * This runs BEFORE content validation and is a hard gate — `blocked` tools
+ * are rejected immediately without running the full content-validator.
+ */
+export function getTierForTool(tool: ToolDefinition, config?: PolicyConfig): PolicyTier {
+  const protectedNamespaces = config?.protectedNamespaces ?? ['matimo_'];
+
+  // TIER 3 — ALWAYS BLOCKED
+  if (protectedNamespaces.some((ns) => tool.name.startsWith(ns))) return 'blocked';
+  if (tool.execution.type === 'function') return 'blocked';
+  if (tool.execution.type === 'command') return 'blocked';
+  if (tool.execution.type === 'http') {
+    const url = tool.execution.url ?? '';
+    if (isBlockedUrl(url)) return 'blocked';
+  }
+
+  // TIER 2 — APPROVAL REQUIRED
+  if (tool.execution.type === 'http') {
+    const method = (tool.execution.method ?? 'GET').toUpperCase();
+    if (method !== 'GET') return 'approval-required';
+    const authVars = extractAuthPlaceholders(tool);
+    if (authVars.length > 0) return 'approval-required';
+  }
+
+  // TIER 1 — AUTO (low-risk read-only)
+  return 'auto';
+}
+
+/** Check if a URL targets a blocked/internal destination (mirrors content-validator SSRF check). */
+function isBlockedUrl(url: string): boolean {
+  if (!url) return false;
+  try {
+    const parsed = new URL(url);
+    const hostname = parsed.hostname.toLowerCase();
+    return (
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname === '::1' ||
+      hostname.startsWith('169.254.') || // link-local / AWS metadata
+      hostname.startsWith('10.') ||
+      hostname.startsWith('192.168.') ||
+      /^172\.(1[6-9]|2\d|3[01])\./.test(hostname)
+    );
+  } catch {
+    return false;
   }
 }

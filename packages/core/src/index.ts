@@ -78,22 +78,28 @@ export { OAuth2Handler } from './auth/oauth2-handler';
 export { convertToolsToLangChain } from './integrations/langchain';
 export type { LangChainTool } from './integrations/langchain';
 
+// Vercel AI integration
+// export { convertToolsToVercelAI } from './integrations/vercel-ai';
+// export type { VercelAITool, VercelAIToolSet } from './integrations/vercel-ai';
+
 // Policy engine
 export type {
   PolicyEngine,
   PolicyContext,
   PolicyDecision,
   PolicyConfig,
+  PolicyTier,
   RiskLevel,
   Violation,
   ValidationResult,
   ValidationContext,
 } from './policy/types';
-export { DefaultPolicyEngine } from './policy/default-policy';
+export { DefaultPolicyEngine, getTierForTool } from './policy/default-policy';
 export { validateToolContent, isSSRFTarget } from './policy/content-validator';
 export { classifyRisk } from './policy/risk-classifier';
 export { ToolIntegrityTracker } from './policy/integrity-tracker';
 export { ApprovalManifest } from './policy/approval-manifest';
+export { loadPolicyFromFile } from './policy/policy-loader';
 export type { MatimoEvent, MatimoEventHandler } from './policy/events';
 
 // Schema validation

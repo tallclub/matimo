@@ -21,12 +21,14 @@ export interface ApprovalRecord {
 interface ManifestData {
   version: '1';
   approvals: ApprovalRecord[];
+  pending?: string[];
 }
 
 export class ApprovalManifest {
   private readonly secret: string;
   private readonly manifestPath: string;
   private cache: Map<string, ApprovalRecord> = new Map();
+  private pendingSet: Set<string> = new Set();
 
   /**
    * @param approvalDir - Directory where `.matimo-approvals.json` lives
@@ -122,6 +124,21 @@ export class ApprovalManifest {
   }
 
   /**
+   * Mark a tool as pending approval. Called by matimo_create_tool after writing to disk.
+   */
+  markPending(toolName: string): void {
+    this.pendingSet.add(toolName);
+    this.saveToDisk();
+  }
+
+  /**
+   * Return all tool names that have been proposed (written to disk) but not yet approved.
+   */
+  getPendingTools(): string[] {
+    return Array.from(this.pendingSet).filter((name) => !this.cache.has(name));
+  }
+
+  /**
    * Load the manifest file from disk.
    */
   private loadFromDisk(): void {
@@ -137,6 +154,13 @@ export class ApprovalManifest {
           this.cache.set(record.name, record);
         }
       }
+
+      this.pendingSet.clear();
+      if (Array.isArray(data.pending)) {
+        for (const name of data.pending) {
+          if (typeof name === 'string') this.pendingSet.add(name);
+        }
+      }
     } catch {
       // Corrupted manifest — start fresh
       const logger = getGlobalMatimoLogger();
@@ -144,6 +168,7 @@ export class ApprovalManifest {
         path: this.manifestPath,
       });
       this.cache.clear();
+      this.pendingSet.clear();
     }
   }
 
@@ -154,6 +179,7 @@ export class ApprovalManifest {
     const data: ManifestData = {
       version: '1',
       approvals: Array.from(this.cache.values()),
+      pending: Array.from(this.pendingSet).filter((name) => !this.cache.has(name)),
     };
     const dir = path.dirname(this.manifestPath);
     if (!fs.existsSync(dir)) {

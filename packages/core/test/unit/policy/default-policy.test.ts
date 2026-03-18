@@ -239,4 +239,100 @@ describe('DefaultPolicyEngine', () => {
       expect(config.protectedNamespaces).toEqual(['matimo_']); // default preserved
     });
   });
+
+  describe('isLocalhost helper', () => {
+    // The isBlockedUrl function should reject local/internal URLs
+    // These are treated as SSRF risks and should be blocked
+    it('should block localhost URLs', () => {
+      const tool = makeTool({
+        execution: { type: 'http', method: 'GET', url: 'http://localhost:8080' },
+        requires_approval: true,
+      });
+      const result = engine.canCreate({}, tool);
+      expect(result.allowed).toBe(false);
+      if (!result.allowed) {
+        expect(result.reason).toContain('no-ssrf');
+      }
+    });
+
+    it('should block 127.0.0.1 URLs', () => {
+      const tool = makeTool({
+        execution: { type: 'http', method: 'GET', url: 'http://127.0.0.1:8080' },
+        requires_approval: true,
+      });
+      const result = engine.canCreate({}, tool);
+      expect(result.allowed).toBe(false);
+      if (!result.allowed) {
+        expect(result.reason).toContain('no-ssrf');
+      }
+    });
+
+    it('should block 10.x.x.x (private) URLs', () => {
+      const tool = makeTool({
+        execution: { type: 'http', method: 'GET', url: 'http://10.0.0.1:8080' },
+        requires_approval: true,
+      });
+      const result = engine.canCreate({}, tool);
+      expect(result.allowed).toBe(false);
+      if (!result.allowed) {
+        expect(result.reason).toContain('no-ssrf');
+      }
+    });
+
+    it('should block 192.168.x.x (private) URLs', () => {
+      const tool = makeTool({
+        execution: { type: 'http', method: 'GET', url: 'http://192.168.1.1:8080' },
+        requires_approval: true,
+      });
+      const result = engine.canCreate({}, tool);
+      expect(result.allowed).toBe(false);
+      if (!result.allowed) {
+        expect(result.reason).toContain('no-ssrf');
+      }
+    });
+
+    it('should block 172.16-31.x.x (private) URLs', () => {
+      const tool = makeTool({
+        execution: { type: 'http', method: 'GET', url: 'http://172.16.0.1:8080' },
+        requires_approval: true,
+      });
+      const result = engine.canCreate({}, tool);
+      expect(result.allowed).toBe(false);
+      if (!result.allowed) {
+        expect(result.reason).toContain('no-ssrf');
+      }
+    });
+
+    it('should block 169.254.x.x (AWS metadata) URLs', () => {
+      const tool = makeTool({
+        execution: { type: 'http', method: 'GET', url: 'http://169.254.169.254/latest/metadata' },
+        requires_approval: true,
+      });
+      const result = engine.canCreate({}, tool);
+      expect(result.allowed).toBe(false);
+      if (!result.allowed) {
+        expect(result.reason).toContain('no-ssrf');
+      }
+    });
+
+    it('should allow invalid URL formats (catch block returns false)', () => {
+      const tool = makeTool({
+        execution: { type: 'http', method: 'GET', url: 'not-a-valid-url' },
+        requires_approval: true,
+      });
+      const result = engine.canCreate({}, tool);
+      // Invalid URL format is not treated as blocked (catch returns false)
+      // But it may fail for other reasons (e.g., approvalRequired)
+      expect(result.allowed).toBe(true);
+    });
+
+    it('should allow external URLs', () => {
+      const tool = makeTool({
+        execution: { type: 'http', method: 'GET', url: 'http://example.com/api' },
+        requires_approval: true,
+      });
+      const result = engine.canCreate({}, tool);
+      expect(result.allowed).toBe(true);
+    });
+  });
 });

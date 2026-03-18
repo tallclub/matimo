@@ -150,5 +150,132 @@ describe('ApprovalManifest', () => {
         process.env.MATIMO_APPROVAL_SECRET = original;
       }
     });
+
+    it('should use env var secret when provided via env', () => {
+      const original = process.env.MATIMO_APPROVAL_SECRET;
+      process.env.MATIMO_APPROVAL_SECRET = 'env-secret';
+
+      const envManifest = new ApprovalManifest(tmpDir);
+      const yamlHash = envManifest.computeHash('content');
+      envManifest.approve('env-tool', yamlHash);
+      expect(envManifest.isApproved('env-tool', yamlHash)).toBe(true);
+
+      if (original !== undefined) {
+        process.env.MATIMO_APPROVAL_SECRET = original;
+      } else {
+        delete process.env.MATIMO_APPROVAL_SECRET;
+      }
+    });
+
+    it('should prefer constructor secret over env var', () => {
+      const original = process.env.MATIMO_APPROVAL_SECRET;
+      process.env.MATIMO_APPROVAL_SECRET = 'env-secret';
+
+      const constructorManifest = new ApprovalManifest(tmpDir, 'constructor-secret');
+      const yamlHash = constructorManifest.computeHash('content');
+      constructorManifest.approve('ctor-tool', yamlHash);
+      expect(constructorManifest.isApproved('ctor-tool', yamlHash)).toBe(true);
+
+      if (original !== undefined) {
+        process.env.MATIMO_APPROVAL_SECRET = original;
+      } else {
+        delete process.env.MATIMO_APPROVAL_SECRET;
+      }
+    });
+  });
+
+  describe('pending tools', () => {
+    it('should mark tools as pending', () => {
+      manifest.markPending('pending-tool-1');
+      manifest.markPending('pending-tool-2');
+
+      const pending = manifest.getPendingTools();
+      expect(pending).toContain('pending-tool-1');
+      expect(pending).toContain('pending-tool-2');
+    });
+
+    it('should not return pending tools that are approved', () => {
+      const yamlHash = manifest.computeHash('content');
+      manifest.markPending('to-approve');
+      manifest.approve('to-approve', yamlHash);
+
+      const pending = manifest.getPendingTools();
+      expect(pending).not.toContain('to-approve');
+    });
+
+    it('should persist pending list to disk', () => {
+      manifest.markPending('pending-1');
+      manifest.markPending('pending-2');
+
+      const reloaded = new ApprovalManifest(tmpDir, TEST_SECRET);
+      const pending = reloaded.getPendingTools();
+      expect(pending).toContain('pending-1');
+      expect(pending).toContain('pending-2');
+    });
+  });
+
+  describe('directory creation', () => {
+    it('should create manifest directory if it does not exist', () => {
+      const nestedDir = path.join(tmpDir, 'nested', 'dir', 'tools');
+      const nestedManifest = new ApprovalManifest(nestedDir, TEST_SECRET);
+
+      const yamlHash = nestedManifest.computeHash('content');
+      nestedManifest.approve('tool', yamlHash);
+
+      expect(fs.existsSync(nestedDir)).toBe(true);
+      const manifestPath = path.join(nestedDir, '.matimo-approvals.json');
+      expect(fs.existsSync(manifestPath)).toBe(true);
+
+      fs.rmSync(path.join(tmpDir, 'nested'), { recursive: true, force: true });
+    });
+  });
+
+  describe('invalid manifest data', () => {
+    it('should handle manifest with invalid structure', () => {
+      const manifestPath = path.join(tmpDir, '.matimo-approvals.json');
+      fs.writeFileSync(manifestPath, JSON.stringify({ version: '1', approvals: 'not-an-array' }));
+
+      const invalid = new ApprovalManifest(tmpDir, TEST_SECRET);
+      expect(invalid.listApproved()).toHaveLength(0);
+    });
+
+    it('should handle manifest with invalid approval records', () => {
+      const manifestPath = path.join(tmpDir, '.matimo-approvals.json');
+      fs.writeFileSync(
+        manifestPath,
+        JSON.stringify({
+          version: '1',
+          approvals: [
+            { name: 'valid-tool', hash: 'hash', signature: 'sig' },
+            { name: 'incomplete' }, // missing hash and signature
+            { hash: 'hash' }, // missing name
+          ],
+        })
+      );
+
+      const invalid = new ApprovalManifest(tmpDir, TEST_SECRET);
+      // Should only load the valid record
+      expect(invalid.listApproved()).toContain('valid-tool');
+      expect(invalid.listApproved()).not.toContain('incomplete');
+    });
+
+    it('should handle manifest with invalid pending data', () => {
+      const manifestPath = path.join(tmpDir, '.matimo-approvals.json');
+      fs.writeFileSync(
+        manifestPath,
+        JSON.stringify({
+          version: '1',
+          approvals: [],
+          pending: ['valid-pending', 123, null, 'another-pending'], // mixed types
+        })
+      );
+
+      const invalid = new ApprovalManifest(tmpDir, TEST_SECRET);
+      const pending = invalid.getPendingTools();
+      // Should only include string entries
+      expect(pending).toContain('valid-pending');
+      expect(pending).toContain('another-pending');
+      expect(pending).toHaveLength(2);
+    });
   });
 });

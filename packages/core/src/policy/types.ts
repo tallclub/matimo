@@ -11,6 +11,20 @@ import type { ToolDefinition } from '../core/schema';
 
 export type RiskLevel = 'low' | 'medium' | 'high' | 'critical';
 
+// ─── Policy Tiers ────────────────────────────────────────────────────────
+
+/**
+ * Three-tier classification for agent-created tool proposals.
+ *
+ * - `auto`: Can be created and used immediately (low-risk GET tools, no auth).
+ * - `approval-required`: Allowed but must be approved before execution
+ *   (tools with auth, POST/PUT/DELETE, external data writes).
+ * - `blocked`: Can never be created regardless of policy config
+ *   (reserved namespaces, function/command execution, SSRF targets,
+ *   tools referencing policy internals).
+ */
+export type PolicyTier = 'auto' | 'approval-required' | 'blocked';
+
 // ─── Policy Context ─────────────────────────────────────────────────────
 
 /**
