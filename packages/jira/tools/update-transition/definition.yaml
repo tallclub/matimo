@@ -1,0 +1,17 @@
+name: jira-update-transition
+description: |
+  Updates the status of a Jira issue by performing a transition.
+  Use this tool when the user confirms a task is finished or moved to another state (e.g., 'To Do' to 'Done').
+version: '1.0.0'
+parameters:
+  issueIdOrKey:
+    type: string
+    description: The ID or key of the issue (e.g., 'PROJ-123').
+    required: true
+  transitionId:
+    type: string
+    description: The ID of the transition to perform (e.g., '31' for 'Done').
+    required: true
+execution:
+  type: function
+  code: ./index.ts

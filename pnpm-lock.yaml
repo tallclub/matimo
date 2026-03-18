@@ -311,6 +311,12 @@ importers:
         specifier: workspace:*
         version: link:../core
 
+  packages/jira:
+    dependencies:
+      '@matimo/core':
+        specifier: workspace:*
+        version: link:../core
+
   packages/mailchimp:
     dependencies:
       matimo:
@@ -323,6 +329,12 @@ importers:
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
+
+  packages/msteams:
+    dependencies:
+      '@matimo/core':
+        specifier: workspace:*
+        version: link:../core
 
   packages/notion:
     dependencies:

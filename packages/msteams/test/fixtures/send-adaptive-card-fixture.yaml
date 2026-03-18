@@ -1,0 +1,25 @@
+name: msteams-send-adaptive-card-fixture
+tool: msteams-send-adaptive-card
+params:
+  cardJson:
+    type: AdaptiveCard
+    version: '1.5'
+    body:
+      - type: TextBlock
+        text: Approval Request
+        weight: Bolder
+        size: Medium
+      - type: TextBlock
+        text: Do you approve the new SaaS integration?
+        wrap: true
+    actions:
+      - type: Action.Submit
+        title: Approve
+        data:
+          action: approve
+      - type: Action.Submit
+        title: Reject
+        data:
+          action: reject
+expected:
+  success: true

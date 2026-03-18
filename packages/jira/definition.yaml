@@ -1,0 +1,30 @@
+# Jira Service Management Provider Definition
+name: jira-provider
+type: provider
+version: '1.0.0'
+
+description: |
+  Jira Service Management Provider.
+  Integrates with Jira Cloud REST API v3 to manage task lifecycles.
+
+  Required environment variables:
+  - JIRA_EMAIL: Your Atlassian account email.
+  - JIRA_API_TOKEN: API token generated from Atlassian security settings.
+  - JIRA_DOMAIN: Your Jira Cloud domain (e.g., your-domain.atlassian.net).
+
+provider:
+  name: jira
+  displayName: Jira Service Management
+  endpoints:
+    authorizationUrl: https://auth.atlassian.com/authorize
+    tokenUrl: https://auth.atlassian.com/oauth/token
+  defaultScopes:
+    - write:jira-work
+    - read:jira-work
+    - manage:jira-configuration
+  documentation: https://developer.atlassian.com/cloud/jira/platform/rest/v3/intro/
+  learnMore: https://id.atlassian.com/manage-profile/security/api-tokens
+  assets:
+    icon: assets/icon.svg
+  brand_color: '#0052CC'
+  homepage: 'https://www.atlassian.com/software/jira'

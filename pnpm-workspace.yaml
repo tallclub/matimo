@@ -11,3 +11,5 @@ packages:
   - "examples/tools"
   - "examples/mcp"
   - "packages/postgres"
+  - "packages/jira"
+  - "packages/msteams"

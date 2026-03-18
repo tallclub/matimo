@@ -1,0 +1,29 @@
+# Microsoft Teams Provider Definition
+name: msteams-provider
+type: provider
+version: '1.0.0'
+
+description: |
+  Microsoft Teams Provider.
+  Integrates with Microsoft Teams via Webhooks or Graph API for collaboration tools.
+
+  Required environment variables:
+  - MSTEAMS_WEBHOOK_URL: Incoming Webhook URL for the channel.
+  - MSTEAMS_TENANT_ID: (Optional) Tenant ID for Graph API.
+  - MSTEAMS_CLIENT_ID: (Optional) Client ID for Graph API.
+  - MSTEAMS_CLIENT_SECRET: (Optional) Client Secret for Graph API.
+
+provider:
+  name: msteams
+  displayName: Microsoft Teams
+  endpoints:
+    authorizationUrl: https://login.microsoftonline.com/common/oauth2/v2.0/authorize
+    tokenUrl: https://login.microsoftonline.com/common/oauth2/v2.0/token
+  defaultScopes:
+    - ChannelMessage.Send
+    - Group.ReadWrite.All
+  documentation: https://learn.microsoft.com/en-us/microsoftteams/platform/webhooks-and-connectors/how-to/add-incoming-webhook
+  assets:
+    icon: assets/icon.svg
+  brand_color: '#6264A7'
+  homepage: 'https://www.microsoft.com/en-us/microsoft-teams'

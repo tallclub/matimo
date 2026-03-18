@@ -1,0 +1,15 @@
+{
+  "name": "@matimo/jira",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Jira Service Management provider for Matimo",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@matimo/core": "workspace:*"
+  }
+}

@@ -1,0 +1,13 @@
+name: msteams-send-adaptive-card
+description: |
+  Sends an Adaptive Card to a Microsoft Teams channel or user.
+  Use this for "Approval" workflows where the user needs to vote or confirm an action via buttons/forms.
+version: '1.0.0'
+parameters:
+  cardJson:
+    type: object
+    description: The Adaptive Card JSON content. Must follow the Adaptive Cards schema.
+    required: true
+execution:
+  type: function
+  code: ./index.ts

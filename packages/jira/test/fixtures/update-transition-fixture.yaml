@@ -1,0 +1,7 @@
+name: jira-update-transition-fixture
+tool: jira-update-transition
+params:
+  issueIdOrKey: MAT-1
+  transitionId: '31'
+expected:
+  success: true

@@ -1,0 +1,9 @@
+name: jira-create-ticket-fixture
+tool: jira-create-ticket
+params:
+  projectKey: MAT
+  summary: Build Enterprise SaaS Provider
+  description: Implement @matimo/jira and @matimo/msteams for high-priority Enterprise SaaS tools.
+  issueType: Task
+expected:
+  success: true

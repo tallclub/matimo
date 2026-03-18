@@ -1,0 +1,26 @@
+name: jira-create-ticket
+description: |
+  Creates a new issue in Jira. 
+  Use this tool when a user wants to report a bug, request a feature, or create any task in Jira.
+version: '1.0.0'
+parameters:
+  projectKey:
+    type: string
+    description: The key of the Jira project (e.g., 'PROJ').
+    required: true
+  summary:
+    type: string
+    description: A brief summary of the issue.
+    required: true
+  description:
+    type: string
+    description: A detailed description of the issue.
+    required: true
+  issueType:
+    type: string
+    description: The type of issue (e.g., 'Task', 'Bug', 'Story').
+    required: true
+    default: Task
+execution:
+  type: function
+  code: ./index.ts
