@@ -76,7 +76,7 @@ Then explore [Three Integration Patterns](./architecture/OVERVIEW.md#three-integ
   - Coverage requirements (80%+)
   - Test fixtures
 
-- **[OAuth Setup](./tool-development/OAUTH_LINK.md)** — OAuth2 authentication
+- **[OAuth Setup](./architecture/OAUTH.md)** — OAuth2 authentication
   - OAuth2 flow implementation
   - Provider-specific configurations
   - Token management
@@ -84,7 +84,7 @@ Then explore [Three Integration Patterns](./architecture/OVERVIEW.md#three-integ
 
 ### � **Policy & Lifecycle (Security)**
 
-- **[Policy Engine & Tool Lifecycle](./tool-development/POLICY_AND_LIFECYCLE.md)** — Complete security guide
+- **[Policy Engine & Tool Lifecycle](./api-reference/POLICY_AND_LIFECYCLE.md)** — Complete security guide
   - PolicyConfig setup and immutability
   - Content Validator (9 security rules)
   - Risk classification levels
@@ -94,7 +94,7 @@ Then explore [Three Integration Patterns](./architecture/OVERVIEW.md#three-integ
   - RBAC & access control
   - Audit events
 
-- **[Meta-Tools Reference](./tool-development/META_TOOLS.md)** — Built-in tool management tools
+- **[Meta-Tools Reference](./api-reference/META_TOOLS.md)** — Built-in tool management tools
   - `matimo_validate_tool` — Validate YAML against schema + policy
   - `matimo_create_tool` — Create tools with safety enforcement
   - `matimo_approve_tool` — Promote draft tools with HMAC signing
@@ -105,7 +105,7 @@ Then explore [Three Integration Patterns](./architecture/OVERVIEW.md#three-integ
   - `matimo_get_skill` — Read a skill's content by name
   - `matimo_validate_skill` — Validate a skill against the Agent Skills spec
 
-- **[Approval System](./APPROVAL-SYSTEM.md)** — Approval handler configuration
+- **[Approval System](./api-reference/APPROVAL-SYSTEM.md)** — Approval handler configuration
   - Auto-approve and interactive approval
   - Environment variables
   - Callback patterns
@@ -213,7 +213,7 @@ Then explore [Three Integration Patterns](./architecture/OVERVIEW.md#three-integ
 1. [Tool Specification](./tool-development/TOOL_SPECIFICATION.md) — YAML schema reference
 2. [Adding Tools to Matimo](./tool-development/ADDING_TOOLS.md) — Publish a package
 3. [Testing Tools](./tool-development/TESTING.md) — Write tests
-4. [OAuth Setup](./tool-development/OAUTH_LINK.md) — Add authentication
+4. [OAuth Setup](./architecture/OAUTH.md) — Add authentication
 
 ### 🤖 Integrating with Frameworks (LangChain, CrewAI, etc.)
 1. [Architecture Overview](./architecture/OVERVIEW.md) — Understand patterns
@@ -221,9 +221,9 @@ Then explore [Three Integration Patterns](./architecture/OVERVIEW.md#three-integ
 3. [SDK Patterns](./user-guide/SDK_PATTERNS.md) — Best practices
 
 ### � Securing Agent Tool Usage
-1. [Policy & Lifecycle Guide](./tool-development/POLICY_AND_LIFECYCLE.md) — Full security setup
-2. [Meta-Tools Reference](./tool-development/META_TOOLS.md) — Built-in management tools
-3. [Approval System](./APPROVAL-SYSTEM.md) — Approval handler config
+1. [Policy & Lifecycle Guide](./api-reference/POLICY_AND_LIFECYCLE.md) — Full security setup
+2. [Meta-Tools Reference](./api-reference/META_TOOLS.md) — Built-in management tools
+3. [Approval System](./api-reference/APPROVAL-SYSTEM.md) — Approval handler config
 4. [Policy Demo](https://github.com/tallclub/matimo/tree/main/examples/tools/policy) — 11-mission autonomous agent demo
 5. [Skills Demo](https://github.com/tallclub/matimo/tree/main/examples/tools/skills) — 5-mission skills lifecycle demo
 
@@ -290,15 +290,18 @@ docs/
 ├── api-reference/
 │   ├── SDK.md                    # Complete SDK API
 │   ├── ERRORS.md                 # Error handling and error codes
-│   └── TYPES.md                  # TypeScript type definitions
+│   ├── TYPES.md                  # TypeScript type definitions
+│   ├── META_TOOLS.md             # Built-in meta-tools reference
+│   ├── POLICY_AND_LIFECYCLE.md   # Policy engine and tool lifecycle
+│   ├── APPROVAL-SYSTEM.md        # Approval handler configuration
+│   └── LOGGING.md                # Winston logger integration
 ├── tool-development/
 │   ├── TOOL_SPECIFICATION.md     # YAML tool schema
 │   ├── YAML_TOOLS.md             # YAML tool writing guide
 │   ├── ADDING_TOOLS.md           # Creating tool packages
 │   ├── DECORATOR_GUIDE.md        # TypeScript decorators
 │   ├── TESTING.md                # Testing tools
-│   ├── PROVIDER_CONFIGURATION.md # Multi-provider setup
-│   └── OAUTH_LINK.md             # OAuth authentication
+│   └── PROVIDER_CONFIGURATION.md # Multi-provider setup
 ├── framework-integrations/
 │   └── LANGCHAIN.md              # LangChain & framework patterns
 ├── architecture/

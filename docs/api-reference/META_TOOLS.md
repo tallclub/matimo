@@ -13,16 +13,89 @@ Meta-tools are built-in tools that live in `packages/core/tools/` and provide to
 | [`matimo_approve_tool`](#matimo_approve_tool) | Promote a draft tool to approved status | Yes |
 | [`matimo_reload_tools`](#matimo_reload_tools) | Hot-reload all tools into the live registry | Yes |
 | [`matimo_list_user_tools`](#matimo_list_user_tools) | List tools in a directory with metadata | No |
+| [`matimo_get_tool_status`](#matimo_get_tool_status) | Get status, risk level, and approval state of a tool | Yes |
 | [`matimo_create_skill`](#matimo_create_skill) | Create a SKILL.md file with validated frontmatter | Yes |
 | [`matimo_list_skills`](#matimo_list_skills) | List skills in a directory with metadata | No |
 | [`matimo_get_skill`](#matimo_get_skill) | Read a skill's full content by name | No |
 | [`matimo_validate_skill`](#matimo_validate_skill) | Validate a skill against the Agent Skills spec | No |
 
+> **Note on `matimo_doctor`:** Examples, prompts, and older docs may refer to `matimo_doctor`. This is an informal human-readable alias for `matimo_validate_tool` — it is **not a separate tool**. The actual registered tool name you must use in `matimo.execute()` is `matimo_validate_tool`.
+
+> 💡 **New to meta-tools?** See [When to Use Which Meta-Tool](#when-to-use-which-meta-tool) for decision guides and typical agent workflows before diving into individual tool references.
+
 **Common tags:** All meta-tools are tagged with `matimo` and `meta`.
 
 ---
 
+## When to Use Which Meta-Tool
+
+### Decision Guide: Tool Lifecycle
+
+```
+I want to...
+  ├─ Check if my YAML is safe before doing anything  →  matimo_validate_tool
+  ├─ Write a new tool to disk                        →  matimo_create_tool
+  ├─ Promote a draft to production-ready             →  matimo_approve_tool
+  ├─ Make newly created/approved tools available     →  matimo_reload_tools
+  ├─ See what tools an agent has created             →  matimo_list_user_tools
+  └─ Check a specific tool's approval state          →  matimo_get_tool_status
+```
+
+### Decision Guide: Skills Lifecycle
+
+```
+I want to...
+  ├─ Discover what skills are available              →  matimo_list_skills
+  ├─ Read the full content of a skill                →  matimo_get_skill
+  ├─ Create a new SKILL.md at runtime                →  matimo_create_skill
+  └─ Check if a skill follows the Agent Skills spec  →  matimo_validate_skill
+```
+
+### Use Cases by Meta-Tool
+
+| Meta-Tool | When to Use | What Happens If You Skip It |
+|-----------|-------------|-----------------------------|
+| `matimo_validate_tool` | Before `matimo_create_tool` — catch errors early without writing to disk | Tool creation may fail mid-write with a less clear error |
+| `matimo_create_tool` | Agent proposes a new capability (weather lookup, data fetch) | Tool never exists; agent can't use the new capability |
+| `matimo_approve_tool` | After creation — promote draft to usable state | Tool stays in `draft` status; `matimo_reload_tools` won't load it |
+| `matimo_reload_tools` | After create+approve — make new tools available without restart | Agent can't call the new tool until the process is restarted |
+| `matimo_list_user_tools` | Agent wants to audit what it has created this session | Agent re-creates duplicates, wastes tool slots |
+| `matimo_get_tool_status` | Before using a tool the agent created — verify it's approved | Agent calls a draft tool and hits an approval gate error |
+| `matimo_list_skills` | At session start or when agent needs domain knowledge | Agent misses available expertise, gives generic responses |
+| `matimo_get_skill` | When agent needs specific domain knowledge for a task | Agent works without guidelines, prone to API misuse |
+| `matimo_create_skill` | Team wants to package reusable agent expertise | Knowledge scattered in system prompts, not reusable |
+| `matimo_validate_skill` | After creating a skill — verify spec compliance | Skill may fail to load or have invalid frontmatter silently |
+
+### Typical Agent Workflows
+
+**Workflow A — Agent creates and uses a new tool (full lifecycle)**
+```
+1. matimo_validate_tool   → Check YAML is safe (no approval needed)
+2. matimo_create_tool     → Write draft to disk (needs human ✅)
+3. matimo_approve_tool    → Promote to approved (needs human ✅)
+4. matimo_reload_tools    → Load into live registry (needs human ✅)
+5. matimo.execute(name)   → Use the tool
+```
+
+**Workflow B — Agent discovers and applies skills**
+```
+1. matimo_list_skills     → See available skills (free — no approval)
+2. matimo_get_skill       → Load the relevant one (free — no approval)
+3. Agent applies guidelines from skill content in its response
+```
+
+**Workflow C — Agent audits what it built**
+```
+1. matimo_list_user_tools  → List all tools created this session
+2. matimo_get_tool_status  → Check approval state for each tool
+3. matimo_reload_tools     → Ensure approved tools are live
+```
+
+---
+
 ## matimo_validate_tool
+
+> **Alias:** Also informally called `matimo_doctor` in examples and prompts. The registered tool name is always `matimo_validate_tool`.
 
 Validate a tool definition YAML string against the Matimo schema and policy rules. Returns schema errors, policy violations, and risk classification.
 
@@ -165,6 +238,17 @@ The following fields are **always forced** regardless of what the YAML contains:
 | `name` | `params.name` | Prevents name mismatch |
 | `requires_approval` | `true` | Agent-created tools must be approved |
 | `status` | `'draft'` | Agent-created tools start as draft |
+
+### Auto-Approval for Low-Risk GET Tools
+
+`matimo_create_tool` classifies risk at creation time. **HTTP GET tools targeting approved domains** are classified as `low` risk and receive `approvalState: 'auto-approved'` immediately — they still start as `status: 'draft'` and must go through `matimo_approve_tool`, but the human approval step produces an immediate approval rather than a pending review. All other tools start as `approvalState: 'pending'`.
+
+| Execution Type | Method | `riskLevel` | `approvalState` after create |
+|---------------|--------|-------------|-------------------------------|
+| `http` | GET | `low` | `auto-approved` |
+| `http` | POST/PUT/DELETE | `medium` | `pending` |
+| `http` with auth headers | any | `high` | `pending` |
+| `command` / `function` | — | blocked by policy | — |
 
 ### Name Validation
 
@@ -381,6 +465,57 @@ llmWithTools = llm.bindTools(langchainTools);
 ### After Reload (MCP)
 
 MCP reload automatically sends a `notifications/tools/list_changed` notification to connected clients, prompting them to re-fetch the tool list.
+
+---
+
+## matimo_get_tool_status
+
+Get the current status, risk level, and approval state of a specific tool by name. Works for both draft and approved tools.
+
+**Requires approval** — reads from the approval manifest (sensitive metadata).
+
+### Parameters
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|:--------:|---------|-------------|
+| `name` | string | Yes | — | Name of the tool to check |
+| `tool_dir` | string | No | `./matimo-tools` | Directory containing the tool |
+
+### Response
+
+```typescript
+// Tool found
+{
+  found: true,
+  name: 'weather_fetch',
+  status: 'approved',          // 'draft' | 'approved'
+  riskLevel: 'low',            // 'low' | 'medium' | 'high' | 'critical'
+  approvalState: 'approved',   // 'pending' | 'auto-approved' | 'approved'
+  approvedAt: '2026-03-14T09:30:00.000Z',
+  approvedBy: 'system',
+  message: 'Tool "weather_fetch" is approved and ready for use.'
+}
+
+// Tool not found
+{
+  found: false,
+  name: 'nonexistent',
+  message: 'Tool "nonexistent" not found at ./matimo-tools/nonexistent/definition.yaml'
+}
+```
+
+### Example
+
+```typescript
+const result = await matimo.execute('matimo_get_tool_status', {
+  name: 'weather_fetch',
+  tool_dir: './agent-tools',
+});
+
+if (result.found) {
+  console.log(`Status: ${result.status}, Risk: ${result.riskLevel}`);
+}
+```
 
 ---
 
@@ -807,6 +942,6 @@ packages/core/tools/
 ## See Also
 
 - [Policy & Lifecycle Guide](POLICY_AND_LIFECYCLE.md) — Complete policy engine and lifecycle documentation
-- [Tool Specification](TOOL_SPECIFICATION.md) — YAML tool definition format reference
-- [Adding Tools](ADDING_TOOLS.md) — How to add new tool providers
-- [Approval System](../APPROVAL-SYSTEM.md) — Approval handler configuration
+- [Tool Specification](../tool-development/TOOL_SPECIFICATION.md) — YAML tool definition format reference
+- [Adding Tools](../tool-development/ADDING_TOOLS.md) — How to add new tool providers
+- [Approval System](APPROVAL-SYSTEM.md) — Approval handler configuration

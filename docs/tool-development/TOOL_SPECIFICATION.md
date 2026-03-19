@@ -328,6 +328,40 @@ execution:
   timeout_ms: 5000
 ```
 
+### Type: Function
+
+Execute a JavaScript/TypeScript module exported as the tool's default function. The `code` field is a path (relative to the tool's YAML file) to the implementation module.
+
+```yaml
+execution:
+  type: function
+  code: './my_tool.ts'
+  timeout: 30000
+```
+
+The implementation module must export a default async function:
+
+```typescript
+// my_tool.ts
+export default async function myTool(params: Record<string, unknown>): Promise<unknown> {
+  // params contains the tool's input parameters
+  return { result: params.value };
+}
+```
+
+**Fields:**
+
+- `code` (string, required) — Relative path to the implementation module (`.ts` or `.js`)
+- `timeout` (number, optional) — Execution timeout in milliseconds
+
+**Trust model — IMPORTANT:**
+
+`execution.type: function` is **blocked for agent-created tools** (`untrusted` source). Agents cannot propose tools with this execution type because it allows arbitrary code execution. Only developer-authored tools in `trustedPaths` (installed `@matimo/*` packages or explicit file paths) may use `type: function`.
+
+This is a hard block enforced at the policy tier level — `getTierForTool()` returns `'blocked'` for any `untrusted` tool with `execution.type: function`, regardless of policy configuration.
+
+If you are building meta-tools (like the built-in `matimo_approve_tool`), use `type: function` freely — they live in trusted paths.
+
 ---
 
 ## Output Schema
