@@ -21,7 +21,7 @@ export interface Parameter {
  * Authentication configuration for a tool
  */
 export interface AuthConfig {
-  type: 'none' | 'api_key' | 'oauth2' | 'basic' | 'bearer';
+  type?: 'none' | 'api_key' | 'oauth2' | 'basic' | 'bearer' | 'custom';
   location?: 'header' | 'query' | 'body';
   name?: string;
   scheme?: string;
@@ -46,7 +46,7 @@ export interface HttpExecution {
   method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
   url: string;
   headers?: Record<string, string>;
-  body?: Record<string, unknown>;
+  body?: unknown;
   params?: Record<string, string>;
   query_params?: Record<string, string>;
   parameter_encoding?: ParameterEncodingConfig[];
@@ -80,9 +80,10 @@ export interface FunctionExecution {
  * Output schema for tool response validation
  */
 export interface OutputSchema {
-  type: 'object' | 'array' | 'string' | 'number' | 'boolean';
-  properties?: Record<string, OutputSchema>;
+  type?: string;
+  properties?: Record<string, unknown>;
   items?: OutputSchema;
+  required?: string[];
   description?: string;
 }
 
@@ -122,7 +123,7 @@ export interface ToolDefinition {
   name: string;
   version: string;
   description: string;
-  parameters: Record<string, Parameter>;
+  parameters?: Record<string, Parameter>;
   execution: HttpExecution | CommandExecution | FunctionExecution;
   authentication?: AuthConfig;
   output_schema?: OutputSchema;
@@ -234,4 +235,142 @@ export interface ExecuteOptions {
    * this context is checked against the tool's requirements before execution.
    */
   context?: import('../policy/types').PolicyContext;
+}
+
+/**
+ * Bundled resources within a skill directory (scripts, references, assets)
+ */
+export interface BundledResources {
+  scripts: string[];
+  references: string[];
+  assets: string[];
+  other: string[];
+}
+
+/**
+ * YAML frontmatter for a SKILL.md file
+ * Follows agentskills.io/specification
+ */
+export interface SkillFrontmatter {
+  name: string;
+  description: string;
+  version?: string;
+  license?: string;
+  compatibility?: string;
+  'allowed-tools'?: string[];
+  metadata?: Record<string, string>;
+}
+
+/**
+ * A single section of a skill body, parsed from Markdown headings.
+ */
+export interface SkillSection {
+  heading: string;
+  level: number;
+  content: string;
+  tokenEstimate: number;
+  children: SkillSection[];
+  path: string;
+}
+
+/**
+ * Parsed skill content (frontmatter + body + structured sections)
+ */
+export interface ParsedSkill {
+  frontmatter: SkillFrontmatter;
+  body: string;
+  raw: string;
+  sections?: SkillSection[];
+  totalTokens?: number;
+}
+
+/**
+ * Catalog metadata for a skill (download count, rating, etc.)
+ */
+export interface SkillCatalogInfo {
+  author: string;
+  downloads: number;
+  rating: number;
+  tags: string[];
+  publishedAt: string;
+  updatedAt: string;
+  repository?: string;
+  checksum?: string;
+}
+
+/**
+ * Complete skill definition
+ * Implements agentskills.io specification with Matimo extensions
+ */
+export interface SkillDefinition {
+  name: string;
+  description: string;
+  version?: string;
+  license?: string;
+  compatibility?: string;
+  allowedTools?: string[];
+  metadata?: Record<string, string>;
+  body: string;
+  /** Structured sections parsed from Markdown headings */
+  sections?: SkillSection[];
+  /** Approximate total token count for the skill body */
+  totalTokens?: number;
+  resources: BundledResources;
+  source: 'builtin' | 'user' | 'catalog';
+  _path?: string; // Internal: path to skill directory
+  catalogInfo?: SkillCatalogInfo;
+  // Skill composition (Phase 4)
+  dependsOn?: string[];
+}
+
+/**
+ * Skill summary for discovery (Level 1 - minimal context)
+ */
+export interface SkillSummary {
+  name: string;
+  description: string;
+  version?: string;
+  license?: string;
+  metadata?: Record<string, string>;
+  source: 'builtin' | 'user' | 'catalog';
+}
+
+/**
+ * Options for searching skills
+ */
+export interface SearchSkillsOptions {
+  query?: string;
+  category?: string;
+  difficulty?: string;
+  tags?: string[];
+  author?: string;
+  limit?: number;
+  offset?: number;
+  /** Use semantic search via embeddings (requires an EmbeddingProvider) */
+  semantic?: boolean;
+}
+
+/**
+ * Options for selective skill content loading
+ */
+export interface SkillContentOptions {
+  /** Only return sections matching these headings (case-insensitive partial match) */
+  sections?: string[];
+  /** Maximum total tokens to return */
+  maxTokens?: number;
+  /** Include the preamble (default: true) */
+  includePreamble?: boolean;
+  /** Depth limit for section inclusion (1 = top-level only) */
+  maxDepth?: number;
+}
+
+/**
+ * Pluggable embedding provider for semantic skill search.
+ * Implement this interface to connect to OpenAI, Cohere, local models, etc.
+ */
+export interface EmbeddingProvider {
+  embed(text: string): Promise<number[]>;
+  embedBatch(texts: string[]): Promise<number[][]>;
+  /** Embedding dimensionality */
+  dimensions: number;
 }

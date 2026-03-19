@@ -1,10 +1,21 @@
+import fs from 'fs';
 import path from 'path';
 import { ToolLoader } from './core/tool-loader';
 import { ToolRegistry } from './core/tool-registry';
+import { SkillLoader } from './core/skill-loader';
+import { SkillRegistry } from './core/skill-registry';
+import type { SemanticSearchResult } from './core/skill-registry';
 import { CommandExecutor } from './executors/command-executor';
 import { HttpExecutor } from './executors/http-executor';
 import { FunctionExecutor } from './executors/function-executor';
-import { ToolDefinition } from './core/schema';
+import {
+  ToolDefinition,
+  SkillDefinition,
+  SkillSummary,
+  SearchSkillsOptions,
+  SkillContentOptions,
+  EmbeddingProvider,
+} from './core/types';
 import { MatimoError, ErrorCode } from './errors/matimo-error';
 import {
   MatimoLogger,
@@ -15,12 +26,31 @@ import {
 } from './logging';
 import { ApprovalHandler, getGlobalApprovalHandler } from './approval/approval-handler';
 import type { ExecuteOptions } from './core/types';
-import type { PolicyEngine, PolicyContext, PolicyConfig } from './policy/types';
+import type { PolicyEngine, PolicyContext, PolicyConfig, HITLCallback } from './policy/types';
 import { DefaultPolicyEngine } from './policy/default-policy';
 import { loadPolicyFromFile } from './policy/policy-loader';
 import { ToolIntegrityTracker } from './policy/integrity-tracker';
 import { ApprovalManifest } from './policy/approval-manifest';
 import type { MatimoEvent, MatimoEventHandler } from './policy/events';
+
+/**
+ * Find the core skills directory by walking up from process.cwd().
+ * Works in CJS (Jest), ESM (tsx), compiled dist, and on all platforms.
+ */
+function findCoreSkillsPath(): string | null {
+  let dir = process.cwd();
+  for (let i = 0; i < 20; i++) {
+    const candidate = path.join(dir, 'packages', 'core', 'skills');
+    if (fs.existsSync(candidate)) return candidate;
+    // Also check node_modules/@matimo/core/skills
+    const nmCandidate = path.join(dir, 'node_modules', '@matimo', 'core', 'skills');
+    if (fs.existsSync(nmCandidate)) return nmCandidate;
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return null;
+}
 
 /**
  * Result of a hot-reload operation
@@ -39,6 +69,8 @@ export interface ReloadResult {
  */
 export interface InitOptions extends LoggerConfig {
   toolPaths?: string[];
+  /** Skill paths for discovering SKILL.md files (Level 1 discovery) */
+  skillPaths?: string[];
   autoDiscover?: boolean;
   includeCore?: boolean;
   /** Custom PolicyEngine implementation. Mutually exclusive with policyConfig and policyFile. */
@@ -57,6 +89,13 @@ export interface InitOptions extends LoggerConfig {
   approvalDir?: string;
   /** Event handler for audit events (tool creation, approval, execution, etc.) */
   onEvent?: MatimoEventHandler;
+  /**
+   * Human-in-the-loop callback for quarantined tools.
+   * Called when a tool enters `pending_approval` state (medium-risk in prod with enableHITL).
+   * Return `true` to approve, `false` to reject.
+   * If not set, quarantined tools are rejected by default.
+   */
+  onHITL?: HITLCallback;
 }
 
 /**
@@ -65,8 +104,11 @@ export interface InitOptions extends LoggerConfig {
  */
 export class MatimoInstance {
   private toolPaths: string[];
+  private skillPaths: string[];
   private loader: ToolLoader;
   private registry: ToolRegistry;
+  private skillLoader: SkillLoader;
+  private skillRegistry: SkillRegistry;
   private commandExecutor: CommandExecutor;
   private httpExecutor: HttpExecutor;
   private functionExecutor: FunctionExecutor;
@@ -78,11 +120,14 @@ export class MatimoInstance {
   #integrityTracker: ToolIntegrityTracker;
   #approvalManifest: ApprovalManifest | null;
   #onEvent: MatimoEventHandler | null;
+  #hitlCallback: HITLCallback | null;
   #trustedPaths: string[];
   #untrustedPaths: string[];
+  #policyFile: string | null;
 
   private constructor(
     toolPaths: string[],
+    skillPaths: string[],
     logger: MatimoLogger,
     policyOptions?: {
       policy?: PolicyEngine | null;
@@ -91,12 +136,17 @@ export class MatimoInstance {
       approvalSecret?: string;
       approvalDir?: string;
       onEvent?: MatimoEventHandler;
+      onHITL?: HITLCallback;
+      policyFile?: string;
     }
   ) {
     this.toolPaths = toolPaths;
+    this.skillPaths = skillPaths;
     this.logger = logger;
     this.loader = new ToolLoader();
     this.registry = new ToolRegistry();
+    this.skillLoader = new SkillLoader();
+    this.skillRegistry = new SkillRegistry();
     // Use the first path (primary) as working directory for command executor
     const workingDir = toolPaths.length > 0 ? path.dirname(toolPaths[0]) : process.cwd();
     this.commandExecutor = new CommandExecutor(workingDir);
@@ -110,6 +160,8 @@ export class MatimoInstance {
     this.#untrustedPaths = policyOptions?.untrustedPaths ?? [];
     this.#integrityTracker = new ToolIntegrityTracker();
     this.#onEvent = policyOptions?.onEvent ?? null;
+    this.#hitlCallback = policyOptions?.onHITL ?? null;
+    this.#policyFile = policyOptions?.policyFile ?? null;
 
     // Approval manifest
     if (this.#policy) {
@@ -119,7 +171,8 @@ export class MatimoInstance {
       this.#approvalManifest = null;
     }
 
-    // Freeze policy to prevent runtime mutation
+    // Freeze policy to prevent runtime mutation by agents.
+    // (The SDK's own reloadPolicy() bypasses the frozen reference by replacing #policy.)
     if (this.#policy) {
       Object.freeze(this.#policy);
     }
@@ -187,15 +240,28 @@ export class MatimoInstance {
     });
 
     const toolPaths: string[] = [];
+    const skillPaths: string[] = [];
 
     // Include core tools (calculator, etc.) - currently not used in monorepo
     // Use explicit toolPaths or autoDiscover instead
     // if (finalOptions.includeCore) { ... }
 
-    // Add explicit paths
+    // Add explicit tool paths
     if (finalOptions.toolPaths) {
       toolPaths.push(...finalOptions.toolPaths);
       logger.debug(`Adding explicit tool paths`, { count: finalOptions.toolPaths.length });
+    }
+
+    // Add explicit skill paths (include core skills by default)
+    if (finalOptions.skillPaths) {
+      skillPaths.push(...finalOptions.skillPaths);
+      logger.debug(`Adding explicit skill paths`, { count: finalOptions.skillPaths.length });
+    }
+    // Always include core skills bundled with Matimo
+    const coreSkillsPath = findCoreSkillsPath();
+    if (coreSkillsPath && !skillPaths.includes(coreSkillsPath)) {
+      skillPaths.push(coreSkillsPath);
+      logger.debug(`Including core skills`, { path: coreSkillsPath });
     }
 
     // Auto-discover @matimo/* packages
@@ -203,6 +269,17 @@ export class MatimoInstance {
       const discoveredPaths = new ToolLoader().autoDiscoverPackages();
       toolPaths.push(...discoveredPaths);
       logger.debug(`Auto-discovered tool paths`, { count: discoveredPaths.length });
+
+      // Also discover skill paths from the same @matimo/* packages
+      // Each discovered tool path is like @matimo/slack/tools/ — sibling skills/ may exist
+      for (const toolPath of discoveredPaths) {
+        const pkgDir = path.dirname(toolPath); // e.g. @matimo/slack/
+        const pkgSkillsPath = path.join(pkgDir, 'skills');
+        if (fs.existsSync(pkgSkillsPath) && !skillPaths.includes(pkgSkillsPath)) {
+          skillPaths.push(pkgSkillsPath);
+        }
+      }
+      logger.debug(`Auto-discovered skill paths`, { count: skillPaths.length });
     }
 
     // Build policy engine
@@ -215,22 +292,41 @@ export class MatimoInstance {
       policy = new DefaultPolicyEngine(finalOptions.policyConfig);
     }
 
-    const instance = new MatimoInstance(toolPaths, logger, {
+    const instance = new MatimoInstance(toolPaths, skillPaths, logger, {
       policy,
       trustedPaths: finalOptions.trustedPaths,
       untrustedPaths: finalOptions.untrustedPaths,
       approvalSecret: finalOptions.approvalSecret,
       approvalDir: finalOptions.approvalDir,
       onEvent: finalOptions.onEvent,
+      onHITL: finalOptions.onHITL,
+      policyFile: finalOptions.policyFile,
     });
 
     // Load tools from all paths
     const allTools = instance.loader.loadToolsFromMultiplePaths(toolPaths);
     instance.registry.registerAll(Array.from(allTools.values()));
 
+    // Load skills from all paths
+    for (const skillPath of skillPaths) {
+      try {
+        const skillsFromPath = instance.skillLoader.loadSkillsFromDirectory(
+          skillPath,
+          skillPath.includes('core') ? 'builtin' : 'user'
+        );
+        instance.skillRegistry.registerAll(skillsFromPath);
+      } catch (err) {
+        logger.warn(`Failed to load skills from path: ${skillPath}`, {
+          error: (err as Error).message,
+        });
+      }
+    }
+
     logger.info(`Matimo SDK initialized successfully`, {
       toolCount: allTools.size,
+      skillCount: instance.skillRegistry.count(),
       paths: toolPaths.length,
+      skillPaths: skillPaths.length,
     });
 
     return instance;
@@ -293,7 +389,7 @@ export class MatimoInstance {
       if (this.#policy) {
         const policyContext: PolicyContext = options?.context ?? {};
         const decision = this.#policy.canExecute(policyContext, tool);
-        if (!decision.allowed) {
+        if (decision.allowed === false) {
           this.#emitEvent({
             type: 'tool:execution_denied',
             toolName,
@@ -306,6 +402,28 @@ export class MatimoInstance {
             ErrorCode.POLICY_DENIED,
             { toolName, reason: decision.reason, riskLevel: decision.riskLevel }
           );
+        }
+
+        // Handle quarantined tools — check approval manifest or invoke HITL callback
+        if (decision.allowed === 'pending_approval') {
+          const approved = await this.#resolveHITL(tool, decision, policyContext);
+          if (!approved) {
+            this.#emitEvent({
+              type: 'tool:quarantine_rejected',
+              toolName,
+              timestamp: new Date().toISOString(),
+            });
+            throw new MatimoError(
+              `Tool '${toolName}' is quarantined and was not approved: ${decision.reason}`,
+              ErrorCode.POLICY_DENIED,
+              { toolName, reason: decision.reason, riskLevel: decision.riskLevel }
+            );
+          }
+          this.#emitEvent({
+            type: 'tool:quarantine_approved',
+            toolName,
+            timestamp: new Date().toISOString(),
+          });
         }
       }
 
@@ -527,6 +645,101 @@ export class MatimoInstance {
     }
 
     return credentialKeys;
+  }
+
+  // ─── Skills API ──────────────────────────────────────────────────────────
+
+  /**
+   * List all available skills (Level 1 discovery - minimal context)
+   * @returns Array of skill summaries
+   */
+  listSkills(): SkillSummary[] {
+    return this.skillRegistry.list();
+  }
+
+  /**
+   * Get a single skill by name (Level 2 activation - full content)
+   * @param name - Skill name
+   * @returns Skill definition or null
+   */
+  getSkill(name: string): SkillDefinition | null {
+    return this.skillRegistry.get(name) || null;
+  }
+
+  /**
+   * Get selective skill content — only the sections an agent needs.
+   * Prevents dumping entire SKILL.md files into the LLM context window.
+   *
+   * @example
+   * // Get only error handling, max 500 tokens
+   * matimo.getSkillContent('postgres-query-operations', {
+   *   sections: ['Error Handling'],
+   *   maxTokens: 500,
+   * })
+   */
+  getSkillContent(name: string, options?: SkillContentOptions): string | null {
+    return this.skillRegistry.getSkillContent(name, options);
+  }
+
+  /**
+   * List all sections of a skill with their token costs.
+   * Agents use this to decide which sections to load before activating.
+   */
+  getSkillSections(
+    name: string
+  ): Array<{ path: string; level: number; tokenEstimate: number }> | null {
+    return this.skillRegistry.getSkillSections(name);
+  }
+
+  /**
+   * Search skills by keyword, category, difficulty, etc.
+   * Set `options.semantic = true` for embedding-based similarity ranking.
+   * @param options - Search options
+   * @returns Matching skills
+   */
+  searchSkills(options: SearchSkillsOptions = {}): SkillSummary[] {
+    return this.skillRegistry.search(options);
+  }
+
+  /**
+   * Semantic search with relevance scores.
+   * Uses embeddings to find skills by meaning, not just keywords.
+   *
+   * @example
+   * const results = await matimo.semanticSearchSkills('How do I handle Postgres locking?');
+   * // → [{ skill: { name: 'postgres-query-operations' }, score: 0.82 }]
+   */
+  async semanticSearchSkills(
+    query: string,
+    options?: { limit?: number; minScore?: number }
+  ): Promise<SemanticSearchResult[]> {
+    return this.skillRegistry.semanticSearch(query, options);
+  }
+
+  /**
+   * Set a custom embedding provider for semantic skill search.
+   * If not set, a built-in TF-IDF provider is used.
+   */
+  setSkillEmbeddingProvider(provider: EmbeddingProvider): void {
+    this.skillRegistry.setEmbeddingProvider(provider);
+  }
+
+  /**
+   * Get a bundled resource from a skill (Level 3 resources)
+   * @param skillName - Skill name
+   * @param resourcePath - Relative path to resource (e.g., "scripts/extract.py")
+   * @returns Resource content
+   */
+  getSkillResource(skillName: string, resourcePath: string): string {
+    return this.skillLoader.loadSkillResource(skillName, this.skillPaths[0], resourcePath);
+  }
+
+  /**
+   * Get all skill paths
+   * @returns Array of skill paths
+   */
+  getSkillPaths(): string[] {
+    return [...this.skillPaths];
   }
 
   /**
@@ -844,7 +1057,7 @@ export class MatimoInstance {
       if (isUntrusted && this.#policy) {
         // Run policy validation on untrusted tools
         const policyDecision = this.#policy.canCreate({}, tool);
-        if (!policyDecision.allowed) {
+        if (policyDecision.allowed === false) {
           result.rejected.push(tool.name);
           this.#emitEvent({
             type: 'tool:rejected',
@@ -859,7 +1072,28 @@ export class MatimoInstance {
           });
           continue;
         }
-        result.revalidated++;
+        if (policyDecision.allowed === 'pending_approval') {
+          // Quarantine: mark as pending in the approval manifest
+          if (this.#approvalManifest) {
+            this.#approvalManifest.markPending(tool.name);
+          }
+          this.#emitEvent({
+            type: 'tool:quarantined',
+            toolName: tool.name,
+            riskLevel: policyDecision.riskLevel,
+            reason: policyDecision.reason,
+            timestamp: new Date().toISOString(),
+          });
+          this.logger.info(`Tool quarantined during reload: ${tool.name}`, {
+            riskLevel: policyDecision.riskLevel,
+            reason: policyDecision.reason,
+          });
+          // Still register the tool so it exists, but it will be blocked
+          // at execution time until approved via the approval manifest
+          result.revalidated++;
+        } else {
+          result.revalidated++;
+        }
       }
 
       this.registry.register(tool);
@@ -921,6 +1155,135 @@ export class MatimoInstance {
    */
   getRegistry(): ToolRegistry {
     return this.registry;
+  }
+
+  /**
+   * Set a Human-in-the-Loop callback for quarantined tools.
+   * The callback is invoked when a tool with `pending_approval` status is executed.
+   * Return `true` to approve, `false` to reject.
+   */
+  setHITLCallback(callback: HITLCallback | null): void {
+    this.#hitlCallback = callback;
+  }
+
+  /**
+   * Hot-reload the policy engine at runtime.
+   *
+   * - If `configOrFile` is a `PolicyConfig` object, creates a new `DefaultPolicyEngine`.
+   * - If `configOrFile` is a string, re-reads and parses the YAML file.
+   * - If omitted and the instance was initialized with `policyFile`, re-reads that file.
+   *
+   * The new policy is validated before swap — if validation fails, the old policy remains active.
+   * After swap, all tools are re-validated against the new policy via `reloadTools()`.
+   *
+   * @returns The ReloadResult from the subsequent tool re-validation.
+   */
+  async reloadPolicy(configOrFile?: PolicyConfig | string): Promise<ReloadResult> {
+    let newPolicy: PolicyEngine;
+
+    if (typeof configOrFile === 'string') {
+      // Re-read from file path
+      newPolicy = loadPolicyFromFile(configOrFile);
+      this.#policyFile = configOrFile;
+    } else if (configOrFile) {
+      // Build from inline config
+      newPolicy = new DefaultPolicyEngine(configOrFile);
+    } else if (this.#policyFile) {
+      // Re-read the original policy file
+      newPolicy = loadPolicyFromFile(this.#policyFile);
+    } else if (this.#policy && 'updateConfig' in this.#policy) {
+      // No config provided and no file — nothing to reload
+      this.logger.warn('reloadPolicy: no config or file provided, nothing to reload');
+      return {
+        loaded: 0,
+        removed: 0,
+        revalidated: 0,
+        rejected: [],
+      };
+    } else {
+      this.logger.warn('reloadPolicy: no policy engine to reload');
+      return {
+        loaded: 0,
+        removed: 0,
+        revalidated: 0,
+        rejected: [],
+      };
+    }
+
+    // Atomic swap: replace the policy engine reference
+    this.#policy = newPolicy;
+    Object.freeze(this.#policy);
+
+    this.#emitEvent({
+      type: 'policy:reloaded',
+      timestamp: new Date().toISOString(),
+    });
+
+    this.logger.info('Policy engine reloaded');
+
+    // Re-validate all tools against the new policy
+    return this.reloadTools();
+  }
+
+  /**
+   * Resolve a quarantined tool via HITL callback or approval manifest.
+   *
+   * Resolution order:
+   * 1. Check approval manifest — if already approved, allow.
+   * 2. Invoke HITL callback — if set, ask the human.
+   * 3. If no callback, reject by default (safe fail-closed).
+   */
+  async #resolveHITL(
+    tool: ToolDefinition,
+    decision: {
+      allowed: 'pending_approval';
+      reason: string;
+      riskLevel: import('./policy/types').RiskLevel;
+      toolName?: string;
+    },
+    context: PolicyContext
+  ): Promise<boolean> {
+    // 1. Check approval manifest — previously approved tools pass through
+    if (this.#approvalManifest) {
+      const yamlHash = this.#integrityTracker.getHash(tool.name);
+      if (yamlHash && this.#approvalManifest.isApproved(tool.name, yamlHash)) {
+        return true;
+      }
+    }
+
+    // 2. Invoke HITL callback
+    if (this.#hitlCallback) {
+      this.#emitEvent({
+        type: 'tool:quarantined',
+        toolName: tool.name,
+        riskLevel: decision.riskLevel,
+        reason: decision.reason,
+        environment: context.environment,
+        timestamp: new Date().toISOString(),
+      });
+
+      const approved = await this.#hitlCallback({
+        toolName: tool.name,
+        riskLevel: decision.riskLevel,
+        reason: decision.reason,
+        environment: context.environment,
+        agentId: context.agentId,
+        toolDefinition: tool,
+      });
+
+      // If approved, record in manifest for future calls
+      if (approved && this.#approvalManifest) {
+        const yamlHash =
+          this.#integrityTracker.getHash(tool.name) ??
+          this.#approvalManifest.computeHash(JSON.stringify(tool));
+        this.#approvalManifest.approve(tool.name, yamlHash);
+      }
+
+      return approved;
+    }
+
+    // 3. No callback — fail closed
+    return false;
   }
 }
 

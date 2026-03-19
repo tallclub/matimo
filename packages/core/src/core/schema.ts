@@ -20,7 +20,7 @@ export type Parameter = z.infer<typeof ParameterSchema>;
 
 // Authentication configuration
 export const AuthConfigSchema = z.object({
-  type: z.enum(['api_key', 'basic', 'bearer', 'oauth2', 'custom']).optional(),
+  type: z.enum(['none', 'api_key', 'basic', 'bearer', 'oauth2', 'custom']).optional(),
   location: z.enum(['header', 'query', 'body']).optional(),
   name: z.string().optional(),
   provider: z.string().optional(),
@@ -92,7 +92,7 @@ export type OutputSchema = z.infer<typeof OutputSchemaSchema>;
 // Error handling configuration
 export const ErrorHandlingSchema = z.object({
   retry: z.number().optional(),
-  backoff_type: z.enum(['linear', 'exponential']).optional(),
+  backoff_type: z.enum(['linear', 'exponential', 'fixed']).optional(),
   initial_delay_ms: z.number().optional(),
   max_delay_ms: z.number().optional(),
 });
