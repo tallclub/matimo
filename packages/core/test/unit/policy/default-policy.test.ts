@@ -101,6 +101,90 @@ describe('DefaultPolicyEngine', () => {
         expect(result.reason).toContain('reserved-namespace');
       }
     });
+
+    it('should deny tools with medium violations when HITL disabled', () => {
+      // Tool that tries to bypass forced-draft-status constraint
+      const tool = makeTool({
+        execution: { type: 'http', method: 'GET', url: 'https://api.example.com' },
+        requires_approval: true,
+        status: 'approved', // Should be 'draft' — triggers forced-draft-status violation
+      });
+      const engine = new DefaultPolicyEngine({ enableHITL: false });
+      const result = engine.canCreate({}, tool);
+      expect(result.allowed).toBe(false);
+      if (!result.allowed) {
+        expect(result.reason).toContain('forced-draft-status');
+        expect(result.riskLevel).toBe('medium');
+      }
+    });
+
+    it('should quarantine tools with medium violations when HITL enabled', () => {
+      // Tool that tries to bypass forced-draft-status constraint
+      const tool = makeTool({
+        execution: { type: 'http', method: 'GET', url: 'https://api.example.com' },
+        requires_approval: true,
+        status: 'approved', // Should be 'draft' — triggers forced-draft-status violation
+      });
+      const engine = new DefaultPolicyEngine({ enableHITL: true });
+      const result = engine.canCreate({}, tool);
+      expect(result.allowed).toBe('pending_approval');
+      if (result.allowed === 'pending_approval') {
+        expect(result.reason).toContain('forced-draft-status');
+        expect(result.riskLevel).toBe('medium');
+        expect(result.toolName).toBe(tool.name);
+      }
+    });
+
+    it('should handle multiple medium violations with most severe priority', () => {
+      // Tool with multiple violations (all medium)
+      const tool = makeTool({
+        execution: { type: 'http', method: 'GET', url: 'https://api.example.com' },
+        requires_approval: true, // Has approval, but wrong status
+        status: 'approved', // Should be 'draft' — forced-draft-status violation (medium)
+      });
+      const engine = new DefaultPolicyEngine({ enableHITL: false });
+      const result = engine.canCreate({}, tool);
+      expect(result.allowed).toBe(false);
+      if (!result.allowed) {
+        expect(result.reason).toContain('forced-draft-status');
+        expect(result.riskLevel).toBe('medium');
+      }
+    });
+
+    it('should deny tools with high violations even when other medium violations exist', () => {
+      // Tool with both high (forced-approval) and medium (forced-draft-status) violations
+      const tool = makeTool({
+        execution: { type: 'http', method: 'GET', url: 'https://api.example.com' },
+        requires_approval: false, // Missing approval — forced-approval violation (high)
+        status: 'approved', // Should be 'draft' — forced-draft-status violation (medium)
+      });
+      const engine = new DefaultPolicyEngine({ enableHITL: false });
+      const result = engine.canCreate({}, tool);
+      expect(result.allowed).toBe(false);
+      if (!result.allowed) {
+        // Should catch high violation first via critical check
+        expect(result.reason).toContain('forced-approval');
+        expect(result.riskLevel).toBe('high');
+      }
+    });
+
+    it('should pick most severe violation when multiple non-critical violations exist', () => {
+      // Force multiple violations by violating multiple medium-level rules
+      // We need a scenario where multiple severity levels exist in violations
+      // Create a tool with POST (requires approval for methods) and wrong status
+      const tool = makeTool({
+        name: 'custom-tool',
+        execution: { type: 'http', method: 'POST', url: 'https://api.example.com' },
+        requires_approval: true,
+        status: 'approved', // Should be 'draft'
+      });
+      const engine = new DefaultPolicyEngine({ enableHITL: false });
+      const result = engine.canCreate({}, tool);
+      expect(result.allowed).toBe(false);
+      if (!result.allowed) {
+        expect(result.reason).toContain('forced-draft-status');
+      }
+    });
   });
 
   describe('canExecute', () => {

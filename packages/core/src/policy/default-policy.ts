@@ -12,6 +12,7 @@ import type {
   PolicyDecision,
   PolicyConfig,
   PolicyTier,
+  RiskLevel,
 } from './types';
 import { validateToolContent } from './content-validator';
 import { classifyRisk } from './risk-classifier';
@@ -90,6 +91,31 @@ export class DefaultPolicyEngine implements PolicyEngine {
           allowed: false,
           reason: critical.map((v) => `[${v.rule}] ${v.message}`).join('; '),
           riskLevel: critical[0].severity,
+        };
+      }
+      // No high/critical violations, but the content is still invalid.
+      // Treat these (e.g., medium "forced-draft-status") as policy violations:
+      // either deny or quarantine for HITL, rather than silently allowing.
+      if (result.violations.length > 0) {
+        const orderedSeverities: RiskLevel[] = ['low', 'medium', 'high', 'critical'];
+        const mostSevere = result.violations
+          .map((v) => v.severity as RiskLevel)
+          .sort(
+            (a, b) => orderedSeverities.indexOf(b) - orderedSeverities.indexOf(a)
+          )[0] as RiskLevel;
+        const reason = result.violations.map((v) => `[${v.rule}] ${v.message}`).join('; ');
+        if (this.config.enableHITL) {
+          return {
+            allowed: 'pending_approval',
+            reason,
+            riskLevel: mostSevere,
+            toolName: toolDef.name,
+          };
+        }
+        return {
+          allowed: false,
+          reason,
+          riskLevel: mostSevere,
         };
       }
     }
