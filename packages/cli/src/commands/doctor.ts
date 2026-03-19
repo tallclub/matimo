@@ -50,6 +50,8 @@ async function loadMatimoCoreExport<T>(exportName: string): Promise<T | null> {
 }
 
 export async function doctorCommand(): Promise<void> {
+  // Ensure issues do not accumulate across multiple invocations
+  issues.length = 0;
   console.info('\n🩺 Matimo Doctor — Checking your setup...\n');
 
   // ─── 1. Node.js version ────────────────────────────────────────────────
