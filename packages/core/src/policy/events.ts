@@ -51,6 +51,29 @@ export type MatimoEvent =
       timestamp: string;
     }
   | {
+      type: 'tool:quarantined';
+      toolName: string;
+      riskLevel: RiskLevel;
+      reason: string;
+      environment?: string;
+      timestamp: string;
+    }
+  | {
+      type: 'tool:quarantine_approved';
+      toolName: string;
+      approvedBy?: string;
+      timestamp: string;
+    }
+  | {
+      type: 'tool:quarantine_rejected';
+      toolName: string;
+      timestamp: string;
+    }
+  | {
+      type: 'policy:reloaded';
+      timestamp: string;
+    }
+  | {
       type: 'tools:reloaded';
       loaded: number;
       removed: number;

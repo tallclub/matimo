@@ -46,7 +46,31 @@ export interface PolicyContext {
 
 export type PolicyDecision =
   | { allowed: true }
-  | { allowed: false; reason: string; riskLevel?: RiskLevel };
+  | { allowed: false; reason: string; riskLevel?: RiskLevel }
+  | {
+      allowed: 'pending_approval';
+      reason: string;
+      riskLevel: RiskLevel;
+      /** Tool name for the approval flow to reference */
+      toolName?: string;
+    };
+
+/**
+ * Async callback invoked when a tool enters the quarantine/HITL state.
+ * Returns `true` if the admin approves, `false` if rejected.
+ * Integrators wire this to a UI, Slack message, or approval queue.
+ */
+export type HITLCallback = (request: HITLRequest) => Promise<boolean>;
+
+export interface HITLRequest {
+  toolName: string;
+  riskLevel: RiskLevel;
+  reason: string;
+  environment?: string;
+  agentId?: string;
+  /** Full tool definition for admin review */
+  toolDefinition?: unknown;
+}
 
 // ─── Validation ─────────────────────────────────────────────────────────
 
@@ -89,6 +113,18 @@ export interface PolicyConfig {
   allowFunctionTools?: boolean;
   /** Tool name prefixes reserved for built-in tools (default: ['matimo_']). */
   protectedNamespaces?: string[];
+  /**
+   * Enable quarantine/HITL for medium-risk tools in production.
+   * When true, `canCreate()` returns `pending_approval` instead of `allowed: false`
+   * for medium-risk tools, allowing a human reviewer to approve or reject.
+   * Default: false (original binary behavior preserved).
+   */
+  enableHITL?: boolean;
+  /**
+   * Risk levels eligible for HITL quarantine instead of outright rejection.
+   * Default: ['medium'] — critical/high are always blocked, low is always auto.
+   */
+  quarantineRiskLevels?: RiskLevel[];
 }
 
 // ─── Policy Engine Interface ────────────────────────────────────────────
@@ -103,6 +139,12 @@ export interface PolicyEngine {
 
   /** Check whether this agent is allowed to create/propose a tool definition. */
   canCreate(context: PolicyContext, toolDef: ToolDefinition): PolicyDecision;
+
+  /**
+   * Update the policy configuration at runtime (hot-reload).
+   * Implementations should validate the new config before applying.
+   */
+  updateConfig?(config: PolicyConfig): void;
 
   /** Filter a list of tools to only those this agent is allowed to see/use. */
   filterForAgent(context: PolicyContext, tools: ToolDefinition[]): ToolDefinition[];

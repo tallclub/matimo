@@ -49,6 +49,8 @@ const PolicyFileSchema = z.object({
   allowCommandTools: z.boolean().optional(),
   allowFunctionTools: z.boolean().optional(),
   protectedNamespaces: z.array(z.string()).optional(),
+  enableHITL: z.boolean().optional(),
+  quarantineRiskLevels: z.array(z.enum(['low', 'medium', 'high', 'critical'])).optional(),
 });
 
 type PolicyFile = z.infer<typeof PolicyFileSchema>;
@@ -114,6 +116,48 @@ export function loadPolicyFromFile(filePath: string): PolicyEngine {
   return new DefaultPolicyEngine(policyConfig);
 }
 
+/**
+ * Parse a YAML string into a PolicyConfig (without creating an engine).
+ * Useful for hot-reload: parse the new file, then call engine.updateConfig().
+ */
+export function parsePolicyFile(filePath: string): PolicyConfig {
+  let raw: string;
+  try {
+    raw = fs.readFileSync(filePath, 'utf-8');
+  } catch (err) {
+    throw new MatimoError(
+      `Cannot read policy file "${filePath}": ${(err as NodeJS.ErrnoException).message}`,
+      ErrorCode.INVALID_SCHEMA,
+      { filePath }
+    );
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = yaml.load(raw);
+  } catch (err) {
+    throw new MatimoError(
+      `Policy file "${filePath}" contains invalid YAML: ${(err as Error).message}`,
+      ErrorCode.INVALID_SCHEMA,
+      { filePath }
+    );
+  }
+
+  const result = PolicyFileSchema.safeParse(parsed ?? {});
+  if (!result.success) {
+    const issues = result.error.issues
+      .map((i) => `  \u2022 ${i.path.join('.')}: ${i.message}`)
+      .join('\n');
+    throw new MatimoError(
+      `Policy file "${filePath}" is invalid:\n${issues}`,
+      ErrorCode.INVALID_SCHEMA,
+      { filePath, issues: result.error.issues }
+    );
+  }
+
+  return buildPolicyConfig(result.data);
+}
+
 function buildPolicyConfig(data: PolicyFile): PolicyConfig {
   const config: PolicyConfig = {};
   if (data.allowedDomains !== undefined) config.allowedDomains = data.allowedDomains;
@@ -122,5 +166,8 @@ function buildPolicyConfig(data: PolicyFile): PolicyConfig {
   if (data.allowCommandTools !== undefined) config.allowCommandTools = data.allowCommandTools;
   if (data.allowFunctionTools !== undefined) config.allowFunctionTools = data.allowFunctionTools;
   if (data.protectedNamespaces !== undefined) config.protectedNamespaces = data.protectedNamespaces;
+  if (data.enableHITL !== undefined) config.enableHITL = data.enableHITL;
+  if (data.quarantineRiskLevels !== undefined)
+    config.quarantineRiskLevels = data.quarantineRiskLevels;
   return config;
 }

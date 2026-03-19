@@ -24,10 +24,12 @@ const DEFAULT_CONFIG: Required<PolicyConfig> = {
   allowCommandTools: false,
   allowFunctionTools: false,
   protectedNamespaces: ['matimo_'],
+  enableHITL: false,
+  quarantineRiskLevels: ['medium'],
 };
 
 export class DefaultPolicyEngine implements PolicyEngine {
-  private readonly config: Required<PolicyConfig>;
+  private config: Required<PolicyConfig>;
 
   constructor(config?: PolicyConfig) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -92,9 +94,18 @@ export class DefaultPolicyEngine implements PolicyEngine {
       }
     }
 
-    // In production, block anything above low risk
+    // In production, block anything above low risk — unless HITL is enabled
+    // for the tool's risk level, in which case quarantine it for human review
     const risk = classifyRisk(toolDef);
     if (context.environment === 'prod' && risk !== 'low') {
+      if (this.config.enableHITL && this.config.quarantineRiskLevels.includes(risk)) {
+        return {
+          allowed: 'pending_approval',
+          reason: `Tool risk level "${risk}" requires human approval in production`,
+          riskLevel: risk,
+          toolName: toolDef.name,
+        };
+      }
       return {
         allowed: false,
         reason: `Tool risk level "${risk}" is too high for production environment`,
@@ -167,6 +178,15 @@ export class DefaultPolicyEngine implements PolicyEngine {
   /** Expose the resolved config (read-only snapshot). */
   getConfig(): Readonly<Required<PolicyConfig>> {
     return { ...this.config };
+  }
+
+  /**
+   * Hot-reload policy configuration at runtime.
+   * Merges the new config with DEFAULT_CONFIG (preserving conservative defaults
+   * for any unset fields), then replaces the active config atomically.
+   */
+  updateConfig(config: PolicyConfig): void {
+    this.config = { ...DEFAULT_CONFIG, ...config };
   }
 }
 

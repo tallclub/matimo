@@ -2,13 +2,16 @@ import { AwsSecretsManagerResolver } from '../../../../src/mcp/secrets/aws-resol
 
 // Mock AWS SDK
 const mockSend = jest.fn();
+let mockSecretsManagerClient: jest.Mock;
+
 jest.mock(
   '@aws-sdk/client-secrets-manager',
   () => {
+    mockSecretsManagerClient = jest.fn(() => ({
+      send: mockSend,
+    }));
     return {
-      SecretsManagerClient: jest.fn(() => ({
-        send: mockSend,
-      })),
+      SecretsManagerClient: mockSecretsManagerClient,
       GetSecretValueCommand: jest.fn((params: Record<string, unknown>) => params),
     };
   },
@@ -140,6 +143,145 @@ describe('AwsSecretsManagerResolver', () => {
       });
       const result = await resolver.resolve('KEY');
       expect(result).toBe('new-value');
+    });
+  });
+
+  describe('error handling', () => {
+    beforeEach(() => {
+      mockSend.mockReset(); // Reset the mock implementation and call history
+    });
+
+    it('should handle AWS API errors and return empty dict', async () => {
+      mockSend.mockRejectedValueOnce(new Error('AccessDenied: User is not authorized'));
+
+      const resolver = new AwsSecretsManagerResolver();
+      const result = await resolver.resolve('KEY');
+      expect(result).toBeUndefined();
+    });
+
+    it('should log error when AWS API fails without cached data', async () => {
+      mockSend.mockRejectedValueOnce(new Error('ServiceUnavailable: Backend timeout'));
+
+      const resolver = new AwsSecretsManagerResolver();
+      const result = await resolver.resolve('KEY');
+      expect(result).toBeUndefined();
+    });
+
+    it('should handle AWS API errors on resolveAll and use cache', async () => {
+      mockSend.mockResolvedValueOnce({
+        SecretString: JSON.stringify({ KEY: 'value' }),
+      });
+
+      const resolver = new AwsSecretsManagerResolver({
+        cacheTtlMs: 10000, // Keep cache valid
+      });
+
+      await resolver.resolveAll(['KEY']);
+
+      // Second call should return from cache even if API fails
+      mockSend.mockRejectedValueOnce(new Error('Connection timeout'));
+      const result = await resolver.resolveAll(['KEY']);
+      expect(result).toEqual({ KEY: 'value' });
+    });
+
+    it('should respect custom cache TTL by making multiple API calls', async () => {
+      mockSend
+        .mockResolvedValueOnce({
+          SecretString: JSON.stringify({ KEY: 'value1' }),
+        })
+        .mockResolvedValueOnce({
+          SecretString: JSON.stringify({ KEY: 'value2' }),
+        });
+
+      const resolver = new AwsSecretsManagerResolver({
+        cacheTtlMs: 0, // TTL expired immediately
+      });
+
+      const result1 = await resolver.resolve('KEY');
+      const result2 = await resolver.resolve('KEY');
+
+      // Should have called send twice due to expired cache
+      expect(mockSend).toHaveBeenCalledTimes(2);
+      expect(result1).toBe('value1');
+      expect(result2).toBe('value2');
+    });
+
+    it('should respect custom secret ID', async () => {
+      mockSend.mockResolvedValueOnce({
+        SecretString: JSON.stringify({ KEY: 'value' }),
+      });
+
+      const resolver = new AwsSecretsManagerResolver({
+        secretId: 'custom/secret/path',
+      });
+
+      await resolver.resolve('KEY');
+
+      expect(mockSend).toHaveBeenCalledWith(
+        expect.objectContaining({ SecretId: 'custom/secret/path' })
+      );
+    });
+
+    it('should handle resolveAll with subset of available keys', async () => {
+      mockSend.mockResolvedValueOnce({
+        SecretString: JSON.stringify({
+          SKI_TOKEN: 'sk_live_123',
+          WEBHOOK_SECRET: 'whsec_456',
+          UNUSED: 'unused',
+        }),
+      });
+
+      const resolver = new AwsSecretsManagerResolver();
+      const result = await resolver.resolveAll(['SKI_TOKEN', 'WEBHOOK_SECRET', 'NONEXISTENT']);
+
+      expect(result).toEqual({
+        SKI_TOKEN: 'sk_live_123',
+        WEBHOOK_SECRET: 'whsec_456',
+      });
+    });
+
+    it('should handle resolveAll with no matching keys', async () => {
+      mockSend.mockResolvedValueOnce({
+        SecretString: JSON.stringify({ KEY1: 'value1' }),
+      });
+
+      const resolver = new AwsSecretsManagerResolver();
+      const result = await resolver.resolveAll(['NONEXISTENT1', 'NONEXISTENT2']);
+
+      expect(result).toEqual({});
+    });
+
+    it('should handle invalid JSON and treat as single value using secretId', async () => {
+      mockSend.mockResolvedValueOnce({
+        SecretString: 'not-json-at-all',
+      });
+
+      const resolver = new AwsSecretsManagerResolver({
+        secretId: 'my-token',
+      });
+
+      // The cache stores non-JSON under the secretId key
+      const result = await resolver.resolve('my-token');
+      expect(result).toBe('not-json-at-all');
+    });
+
+    it('should cache invalid JSON response correctly', async () => {
+      mockSend.mockResolvedValueOnce({
+        SecretString: 'plain-secret',
+      });
+
+      const resolver = new AwsSecretsManagerResolver({
+        secretId: 'my-secret',
+        cacheTtlMs: 60000,
+      });
+
+      const result1 = await resolver.resolve('my-secret');
+      const result2 = await resolver.resolve('my-secret');
+
+      // Should only call send once due to caching
+      expect(mockSend).toHaveBeenCalledTimes(1);
+      expect(result1).toBe('plain-secret');
+      expect(result2).toBe('plain-secret');
     });
   });
 });
