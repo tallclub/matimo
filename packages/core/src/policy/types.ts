@@ -2,7 +2,7 @@
  * Policy Engine types for Matimo Agent-Native SDK.
  *
  * The policy engine governs what tools agents can create, execute, and discover.
- * It is immutable at runtime — set by the developer at deploy time.
+ * Agents cannot mutate policy at runtime; the host configures it and may hot-reload via `updateConfig()`.
  */
 
 import type { ToolDefinition } from '../core/schema';

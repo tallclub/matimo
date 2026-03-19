@@ -80,8 +80,14 @@ export const ExecutionConfigSchema = z.discriminatedUnion('type', [
 export type ExecutionConfig = z.infer<typeof ExecutionConfigSchema>;
 
 // Output schema for validation
+// Aligned with TypeScript interface: type should be one of the known types (or unknown string for extensibility)
 export const OutputSchemaSchema = z.object({
-  type: z.string().optional(),
+  type: z
+    .union([
+      z.enum(['string', 'number', 'boolean', 'array', 'object']),
+      z.string(), // Allow other custom types for extensibility
+    ])
+    .optional(),
   properties: z.record(z.string(), z.unknown()).optional(),
   required: z.array(z.string()).optional(),
   description: z.string().optional(),

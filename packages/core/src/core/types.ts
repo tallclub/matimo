@@ -77,7 +77,9 @@ export interface FunctionExecution {
 }
 
 /**
- * Output schema for tool response validation
+ * Output schema for tool response validation.
+ * TypeScript interface inferred from Zod schema in schema.ts.
+ * Properties allows nested output schemas or any unknown structure for flexibility.
  */
 export interface OutputSchema {
   type?: string;

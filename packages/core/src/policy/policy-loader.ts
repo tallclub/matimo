@@ -117,7 +117,7 @@ export function loadPolicyFromFile(filePath: string): PolicyEngine {
 }
 
 /**
- * Parse a YAML string into a PolicyConfig (without creating an engine).
+ * Parse a YAML policy file into a PolicyConfig (without creating an engine).
  * Useful for hot-reload: parse the new file, then call engine.updateConfig().
  */
 export function parsePolicyFile(filePath: string): PolicyConfig {
