@@ -8,6 +8,7 @@
  */
 
 import path from 'path';
+import * as YAML from 'yaml';
 
 /** Subset of ApprovalManifest we use here (avoids stale-dist type issues). */
 interface ManifestHandle {
@@ -134,8 +135,31 @@ async function approveTool(toolName: string, dir: string): Promise<void> {
     process.exit(1);
   }
 
-  const yamlContent = fs.readFileSync(yamlPath, 'utf-8');
-  const hash = manifest.computeHash(yamlContent);
+  const originalYamlContent = fs.readFileSync(yamlPath, 'utf-8');
+  let finalYamlContent = originalYamlContent;
+
+  // Promote status in definition.yaml to "approved" so runtime policy sees the approval.
+  try {
+    const parsed = YAML.parse(originalYamlContent) ?? {};
+    if (parsed && typeof parsed === 'object') {
+      const currentStatus = (parsed as { status?: string }).status;
+      if (currentStatus !== 'approved') {
+        (parsed as { status?: string }).status = 'approved';
+        finalYamlContent = YAML.stringify(parsed);
+        // Write atomically using tmp + rename pattern
+        const tmpPath = yamlPath + '.tmp';
+        fs.writeFileSync(tmpPath, finalYamlContent, 'utf-8');
+        fs.renameSync(tmpPath, yamlPath);
+        console.info(`   📝 Updated status: draft → approved in definition.yaml`);
+      }
+    }
+  } catch {
+    console.warn(
+      '⚠️  Failed to update status in definition.yaml; proceeding with manifest approval only.'
+    );
+  }
+
+  const hash = manifest.computeHash(finalYamlContent);
   const approvedBy = process.env.USER ?? process.env.USERNAME ?? 'cli';
   manifest.approve(toolName, hash, approvedBy);
 

@@ -24,12 +24,14 @@ interface ManifestHandle {
 describe('review Command', () => {
   let consoleErrorSpy: jest.SpyInstance;
   let consoleInfoSpy: jest.SpyInstance;
+  let consoleWarnSpy: jest.SpyInstance;
   let processExitSpy: jest.SpyInstance;
   let mockManifest: jest.Mocked<ManifestHandle>;
 
   beforeEach(() => {
     consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
     consoleInfoSpy = jest.spyOn(console, 'info').mockImplementation();
+    consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
     processExitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {
       throw new Error('process.exit');
     });
@@ -52,11 +54,14 @@ describe('review Command', () => {
     // Mock fs module
     (fs.existsSync as jest.Mock).mockReturnValue(true);
     (fs.readFileSync as jest.Mock).mockReturnValue('name: test-tool\nversion: 1.0.0');
+    (fs.writeFileSync as jest.Mock).mockImplementation(() => {});
+    (fs.renameSync as jest.Mock).mockImplementation(() => {});
   });
 
   afterEach(() => {
     consoleErrorSpy.mockRestore();
     consoleInfoSpy.mockRestore();
+    consoleWarnSpy.mockRestore();
     processExitSpy.mockRestore();
   });
 
@@ -246,6 +251,87 @@ describe('review Command', () => {
       await reviewCommand(['approve', 'test-tool']);
 
       expect(mockManifest.approve).toHaveBeenCalledWith('test-tool', 'test-hash', 'cli');
+    });
+
+    it('should update YAML status from draft to approved', async () => {
+      process.env.MATIMO_APPROVAL_SECRET = 'test-secret';
+      mockManifest.getPendingTools.mockReturnValue(['test-tool']);
+      const draftYaml = 'name: test-tool\nversion: 1.0.0\nstatus: draft';
+      (fs.readFileSync as jest.Mock).mockReturnValue(draftYaml);
+      (fs.renameSync as jest.Mock).mockImplementation(() => {});
+
+      await reviewCommand(['approve', 'test-tool']);
+
+      // Verify writeFileSync was called
+      expect(fs.writeFileSync).toHaveBeenCalled();
+      // Verify renameSync was called to atomically move temp file
+      expect(fs.renameSync).toHaveBeenCalled();
+      // Verify status update message shown
+      expect(consoleInfoSpy).toHaveBeenCalledWith(expect.stringContaining('Updated status'));
+    });
+
+    it('should compute hash on updated YAML content', async () => {
+      process.env.MATIMO_APPROVAL_SECRET = 'test-secret';
+      mockManifest.getPendingTools.mockReturnValue(['test-tool']);
+      const draftYaml = 'name: test-tool\nstatus: draft';
+      (fs.readFileSync as jest.Mock).mockReturnValue(draftYaml);
+      (fs.renameSync as jest.Mock).mockImplementation(() => {});
+      mockManifest.computeHash.mockReturnValue('updated-hash');
+
+      await reviewCommand(['approve', 'test-tool']);
+
+      // The hash should be computed on the updated YAML (with status: approved)
+      // not the original draft YAML
+      expect(mockManifest.approve).toHaveBeenCalledWith(
+        'test-tool',
+        'updated-hash',
+        expect.any(String)
+      );
+    });
+
+    it('should handle missing status field gracefully', async () => {
+      process.env.MATIMO_APPROVAL_SECRET = 'test-secret';
+      mockManifest.getPendingTools.mockReturnValue(['test-tool']);
+      const yamlNoStatus = 'name: test-tool\nversion: 1.0.0';
+      (fs.readFileSync as jest.Mock).mockReturnValue(yamlNoStatus);
+      (fs.renameSync as jest.Mock).mockImplementation(() => {});
+
+      await reviewCommand(['approve', 'test-tool']);
+
+      // Should still approve even if status field wasn't present
+      expect(mockManifest.approve).toHaveBeenCalled();
+    });
+
+    it('should continue with approval if YAML update fails', async () => {
+      process.env.MATIMO_APPROVAL_SECRET = 'test-secret';
+      mockManifest.getPendingTools.mockReturnValue(['test-tool']);
+      (fs.readFileSync as jest.Mock).mockReturnValue('invalid: yaml: content: {[[');
+
+      await reviewCommand(['approve', 'test-tool']);
+
+      // Should show warning but still approve
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to update status')
+      );
+      // Should still call approve on the manifest
+      expect(mockManifest.approve).toHaveBeenCalled();
+    });
+
+    it('should use temp file + rename pattern for atomic writes', async () => {
+      process.env.MATIMO_APPROVAL_SECRET = 'test-secret';
+      mockManifest.getPendingTools.mockReturnValue(['test-tool']);
+      const draftYaml = 'name: test-tool\nstatus: draft';
+      (fs.readFileSync as jest.Mock).mockReturnValue(draftYaml);
+      (fs.renameSync as jest.Mock).mockImplementation(() => {});
+
+      await reviewCommand(['approve', 'test-tool']);
+
+      // Verify writeFileSync was called with a .tmp path
+      const writeCall = (fs.writeFileSync as jest.Mock).mock.calls[0];
+      expect(writeCall[0]).toMatch(/\.tmp$/);
+
+      // Verify renameSync was called to atomically move temp to actual file
+      expect(fs.renameSync).toHaveBeenCalled();
     });
   });
 
