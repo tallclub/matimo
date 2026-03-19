@@ -2,7 +2,89 @@
 
 **Status**: ✅ Simplified & Consolidated (v0.1.0-alpha.6+)
 
+> 💡 **Choosing an approval mode?** Jump to [When to Use the Approval System](#when-to-use-the-approval-system) for a decision guide and use cases.
+
 Matimo has a **single, unified approval system** that works across all providers (GitHub, Slack, Postgres, and custom tools). Simple design: tools declare approval requirements in YAML, system auto-detects destructive keywords, single callback handles all approval requests.
+
+## When to Use the Approval System
+
+### Decision Guide
+
+| Situation | Recommended Mode |
+|-----------|------------------|
+| Production agent — user must confirm destructive ops | Interactive callback — `handler.setApprovalCallback(...)` |
+| CI/CD pipeline — automated testing, no human available | `MATIMO_AUTO_APPROVE=true` |
+| Staging — some tools auto-approved, some need review | `MATIMO_APPROVED_PATTERNS="safe-*,read-*"` |
+| Agent creates new tools at runtime | Always require approval — `matimo_create_tool` has `requires_approval: true` built-in |
+| Tool is read-only and safe | Set `requires_approval: false` in YAML to skip auto-detection |
+| Tool performs irreversible action (delete, drop, send) | Set `requires_approval: true` in YAML explicitly |
+
+### Use Cases by Approval Mode
+
+**Mode 1 — Interactive terminal (default for demos and production)**
+```
+Use when: Human operator is at the terminal monitoring the agent
+Benefit: Full human oversight — every destructive operation shown with tool name, description, and params
+Example: pnpm agent:skills → agent tries to create a tool → you see the YAML and approve/reject
+```
+
+**Mode 2 — Auto-approve (`MATIMO_AUTO_APPROVE=true`)**
+```
+Use when: CI/CD test runs, integration tests, automated pipelines
+Benefit: Zero interruption — tests run end-to-end without human prompts
+Risk: Every destructive op proceeds without review — never use in production
+Example: GitHub Actions test suite, pnpm test runs
+```
+
+**Mode 3 — Pattern pre-approval (`MATIMO_APPROVED_PATTERNS`)**
+```
+Use when: Some tools are known-safe (read ops), others need review (write ops)
+Benefit: Balance between automation and control
+Example:
+  MATIMO_APPROVED_PATTERNS="*-read-*,*-list-*,*-get-*"
+  → sql-read-users: auto-approved (matches pattern)
+  → sql-delete-user: needs callback (no match)
+```
+
+### Use Cases by Trigger Type
+
+**Trigger 1 — Explicit `requires_approval: true` in YAML**
+```yaml
+# When to use: Tool is always destructive regardless of params
+# Examples: github-delete-repository, sql-drop-table, slack-delete-channel
+name: github-delete-repository
+requires_approval: true
+```
+
+**Trigger 2 — Keyword auto-detection**
+```
+When to use: Tool might be destructive depending on SQL content or command params
+Examples:
+  matimo.execute('sql-query', { sql: 'DELETE FROM users WHERE id=1' })  → approval triggered
+  matimo.execute('sql-query', { sql: 'SELECT * FROM users' })           → no approval needed
+Benefit: One tool handles both safe and destructive operations — approval only when needed
+```
+
+**Trigger 3 — Agent-created tools (meta-tools)**
+```
+All meta-tools that write to disk have requires_approval: true
+matimo_create_tool   → human confirms before tool is written
+matimo_approve_tool  → human confirms before tool is promoted
+matimo_reload_tools  → human confirms before registry is rebuilt
+Benefit: Agent can NEVER modify the live tool registry without human sign-off
+```
+
+### Benefits: Approval vs No Approval
+
+| Action | Without Approval | With Approval |
+|--------|:----------------:|:-------------:|
+| Agent runs `DELETE FROM users` | Silent execution ✗ | Human sees query, decides |
+| Agent creates a shell command tool | Tool written to disk ✗ | Human reviews YAML |
+| Agent reloads registry with malicious tool | Tool goes live ✗ | Human confirms reload |
+| CI test deletes test data | Needs manual reset ✗ | `AUTO_APPROVE=true` handles it cleanly |
+| Read-only SQL query | Blocked waiting for approval ✗ | `requires_approval: false` skips check |
+
+---
 
 ## Overview
 
@@ -477,6 +559,6 @@ requires_approval: false  # Override keyword detection
 
 ## See Also
 
-- [Tool Development Guide](./tool-development/)
-- [Architecture Overview](./architecture/OVERVIEW.md)
+- [Tool Development Guide](../tool-development/)
+- [Architecture Overview](../architecture/OVERVIEW.md)
 - Examples: `examples/tools/postgres/postgres-with-approval.ts`, `examples/tools/github/github-with-approval.ts`

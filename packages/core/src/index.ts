@@ -17,10 +17,30 @@ export type {
   ErrorHandlingConfig,
   ToolDefinition,
   ExecuteOptions,
+  SkillDefinition,
+  SkillFrontmatter,
+  ParsedSkill,
+  SkillSummary,
+  SearchSkillsOptions,
+  BundledResources,
+  SkillCatalogInfo,
+  SkillSection,
+  SkillContentOptions,
+  EmbeddingProvider,
 } from './core/types';
 export { ParameterSchema, AuthConfigSchema, ExecutionConfigSchema } from './core/schema';
 export { ToolLoader } from './core/tool-loader';
 export { ToolRegistry } from './core/tool-registry';
+export { SkillLoader } from './core/skill-loader';
+export { SkillRegistry } from './core/skill-registry';
+export type { SemanticSearchResult } from './core/skill-registry';
+export {
+  parseSkillSections,
+  extractSkillContent,
+  listSkillSections,
+} from './core/skill-content-parser';
+export type { ParsedSkillContent } from './core/skill-content-parser';
+export { TfIdfEmbeddingProvider, cosineSimilarity } from './core/tfidf-embedding';
 
 // Executors
 export { CommandExecutor } from './executors/command-executor';
@@ -77,6 +97,38 @@ export { OAuth2Handler } from './auth/oauth2-handler';
 // LangChain integration
 export { convertToolsToLangChain } from './integrations/langchain';
 export type { LangChainTool } from './integrations/langchain';
+
+// Vercel AI integration
+// export { convertToolsToVercelAI } from './integrations/vercel-ai';
+// export type { VercelAITool, VercelAIToolSet } from './integrations/vercel-ai';
+
+// Policy engine
+export type {
+  PolicyEngine,
+  PolicyContext,
+  PolicyDecision,
+  PolicyConfig,
+  PolicyTier,
+  RiskLevel,
+  Violation,
+  ValidationResult,
+  ValidationContext,
+  HITLCallback,
+  HITLRequest,
+} from './policy/types';
+export { DefaultPolicyEngine, getTierForTool } from './policy/default-policy';
+export { validateToolContent, isSSRFTarget } from './policy/content-validator';
+export { classifyRisk } from './policy/risk-classifier';
+export { ToolIntegrityTracker } from './policy/integrity-tracker';
+export { ApprovalManifest } from './policy/approval-manifest';
+export { loadPolicyFromFile, parsePolicyFile } from './policy/policy-loader';
+export type { MatimoEvent, MatimoEventHandler } from './policy/events';
+
+// Schema validation
+export { ToolDefinitionSchema, validateToolDefinition } from './core/schema';
+
+// Hot-reload
+export type { ReloadResult } from './matimo-instance';
 
 // Generic Approval System - Simple, scalable flow for any tool
 // Tools declare requires_approval in YAML, or system detects destructive keywords

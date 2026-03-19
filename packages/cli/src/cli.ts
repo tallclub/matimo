@@ -4,6 +4,8 @@ import { installCommand } from './commands/install.js';
 import { listCommand } from './commands/list.js';
 import { searchCommand } from './commands/search.js';
 import { mcpCommand } from './commands/mcp.js';
+import { doctorCommand } from './commands/doctor.js';
+import { reviewCommand } from './commands/review.js';
 
 function getPackageVersion(): string {
   try {
@@ -37,6 +39,14 @@ Commands:
   
   mcp setup             Generate config for Claude Desktop / Cursor
                        Example: matimo mcp setup
+  
+  doctor               Diagnose your Matimo setup (env vars, YAML validity, Node version)
+                       Example: matimo doctor
+  
+  review               Review agent-created tools awaiting human approval
+                       Example: matimo review list
+                       Example: matimo review approve my_tool
+                       Example: matimo review reject my_tool
   
   help                  Show this help message
   
@@ -102,6 +112,12 @@ export async function main(cliArgs?: string[]): Promise<void> {
         break;
       case 'mcp':
         await mcpCommand(params);
+        break;
+      case 'doctor':
+        await doctorCommand();
+        break;
+      case 'review':
+        await reviewCommand(params);
         break;
       case 'help':
       case '-h':

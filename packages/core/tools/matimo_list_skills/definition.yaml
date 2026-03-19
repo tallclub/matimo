@@ -1,0 +1,36 @@
+name: matimo_list_skills
+version: '1.0.0'
+description: >-
+  Level 1 metadata discovery — list all skills in a directory. Returns each
+  skill's name, description, and optional frontmatter fields (license,
+  compatibility, metadata) per the Agent Skills specification.
+requires_approval: false
+tags:
+  - matimo
+  - meta
+  - skill
+  - discovery
+
+parameters:
+  skills_dir:
+    type: string
+    required: false
+    description: >-
+      Directory to scan for skills (default ./matimo-tools/skills). Each skill
+      is a subdirectory containing a SKILL.md file with YAML frontmatter.
+
+execution:
+  type: function
+  code: './matimo_list_skills.ts'
+
+output_schema:
+  type: object
+  properties:
+    skills:
+      type: array
+      description: >-
+        List of discovered skills with name, description, path, and optional
+        fields (license, compatibility, metadata)
+    total:
+      type: number
+      description: Total number of skills found

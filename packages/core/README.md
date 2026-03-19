@@ -11,7 +11,7 @@ Install the unified package (includes core exports):
 npm install matimo
 pnpm add matimo
 # or install scoped core package directly
-npm insatll @matimo/core
+npm install @matimo/core
 pnpm add @matimo/core
 ```
 
@@ -21,6 +21,10 @@ pnpm add @matimo/core
 
 - `MatimoInstance` — initialization, discovery, registry, and execution API
 - **Executors** — Command (shell), HTTP (REST with object/array embedding), Function (JS/TS)
+- **Policy Engine** — content validation, risk classification, RBAC, integrity tracking
+- **Meta-Tools** — 9 built-in tools for tool lifecycle management (create, validate, approve, reload, list, skill)
+- **Approval System** — human-in-the-loop approval with interactive, auto-approve, and MCP patterns
+- **MCP Server** — Model Context Protocol server with HTTP and stdio transports
 - Decorator utilities (`@tool`, `setGlobalMatimoInstance`)
 - Zod-based schema validation for YAML tool definitions
 - **Structured error handling** — `MatimoError` with error chaining via optional `cause` field
@@ -45,14 +49,26 @@ await matimo.execute('calculator', { operation: 'add', a: 1, b: 2 });
 
 ## 🛠 Included Core Tools
 
-`@matimo/core` includes 6 built-in tools for common operations:
+`@matimo/core` includes 15 built-in tools:
 
+### Utility Tools
 - **`execute`** — Run shell commands with output capture, timeout, and working directory control
 - **`read`** — Read files with line range support and encoding detection
 - **`edit`** — Edit/replace content in files with backup
 - **`search`** — Search files with grep patterns and context
 - **`web`** — Fetch and parse web content
 - **`calculator`** — Basic arithmetic operations
+
+### Meta-Tools (Tool Lifecycle Management)
+- **`matimo_validate_tool`** — Validate YAML against schema + policy rules, returns risk level
+- **`matimo_create_tool`** — Write a new tool to disk with safety enforcement (forces draft + requires_approval)
+- **`matimo_approve_tool`** — Promote a draft tool with HMAC-signed approval manifest
+- **`matimo_reload_tools`** — Hot-reload all tools into the live registry without restart
+- **`matimo_list_user_tools`** — List tools in a directory with risk classification and status
+- **`matimo_create_skill`** — Create SKILL.md files with validated YAML frontmatter
+- **`matimo_list_skills`** — List skills in a directory with name, description, and path
+- **`matimo_get_skill`** — Read a skill's full content by name for agent context
+- **`matimo_validate_skill`** — Validate a skill against the Agent Skills specification
 
 All core tools use **function-based execution** (not shell commands) for better performance and reliability.
 
@@ -192,6 +208,146 @@ export NOTION_API_KEY=ntn_...
 - ✅ HTTP Executor validates all authentication before making requests
 - ✅ Missing credentials throw `MatimoError(AUTH_FAILED)` with helpful guidance
 
+## 🛡 Policy Engine
+
+The policy engine provides defense-in-depth security for AI agent tool usage. Policy is defined at deploy time and `Object.freeze()`'d at runtime — agents cannot modify it.
+
+```typescript
+import { MatimoInstance } from 'matimo';
+import type { PolicyConfig } from 'matimo';
+
+const policyConfig: PolicyConfig = {
+  allowedDomains: ['api.github.com', 'api.slack.com'],
+  allowedHttpMethods: ['GET', 'POST'],
+  allowCommandTools: false,
+  allowFunctionTools: false,
+  protectedNamespaces: ['matimo_'],
+};
+
+const matimo = await MatimoInstance.init({
+  toolPaths: ['./tools', './agent-tools'],
+  untrustedPaths: ['./agent-tools'],
+  policyConfig,
+});
+```
+
+### Content Validator (9 Rules)
+
+| Rule | Severity | What It Checks |
+|------|----------|----------------|
+| `no-function-execution` | critical | Blocks arbitrary code execution |
+| `no-command-execution` | critical | Blocks shell injection |
+| `no-ssrf` | critical | Blocks internal IPs/metadata endpoints |
+| `no-unauthorized-credentials` | high | Blocks unapproved credentials |
+| `reserved-namespace` | high | Blocks hijacking of `matimo_` prefix |
+| `force-approval` | medium | Enforces `requires_approval: true` |
+| `allowed-http-methods` | high | Blocks disallowed HTTP methods |
+| `allowed-domains` | high | Blocks disallowed domains |
+| `force-draft-status` | medium | Enforces `status: draft` on new tools |
+
+### Risk Classification
+
+| Risk Level | Criteria |
+|-----------|----------|
+| **critical** | `execution.type: function` |
+| **high** | `execution.type: command`, HTTP `DELETE`, `requires_approval: true` |
+| **medium** | HTTP `POST`, `PUT`, `PATCH` |
+| **low** | HTTP `GET`, `HEAD`, `OPTIONS` |
+
+See the full guide: [docs/tool-development/POLICY_AND_LIFECYCLE.md](../../docs/tool-development/POLICY_AND_LIFECYCLE.md)
+
+## 🔄 Tool Lifecycle (Create → Approve → Reload → Use)
+
+Agents can create tools at runtime with full policy enforcement:
+
+```typescript
+// 1. Create — writes YAML to disk (forces draft + requires_approval)
+await matimo.execute('matimo_create_tool', {
+  name: 'city_lookup',
+  target_dir: './agent-tools',
+  yaml_content: `
+name: city_lookup
+version: '1.0.0'
+description: Look up user information including city and address details
+parameters:
+  id: { type: string, required: true }
+execution:
+  type: http
+  method: GET
+  url: 'https://jsonplaceholder.typicode.com/users/{id}'
+`,
+});
+
+// 2. Approve — re-validates, signs HMAC, updates status to approved
+await matimo.execute('matimo_approve_tool', {
+  name: 'city_lookup',
+  tool_dir: './agent-tools',
+});
+
+// 3. Reload — clears registry, re-reads YAML, re-validates untrusted tools
+await matimo.execute('matimo_reload_tools', {});
+
+// 4. Use — tool is now in the live registry
+const result = await matimo.execute('city_lookup', { id: '1' });
+```
+
+This lifecycle works identically across SDK, LangChain, and MCP interfaces.
+
+See the full reference: [docs/tool-development/META_TOOLS.md](../../docs/tool-development/META_TOOLS.md)
+
+## ✅ Approval System
+
+Tools with `requires_approval: true` require human confirmation before execution:
+
+```typescript
+import { getGlobalApprovalHandler } from 'matimo';
+
+// Interactive terminal approval
+getGlobalApprovalHandler().setApprovalCallback(async (request) => {
+  console.log(`Tool: ${request.toolName}`);
+  console.log(`Params: ${JSON.stringify(request.params)}`);
+  // return true to approve, false to reject
+  return await promptUser('Approve? (y/n)');
+});
+
+// Auto-approve (CI/CD only)
+process.env.MATIMO_AUTO_APPROVE = 'true';
+
+// Pre-approved patterns
+process.env.MATIMO_APPROVED_PATTERNS = 'calculator,weather_*';
+```
+
+**MCP approval:** MCP clients pass `_matimo_approved: true` in arguments for tools that require approval.
+
+See: [docs/APPROVAL-SYSTEM.md](../../docs/APPROVAL-SYSTEM.md)
+
+## 🌐 MCP Server
+
+Serve Matimo tools via the Model Context Protocol:
+
+```typescript
+import { MCPServer } from 'matimo';
+
+const server = new MCPServer({
+  transport: 'http',
+  port: 3000,
+  toolPaths: ['./tools'],
+  policyConfig: { allowCommandTools: false },
+  mcpToken: process.env.MCP_TOKEN,
+});
+
+await server.start();
+// Tools available at POST http://localhost:3000/mcp
+```
+
+**Supports:**
+- HTTP and stdio transports
+- Bearer token authentication
+- Tool lifecycle via meta-tools (create, approve, reload)
+- Automatic `notifications/tools/list_changed` on reload
+
+See: [docs/MCP.md](../../docs/MCP.md)
+
 ## ✅ Validation & Output Schema
 
 All tool execution includes automatic validation:
@@ -240,12 +396,17 @@ To build:
 pnpm --filter "@matimo/core" build
 ```
 
-## 📚 Contributing
+## 📚 Documentation
 
-See the project CONTRIBUTING guide and `docs/tool-development/ADDING_TOOLS.md` for adding provider packages and tools.
-
-- Contributing: https://github.com/tallclub/matimo/blob/main/CONTRIBUTING.md
-- Add tools: ../../docs/tool-development/ADDING_TOOLS.md
+- [Quick Start](../../docs/getting-started/QUICK_START.md)
+- [API Reference](../../docs/api-reference/SDK.md)
+- [Policy & Lifecycle Guide](../../docs/tool-development/POLICY_AND_LIFECYCLE.md)
+- [Meta-Tools Reference](../../docs/tool-development/META_TOOLS.md)
+- [Approval System](../../docs/APPROVAL-SYSTEM.md)
+- [MCP Server](../../docs/MCP.md)
+- [Tool Specification](../../docs/tool-development/TOOL_SPECIFICATION.md)
+- [Adding Tools](../../docs/tool-development/ADDING_TOOLS.md)
+- [Contributing](https://github.com/tallclub/matimo/blob/main/CONTRIBUTING.md)
 
 ---
 

@@ -20,7 +20,7 @@ export type Parameter = z.infer<typeof ParameterSchema>;
 
 // Authentication configuration
 export const AuthConfigSchema = z.object({
-  type: z.enum(['api_key', 'basic', 'bearer', 'oauth2', 'custom']).optional(),
+  type: z.enum(['none', 'api_key', 'basic', 'bearer', 'oauth2', 'custom']).optional(),
   location: z.enum(['header', 'query', 'body']).optional(),
   name: z.string().optional(),
   provider: z.string().optional(),
@@ -80,8 +80,14 @@ export const ExecutionConfigSchema = z.discriminatedUnion('type', [
 export type ExecutionConfig = z.infer<typeof ExecutionConfigSchema>;
 
 // Output schema for validation
+// Aligned with TypeScript interface: type should be one of the known types (or unknown string for extensibility)
 export const OutputSchemaSchema = z.object({
-  type: z.string().optional(),
+  type: z
+    .union([
+      z.enum(['string', 'number', 'boolean', 'array', 'object']),
+      z.string(), // Allow other custom types for extensibility
+    ])
+    .optional(),
   properties: z.record(z.string(), z.unknown()).optional(),
   required: z.array(z.string()).optional(),
   description: z.string().optional(),
@@ -92,7 +98,7 @@ export type OutputSchema = z.infer<typeof OutputSchemaSchema>;
 // Error handling configuration
 export const ErrorHandlingSchema = z.object({
   retry: z.number().optional(),
-  backoff_type: z.enum(['linear', 'exponential']).optional(),
+  backoff_type: z.enum(['linear', 'exponential', 'fixed']).optional(),
   initial_delay_ms: z.number().optional(),
   max_delay_ms: z.number().optional(),
 });
@@ -133,6 +139,7 @@ export const ToolDefinitionSchema = z.object({
   deprecated: z.boolean().optional(),
   tags: z.array(z.string()).optional(),
   deprecation_message: z.string().optional(),
+  status: z.enum(['draft', 'approved', 'deprecated']).optional(),
   // _definitionPath: z.string().optional(), // Internal use for tracking source file path
 });
 

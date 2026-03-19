@@ -144,8 +144,15 @@ export class ApprovalHandler {
   /**
    * Set approval callback for interactive/custom approval
    */
-  setApprovalCallback(callback: ApprovalCallback): void {
+  setApprovalCallback(callback: ApprovalCallback | null): void {
     this.approvalCallback = callback;
+  }
+
+  /**
+   * Get the current approval callback (for save/restore patterns)
+   */
+  getApprovalCallback(): ApprovalCallback | null {
+    return this.approvalCallback;
   }
 
   /**

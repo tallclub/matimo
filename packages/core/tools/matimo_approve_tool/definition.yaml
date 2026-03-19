@@ -1,0 +1,36 @@
+name: matimo_approve_tool
+version: '1.0.0'
+description: Approve a draft tool for production use. Re-validates the tool, requires admin role, signs with HMAC, and updates the approval manifest.
+requires_approval: true
+tags:
+  - matimo
+  - meta
+  - approval
+
+parameters:
+  name:
+    type: string
+    required: true
+    description: Name of the tool to approve
+  tool_dir:
+    type: string
+    required: false
+    description: Directory containing the tool (default ./matimo-tools)
+
+execution:
+  type: function
+  code: './matimo_approve_tool.ts'
+
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+    name:
+      type: string
+    hash:
+      type: string
+    approvedAt:
+      type: string
+    message:
+      type: string

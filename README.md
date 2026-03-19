@@ -73,6 +73,8 @@ Matimo ships with built-in support for:
 - **OAuth2 Support**: Provider-agnostic authorization for Slack, Gmail, GitHub, etc.
 - **Framework Support**: Factory pattern, Decorator pattern, LangChain, CrewAI
 - **TypeScript SDK**: Full type safety and IDE support
+- **Agent Skills System**: [SKILL.md](https://agentskills.io) knowledge files with semantic search, content chunking, and progressive disclosure
+- **Policy Engine**: 9 security rules, HITL quarantine, hot-reload, SHA-256 integrity tracking, HMAC approvals, audit events
 
 ## Why Matimo?
 
@@ -174,6 +176,64 @@ cd examples/tools && pnpm install && pnpm agent:factory
 
 ---
 
+## Skills System
+
+Matimo supports the [Agent Skills specification](https://agentskills.io) — structured knowledge files (`SKILL.md`) that teach agents domain expertise at runtime.
+
+```typescript
+// Discover available skills (Level 1 — metadata only)
+const skills = matimo.listSkills();
+
+// Load a specific skill (Level 2 — full content)
+const skill = matimo.getSkill('slack');
+
+// Load only the sections you need (smart context management)
+const content = matimo.getSkillContent('postgres', {
+  sections: ['Error Handling', 'Parameterized Queries'],
+  maxTokens: 500,
+});
+
+// Semantic search across all skills
+const results = await matimo.semanticSearchSkills('How do I handle rate limiting?');
+```
+
+**Each provider ships one skill** with domain knowledge for all its tools. Agents load skills on demand — no context bloat.
+
+See [Skills Documentation](./docs/skills/SKILLS.md) for the full guide.
+
+## Policy Engine & HITL
+
+Matimo includes a defense-in-depth policy engine for agent tool usage:
+
+```typescript
+const matimo = await MatimoInstance.init({
+  toolPaths: ['./tools', './agent-tools'],
+  policyFile: './policy.yaml', // 9 security rules, domain allowlists
+  untrustedPaths: ['./agent-tools'], // Agent-created tools validated here
+  onHITL: async (request) => {
+    // Human-in-the-loop quarantine
+    console.log(`Approve ${request.toolName}? Risk: ${request.riskLevel}`);
+    return promptUser();
+  },
+  onEvent: (event) => auditLog.push(event),
+});
+
+// Hot-reload policy at runtime (no restart needed)
+await matimo.reloadPolicy('./policy-prod.yaml');
+```
+
+**Key features:**
+
+- 9 deterministic security rules (SSRF detection, namespace protection, credential allowlists)
+- HITL quarantine — medium-risk tools pause for human approval instead of auto-rejecting
+- Policy hot-reload — swap policies at runtime with automatic tool re-validation
+- SHA-256 integrity tracking + HMAC approval manifest
+- Full audit trail via structured events
+
+See [Policy & Lifecycle Docs](./docs/api-reference/POLICY_AND_LIFECYCLE.md) for the complete reference.
+
+---
+
 ## Features **Coming Soon:**
 
 - More tool providers (Stripe, Jira, Linear, etc.)
@@ -226,6 +286,9 @@ See [Adding Tools to Matimo](./docs/tool-development/ADDING_TOOLS.md) for the co
 
 - [Getting Started](./docs/getting-started/)
 - [API Reference](./docs/api-reference/SDK.md)
+- [Skills System](./docs/skills/SKILLS.md)
+- [Policy Engine & Tool Lifecycle](./docs/api-reference/POLICY_AND_LIFECYCLE.md)
+- [LangChain Integration](./docs/framework-integrations/LANGCHAIN.md)
 - [Tool Development](./docs/tool-development/ADDING_TOOLS.md)
 - [Architecture Overview](./docs/architecture/OVERVIEW.md)
 - [Contributing](./CONTRIBUTING.md)
