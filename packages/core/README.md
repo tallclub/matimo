@@ -22,7 +22,7 @@ pnpm add @matimo/core
 - `MatimoInstance` — initialization, discovery, registry, and execution API
 - **Executors** — Command (shell), HTTP (REST with object/array embedding), Function (JS/TS)
 - **Policy Engine** — content validation, risk classification, RBAC, integrity tracking
-- **Meta-Tools** — 6 built-in tools for tool lifecycle management (create, validate, approve, reload, list, skill)
+- **Meta-Tools** — 9 built-in tools for tool lifecycle management (create, validate, approve, reload, list, skill)
 - **Approval System** — human-in-the-loop approval with interactive, auto-approve, and MCP patterns
 - **MCP Server** — Model Context Protocol server with HTTP and stdio transports
 - Decorator utilities (`@tool`, `setGlobalMatimoInstance`)
@@ -49,7 +49,7 @@ await matimo.execute('calculator', { operation: 'add', a: 1, b: 2 });
 
 ## 🛠 Included Core Tools
 
-`@matimo/core` includes 13 built-in tools:
+`@matimo/core` includes 15 built-in tools:
 
 ### Utility Tools
 - **`execute`** — Run shell commands with output capture, timeout, and working directory control

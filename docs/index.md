@@ -82,7 +82,7 @@ Then explore [Three Integration Patterns](./architecture/OVERVIEW.md#three-integ
   - Token management
   - Security best practices
 
-### � **Policy & Lifecycle (Security)**
+### 🛡️ **Policy & Lifecycle (Security)**
 
 - **[Policy Engine & Tool Lifecycle](./api-reference/POLICY_AND_LIFECYCLE.md)** — Complete security guide
   - PolicyConfig setup and immutability
@@ -110,7 +110,7 @@ Then explore [Three Integration Patterns](./architecture/OVERVIEW.md#three-integ
   - Environment variables
   - Callback patterns
 
-### �🔴 **Advanced Topics**
+### 🔴 **Advanced Topics**
 
 - **[OAuth Architecture](./architecture/OAUTH.md)** — Deep dive into OAuth2
   - Protocol flow details
@@ -220,14 +220,14 @@ Then explore [Three Integration Patterns](./architecture/OVERVIEW.md#three-integ
 2. [Framework Integrations](./framework-integrations/LANGCHAIN.md) — Integration examples
 3. [SDK Patterns](./user-guide/SDK_PATTERNS.md) — Best practices
 
-### � Securing Agent Tool Usage
+### 🔒 Securing Agent Tool Usage
 1. [Policy & Lifecycle Guide](./api-reference/POLICY_AND_LIFECYCLE.md) — Full security setup
 2. [Meta-Tools Reference](./api-reference/META_TOOLS.md) — Built-in management tools
 3. [Approval System](./api-reference/APPROVAL-SYSTEM.md) — Approval handler config
 4. [Policy Demo](https://github.com/tallclub/matimo/tree/main/examples/tools/policy) — 11-mission autonomous agent demo
 5. [Skills Demo](https://github.com/tallclub/matimo/tree/main/examples/tools/skills) — 5-mission skills lifecycle demo
 
-### �👨‍💻 Contributing Code
+### 👨‍💻 Contributing Code
 1. **Start here:** [Contributing Guidelines](https://github.com/tallclub/matimo/blob/main/CONTRIBUTING.md)
 2. Clone repo and set up locally
 3. [Commit Guidelines](./community/COMMIT_GUIDELINES.md) — Proper commit format
