@@ -23,7 +23,6 @@ import { toolToMcpRegistration, extractAuthPlaceholders } from './tool-converter
 import { createResolverChain, SecretResolverChain } from './secrets/resolver-chain';
 import type { SecretResolverChainConfig } from './secrets/types';
 import type { ToolDefinition } from '../core/schema';
-import { getGlobalApprovalHandler } from '../approval/approval-handler';
 
 // ─── Types ──────────────────────────────────────────────────────────────
 
@@ -54,8 +53,6 @@ export interface MCPServerOptions {
   selfSigned?: boolean;
   /** Policy configuration for tool filtering. Creates a DefaultPolicyEngine. */
   policyConfig?: import('../policy/types').PolicyConfig;
-  /** Policy context applied to all MCP tool filtering. */
-  policyContext?: import('../policy/types').PolicyContext;
   /** Paths containing untrusted (agent-created) tools. Subject to policy validation on reload. */
   untrustedPaths?: string[];
   /** HMAC secret for approval manifest. */
@@ -370,23 +367,13 @@ export class MCPServer {
               }
 
               // Strip _matimo_approved from args before passing to execute.
-              // When MCP already confirmed approval, temporarily set an
-              // auto-approve callback so MatimoInstance.execute() doesn't
+              // When MCP already confirmed approval, pass a per-execution
+              // approval override so MatimoInstance.execute() doesn't
               // re-prompt via the interactive handler.
               const { _matimo_approved, ...cleanArgs } = args;
-              const approvalHandler = getGlobalApprovalHandler();
-              let result: unknown;
-              if (_matimo_approved) {
-                const prevCallback = approvalHandler.getApprovalCallback();
-                approvalHandler.setApprovalCallback(async () => true);
-                try {
-                  result = await matimo.execute(tool.name, cleanArgs);
-                } finally {
-                  approvalHandler.setApprovalCallback(prevCallback);
-                }
-              } else {
-                result = await matimo.execute(tool.name, cleanArgs);
-              }
+              const result = await matimo.execute(tool.name, cleanArgs, {
+                approved: _matimo_approved === true,
+              });
 
               return {
                 content: [

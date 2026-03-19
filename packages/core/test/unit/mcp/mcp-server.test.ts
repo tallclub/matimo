@@ -349,7 +349,7 @@ describe('MCPServer', () => {
       expect(result).toEqual({
         content: [{ type: 'text', text: JSON.stringify({ result: 'hello' }, null, 2) }],
       });
-      expect(mockExecute).toHaveBeenCalledWith('test_tool', { message: 'hi' });
+      expect(mockExecute).toHaveBeenCalledWith('test_tool', { message: 'hi' }, { approved: false });
 
       await server.stop();
     });
@@ -448,9 +448,13 @@ describe('MCPServer', () => {
       expect(result).toEqual({
         content: [{ type: 'text', text: JSON.stringify({ deleted: true }, null, 2) }],
       });
-      expect(mockExecute).toHaveBeenCalledWith('dangerous_delete', {
-        message: 'delete all',
-      });
+      expect(mockExecute).toHaveBeenCalledWith(
+        'dangerous_delete',
+        {
+          message: 'delete all',
+        },
+        { approved: true }
+      );
 
       await server.stop();
     });

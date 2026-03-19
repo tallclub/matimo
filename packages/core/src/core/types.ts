@@ -235,6 +235,13 @@ export interface ExecuteOptions {
    * this context is checked against the tool's requirements before execution.
    */
   context?: import('../policy/types').PolicyContext;
+  /**
+   * Skip approval check for this execution. Use when the caller (e.g., MCP layer)
+   * has already confirmed approval out-of-band, to avoid re-prompting the user.
+   * Does not override policy-level quarantine checks (pending_approval state).
+   * Default: false
+   */
+  approved?: boolean;
 }
 
 /**

@@ -457,7 +457,15 @@ export class MatimoInstance {
         scanContent
       );
 
-      if (requiresApproval && !this.approvalHandler.isPreApproved(toolName)) {
+      // Skip approval prompt if options.approved=true (e.g., MCP pre-confirmed approval).
+      // This avoids mutating global state in concurrent scenarios.
+      const skipApprovalPrompt = options?.approved === true;
+
+      if (
+        requiresApproval &&
+        !this.approvalHandler.isPreApproved(toolName) &&
+        !skipApprovalPrompt
+      ) {
         this.logger.debug(`Approval required for: ${toolName}`, { toolName });
         await this.approvalHandler.requestApproval({
           toolName,
