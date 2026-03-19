@@ -5,6 +5,7 @@ import {
   validateToolDefinition,
   validateToolContent,
   classifyRisk,
+  getTierForTool,
   getGlobalMatimoLogger,
 } from '@matimo/core';
 import type { Violation } from '@matimo/core';
@@ -22,6 +23,13 @@ interface CreateResult {
   path?: string;
   riskLevel?: string;
   status?: string;
+  /** Signals what approval state the tool is in after creation.
+   * - `pending`: requires human approval before execution (untrusted source, non-trivial risk)
+   * - `auto-approved`: low-risk read-only GET tool, can be used immediately
+   * - `approved`: manually approved (set externally by matimo_approve_tool)
+   * - `rejected`: policy blocked the tool
+   */
+  approvalState?: 'pending' | 'auto-approved' | 'approved' | 'rejected';
   message: string;
   errors?: string[];
 }
@@ -83,8 +91,10 @@ export default async function matimoCreateTool(
     };
   }
 
-  // Step 6: Classify risk
+  // Step 6: Classify risk + tier
   const riskLevel = classifyRisk(tool);
+  const tier = getTierForTool(tool);
+  const approvalState: CreateResult['approvalState'] = tier === 'auto' ? 'auto-approved' : 'pending';
 
   // Step 7: Write to disk
   const toolDirPath = path.resolve(targetDir, params.name);
@@ -108,13 +118,20 @@ export default async function matimoCreateTool(
     name: params.name,
     path: filePath,
     riskLevel,
+    approvalState,
   });
+
+  const message =
+    approvalState === 'auto-approved'
+      ? 'Tool created and auto-approved (low-risk read-only). Ready for use.'
+      : 'Tool created as draft. Requires approval before execution. Use matimo_approve_tool to promote.';
 
   return {
     success: true,
     path: filePath,
     riskLevel,
     status: 'draft',
-    message: 'Tool created as draft. Use matimo_approve_tool to promote.',
+    approvalState,
+    message,
   };
 }

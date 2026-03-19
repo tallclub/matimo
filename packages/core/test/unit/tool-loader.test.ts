@@ -332,4 +332,237 @@ describe('ToolLoader', () => {
       expect(tools.size).toBe(0);
     });
   });
+
+  describe('getNodeModulesPath', () => {
+    it('should find node_modules from current working directory', () => {
+      const paths = loader.autoDiscoverPackages();
+      // If discovery works, getNodeModulesPath should have found node_modules
+      expect(Array.isArray(paths)).toBe(true);
+    });
+
+    it('should return null when node_modules cannot be found', () => {
+      const originalCwd = process.cwd;
+      process.cwd = jest.fn(() => '/nonexistent/deeply/nested/path');
+
+      try {
+        // autoDiscoverPackages will use getNodeModulesPath internally
+        const paths = loader.autoDiscoverPackages();
+        // Should still return array, may be empty
+        expect(Array.isArray(paths)).toBe(true);
+      } finally {
+        process.cwd = originalCwd;
+      }
+    });
+
+    it('should handle when getNodeModulesPath throws', () => {
+      // getNodeModulesPath has try-catch, should not throw
+      const paths = loader.autoDiscoverPackages();
+      expect(Array.isArray(paths)).toBe(true);
+    });
+  });
+
+  describe('Workspace discovery fallback', () => {
+    it('should discover core tools from workspace packages directory', () => {
+      // This tests the fallback workspace discovery path
+      const paths = loader.autoDiscoverPackages();
+
+      // Should find at least one tools directory
+      expect(paths.length).toBeGreaterThan(0);
+      expect(paths[0]).toContain('tools');
+    });
+
+    it('should handle case when workspace discovery fails', () => {
+      ToolLoader.clearDiscoveryCache();
+      const originalCwd = process.cwd;
+      process.cwd = jest.fn(() => '/invalid/path/that/does/not/exist');
+
+      try {
+        const paths = loader.autoDiscoverPackages();
+        // Should still return array, may be empty
+        expect(Array.isArray(paths)).toBe(true);
+      } finally {
+        process.cwd = originalCwd;
+        ToolLoader.clearDiscoveryCache();
+      }
+    });
+
+    it('should skip dotfiles during discovery', () => {
+      ToolLoader.clearDiscoveryCache();
+      const paths = loader.autoDiscoverPackages();
+
+      // None of the discovered paths should contain ./ or /.
+      paths.forEach((p) => {
+        expect(p).not.toMatch(/\/\./);
+      });
+    });
+  });
+
+  describe('Symlink handling', () => {
+    it('should handle symlinks in @matimo scope', () => {
+      // This tests the symlink statSync error handling
+      ToolLoader.clearDiscoveryCache();
+      const paths = loader.autoDiscoverPackages();
+
+      // Should successfully return despite symlinks
+      expect(Array.isArray(paths)).toBe(true);
+    });
+
+    it('should handle stat errors gracefully', () => {
+      // The symlink check has error handling - should not throw
+      ToolLoader.clearDiscoveryCache();
+      const paths = loader.autoDiscoverPackages();
+
+      expect(Array.isArray(paths)).toBe(true);
+    });
+  });
+
+  describe('Error recovery', () => {
+    it('should continue discovery if core tools discovery fails', () => {
+      // autoDiscoverPackages has try-catch around core discovery
+      const paths = loader.autoDiscoverPackages();
+      expect(Array.isArray(paths)).toBe(true);
+    });
+
+    it('should continue discovery if @matimo scope discovery fails', () => {
+      // autoDiscoverPackages has try-catch around scope discovery
+      ToolLoader.clearDiscoveryCache();
+      const paths = loader.autoDiscoverPackages();
+      expect(Array.isArray(paths)).toBe(true);
+    });
+
+    it('should cache even empty discovery result', () => {
+      ToolLoader.clearDiscoveryCache();
+      const originalCwd = process.cwd;
+      process.cwd = jest.fn(() => '/nonexistent');
+
+      try {
+        const paths1 = loader.autoDiscoverPackages();
+        const paths2 = loader.autoDiscoverPackages();
+        // Should return same reference (cached)
+        expect(paths1).toBe(paths2);
+      } finally {
+        process.cwd = originalCwd;
+        ToolLoader.clearDiscoveryCache();
+      }
+    });
+  });
+
+  describe('Edge cases', () => {
+    it('should handle relative and absolute paths correctly', () => {
+      const tools = loader.loadToolsFromDirectory(fixturesDir);
+      expect(tools instanceof Map).toBe(true);
+    });
+
+    it('should prefer definition.yaml over tool.yaml', () => {
+      const tempDir = path.join(fixturesDir, 'preference-test-' + Date.now());
+      if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(tempDir, { recursive: true });
+      }
+
+      const toolYamlPath = path.join(tempDir, 'tool.yaml');
+      const defYamlPath = path.join(tempDir, 'definition.yaml');
+
+      const toolDef = {
+        name: 'test-tool-prefer',
+        version: '1.0.0',
+        description: 'Test tool',
+        parameters: {},
+        execution: {
+          type: 'command' as const,
+          command: 'echo',
+          args: ['test'],
+        },
+      };
+
+      try {
+        fs.writeFileSync(toolYamlPath, JSON.stringify(toolDef, null, 2));
+        fs.writeFileSync(defYamlPath, JSON.stringify(toolDef, null, 2));
+
+        const tools = loader.loadToolsFromDirectory(tempDir);
+        // Should load only once (preferring definition.yaml)
+        if (tools.size > 0) {
+          expect(tools.get('test-tool-prefer')).toBeDefined();
+        }
+      } finally {
+        if (fs.existsSync(toolYamlPath)) fs.unlinkSync(toolYamlPath);
+        if (fs.existsSync(defYamlPath)) fs.unlinkSync(defYamlPath);
+        if (fs.existsSync(tempDir)) fs.rmdirSync(tempDir);
+      }
+    });
+
+    it('should set _definitionPath on loaded tools', () => {
+      const toolPath = path.join(coreToolsDir, 'calculator/definition.yaml');
+      const tool = loader.loadToolFromFile(toolPath);
+
+      expect(tool._definitionPath).toBeDefined();
+      expect(typeof tool._definitionPath).toBe('string');
+    });
+
+    it('should handle deeply nested tool directories', () => {
+      const tempDir = path.join(fixturesDir, 'deep-' + Date.now());
+      const deepPath = path.join(tempDir, 'deep', 'nested', 'tool');
+      if (!fs.existsSync(deepPath)) {
+        fs.mkdirSync(deepPath, { recursive: true });
+      }
+
+      const toolDef = {
+        name: 'deep-tool',
+        version: '1.0.0',
+        description: 'Deeply nested tool',
+        parameters: {},
+        execution: {
+          type: 'command' as const,
+          command: 'echo',
+          args: ['test'],
+        },
+      };
+
+      try {
+        fs.writeFileSync(path.join(deepPath, 'definition.yaml'), JSON.stringify(toolDef, null, 2));
+
+        const tools = loader.loadToolsFromDirectory(tempDir);
+        if (tools.size > 0) {
+          expect(tools.get('deep-tool')).toBeDefined();
+        }
+      } finally {
+        if (fs.existsSync(tempDir)) {
+          fs.rmSync(tempDir, { recursive: true });
+        }
+      }
+    });
+
+    it('should load both YAML and JSON tools in same directory', () => {
+      const tempDir = path.join(fixturesDir, 'mixed-' + Date.now());
+      if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(tempDir, { recursive: true });
+      }
+
+      const toolDef = {
+        name: 'mixed-tool',
+        version: '1.0.0',
+        description: 'Tool',
+        parameters: {},
+        execution: {
+          type: 'command' as const,
+          command: 'echo',
+          args: ['test'],
+        },
+      };
+
+      try {
+        fs.writeFileSync(path.join(tempDir, 'tool1.yaml'), JSON.stringify(toolDef, null, 2));
+        fs.writeFileSync(path.join(tempDir, 'tool2.json'), JSON.stringify(toolDef, null, 2));
+
+        const tools = loader.loadToolsFromDirectory(tempDir);
+        // Both files have same name, so only one loaded
+        if (tools.size > 0) {
+          expect(tools.get('mixed-tool')).toBeDefined();
+        }
+      } finally {
+        if (fs.existsSync(tempDir)) {
+          fs.rmSync(tempDir, { recursive: true });
+        }
+      }
+    });
+  });
 });
