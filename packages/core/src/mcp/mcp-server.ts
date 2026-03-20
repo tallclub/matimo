@@ -333,7 +333,7 @@ export class MCPServer {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private async createMcpServerWithTools(): Promise<any> {
     const { McpServer } = await import(
-      // @ts-expect-error — resolves at runtime via bundler moduleResolution
+      // @ts-ignore — TS2307: module not found at compile time, resolves at runtime
       '@modelcontextprotocol/sdk/server/mcp'
     );
     const logger = getGlobalMatimoLogger();
@@ -425,7 +425,7 @@ export class MCPServer {
    */
   private async connectStdio(): Promise<void> {
     const { StdioServerTransport } = await import(
-      // @ts-expect-error — resolves at runtime via bundler moduleResolution
+      // @ts-ignore — TS2307: module not found at compile time, resolves at runtime
       '@modelcontextprotocol/sdk/server/stdio'
     );
 
@@ -450,13 +450,13 @@ export class MCPServer {
   private async connectHttp(): Promise<void> {
     const http = await import('http');
     const { StreamableHTTPServerTransport } = (await import(
-      // @ts-expect-error — Cannot find module at compile time; resolves at runtime via bundler
+      // @ts-ignore — TS2307: module not found at compile time, resolves at runtime
       '@modelcontextprotocol/sdk/server/streamableHttp'
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     )) as any;
     const { randomUUID } = await import('crypto');
     const { isInitializeRequest } = (await import(
-      // @ts-expect-error — Cannot find module at compile time; resolves at runtime via bundler
+      // @ts-ignore — TS2307: module not found at compile time, resolves at runtime
       '@modelcontextprotocol/sdk/types'
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     )) as any;
