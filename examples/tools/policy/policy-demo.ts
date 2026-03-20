@@ -44,8 +44,6 @@ import path from 'path';
 import fs from 'fs';
 import os from 'os';
 import readline from 'readline';
-import { fileURLToPath } from 'url';
-import { createRequire } from 'module';
 import { ChatOpenAI } from '@langchain/openai';
 import { BaseMessage, HumanMessage, SystemMessage, ToolMessage } from '@langchain/core/messages';
 import {
@@ -57,6 +55,7 @@ import {
   ToolIntegrityTracker,
   ApprovalManifest,
   getGlobalApprovalHandler,
+  setGlobalMatimoInstance,
   MCPServer,
 } from 'matimo';
 import type {
@@ -68,8 +67,6 @@ import type {
   ApprovalRequest,
 } from 'matimo';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
 // ─── Formatting Helpers ─────────────────────────────────────────────────
 
 const PASS = '\x1b[32m✓ PASS\x1b[0m';
@@ -78,18 +75,18 @@ const BLOCKED = '\x1b[33m⊘ BLOCKED\x1b[0m';
 const INFO = '\x1b[36mℹ\x1b[0m';
 
 function header(title: string): void {
-  console.log('\n' + '═'.repeat(68));
-  console.log(`  ${title}`);
-  console.log('═'.repeat(68));
+  console.info('\n' + '═'.repeat(68));
+  console.info(`  ${title}`);
+  console.info('═'.repeat(68));
 }
 
 function subheader(title: string): void {
-  console.log(`\n  ── ${title} ${'─'.repeat(Math.max(0, 58 - title.length))}`);
+  console.info(`\n  ── ${title} ${'─'.repeat(Math.max(0, 58 - title.length))}`);
 }
 
 function result(label: string, status: string, detail?: string): void {
   const msg = detail ? `${status}  ${label}: ${detail}` : `${status}  ${label}`;
-  console.log(`    ${msg}`);
+  console.info(`    ${msg}`);
 }
 
 // ─── Interactive Terminal Approval ──────────────────────────────────────
@@ -134,17 +131,17 @@ function nextStdinLine(prompt: string): Promise<string> {
 async function interactiveApproval(request: ApprovalRequest): Promise<boolean> {
   // If already whitelisted by a previous approval, auto-approve
   if (approvedWhitelist.has(request.toolName)) {
-    console.log(`    ${PASS}  Auto-approved (whitelisted): ${request.toolName}`);
+    console.info(`    ${PASS}  Auto-approved (whitelisted): ${request.toolName}`);
     return true;
   }
 
-  console.log('\n    ┌──────────────────────────────────────────────────────────────┐');
-  console.log('    │  🛡️  HUMAN-IN-THE-LOOP APPROVAL REQUIRED                     │');
-  console.log('    ├──────────────────────────────────────────────────────────────┤');
-  console.log(`    │  Tool:        ${request.toolName}`);
-  console.log(`    │  Description: ${(request.description || 'N/A').slice(0, 50)}`);
-  console.log(`    │  Params:      ${JSON.stringify(request.params).slice(0, 50)}…`);
-  console.log('    └──────────────────────────────────────────────────────────────┘');
+  console.info('\n    ┌──────────────────────────────────────────────────────────────┐');
+  console.info('    │  🛡️  HUMAN-IN-THE-LOOP APPROVAL REQUIRED                     │');
+  console.info('    ├──────────────────────────────────────────────────────────────┤');
+  console.info(`    │  Tool:        ${request.toolName}`);
+  console.info(`    │  Description: ${(request.description || 'N/A').slice(0, 50)}`);
+  console.info(`    │  Params:      ${JSON.stringify(request.params).slice(0, 50)}…`);
+  console.info('    └──────────────────────────────────────────────────────────────┘');
 
   const answer = (await nextStdinLine('    ❓ Approve this operation? (y/n): '))
     .trim()
@@ -154,10 +151,10 @@ async function interactiveApproval(request: ApprovalRequest): Promise<boolean> {
 
   if (approved) {
     approvedWhitelist.add(request.toolName);
-    console.log(`    ${PASS}  Approved — "${request.toolName}" added to session whitelist.`);
-    console.log(`    ${INFO}  Whitelist: [${[...approvedWhitelist].join(', ')}]\n`);
+    console.info(`    ${PASS}  Approved — "${request.toolName}" added to session whitelist.`);
+    console.info(`    ${INFO}  Whitelist: [${[...approvedWhitelist].join(', ')}]\n`);
   } else {
-    console.log(`    ${BLOCKED}  Rejected by human operator.\n`);
+    console.info(`    ${BLOCKED}  Rejected by human operator.\n`);
   }
 
   return approved;
@@ -317,7 +314,7 @@ async function runMission(
       messages.push(response);
 
       for (const toolCall of response.tool_calls) {
-        console.log(
+        console.info(
           `    🔧 Agent calls: ${toolCall.name}(${JSON.stringify(toolCall.args).slice(0, 120)}${JSON.stringify(toolCall.args).length > 120 ? '…' : ''})`
         );
 
@@ -325,7 +322,7 @@ async function runMission(
           const toolResult = await matimo.execute(toolCall.name, toolCall.args);
           const resultStr =
             typeof toolResult === 'string' ? toolResult : JSON.stringify(toolResult, null, 2);
-          console.log(
+          console.info(
             `    📋 Result: ${resultStr.slice(0, 200)}${resultStr.length > 200 ? '…' : ''}`
           );
 
@@ -338,7 +335,7 @@ async function runMission(
           );
         } catch (err) {
           const errorMsg = err instanceof Error ? err.message : String(err);
-          console.log(`    ❌ Policy/Error: ${errorMsg.slice(0, 200)}`);
+          console.info(`    ❌ Policy/Error: ${errorMsg.slice(0, 200)}`);
 
           messages.push(
             new ToolMessage({
@@ -353,7 +350,7 @@ async function runMission(
       // Agent reached its conclusion
       const finalText =
         typeof response.content === 'string' ? response.content : JSON.stringify(response.content);
-      console.log(`    💬 Agent conclusion: ${finalText.slice(0, 300)}`);
+      console.info(`    💬 Agent conclusion: ${finalText.slice(0, 300)}`);
       return finalText;
     }
   }
@@ -364,10 +361,10 @@ async function runMission(
 // ─── Main ───────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
-  console.log('\n╔════════════════════════════════════════════════════════════════════╗');
-  console.log('║    Matimo Policy Engine — LangChain Agent Demonstration            ║');
-  console.log('║    A real LLM agent discovers policy boundaries firsthand          ║');
-  console.log('╚════════════════════════════════════════════════════════════════════╝');
+  console.info('\n╔════════════════════════════════════════════════════════════════════╗');
+  console.info('║    Matimo Policy Engine — LangChain Agent Demonstration            ║');
+  console.info('║    A real LLM agent discovers policy boundaries firsthand          ║');
+  console.info('╚════════════════════════════════════════════════════════════════════╝');
 
   // ── Verify OpenAI API key ─────────────────────────────────────────
 
@@ -408,31 +405,25 @@ async function main(): Promise<void> {
       allowedCredentials: ['WEATHER_API_KEY'],
     };
 
-    console.log(`\n  ${INFO} Policy Configuration:`);
-    console.log(`    • allowedDomains:      ${policyConfig.allowedDomains!.join(', ')}`);
-    console.log(`    • allowedHttpMethods:  ${policyConfig.allowedHttpMethods!.join(', ')}`);
-    console.log(`    • allowCommandTools:   ${policyConfig.allowCommandTools}`);
-    console.log(`    • allowFunctionTools:  ${policyConfig.allowFunctionTools}`);
-    console.log(`    • protectedNamespaces: ${policyConfig.protectedNamespaces!.join(', ')}`);
+    console.info(`\n  ${INFO} Policy Configuration:`);
+    console.info(`    • allowedDomains:      ${policyConfig.allowedDomains!.join(', ')}`);
+    console.info(`    • allowedHttpMethods:  ${policyConfig.allowedHttpMethods!.join(', ')}`);
+    console.info(`    • allowCommandTools:   ${policyConfig.allowCommandTools}`);
+    console.info(`    • allowFunctionTools:  ${policyConfig.allowFunctionTools}`);
+    console.info(`    • protectedNamespaces: ${policyConfig.protectedNamespaces!.join(', ')}`);
 
     // Resolve core tools path for calculator + meta-tools
-    const require = createRequire(import.meta.url);
-    const coreMain = require.resolve('@matimo/core');
-    // coreMain is .../packages/core/dist/index.js → go up to packages/core/
-    const corePkg = path.resolve(coreMain, '..', '..');
-    const coreToolsPath = path.join(corePkg, 'tools');
-
     const matimo = await MatimoInstance.init({
-      toolPaths: [coreToolsPath, tempDir],
-      autoDiscover: false,
-      includeCore: false,
+      autoDiscover: true,
+      toolPaths: [tempDir],
       policyConfig,
       logLevel: 'silent',
       untrustedPaths: [tempDir],
       onEvent: (event: MatimoEvent) => auditLog.push(event),
     });
-    console.log(`    ${INFO} untrustedPaths: [${tempDir}]`);
-    console.log(`    ${INFO} Agent-created tools in this dir will be picked up on reload.`);
+    setGlobalMatimoInstance(matimo);
+    console.info(`    ${INFO} untrustedPaths: [${tempDir}]`);
+    console.info(`    ${INFO} Agent-created tools in this dir will be picked up on reload.`);
 
     // ── Set up interactive terminal approval (human-in-the-loop) ────
     //
@@ -442,12 +433,12 @@ async function main(): Promise<void> {
     const approvalHandler = getGlobalApprovalHandler();
     approvalHandler.setApprovalCallback(interactiveApproval);
     result('Interactive terminal approval callback installed', PASS);
-    console.log(`    ${INFO} Tools with requires_approval will prompt for human consent.`);
+    console.info(`    ${INFO} Tools with requires_approval will prompt for human consent.`);
 
     const tools = matimo.listTools();
     result(`Matimo initialized — ${tools.length} tools loaded`, PASS);
     result(`Policy engine active: ${matimo.hasPolicy()}`, PASS);
-    console.log(`    ${INFO} Available tools: ${tools.map((t) => t.name).join(', ')}`);
+    console.info(`    ${INFO} Available tools: ${tools.map((t) => t.name).join(', ')}`);
 
     // Convert to LangChain format so the LLM can call them
     const langchainTools = await convertToolsToLangChain(tools as ToolDefinition[], matimo);
@@ -478,7 +469,7 @@ async function main(): Promise<void> {
 
     // Mission 1: Agent discovers the calculator
     subheader('Mission 1: Calculate a result');
-    console.log('    🎯 Goal: "What is 42 + 58?" — agent discovers the calculator tool.\n');
+    console.info('    🎯 Goal: "What is 42 + 58?" — agent discovers the calculator tool.\n');
     await runMission(
       llmWithTools,
       matimo,
@@ -487,7 +478,7 @@ async function main(): Promise<void> {
 
     // Mission 2: Agent discovers the validation tool
     subheader('Mission 2: Check if a weather API tool is safe');
-    console.log('    🎯 Goal: "Is this tool safe?" — agent discovers matimo_validate_tool.\n');
+    console.info('    🎯 Goal: "Is this tool safe?" — agent discovers matimo_validate_tool.\n');
     await runMission(
       llmWithTools,
       matimo,
@@ -496,7 +487,7 @@ async function main(): Promise<void> {
 
     // Mission 3: Agent reviews a malicious shell command tool
     subheader('Mission 3: Review a shell command tool');
-    console.log('    🎯 Goal: "Review this for security" — agent discovers policy violations.\n');
+    console.info('    🎯 Goal: "Review this for security" — agent discovers policy violations.\n');
     await runMission(
       llmWithTools,
       matimo,
@@ -505,7 +496,7 @@ async function main(): Promise<void> {
 
     // Mission 4: Agent reviews an SSRF attack tool
     subheader('Mission 4: Review an SSRF attack tool');
-    console.log('    🎯 Goal: "Any security concerns?" — agent discovers SSRF blocked.\n');
+    console.info('    🎯 Goal: "Any security concerns?" — agent discovers SSRF blocked.\n');
     await runMission(
       llmWithTools,
       matimo,
@@ -514,7 +505,7 @@ async function main(): Promise<void> {
 
     // Mission 5: Agent reviews a namespace hijack tool
     subheader('Mission 5: Review a reserved namespace hijack');
-    console.log('    🎯 Goal: "Is this compliant?" — agent discovers namespace violation.\n');
+    console.info('    🎯 Goal: "Is this compliant?" — agent discovers namespace violation.\n');
     await runMission(
       llmWithTools,
       matimo,
@@ -536,9 +527,9 @@ async function main(): Promise<void> {
     // so the human must approve each step via terminal prompt.
 
     subheader('Mission 6: AUTONOMOUS LIFECYCLE — "I need a city lookup tool"');
-    console.log('    🎯 Goal: Make a city lookup tool available in the system.');
-    console.log('    🎯 The agent must DISCOVER the lifecycle: create → approve → reload.');
-    console.log("    🎯 When prompted, type 'y' to approve each step.\n");
+    console.info('    🎯 Goal: Make a city lookup tool available in the system.');
+    console.info('    🎯 The agent must DISCOVER the lifecycle: create → approve → reload.');
+    console.info("    🎯 When prompted, type 'y' to approve each step.\n");
     await runMission(
       llmWithTools,
       matimo,
@@ -554,7 +545,7 @@ async function main(): Promise<void> {
     const postLifecycleTools = matimo.listTools();
     const hasCityLookup = postLifecycleTools.some((t) => t.name === 'city_lookup');
     if (!hasCityLookup) {
-      console.log(`\n    ${INFO} Agent did not reload — performing fallback reload.`);
+      console.info(`\n    ${INFO} Agent did not reload — performing fallback reload.`);
       await matimo.reloadTools();
     }
     const updatedTools = matimo.listTools();
@@ -564,7 +555,7 @@ async function main(): Promise<void> {
       registryHasCityLookup ? PASS : FAIL,
       registryHasCityLookup ? 'Available for execution' : 'NOT FOUND'
     );
-    console.log(
+    console.info(
       `    ${INFO} Registry now has ${updatedTools.length} tools: ${updatedTools.map((t) => t.name).join(', ')}`
     );
 
@@ -583,9 +574,9 @@ async function main(): Promise<void> {
     // the full lifecycle, and now the LLM can call it.
 
     subheader('Mission 7: Use the newly created city_lookup tool');
-    console.log('    🎯 Goal: "Look up user 1" — agent discovers city_lookup.');
-    console.log('    🎯 Agent-created tools require human approval to execute.');
-    console.log("    🎯 When prompted, type 'y' to approve.\n");
+    console.info('    🎯 Goal: "Look up user 1" — agent discovers city_lookup.');
+    console.info('    🎯 Agent-created tools require human approval to execute.');
+    console.info("    🎯 When prompted, type 'y' to approve.\n");
     await runMission(
       llmWithTools,
       matimo,
@@ -599,11 +590,11 @@ async function main(): Promise<void> {
 
     // Clear whitelist so the create prompts the human
     approvedWhitelist.clear();
-    console.log(`\n    ${INFO} Whitelist cleared — next operations require fresh approval.\n`);
+    console.info(`\n    ${INFO} Whitelist cleared — next operations require fresh approval.\n`);
 
     subheader('Mission 8: Try to add a malicious file-reading tool');
-    console.log('    🎯 Goal: "I need a file reader" — but the YAML is a shell command.');
-    console.log("    🎯 When prompted, type 'n' to reject — human blocks the attack.\n");
+    console.info('    🎯 Goal: "I need a file reader" — but the YAML is a shell command.');
+    console.info("    🎯 When prompted, type 'n' to reject — human blocks the attack.\n");
     await runMission(
       llmWithTools,
       matimo,
@@ -613,7 +604,7 @@ async function main(): Promise<void> {
     // ── Mission 9: Discover what tools exist ────────────────────────
 
     subheader('Mission 9: Discover what tools have been created');
-    console.log('    🎯 Goal: "What tools were created?" — agent discovers list tool.\n');
+    console.info('    🎯 Goal: "What tools were created?" — agent discovers list tool.\n');
     await runMission(
       llmWithTools,
       matimo,
@@ -626,8 +617,8 @@ async function main(): Promise<void> {
     approvedWhitelist.clear();
 
     subheader('Mission 10: Refresh the tool registry');
-    console.log('    🎯 Goal: "Refresh the tools" — agent discovers matimo_reload_tools.');
-    console.log("    🎯 When prompted, type 'y' to approve.\n");
+    console.info('    🎯 Goal: "Refresh the tools" — agent discovers matimo_reload_tools.');
+    console.info("    🎯 When prompted, type 'y' to approve.\n");
     await runMission(
       llmWithTools,
       matimo,
@@ -655,8 +646,8 @@ async function main(): Promise<void> {
     //   4. Verify city_lookup appears in MCP tool list
 
     subheader('Mission 11: MCP Server — verify all tools available via MCP');
-    console.log('    🎯 Start HTTP MCP server with the same config.');
-    console.log('    🎯 Prove tools (including agent-created city_lookup) work via MCP.\n');
+    console.info('    🎯 Start HTTP MCP server with the same config.');
+    console.info('    🎯 Prove tools (including agent-created city_lookup) work via MCP.\n');
 
     const mcpPort = 19876 + Math.floor(Math.random() * 1000);
     const mcpToken = 'test-policy-demo-token';
@@ -672,8 +663,8 @@ async function main(): Promise<void> {
     const mcpServer = new MCPServer({
       transport: 'http',
       port: mcpPort,
-      toolPaths: [coreToolsPath, tempDir],
-      autoDiscover: false,
+      autoDiscover: true,
+      toolPaths: [tempDir],
       untrustedPaths: [tempDir],
       mcpToken: mcpToken,
       policyConfig,
@@ -877,7 +868,7 @@ async function main(): Promise<void> {
     // ── 3a: SHA-256 Integrity Tracking ──────────────────────────────
 
     subheader('3a: SHA-256 Integrity Tracking');
-    console.log('    Demonstrates tamper detection during hot-reload.\n');
+    console.info('    Demonstrates tamper detection during hot-reload.\n');
 
     const tracker = new ToolIntegrityTracker();
 
@@ -924,7 +915,7 @@ async function main(): Promise<void> {
     // ── 3b: HMAC Approval Lifecycle ─────────────────────────────────
 
     subheader('3b: HMAC-Signed Approval Lifecycle');
-    console.log('    Demonstrates cryptographic approval that auto-revokes on YAML changes.\n');
+    console.info('    Demonstrates cryptographic approval that auto-revokes on YAML changes.\n');
 
     const approvalDir = fs.mkdtempSync(path.join(os.tmpdir(), 'matimo-approval-'));
     try {
@@ -959,7 +950,7 @@ async function main(): Promise<void> {
     // ── 3c: Risk Classification ─────────────────────────────────────
 
     subheader('3c: Risk Classification');
-    console.log('    Deterministic classification based on execution type + HTTP method.\n');
+    console.info('    Deterministic classification based on execution type + HTTP method.\n');
 
     const riskCases: Array<{ label: string; tool: Partial<ToolDefinition>; expected: RiskLevel }> =
       [
@@ -999,7 +990,7 @@ async function main(): Promise<void> {
     // ── 3d: Policy Access Control ───────────────────────────────────
 
     subheader('3d: Policy Access Control (Draft / Deprecated / Prod)');
-    console.log('    The policy engine gates tool execution based on status and roles.\n');
+    console.info('    The policy engine gates tool execution based on status and roles.\n');
 
     const policy = new DefaultPolicyEngine(policyConfig);
 
@@ -1040,18 +1031,18 @@ async function main(): Promise<void> {
     // ── 3e: Audit Event Trail ───────────────────────────────────────
 
     subheader('3e: Audit Event Trail');
-    console.log('    Events emitted during the agent missions above.\n');
+    console.info('    Events emitted during the agent missions above.\n');
 
     if (auditLog.length > 0) {
       result(`${auditLog.length} events captured`, PASS);
       for (const event of auditLog) {
-        console.log(`    ${INFO}  [${event.type}] at ${event.timestamp}`);
+        console.info(`    ${INFO}  [${event.type}] at ${event.timestamp}`);
         if (event.type === 'tool:execution_denied') {
-          console.log(`        Tool: ${event.toolName}, Reason: ${event.reason}`);
+          console.info(`        Tool: ${event.toolName}, Reason: ${event.reason}`);
         } else if (event.type === 'tool:rejected') {
-          console.log(`        Tool: ${event.toolName}, Violations: ${event.violations.length}`);
+          console.info(`        Tool: ${event.toolName}, Violations: ${event.violations.length}`);
         } else if (event.type === 'tools:reloaded') {
-          console.log(`        Loaded: ${event.loaded}, Removed: ${event.removed}`);
+          console.info(`        Loaded: ${event.loaded}, Removed: ${event.removed}`);
         }
       }
     } else {
@@ -1061,7 +1052,7 @@ async function main(): Promise<void> {
     // ── Summary ─────────────────────────────────────────────────────
 
     header('SUMMARY');
-    console.log(`
+    console.info(`
   Autonomous Agent Discovery (Goal-Driven — No Tool Names Given):
     ${PASS}  1. "What is 42+58?" → discovered calculator
     ${PASS}  2. "Is this tool safe?" → discovered matimo_validate_tool

@@ -34,14 +34,15 @@ import path from 'path';
 import fs from 'fs';
 import os from 'os';
 import readline from 'readline';
-import { fileURLToPath } from 'url';
-import { createRequire } from 'module';
 import { ChatOpenAI } from '@langchain/openai';
 import { BaseMessage, HumanMessage, SystemMessage, ToolMessage } from '@langchain/core/messages';
-import { MatimoInstance, convertToolsToLangChain } from 'matimo';
+import {
+  MatimoInstance,
+  convertToolsToLangChain,
+  setGlobalMatimoInstance,
+  getGlobalApprovalHandler,
+} from 'matimo';
 import type { ToolDefinition } from 'matimo';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // ─── Formatting Helpers ─────────────────────────────────────────────────
 
@@ -50,18 +51,18 @@ const FAIL = '\x1b[31m✗ FAIL\x1b[0m';
 const INFO = '\x1b[36mℹ\x1b[0m';
 
 function header(title: string): void {
-  console.log('\n' + '═'.repeat(68));
-  console.log(`  ${title}`);
-  console.log('═'.repeat(68));
+  console.info('\n' + '═'.repeat(68));
+  console.info(`  ${title}`);
+  console.info('═'.repeat(68));
 }
 
 function subheader(title: string): void {
-  console.log(`\n  ── ${title} ${'─'.repeat(Math.max(0, 58 - title.length))}`);
+  console.info(`\n  ── ${title} ${'─'.repeat(Math.max(0, 58 - title.length))}`);
 }
 
 function result(label: string, status: string, detail?: string): void {
   const msg = detail ? `${status}  ${label}: ${detail}` : `${status}  ${label}`;
-  console.log(`    ${msg}`);
+  console.info(`    ${msg}`);
 }
 
 // ─── Interactive Terminal Approval ──────────────────────────────────────
@@ -97,17 +98,17 @@ async function interactiveApproval(request: {
   params?: Record<string, unknown>;
 }): Promise<boolean> {
   if (approvedWhitelist.has(request.toolName)) {
-    console.log(`    ${PASS}  Auto-approved (whitelisted): ${request.toolName}`);
+    console.info(`    ${PASS}  Auto-approved (whitelisted): ${request.toolName}`);
     return true;
   }
 
-  console.log('\n    ┌──────────────────────────────────────────────────────────────┐');
-  console.log('    │  🛡️  HUMAN-IN-THE-LOOP APPROVAL REQUIRED                     │');
-  console.log('    ├──────────────────────────────────────────────────────────────┤');
-  console.log(`    │  Tool:        ${request.toolName}`);
-  console.log(`    │  Description: ${(request.description || 'N/A').slice(0, 50)}`);
-  console.log(`    │  Params:      ${JSON.stringify(request.params || {}).slice(0, 50)}…`);
-  console.log('    └──────────────────────────────────────────────────────────────┘');
+  console.info('\n    ┌──────────────────────────────────────────────────────────────┐');
+  console.info('    │  🛡️  HUMAN-IN-THE-LOOP APPROVAL REQUIRED                     │');
+  console.info('    ├──────────────────────────────────────────────────────────────┤');
+  console.info(`    │  Tool:        ${request.toolName}`);
+  console.info(`    │  Description: ${(request.description || 'N/A').slice(0, 50)}`);
+  console.info(`    │  Params:      ${JSON.stringify(request.params || {}).slice(0, 50)}…`);
+  console.info('    └──────────────────────────────────────────────────────────────┘');
 
   const answer = (await nextStdinLine('    ❓ Approve this operation? (y/n): '))
     .trim()
@@ -116,9 +117,9 @@ async function interactiveApproval(request: {
 
   if (approved) {
     approvedWhitelist.add(request.toolName);
-    console.log(`    ${PASS}  Approved — "${request.toolName}" added to session whitelist.`);
+    console.info(`    ${PASS}  Approved — "${request.toolName}" added to session whitelist.`);
   } else {
-    console.log(`    \x1b[33m⊘ BLOCKED\x1b[0m  Rejected by human operator.`);
+    console.info(`    \x1b[33m⊘ BLOCKED\x1b[0m  Rejected by human operator.`);
   }
 
   return approved;
@@ -135,7 +136,7 @@ function processUserData(userData: any) {
   fetch("http://api.example.com/users/" + userData.id)
     .then(res => res.json())
     .then(data => {
-      console.log("User password:", data.password);
+      console.info("User password:", data.password);
     });
   
   try {
@@ -200,7 +201,7 @@ async function runMission(
       messages.push(response);
 
       for (const toolCall of response.tool_calls) {
-        console.log(
+        console.info(
           `    🔧 Agent calls: ${toolCall.name}(${JSON.stringify(toolCall.args).slice(0, 120)}${JSON.stringify(toolCall.args).length > 120 ? '…' : ''})`
         );
 
@@ -208,7 +209,7 @@ async function runMission(
           const toolResult = await matimo.execute(toolCall.name, toolCall.args);
           const resultStr =
             typeof toolResult === 'string' ? toolResult : JSON.stringify(toolResult, null, 2);
-          console.log(
+          console.info(
             `    📋 Result: ${resultStr.slice(0, 200)}${resultStr.length > 200 ? '…' : ''}`
           );
 
@@ -221,7 +222,7 @@ async function runMission(
           );
         } catch (err) {
           const errorMsg = err instanceof Error ? err.message : String(err);
-          console.log(`    ❌ Error: ${errorMsg.slice(0, 200)}`);
+          console.info(`    ❌ Error: ${errorMsg.slice(0, 200)}`);
 
           messages.push(
             new ToolMessage({
@@ -235,7 +236,7 @@ async function runMission(
     } else {
       const finalText =
         typeof response.content === 'string' ? response.content : JSON.stringify(response.content);
-      console.log(`    💬 Agent conclusion: ${finalText.slice(0, 500)}`);
+      console.info(`    💬 Agent conclusion: ${finalText.slice(0, 500)}`);
       return finalText;
     }
   }
@@ -246,10 +247,10 @@ async function runMission(
 // ─── Main ───────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
-  console.log('\n╔════════════════════════════════════════════════════════════════════╗');
-  console.log('║    Matimo Skills System — LangChain Agent Demonstration            ║');
-  console.log('║    Agent Skills Specification: https://agentskills.io              ║');
-  console.log('╚════════════════════════════════════════════════════════════════════╝');
+  console.info('\n╔════════════════════════════════════════════════════════════════════╗');
+  console.info('║    Matimo Skills System — LangChain Agent Demonstration            ║');
+  console.info('║    Agent Skills Specification: https://agentskills.io              ║');
+  console.info('╚════════════════════════════════════════════════════════════════════╝');
 
   // ── Verify OpenAI API key ─────────────────────────────────────────
 
@@ -268,22 +269,15 @@ async function main(): Promise<void> {
   try {
     header('PHASE 1: Initialize Matimo with Skills Meta-Tools');
 
-    const require = createRequire(import.meta.url);
-    const coreMain = require.resolve('@matimo/core');
-    const corePkg = path.resolve(coreMain, '..', '..');
-    const coreToolsPath = path.join(corePkg, 'tools');
-
     // Set up approval handler
-    const { getGlobalApprovalHandler } = await import('matimo');
     const approvalHandler = getGlobalApprovalHandler();
     approvalHandler.setApprovalCallback(interactiveApproval);
 
     const matimo = await MatimoInstance.init({
-      toolPaths: [coreToolsPath],
-      autoDiscover: false,
-      includeCore: false,
+      autoDiscover: true,
       logLevel: 'silent',
     });
+    setGlobalMatimoInstance(matimo);
 
     const tools = matimo.listTools();
     result(`Matimo initialized — ${tools.length} tools loaded`, PASS);
@@ -307,10 +301,10 @@ async function main(): Promise<void> {
     // ── Mission 1: Create a code review skill ───────────────────────
 
     subheader('Mission 1: Create a code review skill');
-    console.log(
+    console.info(
       '    🎯 Goal: "I need a code review checklist" — agent discovers matimo_create_skill.'
     );
-    console.log("    🎯 When prompted, type 'y' to approve.\n");
+    console.info("    🎯 When prompted, type 'y' to approve.\n");
     await runMission(
       llmWithTools,
       matimo,
@@ -338,7 +332,7 @@ Remember: the content MUST start with YAML frontmatter (---) containing name and
     // ── Mission 2: List available skills ────────────────────────────
 
     subheader('Mission 2: Discover available skills');
-    console.log(
+    console.info(
       '    🎯 Goal: "What skills are available?" — agent discovers matimo_list_skills.\n'
     );
     await runMission(
@@ -350,7 +344,7 @@ Remember: the content MUST start with YAML frontmatter (---) containing name and
     // ── Mission 3: Read and apply the code review skill ─────────────
 
     subheader('Mission 3: Read and apply a skill to review code');
-    console.log(
+    console.info(
       '    🎯 Goal: "Apply the code review skill to this code" — agent discovers matimo_get_skill.\n'
     );
     await runMission(
@@ -366,8 +360,8 @@ ${SAMPLE_CODE_TO_REVIEW}
     // ── Mission 4: Create a security checklist skill ────────────────
 
     subheader('Mission 4: Create a security checklist skill');
-    console.log('    🎯 Goal: "I need a security-focused skill" — agent creates another skill.');
-    console.log("    🎯 When prompted, type 'y' to approve.\n");
+    console.info('    🎯 Goal: "I need a security-focused skill" — agent creates another skill.');
+    console.info("    🎯 When prompted, type 'y' to approve.\n");
     await runMission(
       llmWithTools,
       matimo,
@@ -395,7 +389,7 @@ Remember: content MUST start with YAML frontmatter (---) with name and descripti
     // ── Mission 5: Validate both skills against the spec ────────────
 
     subheader('Mission 5: Validate skills against the Agent Skills spec');
-    console.log('    🎯 Goal: "Validate both skills" — agent discovers matimo_validate_skill.\n');
+    console.info('    🎯 Goal: "Validate both skills" — agent discovers matimo_validate_skill.\n');
     await runMission(
       llmWithTools,
       matimo,
@@ -405,7 +399,7 @@ Remember: content MUST start with YAML frontmatter (---) with name and descripti
     // ── Mission 6: Apply ALL skills together ────────────────────────
 
     subheader('Mission 6: Apply ALL skills to review code');
-    console.log(
+    console.info(
       '    🎯 Goal: "Apply every available skill" — agent lists, reads, and applies all skills.\n'
     );
     await runMission(
@@ -448,7 +442,7 @@ ${SAMPLE_CODE_TO_REVIEW}
     // ── Summary ─────────────────────────────────────────────────────
 
     header('SUMMARY');
-    console.log(`
+    console.info(`
   Skills Lifecycle (Goal-Driven — No Tool Names Given):
     ${skillCreated ? PASS : FAIL}  1. "I need a code review checklist" → created code-review skill
     ${PASS}  2. "What skills are available?" → Level 1 metadata discovery

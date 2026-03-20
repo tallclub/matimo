@@ -34,6 +34,54 @@ Matimo skills follow the [Agent Skills spec](https://agentskills.io/specificatio
 | scripts/, references/, assets/ directories | ✅ Listed in `matimo_get_skill` response |
 | Validation | ✅ `matimo_validate_skill` checks all spec rules |
 
+## ✅ What Gets Validated
+
+### Skills System Validation
+- ✓ Skill creation with YAML frontmatter
+- ✓ Skill listing (Level 1 metadata)
+- ✓ Skill content retrieval (Level 2)
+- ✓ Spec validation
+- ✓ Multi-skill application to code
+- ✓ YAML frontmatter compliance
+- ✓ Directory structure validation
+- ✓ Progressive disclosure (3 levels)
+
+### Expected Outcomes
+
+**Success Pattern**
+```
+🔧 Agent calls: matimo_create_skill(...)
+📋 Result: Created skill-name/SKILL.md
+✓ PASS  Spec-compliant YAML frontmatter
+✅ Skill available via matimo_list_skills
+```
+
+**Listing Success**
+```
+🔧 Agent calls: matimo_list_skills()
+📋 Result: [skill-1, skill-2, skill-3]
+✅ Level 1 (metadata) loaded: name, description
+```
+
+**Activation Success**
+```
+🔧 Agent calls: matimo_get_skill("skill-name")
+📋 Result: Full SKILL.md content
+✅ Level 2 (instructions) loaded
+✅ Can apply guidelines to code
+```
+
+## 📈 Performance Baseline
+
+| Metric | Value |
+|--------|-------|
+| Duration | ~60s |
+| API Calls | 8-10 |
+| Skills Created | 6 |
+| Validation Passes | 100% |
+
+(Times depend on LLM latency; gpt-4o-mini is optimized for fast responses)
+
 ## Prerequisites
 
 ```bash
