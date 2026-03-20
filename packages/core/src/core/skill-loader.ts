@@ -216,14 +216,26 @@ export class SkillLoader {
       if (!fs.existsSync(skillPath)) continue;
 
       try {
+        this.logger.debug('SkillLoader: attempting to load skill', {
+          name: entry.name,
+          skillPath,
+        });
         const skill = this.loadSkill(entry.name, skillsDir, source);
         if (skill) {
           skills.push(skill);
+          this.logger.debug('SkillLoader: successfully loaded skill', {
+            name: skill.name,
+          });
+        } else {
+          this.logger.warn('SkillLoader: loadSkill returned null', {
+            name: entry.name,
+          });
         }
       } catch (err) {
-        this.logger.warn('SkillLoader: failed to load skill', {
+        this.logger.error('SkillLoader: failed to load skill', {
           dir: entry.name,
           error: (err as Error).message,
+          stack: (err as Error).stack,
           skillsDir,
         });
       }
@@ -281,7 +293,7 @@ export class SkillLoader {
       version: frontmatter.version,
       license: frontmatter.license,
       compatibility: frontmatter.compatibility,
-      allowedTools: frontmatter['allowed-tools'],
+      allowedTools: frontmatter['allowed-tools'] as string[] | undefined,
       metadata: frontmatter.metadata,
       body: parsed.body,
       sections: parsed.sections,

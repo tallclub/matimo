@@ -46,8 +46,10 @@ export class ApprovalManifest {
       this.secret = randomUUID();
       const logger = getGlobalMatimoLogger();
       logger.warn(
-        `No MATIMO_APPROVAL_SECRET set. Auto-generated: ${this.secret}. ` +
-          'Set this as an environment variable to persist approvals across restarts.'
+        'No MATIMO_APPROVAL_SECRET set. An ephemeral secret was auto-generated ' +
+          'for this process. Approvals may not persist across restarts. ' +
+          'To persist approvals, set MATIMO_APPROVAL_SECRET to a stable, securely ' +
+          'generated value in the environment.'
       );
     }
 

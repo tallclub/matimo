@@ -41,6 +41,8 @@ export interface MCPServerOptions {
   mcpToken?: string;
   /** Tool paths to load. Passed to MatimoInstance.init(). */
   toolPaths?: string[];
+  /** Skill paths to load. Passed to MatimoInstance.init(). Each path is a directory containing skill subdirectories with SKILL.md files. */
+  skillPaths?: string[];
   /** Auto-discover @matimo/* packages. Default: true */
   autoDiscover?: boolean;
   /** Enable HTTPS. Requires cert+key or use selfSigned. Default: false */
@@ -229,6 +231,7 @@ export class MCPServer {
     // creating a non-silent logger that writes to stdout (corrupts JSON-RPC)
     this.matimo = await MatimoInstance.init({
       toolPaths: this.options.toolPaths,
+      skillPaths: this.options.skillPaths,
       autoDiscover: this.options.autoDiscover,
       ...(this.options.transport === 'stdio' ? { logLevel: 'silent' as const } : {}),
       ...(this.options.policyConfig ? { policyConfig: this.options.policyConfig } : {}),

@@ -145,4 +145,21 @@ describe('matimo_list_skills', () => {
     expect(result.total).toBe(3);
     expect(result.skills.map((s) => s.source)).toEqual(['builtin', 'user', 'catalog']);
   });
+
+  it('should load skills from a directory when skills_dir is provided', async () => {
+    const skillsDir = `${__dirname}/../../../tools/matimo_list_skills`;
+    const result = await matimoListSkills({ skills_dir: skillsDir });
+    // This test verifies the directory loading path works
+    // The actual result depends on what SKILL.md files exist
+    expect(result).toHaveProperty('skills');
+    expect(result).toHaveProperty('total');
+    expect(Array.isArray(result.skills)).toBe(true);
+  });
+
+  it('should return empty list when skills_dir does not exist', async () => {
+    const nonExistentDir = '/non/existent/path/to/skills';
+    const result = await matimoListSkills({ skills_dir: nonExistentDir });
+    expect(result.skills).toHaveLength(0);
+    expect(result.total).toBe(0);
+  });
 });

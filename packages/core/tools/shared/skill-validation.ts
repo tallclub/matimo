@@ -77,7 +77,7 @@ export interface SkillFrontmatter {
   description: string;
   license?: string;
   compatibility?: string;
-  'allowed-tools'?: string;
+  'allowed-tools'?: string | string[];
   metadata?: Record<string, string>;
 }
 
@@ -113,10 +113,21 @@ export function parseSkillContent(content: string): ParseResult {
   const body = content.substring(endIndex + 3).trim();
 
   // Parse frontmatter lines
-  const fields: Record<string, string> = {};
+  const fields: Record<string, unknown> = {};
   let currentMetadata: Record<string, string> | null = null;
+  let currentArray: string[] | null = null;
+  let currentArrayKey: string | null = null;
 
   for (const line of frontmatterBlock.split('\n')) {
+    // Detect array elements (prefixed with "- ")
+    if (currentArray !== null && /^\s*- /.test(line)) {
+      const item = line.trim().substring(2).trim();
+      if (item) {
+        currentArray.push(item.replace(/^["']|["']$/g, ''));
+      }
+      continue;
+    }
+
     // Detect metadata sub-keys (indented with spaces under "metadata:")
     if (currentMetadata !== null && /^\s+\S/.test(line)) {
       const colonIndex = line.indexOf(':');
@@ -132,6 +143,8 @@ export function parseSkillContent(content: string): ParseResult {
 
     // Top-level keys
     currentMetadata = null;
+    currentArray = null;
+    currentArrayKey = null;
     const colonIndex = line.indexOf(':');
     if (colonIndex === -1) continue;
 
@@ -145,21 +158,37 @@ export function parseSkillContent(content: string): ParseResult {
       continue;
     }
 
+    // Check for array start (value is empty, array items follow on next lines)
+    if (key === 'allowed-tools' && !value) {
+      currentArray = [];
+      currentArrayKey = 'allowed-tools';
+      continue;
+    }
+
     if (key && value) {
       // Strip surrounding quotes (YAML style)
       fields[key] = value.replace(/^["']|["']$/g, '');
     }
   }
 
+  // Store any pending array
+  if (currentArray !== null && currentArrayKey) {
+    fields[currentArrayKey] = currentArray;
+  }
+
   // Build frontmatter object
   const frontmatter: SkillFrontmatter = {
-    name: fields.name || '',
-    description: fields.description || '',
+    name: fields.name as string || '',
+    description: fields.description as string || '',
   };
 
-  if (fields.license) frontmatter.license = fields.license;
-  if (fields.compatibility) frontmatter.compatibility = fields.compatibility;
-  if (fields['allowed-tools']) frontmatter['allowed-tools'] = fields['allowed-tools'];
+  if (fields.license) frontmatter.license = fields.license as string;
+  if (fields.compatibility) frontmatter.compatibility = fields.compatibility as string;
+  if (fields['allowed-tools']) {
+    frontmatter['allowed-tools'] = Array.isArray(fields['allowed-tools'])
+      ? (fields['allowed-tools'] as string[])
+      : (fields['allowed-tools'] as string);
+  }
   if (currentMetadata && Object.keys(currentMetadata).length > 0) {
     frontmatter.metadata = currentMetadata;
   }

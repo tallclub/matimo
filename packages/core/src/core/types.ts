@@ -266,7 +266,7 @@ export interface SkillFrontmatter {
   version?: string;
   license?: string;
   compatibility?: string;
-  'allowed-tools'?: string[];
+  'allowed-tools'?: string | string[];
   metadata?: Record<string, string>;
 }
 

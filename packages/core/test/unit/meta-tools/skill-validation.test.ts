@@ -95,7 +95,9 @@ name: pdf-skill
 description: PDF processing
 license: Apache-2.0
 compatibility: Requires python3
-allowed-tools: Bash(git:*) Read
+allowed-tools:
+  - Bash(git:*)
+  - Read
 ---
 
 # PDF
@@ -103,7 +105,7 @@ allowed-tools: Bash(git:*) Read
       expect(result.success).toBe(true);
       expect(result.parsed!.frontmatter.license).toBe('Apache-2.0');
       expect(result.parsed!.frontmatter.compatibility).toBe('Requires python3');
-      expect(result.parsed!.frontmatter['allowed-tools']).toBe('Bash(git:*) Read');
+      expect(result.parsed!.frontmatter['allowed-tools']).toEqual(['Bash(git:*)', 'Read']);
     });
 
     it('should parse metadata sub-keys', () => {
