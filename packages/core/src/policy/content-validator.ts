@@ -194,7 +194,7 @@ export function isSSRFTarget(url: string): boolean {
  */
 function extractHostname(url: string): string | undefined {
   try {
-    const cleanUrl = url.replace(/\{[^}]+\}/g, 'placeholder');
+    const cleanUrl = url.replace(/\{[^}]*?\}/g, 'placeholder');
     return new URL(cleanUrl).hostname.toLowerCase();
   } catch {
     return undefined;

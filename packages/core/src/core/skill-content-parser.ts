@@ -57,8 +57,8 @@ export interface SkillContentOptions {
 }
 
 // ─── Heading regex: matches ATX-style headings (# through ######) ─────────
-
-const HEADING_REGEX = /^(#{1,6})\s+(.+?)$/;
+// Only match the prefix to avoid ReDoS with `.+?$` on uncontrolled input
+const HEADING_REGEX = /^(#{1,6})\s+/;
 
 /**
  * Estimate token count from text.
@@ -120,8 +120,9 @@ export function parseSkillSections(body: string): ParsedSkillContent {
         if (currentSegment) {
           segments.push(currentSegment);
         }
+        const heading = line.substring(match[0].length).trim();
         currentSegment = {
-          heading: match[2].trim(),
+          heading,
           level: match[1].length,
           contentLines: [],
         };
