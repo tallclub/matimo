@@ -49,7 +49,7 @@ When prompted: type `y` to approve tools, `n` to reject them. Agent learns from 
 ## Key Differences from Other Examples
 
 | Aspect | Policy Demo | Skills Demo | **Meta-Tools** |
-|--------|------------|------------|--|--|
+|--------|-------------|-------------|----------------|
 | Focus | Policy engine | Skills system | **Complete lifecycle** |
 | Agent task | Validates tools | Creates skills | **Creates tools → approves → uses** |
 | Policy demo | ✓ | - | ✓ |
@@ -68,7 +68,7 @@ Agent: "Create a weather tool that calls a safe API"
   ↓
 Agent thinks: "I need to validate, create, get approval, reload, then test"
   ↓
-Agent: matmo_doctor(weather_fetch yaml)
+Agent: matimo_doctor(weather_fetch yaml)
   → ✅ "Valid: api.weatherapi.com approved, GET method allowed"
   ↓
 Agent: matimo_create_tool('weather_fetch', yaml, toolsDir)
@@ -315,7 +315,5 @@ MATIMO_LOG_LEVEL=debug  # See internal logging
 ---
 
 **See also**: 
-- [PRACTICAL_EXAMPLES.md](../PRACTICAL_EXAMPLES.md) — Complete walkthroughs
-- [IMPLEMENTATION_VALIDATION.md](../IMPLEMENTATION_VALIDATION.md) — Validation guide
 - [policy-demo.ts](../policy/policy-demo.ts) — Policy engine focused example
 - [skills-demo.ts](../skills/skills-demo.ts) — Skills system focused example

@@ -20,7 +20,7 @@ cp .env.example .env
 # Then edit .env and add your actual API keys
 
 # Run with factory pattern (simplest)
-npm run credentials:example
+pnpm credentials:example
 ```
 
 ## 🔐 Credentials Setup
@@ -209,7 +209,7 @@ process.env.OPENAI_API_KEY = 'sk-test-key';
 | "Invalid token" | Check token is correct in `.env` |
 | "401 Unauthorized" | Token may have expired, refresh it |
 | ".env not loading" | Ensure `dotenv.config()` is called first |
-| "Module not found: dotenv" | Run `npm install dotenv` |
+| "Module not found: dotenv" | Run `pnpm add dotenv` (or `pnpm install` if it’s already in dependencies) |
 
 ## 🔗 Related Examples
 
@@ -223,7 +223,7 @@ After setting up credentials:
 
 ```bash
 # Check credentials are loaded
-npm run credentials:example
+pnpm credentials:example
 
 # Expected output:
 # ✅ SLACK_BOT_TOKEN loaded
@@ -235,7 +235,7 @@ npm run credentials:example
 ## 🚀 Next Steps
 
 1. **Add your credentials** to `.env`
-2. **Run provider examples** with credentials (e.g., `npm run slack:factory`)
+2. **Run provider examples** with credentials (e.g., `pnpm slack:factory`)
 3. **Use in your agent** — credentials auto-load when tools execute
 4. **Rotate periodically** — refresh tokens in provider dashboards
 5. **Deploy with confidence** — production servers read from secure env vars

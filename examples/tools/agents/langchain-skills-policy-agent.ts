@@ -25,10 +25,10 @@
  *
  * Usage:
  *   # From CLI argument:
- *   pnpm agent:skills "List all available skills and tell me what each one does"
+ *   pnpm agent:skills-policy "List all available skills and tell me what each one does"
  *
  *   # From stdin (interactive):
- *   pnpm agent:skills
+ *   pnpm agent:skills-policy
  *   > Enter your mission: ...
  */
 

@@ -412,13 +412,13 @@ async function main(): Promise<void> {
     console.info(`    • allowFunctionTools:  ${policyConfig.allowFunctionTools}`);
     console.info(`    • protectedNamespaces: ${policyConfig.protectedNamespaces!.join(', ')}`);
 
-    // Resolve core tools path for calculator + meta-tools
+    // Initialize Matimo with auto-discovery of built-in meta-tools and agent-created tools
     const matimo = await MatimoInstance.init({
-      autoDiscover: true,
-      toolPaths: [tempDir],
-      policyConfig,
+      autoDiscover: true, // Auto-discover meta-tools, calculator, and all tools from toolPaths
+      toolPaths: [tempDir], // Agent-created tools go here
+      policyConfig, // Apply security policy boundaries
       logLevel: 'silent',
-      untrustedPaths: [tempDir],
+      untrustedPaths: [tempDir], // Agent-created tools are untrusted until approved
       onEvent: (event: MatimoEvent) => auditLog.push(event),
     });
     setGlobalMatimoInstance(matimo);

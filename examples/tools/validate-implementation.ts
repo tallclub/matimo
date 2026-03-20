@@ -78,12 +78,12 @@ async function runDemoWithAutoApproval(
 
     child.stdout.on('data', (data: Buffer) => {
       stdout += data.toString();
-      process.stdout.write(data);
+      if (!quiet) process.stdout.write(data);
     });
 
     child.stderr.on('data', (data: Buffer) => {
       stderr += data.toString();
-      process.stderr.write(data);
+      if (!quiet) process.stderr.write(data);
     });
 
     child.on('close', (code: number | null) => {
@@ -121,7 +121,6 @@ async function main(): Promise<void> {
   if (!skipPolicy) log('  ✓ Policy Engine (matimo policy enforcement)');
   if (!skipSkills) log('  ✓ Skills System (SKILL.md creation and validation)');
   if (!skipMetaTools) log('  ✓ Meta-Tools (doctor, review, reload)');
-  log('  ✓ CLI Commands (standalone validation)');
 
   const examplesDir = __dirname;
 

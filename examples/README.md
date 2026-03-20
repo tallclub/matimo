@@ -52,10 +52,10 @@ const result = await matimo.execute('slack-send-message', {
 ```
 
 **Files:**
-- [Factory Pattern - Full Example](./tools/agents/factory-pattern-agent.ts)
-- [Slack Factory](./tools/agents/slack-factory.ts)
-- [Gmail Factory](./tools/agents/gmail-factory.ts)
-- [Postgres Factory](./tools/agents/postgres-factory.ts)
+- [Factory Pattern - Full Example](./tools/factory-pattern-agent.ts)
+- [Slack Factory](./tools/slack/slack-factory.ts)
+- [Gmail Factory](./tools/gmail/gmail-factory.ts)
+- [Postgres Factory](./tools/postgres/postgres-factory.ts)
 
 **Real-World Use Cases:** Express.js endpoints | AWS Lambda | Cron jobs | Webhooks | CLI tools
 
@@ -68,8 +68,8 @@ const result = await matimo.execute('slack-send-message', {
 Use `@tool` decorators as class methods.
 
 ```typescript
-import { setGlobalMatimoInstance, tool } from 'matimo';
-
+import { MatimoInstance, setGlobalMatimoInstance, tool } from 'matimo';
+const matimo = await MatimoInstance.init('./tools');
 setGlobalMatimoInstance(matimo);
 
 class SlackBot {
@@ -101,29 +101,34 @@ await bot.sendMessage('#general', 'Hello!');
 Let LLMs decide which tools to use.
 
 ```typescript
-import { convertToolsToLangChain } from 'matimo';
+import { MatimoInstance, convertToolsToLangChain } from 'matimo';
 import { ChatOpenAI } from '@langchain/openai';
 
+// 1. Initialize Matimo
+const matimo = await MatimoInstance.init('./tools');
+
+// 2. Convert to LangChain format
 const langchainTools = await convertToolsToLangChain(
   matimo.listTools(),
   matimo
 );
 
-const agent = await createAgent({
-  model: new ChatOpenAI({ modelName: 'gpt-4o-mini' }),
-  tools: langchainTools,
-});
+// 3. Create LLM with tools bound
+const llm = new ChatOpenAI({ model: 'gpt-4o-mini', temperature: 0 });
+const llmWithTools = llm.bindTools(langchainTools);
 
-const result = await agent.invoke({
-  input: 'Send a message to #general saying hello',
-});
+// 4. Run agent with natural language goal
+const messages = [
+  { role: 'user', content: 'Send a message to #general saying hello' },
+];
+const result = await llmWithTools.invoke(messages);
 ```
 
 **Files:**
 - [LangChain Integration - Full Example](./tools/agents/langchain-agent.ts)
-- [Slack LangChain](./tools/agents/slack-langchain.ts)
-- [Gmail LangChain](./tools/agents/gmail-langchain.ts)
-- [Postgres LangChain](./tools/agents/postgres-langchain.ts)
+- [Slack LangChain](./tools/slack/slack-langchain.ts)
+- [Gmail LangChain](./tools/gmail/gmail-langchain.ts)
+- [Postgres LangChain](./tools/postgres/postgres-langchain.ts)
 
 **Real-World Use Cases:** AI chatbots | Autonomous agents | Natural language interfaces | Multi-step workflows
 

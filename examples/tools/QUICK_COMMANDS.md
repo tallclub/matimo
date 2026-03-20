@@ -48,7 +48,7 @@ pnpm web:decorator          # Web tool
 
 # Option E: Run LangChain integration examples
 pnpm agent:langchain        # Full LangChain agent
-pnpm agent:skills           # LangChain with skills & policy
+pnpm agent:skills-policy        # LangChain with skills & policy
 pnpm slack:langchain        # Slack with LangChain
 pnpm execute:langchain      # Execute with LangChain
 ```
@@ -94,7 +94,7 @@ pnpm execute:langchain      # Execute with LangChain
 | Command | Purpose |
 |---------|---------|
 | `pnpm agent:langchain` | Base agent with LangChain integration |
-| `pnpm agent:skills` | LangChain agent with skills & policy |
+| `pnpm agent:skills-policy` | LangChain agent with skills & policy |
 | `pnpm slack:langchain` | Slack tools via LangChain |
 | `pnpm gmail:langchain` | Gmail tools via LangChain |
 | `pnpm github:langchain` | GitHub tools via LangChain |
@@ -135,7 +135,7 @@ pnpm execute:langchain      # Execute with LangChain
 ### Validation Commands
 | Command | Purpose |
 |---------|---------|
-| `pnpm validate:all` | Run all meta examples with auto-approval |
+| `pnpm validate:all` | Run meta examples with auto-approval |
 | `pnpm validate:meta` | Only meta-tools example |
 | `pnpm validate:policy` | Only policy demo |
 | `pnpm validate:skills` | Only skills demo |

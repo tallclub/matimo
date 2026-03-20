@@ -240,15 +240,30 @@ async function runMission(
           const resultStr =
             typeof toolResult === 'string' ? toolResult : JSON.stringify(toolResult, null, 2);
 
-          // Track tool creation
-          if (
-            toolCall.name === 'matimo_create_tool' &&
-            typeof toolResult === 'string' &&
-            toolResult.includes('Created')
-          ) {
-            const match = toolResult.match(/Created tool: (\w+)/);
-            if (match) {
-              toolsCreated.push(match[1]);
+          // Track tool creation without relying on brittle string parsing
+          if (toolCall.name === 'matimo_create_tool') {
+            let createdToolName: string | undefined;
+            // Prefer the name from the tool call arguments, if available
+            if (
+              toolCall.args &&
+              typeof toolCall.args === 'object' &&
+              'name' in toolCall.args &&
+              typeof (toolCall.args as any).name === 'string'
+            ) {
+              createdToolName = (toolCall.args as any).name;
+            }
+            // Fallback: look for a dedicated name field in the tool result
+            if (
+              !createdToolName &&
+              toolResult &&
+              typeof toolResult === 'object' &&
+              'name' in (toolResult as any) &&
+              typeof (toolResult as any).name === 'string'
+            ) {
+              createdToolName = (toolResult as any).name;
+            }
+            if (createdToolName) {
+              toolsCreated.push(createdToolName);
             }
           }
 
@@ -319,11 +334,16 @@ async function main(): Promise<void> {
       toolPaths: [toolsDir],
       logLevel: 'silent',
       untrustedPaths: [toolsDir],
+      policyConfig: {}, // Enable policy engine for this example
     });
     setGlobalMatimoInstance(matimo);
 
     const tools = matimo.listTools();
-    result('Matimo meta-tools loaded', PASS, `${tools.length} tools`);
+    result(
+      'Matimo meta-tools loaded',
+      PASS,
+      `${tools.length} tools (policy: ${matimo.hasPolicy() ? 'enabled' : 'disabled'})`
+    );
 
     const metaTools = tools.filter((t) => t.name.startsWith('matimo_'));
     result('Meta-tools available', PASS, metaTools.map((t) => t.name).join(', '));

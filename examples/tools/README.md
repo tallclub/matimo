@@ -43,12 +43,12 @@
 - Proper TypeScript configuration
 - Clean imports from Matimo SDK
 
-## � Quick Start: Pick Your Path
+## 🚀 Quick Start: Pick Your Path
 
 ### Setup (All Examples)
 ```bash
 # 1. Install dependencies
-npm install
+pnpm install
 
 # 2. Setup environment
 cp .env.example .env
@@ -59,34 +59,33 @@ echo "OPENAI_API_KEY=sk-your-key-here" >> .env  # From: https://platform.openai.
 
 **👉 First time? Start here:**
 ```bash
-npm run agent:langchain      # ⭐ Simplest integration (recommended)
+pnpm agent:langchain      # ⭐ Simplest integration (recommended)
 ```
 
 **👉 Want to explore all examples?**
 ```bash
 # See QUICK_COMMANDS.md for complete reference (50+ examples)
 # Or run batch validation:
-cd ..
 pnpm validate:all
 ```
 
 **👉 Want to dive into providers?**
 ```bash
-npm run slack:factory        # Try any provider (factory/decorator/langchain)
-npm run gmail:langchain
-npm run github:decorator
+pnpm slack:factory        # Try any provider (factory/decorator/langchain)
+pnpm gmail:langchain
+pnpm github:decorator
 ```
 
 **👉 Want to test core features?**
 ```bash
-npm run execute:factory      # Execute, read, edit, search, web
-npm run search:langchain
-npm run web:decorator
+pnpm execute:factory      # Execute, read, edit, search, web
+pnpm search:langchain
+pnpm web:decorator
 ```
 
 **👉 Want advanced features?**
 ```bash
-npm run meta:flow            # Meta-tools + policy + approvals
+pnpm meta:flow            # Meta-tools + policy + approvals
 pnpm policy:demo
 pnpm skills:demo
 ```
@@ -101,7 +100,7 @@ Quick reference:
 
 ### Meta/Demo Examples
 ```bash
-npm run meta:flow            # Meta-tools integration (most comprehensive)
+pnpm meta:flow            # Meta-tools integration (most comprehensive)
 pnpm policy:demo             # Policy engine validation
 pnpm skills:demo             # Skills system
 pnpm credentials:example     # Credentials management
@@ -110,16 +109,16 @@ pnpm credentials:example     # Credentials management
 ### Provider Examples (Pick Pattern)
 ```bash
 # Slack (3 patterns):
-npm run slack:factory | npm run slack:decorator | npm run slack:langchain
+pnpm slack:factory | pnpm slack:decorator | pnpm slack:langchain
 
 # Gmail (3 patterns):
-npm run gmail:factory | npm run gmail:decorator | npm run gmail:langchain
+pnpm gmail:factory | pnpm gmail:decorator | pnpm gmail:langchain
 
 # GitHub (3 patterns + approval workflow):
-npm run github:factory | npm run github:decorator | npm run github:langchain | npm run github:approval
+pnpm github:factory | pnpm github:decorator | pnpm github:langchain | pnpm github:approval
 
 # PostgreSQL (3 patterns + approval workflow):
-npm run postgres:factory | npm run postgres:decorator | npm run postgres:langchain | npm run postgres:approval
+pnpm postgres:factory | pnpm postgres:decorator | pnpm postgres:langchain | pnpm postgres:approval
 
 # Notion, HubSpot, Mailchimp, Twilio (same 3-pattern structure)
 ```
@@ -127,27 +126,27 @@ npm run postgres:factory | npm run postgres:decorator | npm run postgres:langcha
 ### Core Functionality Examples (3 patterns each)
 ```bash
 # Execute system commands:
-npm run execute:factory | npm run execute:decorator | npm run execute:langchain
+pnpm execute:factory | pnpm execute:decorator | pnpm execute:langchain
 
 # Read files:
-npm run read:factory | npm run read:decorator | npm run read:langchain
+pnpm read:factory | pnpm read:decorator | pnpm read:langchain
 
 # Edit files:
-npm run edit:factory | npm run edit:decorator | npm run edit:langchain
+pnpm edit:factory | pnpm edit:decorator | pnpm edit:langchain
 
 # Search:
-npm run search:factory | npm run search:decorator | npm run search:langchain
+pnpm search:factory | pnpm search:decorator | pnpm search:langchain
 
 # Web scraping:
-npm run web:factory | npm run web:decorator | npm run web:langchain
+pnpm web:factory | pnpm web:decorator | pnpm web:langchain
 ```
 
 ### Agent Examples
 ```bash
-npm run agent:factory        # Factory pattern agent
-npm run agent:decorator      # Decorator pattern agent
-npm run agent:langchain      # LangChain Official API (⭐ recommended)
-npm run agent:skills         # LangChain with skills & policy
+pnpm agent:factory        # Factory pattern agent
+pnpm agent:decorator      # Decorator pattern agent
+pnpm agent:langchain      # LangChain Official API (⭐ recommended)
+pnpm agent:skills-policy  # LangChain with skills & policy
 ```
 
 ---
