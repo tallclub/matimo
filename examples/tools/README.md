@@ -1,64 +1,157 @@
-# Matimo + LangChain.js Agent Examples
+# Matimo Examples - All Patterns, Providers & Features
 
-Three complete, production-ready AI agent examples showing how to integrate **Matimo SDK** with **LangChain.js**.
+**Complete collection of production-ready examples** demonstrating Matimo SDK integration across:
+- **Three calling patterns** (LangChain Official, Decorator, Factory)
+- **10+ providers** (Slack, Gmail, GitHub, PostgreSQL, Notion, HubSpot, Mailchimp, Twilio, etc.)
+- **Core features** (Execute, Read, Edit, Search, Web scraping)
+- **Advanced capabilities** (Policy validation, Skills system, Meta-tools, Credentials)
 
 ## 🎯 What These Examples Demonstrate
 
 ✅ **Framework-Independent Tool Execution:**
-
 - Matimo loads and manages tools independently
 - Tools work the same way in any framework (LangChain, CrewAI, etc.)
 - No tool redefinition needed across frameworks
-- Simple adapter layer for LangChain integration
+- Simple adapter layer for any framework integration
 
-✅ **Three SDK Calling Patterns:**
-
-1. **LangChain Official API** (Recommended): Use `createAgent()` with `tool()` function
-   - Simplest, fastest, most maintainable approach
-   - LangChain handles tool selection and calling automatically
-   - Use when: You want production-ready, framework-native integration
-
+✅ **Three SDK Calling Patterns (Demonstrated Everywhere):**
+1. **LangChain Official API** (⭐ Recommended): Use `createAgent()` with `tool()` function
 2. **Decorator Pattern**: Use `@tool(toolName)` decorator on methods
-   - Decorator intercepts calls → executes via Matimo
-   - Use when: You want method-based calling style
-
 3. **Factory Pattern**: Direct `matimo.execute(toolName, params)` calls
-   - Call Matimo directly → tool executes
-   - Use when: You prefer functional style
 
-✅ **Full LangChain Integration:**
+✅ **10+ Provider Integrations:**
+- Slack, Gmail, GitHub, PostgreSQL, Notion, HubSpot, Mailchimp, Twilio (each with 3 patterns)
+- Approval workflows (PostgreSQL, GitHub)
 
-- Real OpenAI GPT-4 agent with multi-step reasoning
-- Tool orchestration with natural language understanding
-- Matimo stays independent of LangChain's details
+✅ **Core Functionality Examples:**
+- Execute system commands
+- Read files from disk
+- Edit/modify files
+- Search code/files
+- Web scraping & HTTP requests
+
+✅ **Advanced Features:**
+- Meta-tools (tool creation, policy checking, approvals)
+- Policy validation & blocking  
+- Skills system (define reusable skill components)
+- Credentials management
+- Human-in-the-loop approval workflows
 
 ✅ **Production Ready:**
-
 - Independent npm package setup
-- Environment variable management
+- Environment variable management  
 - Proper TypeScript configuration
 - Clean imports from Matimo SDK
 
-## 📦 Quick Start
+## 🚀 Quick Start: Pick Your Path
 
-### 1. Install Dependencies
-
+### Setup (All Examples)
 ```bash
-npm install
-```
+# 1. Install dependencies
+pnpm install
 
-This installs LangChain, Matimo SDK, and all required dependencies.
-
-### 2. Setup Environment
-
-```bash
-# Copy environment template
+# 2. Setup environment
 cp .env.example .env
-
-# Add your OpenAI API key
-# Get key from: https://platform.openai.com/api-keys
-echo "OPENAI_API_KEY=sk-your-key-here" >> .env
+echo "OPENAI_API_KEY=sk-your-key-here" >> .env  # From: https://platform.openai.com/api-keys
 ```
+
+### Choose Your Learning Path
+
+**👉 First time? Start here:**
+```bash
+pnpm agent:langchain      # ⭐ Simplest integration (recommended)
+```
+
+**👉 Want to explore all examples?**
+```bash
+# See QUICK_COMMANDS.md for complete reference (50+ examples)
+# Or run batch validation:
+pnpm validate:all
+```
+
+**👉 Want to dive into providers?**
+```bash
+pnpm slack:factory        # Try any provider (factory/decorator/langchain)
+pnpm gmail:langchain
+pnpm github:decorator
+```
+
+**👉 Want to test core features?**
+```bash
+pnpm execute:factory      # Execute, read, edit, search, web
+pnpm search:langchain
+pnpm web:decorator
+```
+
+**👉 Want advanced features?**
+```bash
+pnpm meta:flow            # Meta-tools + policy + approvals
+pnpm policy:demo
+pnpm skills:demo
+```
+
+---
+
+## 📋 All Available Examples
+
+For complete reference of all 50+ examples, see [QUICK_COMMANDS.md](./QUICK_COMMANDS.md).
+
+Quick reference:
+
+### Meta/Demo Examples
+```bash
+pnpm meta:flow            # Meta-tools integration (most comprehensive)
+pnpm policy:demo             # Policy engine validation
+pnpm skills:demo             # Skills system
+pnpm credentials:example     # Credentials management
+```
+
+### Provider Examples (Pick Pattern)
+```bash
+# Slack (3 patterns):
+pnpm slack:factory | pnpm slack:decorator | pnpm slack:langchain
+
+# Gmail (3 patterns):
+pnpm gmail:factory | pnpm gmail:decorator | pnpm gmail:langchain
+
+# GitHub (3 patterns + approval workflow):
+pnpm github:factory | pnpm github:decorator | pnpm github:langchain | pnpm github:approval
+
+# PostgreSQL (3 patterns + approval workflow):
+pnpm postgres:factory | pnpm postgres:decorator | pnpm postgres:langchain | pnpm postgres:approval
+
+# Notion, HubSpot, Mailchimp, Twilio (same 3-pattern structure)
+```
+
+### Core Functionality Examples (3 patterns each)
+```bash
+# Execute system commands:
+pnpm execute:factory | pnpm execute:decorator | pnpm execute:langchain
+
+# Read files:
+pnpm read:factory | pnpm read:decorator | pnpm read:langchain
+
+# Edit files:
+pnpm edit:factory | pnpm edit:decorator | pnpm edit:langchain
+
+# Search:
+pnpm search:factory | pnpm search:decorator | pnpm search:langchain
+
+# Web scraping:
+pnpm web:factory | pnpm web:decorator | pnpm web:langchain
+```
+
+### Agent Examples
+```bash
+pnpm agent:factory        # Factory pattern agent
+pnpm agent:decorator      # Decorator pattern agent
+pnpm agent:langchain      # LangChain Official API (⭐ recommended)
+pnpm agent:skills-policy  # LangChain with skills & policy
+```
+
+---
+
+## 🌟 Deep Dive: Three Calling Patterns
 
 ### 3. Run LangChain Official API Agent (⭐ Recommended)
 
@@ -195,32 +288,57 @@ Result returned to LangChain
 
 ## 🔀 Patterns Compared
 
-| Aspect               | LangChain Official         | Decorator                           | Factory                  |
-| -------------------- | -------------------------- | ----------------------------------- | ------------------------ |
-| **Call Style**       | `createAgent()` + `tool()` | `await agent.method()`              | `await matimo.execute()` |
-| **Complexity**       | ~100 lines                 | ~200 lines (with dynamic dispatch)  | ~150 lines               |
-| **Schema**           | Automatic from Zod         | Inferred from method signature      | Manual mapping           |
-| **Tool Binding**     | Native LangChain           | Decorator intercept with reflection | Direct call              |
-| **Scalability**      | ✅ Great                   | ✅ Excellent (no routing code)      | ✅ Great                 |
-| **Type Safety**      | ✅ Yes                     | ✅ Yes (full TS support)            | ✅ Yes                   |
-| **Recommended**      | ⭐ **For frameworks**      | ⭐ **For class-based agents**       | For functional style     |
-| **Production Ready** | ✅ Yes                     | ✅ Yes                              | ✅ Yes                   |
+| Aspect                | LangChain Official         | Decorator                            | Factory                  |
+| --------------------- | -------------------------- | ------------------------------------ | ------------------------ |
+| **Call Style**        | `createAgent()` + `tool()` | `await agent.method()`               | `await matimo.execute()` |
+| **Complexity**        | ~100 lines                 | ~200 lines (with dynamic dispatch)   | ~150 lines               |
+| **Schema**            | Automatic from Zod         | Inferred from method signature       | Manual mapping           |
+| **Tool Binding**      | Native LangChain           | Decorator intercept + reflection     | Direct call              |
+| **Scalability**       | ✅ Great                   | ✅ Excellent (no routing code)       | ✅ Great                 |
+| **Type Safety**       | ✅ Yes                     | ✅ Yes (full TS support)             | ✅ Yes                   |
+| **Best For**          | Framework integration      | Class-based agents                   | Functional style         |
+| **Recommended**       | ⭐ **Start here**          | ⭐ **For class apps**                | For direct calls         |
+| **Production Ready**  | ✅ Yes                     | ✅ Yes                               | ✅ Yes                   |
+| **Works With**        | All providers & features   | All providers & features             | All providers & features |
 
 ## 📁 Project Structure
 
-````
+```
 examples/tools/
-├── agents/
+├── agents/                             # Agent examples (3 patterns)
 │   ├── langchain-agent.ts              # ⭐ LangChain Official API (recommended)
 │   ├── decorator-pattern-agent.ts      # Uses @tool decorator with MatimoInstance
-│   └── factory-pattern-agent.ts        # Uses matimo.execute() with MatimoInstance
-├── package.json                        # Standalone dependencies (LangChain, Matimo, etc.)
+│   ├── factory-pattern-agent.ts        # Uses matimo.execute() with MatimoInstance
+│   └── langchain-skills-policy-agent.ts # LangChain with skills & policy
+├── slack/                              # Slack provider (3 patterns)
+├── gmail/                              # Gmail provider (3 patterns)
+├── github/                             # GitHub provider (3 patterns + approval)
+├── postgres/                           # PostgreSQL provider (3 patterns + approval)
+├── notion/                             # Notion provider (3 patterns)
+├── hubspot/                            # HubSpot provider (3 patterns)
+├── mailchimp/                          # Mailchimp provider (3 patterns)
+├── twilio/                             # Twilio provider (3 patterns)
+├── execute/                            # Execute/run commands (3 patterns)
+├── read/                               # Read files (3 patterns)
+├── edit/                               # Edit files (3 patterns)
+├── search/                             # Search files (3 patterns)
+├── web/                                # Web scraping (3 patterns)
+├── meta-flow/                          # Meta-tools integration demo
+├── policy/                             # Policy engine demo
+├── skills/                             # Skills system demo
+├── credentials/                        # Credentials management
+├── package.json                        # Dependencies (LangChain, Matimo, etc.)
 ├── tsconfig.json                       # TypeScript configuration
-├── .env.example                        # Environment template (OPENAI_API_KEY)
-├── test-agents.ts                      # Testing script for tool verification
+├── .env.example                        # Environment template
+├── QUICK_COMMANDS.md                   # Complete reference (50+ examples)
 └── README.md                           # This file
 
-All agents load tools from: `../../tools/` (parent project's tool definitions)
+**Key:** All examples load tools from: `../../tools/` (parent project's tool definitions)
+**Pattern:** Each category (provider, feature) has 3 file variants:
+- `*-factory.ts` — Use MatimoInstance.execute()
+- `*-decorator.ts` — Use @tool() decorators
+- `*-langchain.ts` — Use LangChain Official API
+```
 
 ## 🔄 SDK Patterns Explained
 
@@ -500,11 +618,20 @@ npm run agent:langchain   # or agent:decorator, agent:factory
 
 ## 📚 Next Steps
 
-1. **Try all three agents** - compare patterns: `npm run agent:langchain`, `agent:decorator`, `agent:factory`
-2. **Modify agent queries** in `agents/*.ts` - change the example prompts
-3. **Add custom tools** to `../../tools/` - they auto-appear in all agents
-4. **Extend the agents** - add memory, streaming, custom system prompts
-5. **Deploy to production** - use Matimo REST API or MCP server
+### Beginner
+1. **Run all three agent patterns** — compare approaches: `npm run agent:langchain`, `agent:decorator`, `agent:factory`
+2. **Try a provider** — pick Slack/Gmail/GitHub: `npm run slack:factory`, `npm run github:langchain`, etc.
+3. **Test core features** — execute, read, edit: `npm run execute:factory`, `npm run read:langchain`, etc.
+
+### Intermediate
+4. **Modify example prompts** — edit `agents/*.ts` or provider files to change queries
+5. **Add custom tools** — create `../../tools/custom-tool/definition.yaml`, they auto-appear in all examples
+6. **Extend agents** — add memory, streaming, custom system prompts, better error handling
+
+### Advanced
+7. **Use advanced features** — try `npm run meta:flow` (meta-tools), `pnpm policy:demo` (validation), `pnpm skills:demo` (reusable skills)
+8. **Implement approvals** — try PostgreSQL/GitHub approval workflows: `npm run postgres:approval`, `npm run github:approval`
+9. **Deploy to production** — use Matimo REST API (Phase 2) or MCP server for Claude integration
 
 ## 🔗 Related Documentation
 
@@ -516,10 +643,26 @@ npm run agent:langchain   # or agent:decorator, agent:factory
 
 ## 💡 Key Takeaway
 
-This example proves Matimo's core value proposition:
+These examples prove Matimo's core value proposition:
 
 **Define tools ONCE in YAML** ↓  
-**Use them EVERYWHERE**: LangChain (3 patterns), SDK, CrewAI, MCP, REST, CLI ↓  
+**Use them with THREE calling patterns** (LangChain, Decorator, Factory) ↓  
+**Use them with TEN+ providers** (Slack, Gmail, GitHub, PostgreSQL, Notion, HubSpot, Mailchimp, Twilio, etc.) ↓  
+**Use them with FIVE core features** (Execute, Read, Edit, Search, Web) ↓  
+**Use them with advanced capabilities** (Meta-tools, Policy, Skills, Approvals) ↓  
+**Use them EVERYWHERE**: LangChain, SDK, CrewAI, MCP, REST API, CLI ↓  
+
 **Zero duplication. Pure productivity.**
 
-All three agents use the exact same Matimo tools with different SDK patterns. That's the Matimo difference.
+All examples use the exact same Matimo tools with different patterns, providers, and frameworks. **That's the Matimo difference.**
+
+---
+
+### 📖 For Complete Reference
+
+See [QUICK_COMMANDS.md](./QUICK_COMMANDS.md) for:
+- All 50+ example commands organized by category
+- Complete provider list with all three patterns
+- Core functionality examples (execute, read, edit, search, web)
+- Meta/demo examples (meta-tools, policy, skills, credentials)
+- Validation & testing commands

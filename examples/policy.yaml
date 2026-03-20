@@ -1,0 +1,62 @@
+# Matimo Policy Configuration
+#
+# This file configures the DefaultPolicyEngine that governs what
+# agent-created tools are permitted at runtime.
+#
+# Developer-authored tools loaded from @matimo/* packages or explicit
+# trustedPaths are NEVER subject to this policy — only agent-proposed tools
+# go through the policy engine.
+#
+# Usage:
+#   const matimo = await MatimoInstance.init({ policyFile: './policy.yaml' });
+#
+# All fields are optional. Conservative defaults are used for anything omitted.
+
+# ── HTTP domain allowlist ────────────────────────────────────────────────────
+# If set, agent-created HTTP tools may only target these domains.
+# Leave commented out (or empty) to allow any external HTTPS URL.
+#
+# allowedDomains:
+#   - api.slack.com
+#   - slack.com
+#   - api.openai.com
+#   - api.github.com
+
+# ── Credential allowlist ─────────────────────────────────────────────────────
+# Env-var names that agent-created tools are allowed to reference for auth.
+# If an agent tries to use a credential not on this list, it will be rejected.
+# Leave commented out to allow any credential (not recommended for production).
+#
+# allowedCredentials:
+#   - SLACK_BOT_TOKEN
+#   - GITHUB_TOKEN
+#   - OPENAI_API_KEY
+
+# ── HTTP methods ─────────────────────────────────────────────────────────────
+# Methods allowed for agent-created HTTP tools.
+# Default: GET and POST only.
+# Uncomment to permit wider access (requires human approval for non-GET tools anyway).
+#
+allowedHttpMethods:
+  - GET
+  - POST
+#   - PUT
+#   - PATCH
+#   - DELETE
+
+# ── Execution types ───────────────────────────────────────────────────────────
+# Whether agent-created tools may use execution type 'command' or 'function'.
+# These are BLOCKED by the TIER 3 gate regardless of these settings.
+# Only developer-authored tools in trustedPaths should use these types.
+#
+allowCommandTools: false
+allowFunctionTools: false
+
+# ── Protected namespaces ──────────────────────────────────────────────────────
+# Tool name prefixes reserved for built-in / developer tools.
+# Agents cannot create tools with these prefixes.
+# Default: ['matimo_']
+#
+protectedNamespaces:
+  - matimo_
+  # - internal_   # Add your own reserved prefixes here

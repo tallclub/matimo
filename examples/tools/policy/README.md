@@ -28,6 +28,53 @@ After the agent finishes, **Phase 3** runs programmatic checks that can't be don
 - **Policy access control** — draft/deprecated/prod restrictions with RBAC
 - **Audit event trail** — every policy decision emits a structured event
 
+## ✅ What Gets Validated
+
+### Policy Engine Validation
+- ✓ Safe tool validation passes
+- ✓ Shell commands blocked
+- ✓ SSRF attacks blocked
+- ✓ Namespace hijacking blocked
+- ✓ Human approval workflow
+- ✓ Risk classification
+- ✓ Policy enforcement on creation
+- ✓ Deterministic risk assessment
+
+### Expected Outcomes
+
+**Success Pattern**
+```
+🔧 Agent calls: matimo_doctor(...)
+📋 Result: Valid: safe domain, HTTP GET allowed
+✓ PASS  Tool creation on disk
+✅ Approved by human operator.
+```
+
+**Policy Block Pattern**
+```
+🔧 Agent calls: matimo_doctor(...)
+❌ Command tools are blocked by policy
+💬 Agent: I understand. I'll try a different approach.
+```
+
+**Human Rejection Pattern**
+```
+❓ Approve? (y/n): n
+✗ FAIL  Rejected by human operator.
+💬 Agent: The human declined. Let me try a safer alternative.
+```
+
+## 📈 Performance Baseline
+
+| Metric | Value |
+|--------|-------|
+| Duration | ~90s |
+| API Calls | 10-12 |
+| Validation Missions | 10 |
+| Policy Blocks | 3+ |
+
+(Times depend on LLM latency; gpt-4o-mini is optimized for fast responses)
+
 ## Prerequisites
 
 ```bash
@@ -41,6 +88,73 @@ echo "OPENAI_API_KEY=sk-..." >> .env
 cd /path/to/matimo
 pnpm install && pnpm build
 ```
+
+## Understanding Policy Configuration
+
+The demo uses a **policy.yaml file** to configure what agent-created tools are allowed. This is the core security mechanism.
+
+### How Policy Works
+
+When the demo runs, it:
+1. Loads `policy.yaml` (in the demo, inline config is used for simplicity)
+2. Creates a `DefaultPolicyEngine` from the policy
+3. **Freezes the policy** at startup (`Object.freeze()`) — agents cannot change it
+4. When an agent proposes a tool, the engine **validates** it against the policy
+5. **Dangerous patterns are blocked** before they can be created
+
+### The Policy Configuration Used by This Demo
+
+```typescript
+// From policy-demo.ts
+const policyConfig: PolicyConfig = {
+  allowedDomains: ['api.weatherapi.com', 'api.github.com', 'jsonplaceholder.typicode.com'],
+  allowedHttpMethods: ['GET', 'POST'],
+  allowCommandTools: false,      // ❌ No shell commands
+  allowFunctionTools: false,     // ❌ No arbitrary code execution
+  protectedNamespaces: ['matimo_'], // ❌ Can't hijack matimo_* names
+  allowedCredentials: ['WEATHER_API_KEY'],
+};
+```
+
+**What each rule does:**
+- **allowedDomains**: Only HTTP tools targeting these domains are allowed. Blocks SSRF attacks.
+- **allowedHttpMethods**: Only GET and POST are allowed. Protects against DELETE/PUT abuse.
+- **allowCommandTools/allowFunctionTools**: Shell and code execution are always blocked for agent tools.
+- **protectedNamespaces**: Prevents agents from hijacking built-in tool names.
+- **allowedCredentials**: Only these environment variables can be referenced.
+
+### Using a Policy File (Recommended for Production)
+
+For production, use a YAML file instead of inline config:
+
+```bash
+# 1. Create policy.yaml
+cat > policy.yaml << 'EOF'
+allowedDomains:
+  - api.slack.com
+  - api.github.com
+allowedHttpMethods:
+  - GET
+  - POST
+allowCommandTools: false
+allowFunctionTools: false
+protectedNamespaces:
+  - matimo_
+EOF
+
+# 2. Initialize with the file
+const matimo = await MatimoInstance.init({
+  policyFile: './policy.yaml'
+});
+```
+
+**Advantages:**
+- ✅ Policy changes don't require code changes
+- ✅ Different policies per environment (dev/staging/prod)
+- ✅ Version-controlled security decisions
+- ✅ Easy for teams to understand what's allowed
+
+For more details, see [Policy Configuration Guide](../../../docs/tool-development/POLICY_AND_LIFECYCLE.md#policy-configuration).
 
 ## Running the Demo
 
