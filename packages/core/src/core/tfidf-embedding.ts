@@ -1,6 +1,6 @@
 /**
  * TF-IDF Embedding Provider — zero-dependency semantic search
- *
+ * (Term Frequency–Inverse Document Frequency)
  * Provides a lightweight text-to-vector implementation using TF-IDF (Term
  * Frequency–Inverse Document Frequency) for cosine-similarity ranking. This
  * is good enough for 10–200 skills. For production enterprise deployments,

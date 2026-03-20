@@ -1,3 +1,107 @@
+## v0.1.0-alpha.13
+
+> Release: Skills System, Policy Engine, Meta-Tools Hardening — Complete agent autonomy layer with skill discovery, policy-driven tool creation, hot-reload safety, and security hardening
+
+**Released**: March 20, 2026
+
+### 🚀 Major Features
+
+**Skills System — First-Class Integration** (`@matimo/core`)
+
+- **Agent Skills Catalog** — 6 built-in SKILL.md files shipped with `@matimo/core` for agent self-education
+  - `tool-creation` — `matimo_create_tool`, `matimo_validate_tool`, `matimo_approve_tool` workflow
+  - `meta-tools-lifecycle` — Full lifecycle management (create, validate, approve, reload, list)
+  - `policy-validation` — Risk classification, approval tiers, policy configuration
+  - `tool-discovery` — Finding and learning about existing tools
+  - `skill-creator` — How to create new SKILL.md files for use in agents
+  - `skills-catalog` — How to use and leverage the skills ecosystem
+- **`semanticSearchSkills(query)`** — TF-IDF (Term Ferquency - Inverse Document Frequency embedding)-based semantic search across all SKILL.md files; ranked results with relevance scores 
+  - [checkout TF-IDF implementation details](/docs/skills/TFIDF_SEMANTIC_SEARCH.md)
+- **`getSkillSections(skillName)`** — Returns section inventory with token estimates (`{ sections: string[], totalTokens: number }`)
+- **`getSkillContent(skillName, options?)`** — Load full or selective sections of a skill (token-efficient context loading)
+   - [checkout TF-IDF implementation details](/docs/skills/TFIDF_SEMANTIC_SEARCH.md)
+- **Agent meta-tools** — `matimo_list_skills`, `matimo_get_skill`, `matimo_create_skill`, `matimo_validate_skill` (callable by LangChain agents and MCP clients)
+- **Provider skill bundles** — Each provider package (Slack, GitHub, Gmail, etc.) ships a `skills.md` documenting its tool ecosystem
+- **MCP resource exposure** — Skills available as resources in MCP server for Claude and other clients
+
+**Policy Engine Hardening** (`@matimo/core`)
+- [Checkout Policy Documentation](/docs/api-reference/POLICY_AND_LIFECYCLE.md)
+- **Policy-as-YAML loader** — `loadPolicyFromFile(path)` + `policyFile` option in `MatimoInstance.init()`
+- **Policy tier API** — `getTierForTool(tool, config): PolicyTier` returning `'auto' | 'approval-required' | 'blocked'`
+- **Approval state tracking** — `approvalState: 'auto-approved' | 'pending' | 'approved' | 'rejected'` in `CreateResult`
+- **Pending tools inventory** — `getPendingTools(): string[]` in approval manifest for agent status queries
+- **Tool status meta-tool** — `matimo_get_tool_status` returns `{ name, status, riskLevel, approvalState, approvedAt?, approvedBy? }`
+- **Human-readable validation** — `matimo_validate_tool` now returns `SchemaError[]` with `validOptions?` per error field (not raw Zod)
+
+**Hot-Reload Atomicity & Safety** (`@matimo/core`)
+
+- **Atomic reload** — `reloadTools()` snapshots registry, restores on mid-load error
+- **Rollback signal** — `ReloadResult { success, reloadedCount, rolledBack }` tells agents whether state was preserved
+- **MCP auto-trigger** — MCP server emits `tools/list_changed` notification on successful reload
+
+**Security Hardening** (`@matimo/core`)
+
+- **20 security vulnerabilities resolved** via pnpm overrides and direct fixes:
+  - **ReDoS prevention** — `HEADING_REGEX` improved to prevent catastrophic backtracking in skill parsing
+  - **Sensitive data logging** — Secrets never logged or exposed in error messages
+  - **Dependency audit** — Comprehensive override strategy for transitive vulnerabilities
+- **Regex safety** — All regex patterns reviewed and hardened against ReDoS attacks
+- **Logging guardrails** — Credentials and sensitive parameters redacted from all logs
+
+**CLI Enhancements** (`@matimo/cli`)
+
+- **`matimo doctor`** — Diagnoses environment in one command:
+  - Node.js ≥18 check
+  - `@matimo/*` package scan
+  - Environment variable audit per tool
+  - YAML validation with field-level messages
+- **`matimo review`** — Bridge for approval workflows (until Agent Forge approval UI ships):
+  - `matimo review list` — Show pending tools awaiting approval
+  - `matimo review approve <tool-name>` — Approve a pending tool for execution
+  - `matimo review reject <tool-name>` — Reject a pending tool
+
+### 📚 Examples & Documentation
+
+**New Examples** (`examples/tools/agents/`)
+
+- **`policy-agent.ts`** — LangChain agent demonstrating policy-aware tool creation workflow
+- **`skills-demo.ts`** — Comprehensive demo of `semanticSearchSkills()`, `getSkillSections()`, `getSkillContent()` SDK APIs
+- **`meta-tools-example.ts`** — Full lifecycle: create, validate, approve, reload, list tools via meta-tools
+
+**Documentation Updates**
+
+- **`docs/RELEASES.md`** — Comprehensive release tracking (this file)
+- **`docs/ROADMAP.md`** — Updated with alpha.14 focus
+- **`docs/tool-development/TOOL_SPECIFICATION.md`** — `execution.type: function` fully documented with trust model
+- **Type-documentation alignment** — Fixed discrepancies between actual behavior and docs
+
+### 🧪 Test Coverage
+
+- **Policy & meta-tools**: Comprehensive unit tests covering hot-reload, approval state, policy tiers, error messaging
+- **Skills system**: TF-IDF search, section parsing, token estimation
+- **Security**: Regex hardening, sensitive data handling, ReDoS prevention
+- **Integration**: Full end-to-end workflows for policy + skill creation
+- **Full suite**: 1300+ tests passing with consistent coverage targets
+
+### 📦 Packages
+
+All packages bumped to v0.1.0-alpha.13:
+
+- `@matimo/core` — Skills, policy hardening, meta-tools, security fixes
+- `@matimo/cli` — `doctor` command, `review` command, enhanced help
+- `@matimo/slack`, `@matimo/github`, `@matimo/gmail`, `@matimo/hubspot`, `@matimo/mailchimp`, `@matimo/notion`, `@matimo/postgres`, `@matimo/twilio` — Version sync, skill bundles in each
+
+### ⚠️ Breaking Changes
+
+None. All new features are additive or opt-in.
+
+### 🔗 Related
+
+- **Previous**: [v0.1.0-alpha.12.1](#v0101-alpha121)
+- **Next**: [v0.1.0-alpha.14](./ROADMAP.md#v0101-alpha14--next-release)
+
+---
+
 ## v0.1.0-alpha.12.1
 
 > Release: Per-Execution Credential Override — Multi-tenant credential injection, `getRequiredCredentials()` DX helper, package-level release workflow (Changesets), improved test coverage
