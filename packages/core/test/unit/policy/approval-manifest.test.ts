@@ -95,6 +95,28 @@ describe('ApprovalManifest', () => {
       const reloaded = new ApprovalManifest(tmpDir, TEST_SECRET);
       expect(reloaded.isApproved('my-tool', yamlHash)).toBe(false);
     });
+
+    it('should remove tool from pendingSet when revoking', () => {
+      const yamlHash = manifest.computeHash('content');
+      // Mark as pending, then approve
+      manifest.markPending('my-tool');
+      manifest.approve('my-tool', yamlHash);
+      expect(manifest.getPendingTools()).not.toContain('my-tool');
+
+      // Revoke should remove from both cache and pendingSet
+      manifest.revoke('my-tool');
+      expect(manifest.isApproved('my-tool', yamlHash)).toBe(false);
+      expect(manifest.getPendingTools()).not.toContain('my-tool');
+    });
+
+    it('should handle revoking a tool that is only in pendingSet', () => {
+      manifest.markPending('my-tool');
+      expect(manifest.getPendingTools()).toContain('my-tool');
+
+      // Revoke removes from pendingSet
+      expect(manifest.revoke('my-tool')).toBe(true);
+      expect(manifest.getPendingTools()).not.toContain('my-tool');
+    });
   });
 
   describe('listApproved', () => {

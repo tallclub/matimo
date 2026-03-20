@@ -45,8 +45,13 @@ export class ApprovalManifest {
     } else {
       this.secret = randomUUID();
       const logger = getGlobalMatimoLogger();
+      // Create a non-sensitive fingerprint for debugging (first 4 chars only)
+      const fingerprint = this.secret.substring(0, 4);
       logger.warn(
         'No MATIMO_APPROVAL_SECRET set. An ephemeral secret was auto-generated ' +
+          '(fingerprint: ' +
+          fingerprint +
+          '...) ' +
           'for this process. Approvals may not persist across restarts. ' +
           'To persist approvals, set MATIMO_APPROVAL_SECRET to a stable, securely ' +
           'generated value in the environment.'
@@ -103,12 +108,16 @@ export class ApprovalManifest {
   }
 
   /**
-   * Revoke a tool's approval.
+   * Revoke a tool's approval. Removes from both cache and pendingSet
+   * to ensure consistent state (tool no longer tracked as approved or pending).
    */
   revoke(toolName: string): boolean {
-    const deleted = this.cache.delete(toolName);
-    if (deleted) this.saveToDisk();
-    return deleted;
+    const cacheDeleted = this.cache.delete(toolName);
+    const pendingDeleted = this.pendingSet.delete(toolName);
+    if (cacheDeleted || pendingDeleted) {
+      this.saveToDisk();
+    }
+    return cacheDeleted || pendingDeleted;
   }
 
   /**
@@ -175,7 +184,9 @@ export class ApprovalManifest {
   }
 
   /**
-   * Save current approvals to disk.
+   * Save current approvals to disk using atomic write pattern.
+   * Writes to a temporary file first, then atomically renames it.
+   * This prevents data corruption if the process crashes mid-write.
    */
   private saveToDisk(): void {
     const data: ManifestData = {
@@ -187,6 +198,14 @@ export class ApprovalManifest {
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
-    fs.writeFileSync(this.manifestPath, JSON.stringify(data, null, 2), 'utf-8');
+
+    // Atomic write: write to temp file, then rename
+    const json = JSON.stringify(data, null, 2);
+    const tempPath = path.join(
+      dir,
+      `${path.basename(this.manifestPath)}.tmp-${process.pid}-${Date.now()}`
+    );
+    fs.writeFileSync(tempPath, json, 'utf-8');
+    fs.renameSync(tempPath, this.manifestPath);
   }
 }

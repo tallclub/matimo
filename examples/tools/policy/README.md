@@ -322,12 +322,12 @@ const policyConfig: PolicyConfig = {
 | 1 | `no-function-execution` | `execution.type: function` (arbitrary code) |
 | 2 | `no-command-execution` | `execution.type: command` (shell injection) |
 | 3 | `no-ssrf` | Internal IPs: `169.254.169.254`, `10.*`, `192.168.*`, `localhost`, `.internal` |
-| 4 | `no-unauthorized-credentials` | Credentials not in allowedCredentials list |
+| 4 | `unauthorized-credential` | Credentials not in allowedCredentials list |
 | 5 | `reserved-namespace` | Tool names starting with `matimo_` |
-| 6 | `force-approval` | Forces `requires_approval: true` on all untrusted tools |
-| 7 | `allowed-http-methods` | HTTP methods not in allowedHttpMethods |
-| 8 | `allowed-domains` | Domains not in allowedDomains |
-| 9 | `force-draft-status` | Forces `status: draft` on new tools |
+| 6 | `forced-approval` | Forces `requires_approval: true` on all untrusted tools |
+| 7 | `blocked-http-method` | HTTP methods not in allowedHttpMethods |
+| 8 | `blocked-domain` | Domains not in allowedDomains |
+| 9 | `forced-draft-status` | Forces `status: draft` on new tools |
 
 ## Approval Flow
 

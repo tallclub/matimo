@@ -15,7 +15,7 @@
   - `tool-discovery` — Finding and learning about existing tools
   - `skill-creator` — How to create new SKILL.md files for use in agents
   - `skills-catalog` — How to use and leverage the skills ecosystem
-- **`semanticSearchSkills(query)`** — TF-IDF (Term Ferquency - Inverse Document Frequency embedding)-based semantic search across all SKILL.md files; ranked results with relevance scores 
+- **`semanticSearchSkills(query)`** — TF-IDF (Term Frequency - Inverse Document Frequency embedding)-based semantic search across all SKILL.md files; ranked results with relevance scores 
   - [checkout TF-IDF implementation details](/docs/skills/TFIDF_SEMANTIC_SEARCH.md)
 - **`getSkillSections(skillName)`** — Returns section inventory with token estimates (`{ sections: string[], totalTokens: number }`)
 - **`getSkillContent(skillName, options?)`** — Load full or selective sections of a skill (token-efficient context loading)

@@ -72,7 +72,7 @@ function getPackageVersion(): string {
       const req =
         typeof require !== 'undefined'
           ? require
-          : // @ts-ignore - import.meta only available in ESM context
+          : // ESM fallback (eval suppresses type errors)
             createRequire(eval('import.meta.url') as string);
       const pkgPath = req.resolve('@matimo/core/package.json');
       /* istanbul ignore next -- only reachable when @matimo/core/package.json is a proper export */
@@ -332,13 +332,16 @@ export class MCPServer {
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private async createMcpServerWithTools(): Promise<any> {
-    // @ts-ignore - wildcard export subpath resolves at runtime via bundler moduleResolution
-    const { McpServer } = await import('@modelcontextprotocol/sdk/server/mcp');
+    const { McpServer } = await import(
+      // @ts-expect-error — resolves at runtime via bundler moduleResolution
+      '@modelcontextprotocol/sdk/server/mcp'
+    );
     const logger = getGlobalMatimoLogger();
     const matimo = this.matimo!;
     const version = getPackageVersion();
 
-    const server = new McpServer({ name: 'matimo', version });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const server: any = new McpServer({ name: 'matimo', version });
 
     let registeredCount = 0;
     for (const tool of this.filteredTools) {
@@ -421,8 +424,10 @@ export class MCPServer {
    * Connect via stdio transport (for Claude Desktop, Cursor, etc.)
    */
   private async connectStdio(): Promise<void> {
-    // @ts-ignore - wildcard export subpath
-    const { StdioServerTransport } = await import('@modelcontextprotocol/sdk/server/stdio');
+    const { StdioServerTransport } = await import(
+      // @ts-expect-error — resolves at runtime via bundler moduleResolution
+      '@modelcontextprotocol/sdk/server/stdio'
+    );
 
     const server = await this.createMcpServerWithTools();
     this.mcpServer = server;
@@ -445,13 +450,13 @@ export class MCPServer {
   private async connectHttp(): Promise<void> {
     const http = await import('http');
     const { StreamableHTTPServerTransport } = (await import(
-      // @ts-ignore — subpath types not available with bundler moduleResolution
+      // @ts-expect-error — Cannot find module at compile time; resolves at runtime via bundler
       '@modelcontextprotocol/sdk/server/streamableHttp'
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     )) as any;
     const { randomUUID } = await import('crypto');
     const { isInitializeRequest } = (await import(
-      // @ts-ignore — subpath types not available with bundler moduleResolution
+      // @ts-expect-error — Cannot find module at compile time; resolves at runtime via bundler
       '@modelcontextprotocol/sdk/types'
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     )) as any;

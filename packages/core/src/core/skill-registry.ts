@@ -181,14 +181,13 @@ export class SkillRegistry {
       if (options.semantic) {
         // Semantic search: rank by embedding similarity
         const scored = this.rankBySimilarity(query, results);
+        // Precompute a map for O(1) lookup by skill name
+        const skillByName = new Map(results.map((skill) => [skill.name, skill] as const));
         results = scored
           .filter((r) => r.score > 0.1) // Minimum relevance threshold
           .sort((a, b) => b.score - a.score)
-          .map((r) => {
-            // Find the matching skill object from results
-            const skill = results.find((s) => s.name === r.skill.name);
-            return skill!;
-          });
+          .map((r) => skillByName.get(r.skill.name))
+          .filter((skill): skill is NonNullable<typeof skill> => skill !== undefined);
       } else {
         // Substring search (original behavior)
         const lowerQuery = query.toLowerCase();

@@ -42,10 +42,21 @@ import { MatimoError, ErrorCode } from '../errors/matimo-error';
 // Zod schema — validates the YAML before constructing PolicyConfig
 // ──────────────────────────────────────────────────────────────────────────────
 
+// Valid HTTP methods supported by the policy engine
+const VALID_HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'] as const;
+const ValidHttpMethodEnum = z.enum(VALID_HTTP_METHODS);
+
 const PolicyFileSchema = z.object({
   allowedDomains: z.array(z.string()).optional(),
   allowedCredentials: z.array(z.string()).optional(),
-  allowedHttpMethods: z.array(z.string().toUpperCase()).optional(),
+  allowedHttpMethods: z
+    .array(
+      z
+        .string()
+        .transform((val: string) => val.toUpperCase())
+        .pipe(ValidHttpMethodEnum)
+    )
+    .optional(),
   allowCommandTools: z.boolean().optional(),
   allowFunctionTools: z.boolean().optional(),
   protectedNamespaces: z.array(z.string()).optional(),

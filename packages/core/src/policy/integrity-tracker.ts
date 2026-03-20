@@ -16,6 +16,7 @@ export interface IntegrityRecord {
 export type IntegrityAction =
   | { action: 'keep'; reason: 'unchanged' }
   | { action: 'revalidate'; reason: 'content-modified' }
+  | { action: 'revalidate'; reason: 'source-changed' }
   | { action: 'validate'; reason: 'new-tool' };
 
 export class ToolIntegrityTracker {
@@ -29,19 +30,25 @@ export class ToolIntegrityTracker {
   }
 
   /**
-   * Called when a tool is loaded. Compares the content hash with the stored
+   * Called when a tool is loaded. Compares the content hash and source with the stored
    * record and returns what action the caller should take.
+   * If the tool moved between trusted/untrusted paths, revalidate is required even if content unchanged.
    */
   onToolLoaded(
     toolName: string,
     yamlContent: string,
-    _source: 'trusted' | 'untrusted'
+    source: 'trusted' | 'untrusted'
   ): IntegrityAction {
     const hash = this.computeHash(yamlContent);
     const existing = this.records.get(toolName);
 
     if (!existing) {
       return { action: 'validate', reason: 'new-tool' };
+    }
+
+    // Check if source changed (trusted ↔ untrusted): must revalidate for policy enforcement
+    if (existing.source !== source) {
+      return { action: 'revalidate', reason: 'source-changed' };
     }
 
     if (existing.hash === hash) {

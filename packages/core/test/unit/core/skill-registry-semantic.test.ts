@@ -170,4 +170,60 @@ describe('SkillRegistry — Semantic Search & Content Access', () => {
       expect(registry.getSkillContent('slack-channel-messaging')).toBeNull();
     });
   });
+
+  // ─── TF-IDF Fallback Behavior ──────────────────────────────────────
+
+  describe('TF-IDF fallback (no custom provider)', () => {
+    it('should use TF-IDF embeddings when no custom provider is set', async () => {
+      // Default provider is TfIdfEmbeddingProvider (embeddingProvider is null)
+      expect(registry['embeddingProvider']).toBeNull();
+
+      const results = await registry.semanticSearch('SQL queries database');
+      expect(results.length).toBeGreaterThan(0);
+      // TF-IDF should rank postgres skill higher for database-related query
+      expect(results[0].skill.name).toBe('postgres-query-operations');
+    });
+
+    it('should give deterministic results with TF-IDF', async () => {
+      // Same query should always return same results in same order
+      const results1 = await registry.semanticSearch('messaging formatting');
+      const results2 = await registry.semanticSearch('messaging formatting');
+
+      expect(results1.map((r) => r.skill.name)).toEqual(results2.map((r) => r.skill.name));
+      expect(results1.map((r) => r.score)).toEqual(results2.map((r) => r.score));
+    });
+
+    it('should refit TF-IDF vocabulary when register() invalidates embeddings', async () => {
+      // Initial search
+      const results1 = await registry.semanticSearch('email');
+      expect(results1[0].skill.name).toBe('gmail-email-sending');
+
+      // Add a new skill that is highly relevant to the query
+      registry.register(
+        makeSkill(
+          'sendgrid-email',
+          'Send transactional email via SendGrid with templates and tracking'
+        )
+      );
+
+      // Search again - TF-IDF vocabulary should be rebuilt
+      const results2 = await registry.semanticSearch('email');
+
+      // Both email skills should be in results after vocabulary refit
+      const emailSkills = results2.map((r) => r.skill.name);
+      expect(emailSkills).toContain('gmail-email-sending');
+      expect(emailSkills).toContain('sendgrid-email');
+    });
+
+    it('should correctly filter by minScore with TF-IDF', async () => {
+      // Unrelated query with very high minScore threshold
+      const results = await registry.semanticSearch('xyz nonsense 12345', {
+        minScore: 0.95,
+      });
+
+      // Should filter out low-scoring results
+      expect(results.length).toBeLessThanOrEqual(1);
+      results.forEach((r) => expect(r.score).toBeGreaterThanOrEqual(0.95));
+    });
+  });
 });

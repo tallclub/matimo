@@ -104,7 +104,9 @@ export class DefaultPolicyEngine implements PolicyEngine {
             (a, b) => orderedSeverities.indexOf(b) - orderedSeverities.indexOf(a)
           )[0] as RiskLevel;
         const reason = result.violations.map((v) => `[${v.rule}] ${v.message}`).join('; ');
-        if (this.config.enableHITL) {
+        // Gate pending_approval behind quarantineRiskLevels: only quarantine if this risk level
+        // is explicitly configured for HITL. High/critical violations block unless explicitly allowed.
+        if (this.config.enableHITL && this.config.quarantineRiskLevels.includes(mostSevere)) {
           return {
             allowed: 'pending_approval',
             reason,

@@ -238,12 +238,12 @@ const matimo = await MatimoInstance.init({
 | `no-function-execution` | critical | Blocks arbitrary code execution |
 | `no-command-execution` | critical | Blocks shell injection |
 | `no-ssrf` | critical | Blocks internal IPs/metadata endpoints |
-| `no-unauthorized-credentials` | high | Blocks unapproved credentials |
+| `unauthorized-credential` | high | Blocks unapproved credentials |
 | `reserved-namespace` | high | Blocks hijacking of `matimo_` prefix |
-| `force-approval` | medium | Enforces `requires_approval: true` |
-| `allowed-http-methods` | high | Blocks disallowed HTTP methods |
-| `allowed-domains` | high | Blocks disallowed domains |
-| `force-draft-status` | medium | Enforces `status: draft` on new tools |
+| `forced-approval` | medium | Enforces `requires_approval: true` |
+| `blocked-http-method` | high | Blocks disallowed HTTP methods |
+| `blocked-domain` | high | Blocks disallowed domains |
+| `forced-draft-status` | medium | Enforces `status: draft` on new tools |
 
 ### Risk Classification
 
