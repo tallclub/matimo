@@ -139,14 +139,29 @@ export function validateToolContent(
 }
 
 /**
+ * Replace all {...} placeholder patterns with 'placeholder' string.
+ * Uses safe string operations (indexOf) to avoid ReDoS vulnerabilities.
+ */
+function cleanUrlPlaceholders(url: string): string {
+  let cleaned = url;
+  while (true) {
+    const start = cleaned.indexOf('{');
+    if (start === -1) break;
+    const end = cleaned.indexOf('}', start);
+    if (end === -1) break;
+    cleaned = cleaned.substring(0, start) + 'placeholder' + cleaned.substring(end + 1);
+  }
+  return cleaned;
+}
+
+/**
  * Check if a URL targets an internal/metadata network (SSRF protection).
  * Handles IPv4, IPv6, and common internal hostnames.
  */
 export function isSSRFTarget(url: string): boolean {
   let hostname: string;
   try {
-    // Handle template placeholders by replacing them with a dummy value
-    const cleanUrl = url.replace(/\{[^}]*?\}/g, 'placeholder');
+    const cleanUrl = cleanUrlPlaceholders(url);
     const parsed = new URL(cleanUrl);
     hostname = parsed.hostname.toLowerCase();
   } catch {
@@ -194,7 +209,7 @@ export function isSSRFTarget(url: string): boolean {
  */
 function extractHostname(url: string): string | undefined {
   try {
-    const cleanUrl = url.replace(/\{[^}]*?\}/g, 'placeholder');
+    const cleanUrl = cleanUrlPlaceholders(url);
     return new URL(cleanUrl).hostname.toLowerCase();
   } catch {
     return undefined;

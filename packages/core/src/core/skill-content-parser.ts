@@ -56,9 +56,26 @@ export interface SkillContentOptions {
   maxDepth?: number;
 }
 
-// ─── Heading regex: matches ATX-style headings (# through ######) ─────────
-// Only match the prefix to avoid ReDoS with `.+?$` on uncontrolled input
-const HEADING_REGEX = /^(#{1,6})\s+/;
+// ─── Helper: Check if line is a Markdown heading using safe string operations ─────────
+// Avoids regex to prevent ReDoS on malicious input with many spaces
+function parseHeading(line: string): { level: number; heading: string } | null {
+  if (!line.startsWith('#')) return null;
+
+  let level = 0;
+  for (let i = 0; i < Math.min(6, line.length); i++) {
+    if (line[i] === '#') level++;
+    else break;
+  }
+
+  if (level === 0 || level > 6) return null;
+
+  // Check that after the hashes, there's whitespace
+  if (level >= line.length || !/\s/.test(line[level])) return null;
+
+  // Extract heading text after the hashes and skip leading whitespace
+  const heading = line.substring(level).trimStart();
+  return { level, heading };
+}
 
 /**
  * Estimate token count from text.
@@ -114,16 +131,15 @@ export function parseSkillSections(body: string): ParsedSkillContent {
     }
 
     if (!inCodeBlock) {
-      const match = HEADING_REGEX.exec(line);
-      if (match) {
+      const headingMatch = parseHeading(line);
+      if (headingMatch) {
         // Flush previous segment
         if (currentSegment) {
           segments.push(currentSegment);
         }
-        const heading = line.substring(match[0].length).trim();
         currentSegment = {
-          heading,
-          level: match[1].length,
+          heading: headingMatch.heading,
+          level: headingMatch.level,
           contentLines: [],
         };
         continue;
