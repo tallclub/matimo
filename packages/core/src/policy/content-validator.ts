@@ -146,7 +146,7 @@ export function isSSRFTarget(url: string): boolean {
   let hostname: string;
   try {
     // Handle template placeholders by replacing them with a dummy value
-    const cleanUrl = url.replace(/\{[^}]+\}/g, 'placeholder');
+    const cleanUrl = url.replace(/\{[^}]*?\}/g, 'placeholder');
     const parsed = new URL(cleanUrl);
     hostname = parsed.hostname.toLowerCase();
   } catch {

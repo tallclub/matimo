@@ -163,7 +163,7 @@ async function approveTool(toolName: string, dir: string): Promise<void> {
   const approvedBy = process.env.USER ?? process.env.USERNAME ?? 'cli';
   manifest.approve(toolName, hash, approvedBy);
 
-  console.info(`✅ Tool "${toolName}" approved by ${approvedBy}.`);
+  console.info(`✅ Tool "${toolName}" approved.`);
 }
 
 async function rejectTool(toolName: string, dir: string): Promise<void> {

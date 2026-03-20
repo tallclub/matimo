@@ -58,7 +58,7 @@ export interface SkillContentOptions {
 
 // ─── Heading regex: matches ATX-style headings (# through ######) ─────────
 
-const HEADING_REGEX = /^(#{1,6})\s+(.+)$/;
+const HEADING_REGEX = /^(#{1,6})\s+(.+?)$/;
 
 /**
  * Estimate token count from text.
