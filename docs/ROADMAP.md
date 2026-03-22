@@ -2,7 +2,7 @@
 
 ## Current Status
 
-**Latest Release**: v0.1.0-alpha.13 (March 20, 2026)
+**Latest Release**: v0.1.0-alpha.13 (March 22, 2026)
 
 ✅ **Completed Features**:
 
@@ -13,7 +13,7 @@
 - Core tools suite (execute, read, edit, search, web, calculator)
 - Provider integrations (Slack with 16+ tools, Gmail with 5 tools, GitHub, HubSpot with 50+ tools, Notion with 7 tools)
 - CLI tool management (list, search, install, help)
-- 1300+ comprehensive test suite with consistent coverage targets
+- 1,884 comprehensive tests passing across 96 suites with consistent coverage targets
 - Complete documentation and examples
 - Structured error handling with MatimoError and error chaining
 - Enhanced HTTP executor with parameter embedding (objects, arrays)
@@ -43,11 +43,12 @@
 
 ### Skills Example Coverage
 
-- [ ] **`skills-demo.ts` — Phase 4: SDK Skills APIs** — Add programmatic demonstration of:
-  - `matimo.semanticSearchSkills(query)` with TF-IDF ranking results
-  - `matimo.getSkillSections(name)` showing section inventory with token estimates
-  - `matimo.getSkillContent(name, { sections: [...] })` showing selective section loading
-  - `matimo.setSkillEmbeddingProvider(provider)` showing how to swap in a custom embedding model
+- [x] **`skills-demo.ts` — Non-MCP progressive disclosure** — Implemented `getSkillsMetadata` (Level 1), `semanticSearchSkills()` (raw TF-IDF scores per skill), and `buildRelevantSkillPrompt` (Level 2 via TF-IDF) demonstrated in Phase 4 of the skills demo
+  - `getSkillsMetadata(matimo)` → names + descriptions only (token-safe)
+  - `matimo.semanticSearchSkills(query, { limit, minScore })` → raw TF-IDF ranked results with per-skill scores printed
+  - `buildRelevantSkillPrompt(matimo, query, { topK, minScore })` → TF-IDF semantic search → load only relevant skill content
+  - Both helpers exported from `matimo` and documented in `docs/framework-integrations/LANGCHAIN.md`
+  - ⚠️ Still needed: `matimo.getSkillSections(name)`, `matimo.getSkillContent(name, { sections })`, `matimo.setSkillEmbeddingProvider(provider)` demo
 - [ ] **`langchain-skills-policy-agent.ts`** — Update system prompt to mention `matimo_search_skills` so agents can find skills by meaning, not just by exact name
 
 ### Context Window Tooling
@@ -245,8 +246,8 @@ Alpha Phase (✅ Completed)
   v0.1.0-alpha.11 Feb 27, 2026  (Twilio & Mailchimp tools)
   v0.1.0-alpha.12   Mar 11, 2026  (🚀 MCP Server — stdio + HTTP, secrets, Claude integration)
   v0.1.0-alpha.12.1 Mar 12, 2026  (🔑 Per-execution credential override, getRequiredCredentials(), Changesets release workflow)
-  v0.1.0-alpha.12.x Mar 19, 2026  (📚 Skills system, policy engine, meta-tools, HITL — shipped in this sprint) ← Current
-  v0.1.0-alpha.13   TBD           (🔍 Skills SDK completeness — matimo_search_skills, matimo_get_skill_sections, matimo_get_skill_content, context window tooling)
+  v0.1.0-alpha.13   Mar 22, 2026  (🧠 Skills system, policy engine, 10 meta-tools, HITL quarantine, security hardening) ← Current
+  v0.1.0-alpha.14   TBD           (🔍 Skills SDK as agent-callable tools — matimo_search_skills, matimo_get_skill_sections, matimo_get_skill_content, dynamic tool filtering)
 
 v0.1.0 Release (📅 Late March 2026)
   ✅ Completed:
@@ -360,7 +361,7 @@ We welcome contributions at any level!
 
 ## How to Use This Roadmap
 
-- **Current Version**: v0.1.0-alpha.11 (February 27, 2026)
+- **Current Version**: v0.1.0-alpha.13 (March 22, 2026)
 - **Future Releases**: See sections above for planned features
 - **Past Releases**: See [RELEASES.md](./RELEASES.md) for detailed release notes for all previous versions
 - **Contributing**: See [CONTRIBUTING.md](https://github.com/tallclub/matimo/blob/main/CONTRIBUTING.md) for how to help

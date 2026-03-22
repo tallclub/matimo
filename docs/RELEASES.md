@@ -1,8 +1,8 @@
 ## v0.1.0-alpha.13
 
-> Release: Skills System, Policy Engine, Meta-Tools Hardening — Complete agent autonomy layer with skill discovery, policy-driven tool creation, hot-reload safety, and security hardening
+> Release: Skills System, Policy Engine, Meta-Tools Hardening — Complete agent autonomy layer with skill discovery, policy-driven tool creation, HITL quarantine, hot-reload safety, and security hardening
 
-**Released**: March 20, 2026
+**Released**: March 22, 2026
 
 ### 🚀 Major Features
 
@@ -15,37 +15,47 @@
   - `tool-discovery` — Finding and learning about existing tools
   - `skill-creator` — How to create new SKILL.md files for use in agents
   - `skills-catalog` — How to use and leverage the skills ecosystem
-- **`semanticSearchSkills(query)`** — TF-IDF (Term Frequency - Inverse Document Frequency embedding)-based semantic search across all SKILL.md files; ranked results with relevance scores 
-  - [checkout TF-IDF implementation details](/docs/skills/TFIDF_SEMANTIC_SEARCH.md)
-- **`getSkillSections(skillName)`** — Returns section inventory with token estimates (`{ sections: string[], totalTokens: number }`)
+- **`semanticSearchSkills(query)`** — TF-IDF (Term Frequency - Inverse Document Frequency embedding)-based semantic search across all SKILL.md files; ranked results with relevance scores
+  - [TF-IDF implementation details](./skills/TFIDF_SEMANTIC_SEARCH.md)
+- **`getSkillSections(skillName)`** — Returns section inventory with token estimates for progressive disclosure
 - **`getSkillContent(skillName, options?)`** — Load full or selective sections of a skill (token-efficient context loading)
-   - [checkout TF-IDF implementation details](/docs/skills/TFIDF_SEMANTIC_SEARCH.md)
-- **Agent meta-tools** — `matimo_list_skills`, `matimo_get_skill`, `matimo_create_skill`, `matimo_validate_skill` (callable by LangChain agents and MCP clients)
-- **Provider skill bundles** — Each provider package (Slack, GitHub, Gmail, etc.) ships a `skills.md` documenting its tool ecosystem
-- **MCP resource exposure** — Skills available as resources in MCP server for Claude and other clients
+- **`getSkillsMetadata(matimo)`** — Non-MCP LangChain helper: returns `Array<{ name, description }>` only (Level 1, no file I/O, always token-safe)
+- **`buildRelevantSkillPrompt(matimo, query, options?)`** — Non-MCP LangChain helper: runs TF-IDF cosine similarity ranking and loads only the top-K relevant skills above a minimum score into a ready-to-inject system prompt block (Level 2, lazy). Both helpers exported from `matimo` — see [LangChain integration guide](./framework-integrations/LANGCHAIN.md#skills-integration-non-mcp)
+- **Agent meta-tools** — 10 meta-tools callable by LangChain agents and MCP clients:
+  - **Skill meta-tools**: `matimo_list_skills`, `matimo_get_skill`, `matimo_create_skill`, `matimo_validate_skill`
+  - **Tool lifecycle meta-tools**: `matimo_create_tool`, `matimo_validate_tool`, `matimo_approve_tool`, `matimo_reload_tools`, `matimo_list_user_tools`, `matimo_get_tool_status`
+  - See [META_TOOLS.md](./api-reference/META_TOOLS.md) for full reference
+- **Provider skill bundles** — Each provider package ships a consolidated `SKILL.md` documenting its complete tool ecosystem (Slack, GitHub, Gmail, HubSpot, Mailchimp, Notion, Postgres, Twilio)
+- **MCP resource exposure** — Skills auto-registered as `skills://{name}` resources on the MCP server; Claude Desktop and Cursor can read them via the Resources protocol without tool calls; hot-reloads on `reloadTools()`
 
-**Policy Engine Hardening** (`@matimo/core`)
-- [Checkout Policy Documentation](/docs/api-reference/POLICY_AND_LIFECYCLE.md)
+**Policy Engine** (`@matimo/core`)
+
+> [Full Policy Documentation](./api-reference/POLICY_AND_LIFECYCLE.md)
+
 - **Policy-as-YAML loader** — `loadPolicyFromFile(path)` + `policyFile` option in `MatimoInstance.init()`
 - **Policy tier API** — `getTierForTool(tool, config): PolicyTier` returning `'auto' | 'approval-required' | 'blocked'`
 - **Approval state tracking** — `approvalState: 'auto-approved' | 'pending' | 'approved' | 'rejected'` in `CreateResult`
 - **Pending tools inventory** — `getPendingTools(): string[]` in approval manifest for agent status queries
 - **Tool status meta-tool** — `matimo_get_tool_status` returns `{ name, status, riskLevel, approvalState, approvedAt?, approvedBy? }`
-- **Human-readable validation** — `matimo_validate_tool` now returns `SchemaError[]` with `validOptions?` per error field (not raw Zod)
+- **Human-readable validation** — `matimo_validate_tool` returns `SchemaError[]` with `validOptions?` per field (not raw Zod output)
+- **Content validator** — `content-validator.ts` scans agent-written tool YAML for blocked patterns (SSRF, secrets in plain text, unsafe command templates) before the tool reaches the registry
+- **Integrity tracker** — `integrity-tracker.ts` records a hash of each approved tool file; detects file tampering between restarts
+- **Policy events** — `events.ts` emits typed lifecycle events (`tool:created`, `tool:approved`, `tool:rejected`, `tool:quarantined`) for external monitoring hooks
+- **HITL quarantine** — Tools that fail content validation during a policy-restricted session are written to a quarantine directory rather than discarded; human reviewer can inspect, amend, and re-submit via `matimo review`
 
 **Hot-Reload Atomicity & Safety** (`@matimo/core`)
 
 - **Atomic reload** — `reloadTools()` snapshots registry, restores on mid-load error
 - **Rollback signal** — `ReloadResult { success, reloadedCount, rolledBack }` tells agents whether state was preserved
-- **MCP auto-trigger** — MCP server emits `tools/list_changed` notification on successful reload
+- **MCP auto-trigger** — MCP server emits `tools/list_changed` + `resources/list_changed` notifications on successful reload
 
 **Security Hardening** (`@matimo/core`)
 
 - **20 security vulnerabilities resolved** via pnpm overrides and direct fixes:
-  - **ReDoS prevention** — `HEADING_REGEX` improved to prevent catastrophic backtracking in skill parsing
-  - **Sensitive data logging** — Secrets never logged or exposed in error messages
+  - **ReDoS prevention** — `HEADING_REGEX` hardened against catastrophic backtracking in skill section parsing
+  - **Sensitive data logging** — Secrets never logged or exposed in error messages or stack traces
   - **Dependency audit** — Comprehensive override strategy for transitive vulnerabilities
-- **Regex safety** — All regex patterns reviewed and hardened against ReDoS attacks
+- **Regex safety** — All regex patterns reviewed and hardened
 - **Logging guardrails** — Credentials and sensitive parameters redacted from all logs
 
 **CLI Enhancements** (`@matimo/cli`)
@@ -55,41 +65,49 @@
   - `@matimo/*` package scan
   - Environment variable audit per tool
   - YAML validation with field-level messages
-- **`matimo review`** — Bridge for approval workflows (until Agent Forge approval UI ships):
-  - `matimo review list` — Show pending tools awaiting approval
-  - `matimo review approve <tool-name>` — Approve a pending tool for execution
+- **`matimo review`** — Bridge for approval workflows:
+  - `matimo review list` — Show pending and quarantined tools awaiting approval
+  - `matimo review approve <tool-name>` — Approve a pending tool (updates approval manifest + tool status)
   - `matimo review reject <tool-name>` — Reject a pending tool
 
 ### 📚 Examples & Documentation
 
-**New Examples** (`examples/tools/agents/`)
+**New Examples**
 
-- **`policy-agent.ts`** — LangChain agent demonstrating policy-aware tool creation workflow
-- **`skills-demo.ts`** — Comprehensive demo of `semanticSearchSkills()`, `getSkillSections()`, `getSkillContent()` SDK APIs
-- **`meta-tools-example.ts`** — Full lifecycle: create, validate, approve, reload, list tools via meta-tools
+- **`examples/tools/policy/policy-demo.ts`** — LangChain agent demonstrating the full policy-aware tool creation workflow (create → validate → quarantine → review → approve → execute)
+- **`examples/tools/skills/skills-demo.ts`** — Multi-phase demo: agent skill missions (create, list, read, validate), Phase 4 direct TF-IDF ranking via `semanticSearchSkills()` with per-skill scores, and non-MCP progressive disclosure via `getSkillsMetadata()` + `buildRelevantSkillPrompt()`
+- **`examples/tools/meta-flow/meta-tools-integration.ts`** — Full lifecycle: create tool, validate, approve, reload, list via meta-tools; includes policy agent and skills agent in one flow
+- **`examples/tools/agents/langchain-skills-policy-agent.ts`** — Production-pattern LangChain agent combining skills discovery (Level 1 + Level 2) with policy-aware tool creation in a single mission-based ReAct loop
+- **`examples/tools/validate-implementation.ts`** — SDK validation script that verifies all meta-tools, skill operations, and policy flows are wired correctly end-to-end
 
-**Documentation Updates**
+**New Documentation**
 
-- **`docs/RELEASES.md`** — Comprehensive release tracking (this file)
-- **`docs/ROADMAP.md`** — Updated with alpha.14 focus
+- **`docs/api-reference/META_TOOLS.md`** — Complete reference for all 10 meta-tools (parameters, return shapes, examples, approval requirements)
+- **`docs/api-reference/POLICY_AND_LIFECYCLE.md`** — Policy engine deep-dive: tier system, YAML config, HITL quarantine flow, approval manifest schema, integrity tracker
+- **`docs/skills/TFIDF_SEMANTIC_SEARCH.md`** — TF-IDF implementation details: tokenization, IDF computation, cosine similarity, embedding cache, custom provider interface
+- **`docs/skills/SKILLS.md`** — Complete Skills System guide: SKILL.md format, progressive disclosure levels, MCP resource exposure, LangChain non-MCP helpers, semantic search API
+- **`docs/framework-integrations/LANGCHAIN.md`** — Added Skills Integration (Non-MCP) section: `getSkillsMetadata` + `buildRelevantSkillPrompt` API reference with full options and code patterns
+- **`docs/ROADMAP.md`** — Updated with alpha.14 focus (agent-callable TF-IDF, `matimo_search_skills`, dynamic tool filtering)
 - **`docs/tool-development/TOOL_SPECIFICATION.md`** — `execution.type: function` fully documented with trust model
-- **Type-documentation alignment** — Fixed discrepancies between actual behavior and docs
 
 ### 🧪 Test Coverage
 
-- **Policy & meta-tools**: Comprehensive unit tests covering hot-reload, approval state, policy tiers, error messaging
-- **Skills system**: TF-IDF search, section parsing, token estimation
-- **Security**: Regex hardening, sensitive data handling, ReDoS prevention
-- **Integration**: Full end-to-end workflows for policy + skill creation
-- **Full suite**: 1300+ tests passing with consistent coverage targets
+42 new test files added across unit, integration, and CLI suites:
+
+- **Meta-tools**: Unit tests for all 10 meta-tools (`matimo_create_tool`, `matimo_validate_tool`, `matimo_approve_tool`, `matimo_reload_tools`, `matimo_list_user_tools`, `matimo_get_tool_status`, `matimo_create_skill`, `matimo_get_skill`, `matimo_list_skills`, `matimo_validate_skill`)
+- **Policy engine**: Unit tests for `approval-manifest`, `content-validator`, `default-policy`, `hitl-quarantine`, `integrity-tracker`, `risk-classifier`, policy loader and parser
+- **Skills system**: TF-IDF embedding, section parser, skill-loader, skill-registry (core + semantic), `langchain-integration` helpers (`getSkillsMetadata`, `buildRelevantSkillPrompt`)
+- **Integration**: Hot-reload atomicity, HITL quarantine paths, `matimo-instance-hitl-paths`, policy integration end-to-end
+- **CLI**: `doctor` command, `review approve/reject/list` commands
+- **Full suite: 1,884 tests passing** across 96 test suites
 
 ### 📦 Packages
 
 All packages bumped to v0.1.0-alpha.13:
 
-- `@matimo/core` — Skills, policy hardening, meta-tools, security fixes
+- `@matimo/core` — Skills, policy engine, 10 meta-tools, HITL quarantine, security fixes, LangChain helpers
 - `@matimo/cli` — `doctor` command, `review` command, enhanced help
-- `@matimo/slack`, `@matimo/github`, `@matimo/gmail`, `@matimo/hubspot`, `@matimo/mailchimp`, `@matimo/notion`, `@matimo/postgres`, `@matimo/twilio` — Version sync, skill bundles in each
+- `@matimo/slack`, `@matimo/github`, `@matimo/gmail`, `@matimo/hubspot`, `@matimo/mailchimp`, `@matimo/notion`, `@matimo/postgres`, `@matimo/twilio` — Version sync, provider SKILL.md bundles in each
 
 ### ⚠️ Breaking Changes
 
