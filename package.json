@@ -1,6 +1,6 @@
 {
   "name": "matimo",
-  "version": "0.1.0-alpha.12.1",
+  "version": "0.1.0-alpha.13",
   "description": "Universal tool provider SDK: Framework-agnostic YAML-driven tool ecosystem for AI agents. Execute a library of pre-built tools (Slack, Gmail, GitHub, AWS, etc.) or define your own in YAML.",
   "main": "packages/core/dist/index.js",
   "types": "packages/core/dist/index.d.ts",
@@ -95,5 +95,15 @@
     "ts-node": "^10.9.2",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
+  },
+  "pnpm": {
+    "overrides": {
+      "hono": ">=4.12.4",
+      "@hono/node-server": ">=1.19.10",
+      "express-rate-limit": ">=8.2.2",
+      "flatted": ">=3.4.2",
+      "fast-xml-parser": ">=5.5.6",
+      "qs": ">=6.14.2"
+    }
   }
 }

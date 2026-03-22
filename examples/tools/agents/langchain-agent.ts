@@ -21,8 +21,14 @@ import 'dotenv/config';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { ChatOpenAI } from '@langchain/openai';
-import { BaseMessage, HumanMessage, ToolMessage } from '@langchain/core/messages';
-import { MatimoInstance, convertToolsToLangChain, ToolDefinition } from 'matimo';
+import { BaseMessage, HumanMessage, SystemMessage, ToolMessage } from '@langchain/core/messages';
+import {
+  MatimoInstance,
+  convertToolsToLangChain,
+  getSkillsMetadata,
+  buildRelevantSkillPrompt,
+} from 'matimo';
+import type { ToolDefinition } from 'matimo';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -53,6 +59,20 @@ async function runLangChainAgent() {
 
     console.info(`✅ Successfully converted ${langchainTools.length} tools!\n`);
 
+    // 📚 Skills — non-MCP progressive disclosure pattern:
+    //   Level 1 at startup: inject metadata (name + description) — token-safe, always-on.
+    //   Level 2 per-request: call buildRelevantSkillPrompt(matimo, userQuery) during the
+    //   ReAct loop to load only the skills that are semantically relevant to that message.
+    // See: docs/skills/TFIDF_SEMANTIC_SEARCH.md for the ranking algorithm.
+    const skillsMeta = getSkillsMetadata(matimo);
+    const skillsMetaBlock =
+      skillsMeta.length > 0
+        ? `Available skills (use buildRelevantSkillPrompt per query to load content):\n${skillsMeta.map((s) => `  • ${s.name}: ${s.description}`).join('\n')}`
+        : '';
+    if (skillsMeta.length > 0) {
+      console.info(`📚 ${skillsMeta.length} skill(s) discovered (Level 1 metadata)\n`);
+    }
+
     // 🤖 Create GPT-4o-mini LLM with tool binding
     console.info('🧠 Creating GPT-4o-mini LLM with tool binding...\n');
     const llm = new ChatOpenAI({
@@ -69,7 +89,17 @@ async function runLangChainAgent() {
     const userQuery = 'What is 42 plus 58?';
     console.info(`\n❓ User Query: "${userQuery}"\n`);
 
-    const messages: BaseMessage[] = [new HumanMessage(userQuery)];
+    // Per-request: load only the skills that are semantically relevant to this specific query.
+    // buildRelevantSkillPrompt uses TF-IDF search — no API call, no token waste for unrelated skills.
+    const skillContext = await buildRelevantSkillPrompt(matimo, userQuery, { topK: 2 });
+
+    // Prepend Level 1 metadata so the agent knows all skills exist (startup awareness).
+    // Then add Level 2 content only for the relevant ones (per-request).
+    const messages: BaseMessage[] = [
+      ...(skillsMetaBlock ? [new SystemMessage(skillsMetaBlock)] : []),
+      ...(skillContext ? [new SystemMessage(skillContext)] : []),
+      new HumanMessage(userQuery),
+    ];
 
     let iterationCount = 0;
     const maxIterations = 10;

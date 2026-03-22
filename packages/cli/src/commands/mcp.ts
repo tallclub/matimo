@@ -10,7 +10,8 @@
  *   matimo mcp --exclude postgres                 # exclude these tools
  *   matimo mcp --secrets env,vault                # secret resolver chain
  *   matimo mcp --token my-secret                  # HTTP bearer token
- *   matimo mcp --tool-paths /path/to/tools       # custom tool paths
+ *   matimo mcp --tool-paths /path/to/tools         # custom tool paths
+ *   matimo mcp --skill-paths /path/to/skills       # custom skill paths
  */
 
 interface McpArgs {
@@ -24,6 +25,7 @@ interface McpArgs {
   awsSecretId?: string;
   token?: string;
   toolPaths?: string[];
+  skillPaths?: string[];
   https?: boolean;
   selfSigned?: boolean;
   certPath?: string;
@@ -119,6 +121,13 @@ function parseArgs(params: string[]): McpArgs {
         i++;
         break;
 
+      case '--skill-paths':
+        args.skillPaths = requireValue('--skill-paths', next)
+          .split(',')
+          .map((s) => s.trim());
+        i++;
+        break;
+
       case '--https':
         args.https = true;
         break;
@@ -199,6 +208,7 @@ export async function mcpCommand(params: string[]): Promise<void> {
     secretResolver: buildResolverConfig(args),
     mcpToken: args.token,
     toolPaths: args.toolPaths,
+    skillPaths: args.skillPaths,
     autoDiscover: true,
     https: args.https,
     selfSigned: args.selfSigned,

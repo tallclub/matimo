@@ -260,3 +260,107 @@ export async function convertToolsToLangChain(
 
   return Promise.all(tools.map((tool) => convertTool(matimo, tool, detectedSecrets, secrets)));
 }
+
+// ─── Skill injection helpers for non-MCP (direct) integrations ───────────────
+//
+// When Matimo is used directly (e.g., LangChain without an MCP server), skills
+// are not surfaced via MCP Resources.  These helpers provide a spec-compliant
+// alternative that preserves the progressive disclosure model:
+//
+//   Level 1 — Discovery : getSkillsMetadata()      → name + description only
+//   Level 2 — Activation: buildRelevantSkillPrompt() → semantic search → load matched content
+//
+// NOTE: Avoid loading all skill content upfront (getSkillContent for every skill).
+// That defeats the purpose of progressive disclosure and bloats the context window.
+// The agentskills.io spec and Matimo's TF-IDF search exist precisely to avoid this.
+//
+// Correct pattern for non-MCP LangChain usage:
+//   1. At startup — inject Level 1 metadata (name + description) via getSkillsMetadata()
+//   2. Per-request — call buildRelevantSkillPrompt(matimo, userQuery) to load only the
+//      skills that are semantically relevant to the current request.
+
+export interface SkillContext {
+  name: string;
+  description: string;
+  content: string;
+}
+
+/**
+ * Return Level 1 metadata (name + description) for all available skills.
+ *
+ * Token-safe — only a few lines per skill. Include this in the system prompt
+ * so the agent knows what skills exist and can request them by name, mirroring
+ * what `matimo_list_skills` does in the tool-based flow.
+ *
+ * @example
+ * ```ts
+ * const meta = getSkillsMetadata(matimo);
+ * // → [{ name: 'code-review', description: 'Code review checklist' }, ...]
+ * ```
+ */
+export function getSkillsMetadata(
+  matimo: MatimoInstance
+): Array<{ name: string; description: string }> {
+  return matimo.listSkills().map((s) => ({
+    name: s.name,
+    description: s.description ?? '',
+  }));
+}
+
+/**
+ * Build a per-request system prompt snippet from semantically relevant skills.
+ *
+ * Uses TF-IDF semantic search (built-in, zero dependencies) to rank all skills
+ * against the user's query and loads full content only for the top matches.
+ * This preserves the progressive disclosure model without MCP:
+ *
+ *   Level 1 at startup → Level 2 per-request (only relevant skills)
+ *
+ * @param matimo     - Initialised MatimoInstance
+ * @param query      - The user's current message/query; drives semantic ranking
+ * @param options.topK      - Max skills to load (default 3); keeps token cost bounded
+ * @param options.minScore  - Minimum cosine similarity to include (default 0.3)
+ * @param options.header    - Custom header text (optional)
+ * @returns Formatted string ready to inject as a context block, or empty string
+ *          when no skills score above `minScore`.
+ *
+ * @example
+ * ```ts
+ * // In your ReAct loop, per message:
+ * const skillContext = await buildRelevantSkillPrompt(matimo, userMessage, { topK: 2 });
+ * const messages = [
+ *   new SystemMessage(baseSystemPrompt),
+ *   ...(skillContext ? [new SystemMessage(skillContext)] : []),
+ *   new HumanMessage(userMessage),
+ * ];
+ * ```
+ */
+export async function buildRelevantSkillPrompt(
+  matimo: MatimoInstance,
+  query: string,
+  options: { topK?: number; minScore?: number; header?: string } = {}
+): Promise<string> {
+  const { topK = 3, minScore = 0.3 } = options;
+
+  const searchResults = await matimo.semanticSearchSkills(query, { limit: topK, minScore });
+  if (searchResults.length === 0) return '';
+
+  const blocks: string[] = [];
+  for (const result of searchResults) {
+    const content = matimo.getSkillContent(result.skill.name);
+    if (content) {
+      const desc = result.skill.description ? `_${result.skill.description}_\n\n` : '';
+      blocks.push(
+        `## Skill: ${result.skill.name} (relevance: ${result.score.toFixed(2)})\n${desc}${content}`
+      );
+    }
+  }
+
+  if (blocks.length === 0) return '';
+
+  const header =
+    options.header ??
+    'The following skills are relevant to the current request — apply their guidelines:';
+
+  return [header, ...blocks].join('\n\n');
+}

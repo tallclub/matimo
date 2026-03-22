@@ -264,6 +264,101 @@ try {
 }
 ```
 
+## Skills Integration (Non-MCP)
+
+When using Matimo with LangChain **without an MCP server**, skills are not surfaced as MCP Resources. Instead, use the two helper functions exported from `matimo` to implement the same [progressive disclosure model](../skills/SKILLS.md) programmatically:
+
+| Helper | Level | When to call |
+|--------|-------|--------------|
+| `getSkillsMetadata(matimo)` | 1 — Discovery | **Once at startup** — inject into system prompt so the agent knows which skills exist |
+| `buildRelevantSkillPrompt(matimo, query, options)` | 2 — Activation | **Per request** — semantic search (TF-IDF) loads full content only for top-K relevant skills |
+
+### Correct Pattern
+
+```typescript
+import {
+  MatimoInstance,
+  convertToolsToLangChain,
+  getSkillsMetadata,
+  buildRelevantSkillPrompt,
+} from 'matimo';
+import { ChatOpenAI } from '@langchain/openai';
+import { HumanMessage, SystemMessage } from '@langchain/core/messages';
+
+// 1. Startup — Level 1 metadata block (token-safe, ~50 tokens/skill)
+const matimo = await MatimoInstance.init({ autoDiscover: true });
+const meta = getSkillsMetadata(matimo);
+// meta → [{ name: 'slack', description: 'Complete guide to all Slack tools…' }, …]
+
+const metaBlock = meta
+  .map((s) => `- **${s.name}**: ${s.description}`)
+  .join('\n');
+
+const systemPrompt = `You are a helpful agent.\n\nAvailable skills (use matimo_get_skill to load details):\n${metaBlock}`;
+
+// 2. Per-request — Level 2 semantic search, loads only relevant content
+const userMessage = 'How do I handle Slack rate limits?';
+
+const skillContext = await buildRelevantSkillPrompt(matimo, userMessage, {
+  topK: 2,        // Max skills to load (default: 3)
+  minScore: 0.3,  // Minimum relevance threshold (default: 0.3)
+  header: 'Apply these skill guidelines:',  // Optional custom header
+});
+// skillContext → markdown block with relevant skills embedded, or empty string
+
+const messages = [
+  new SystemMessage(systemPrompt),
+  ...(skillContext ? [new SystemMessage(skillContext)] : []),
+  new HumanMessage(userMessage),
+];
+```
+
+### Why not load all skill content upfront?
+
+The [agentskills.io specification](https://agentskills.io) explicitly recommends **against** injecting all skill content into every system prompt:
+
+- Skills vary per session — most requests need 1–2 skills, not all 15
+- Large skill files can easily exceed 10,000 tokens each
+- `buildRelevantSkillPrompt` uses TF-IDF cosine similarity to load only what's relevant to the current query — cost proportional to relevance
+
+For scenarios where a skill is always relevant (e.g. a Slack-only bot), load it directly with `matimo.getSkillContent('slack')` rather than using the semantic search helper.
+
+### `getSkillsMetadata` reference
+
+```typescript
+export function getSkillsMetadata(
+  matimo: MatimoInstance
+): Array<{ name: string; description: string }>;
+```
+
+Returns Level 1 metadata (name + description) for every registered skill. Does not load file content — always token-safe.
+
+### `buildRelevantSkillPrompt` reference
+
+```typescript
+export async function buildRelevantSkillPrompt(
+  matimo: MatimoInstance,
+  query: string,
+  options?: {
+    topK?: number;      // Max skills to load (default: 3)
+    minScore?: number;  // Minimum TF-IDF cosine similarity (default: 0.3)
+    header?: string;    // Custom header line (optional)
+  }
+): Promise<string>;
+```
+
+Calls `matimo.semanticSearchSkills(query, { limit: topK, minScore })` (TF-IDF) internally, then loads full content only for the top-matching skills. Returns a formatted markdown block ready to inject as a `SystemMessage`, or an empty string when no skills score above `minScore`.
+
+Each skill block is formatted as:
+```
+## Skill: {name} (relevance: {score})
+_{description}_
+
+{full SKILL.md content}
+```
+
+---
+
 ## Future Releases
 
 🔜 **v0.2.0** will include:

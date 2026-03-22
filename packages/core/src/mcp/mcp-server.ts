@@ -26,6 +26,16 @@ import type { ToolDefinition } from '../core/schema';
 
 // ─── Types ──────────────────────────────────────────────────────────────
 
+/** Minimal interface for MCP server skill-resource registration */
+interface McpResourceServer {
+  registerResource(
+    name: string,
+    uri: string,
+    options: { title: string; description: string; mimeType: string },
+    handler: () => Promise<unknown>
+  ): { remove(): void };
+}
+
 export interface MCPServerOptions {
   /** Transport mode. Default: 'stdio' */
   transport?: 'stdio' | 'http';
@@ -41,6 +51,8 @@ export interface MCPServerOptions {
   mcpToken?: string;
   /** Tool paths to load. Passed to MatimoInstance.init(). */
   toolPaths?: string[];
+  /** Skill paths to load. Passed to MatimoInstance.init(). Each path is a directory containing skill subdirectories with SKILL.md files. */
+  skillPaths?: string[];
   /** Auto-discover @matimo/* packages. Default: true */
   autoDiscover?: boolean;
   /** Enable HTTPS. Requires cert+key or use selfSigned. Default: false */
@@ -51,6 +63,14 @@ export interface MCPServerOptions {
   keyPath?: string;
   /** Auto-generate self-signed certificate. Default: false. Certs stored in .matimo/certs/ */
   selfSigned?: boolean;
+  /** Policy configuration for tool filtering. Creates a DefaultPolicyEngine. */
+  policyConfig?: import('../policy/types').PolicyConfig;
+  /** Paths containing untrusted (agent-created) tools. Subject to policy validation on reload. */
+  untrustedPaths?: string[];
+  /** HMAC secret for approval manifest. */
+  approvalSecret?: string;
+  /** Directory for .matimo-approvals.json. */
+  approvalDir?: string;
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────
@@ -62,7 +82,7 @@ function getPackageVersion(): string {
       const req =
         typeof require !== 'undefined'
           ? require
-          : // @ts-ignore - import.meta only available in ESM context
+          : // ESM fallback (eval suppresses type errors)
             createRequire(eval('import.meta.url') as string);
       const pkgPath = req.resolve('@matimo/core/package.json');
       /* istanbul ignore next -- only reachable when @matimo/core/package.json is a proper export */
@@ -133,6 +153,8 @@ export class MCPServer {
   private filteredTools: ToolDefinition[] = [];
   /** The active bearer token (explicit, env, or auto-generated) */
   private activeToken: string | null = null;
+  /** Registered skill resources, keyed by skill name, for lifecycle management */
+  private registeredSkillResources = new Map<string, { remove(): void }>();
 
   constructor(options: MCPServerOptions = {}) {
     this.options = {
@@ -148,6 +170,55 @@ export class MCPServer {
   /** Get the active bearer token (available after start()) */
   getActiveToken(): string | null {
     return this.activeToken;
+  }
+
+  /**
+   * Hot-reload tools via MatimoInstance and re-register them on the MCP server.
+   * In stdio mode, calls sendToolListChanged() to notify the connected client.
+   */
+  async reloadTools(): Promise<void> {
+    if (!this.matimo) return;
+    const logger = getGlobalMatimoLogger();
+
+    const result = await this.matimo.reloadTools();
+    logger.info('MCPServer: tools reloaded via MatimoInstance', {
+      loaded: result.loaded,
+      removed: result.removed,
+      rejected: result.rejected.length,
+    });
+
+    // Re-filter tools applying allowSet/denySet
+    let tools = this.matimo.listTools();
+    if (this.options.tools && this.options.tools.length > 0) {
+      const allowSet = new Set(this.options.tools);
+      tools = tools.filter((t) => allowSet.has(t.name));
+    }
+    if (this.options.excludeTools && this.options.excludeTools.length > 0) {
+      const denySet = new Set(this.options.excludeTools);
+      tools = tools.filter((t) => !denySet.has(t.name));
+    }
+    this.filteredTools = tools;
+
+    // Notify MCP clients of tool list change (stdio only — single server)
+    if (
+      this.mcpServer &&
+      typeof (this.mcpServer as Record<string, unknown>).sendToolListChanged === 'function'
+    ) {
+      (this.mcpServer as { sendToolListChanged: () => void }).sendToolListChanged();
+      logger.debug('Notified MCP client of tool list change');
+    }
+
+    // Re-sync skill resources on the stdio server (remove stale, add new)
+    if (this.mcpServer && this.matimo) {
+      this.registerSkillResources(this.mcpServer as McpResourceServer, this.matimo, logger);
+
+      if (
+        typeof (this.mcpServer as Record<string, unknown>).sendResourceListChanged === 'function'
+      ) {
+        (this.mcpServer as { sendResourceListChanged: () => void }).sendResourceListChanged();
+        logger.debug('Notified MCP client of resource list change');
+      }
+    }
   }
 
   /**
@@ -184,8 +255,13 @@ export class MCPServer {
     // creating a non-silent logger that writes to stdout (corrupts JSON-RPC)
     this.matimo = await MatimoInstance.init({
       toolPaths: this.options.toolPaths,
+      skillPaths: this.options.skillPaths,
       autoDiscover: this.options.autoDiscover,
       ...(this.options.transport === 'stdio' ? { logLevel: 'silent' as const } : {}),
+      ...(this.options.policyConfig ? { policyConfig: this.options.policyConfig } : {}),
+      ...(this.options.untrustedPaths ? { untrustedPaths: this.options.untrustedPaths } : {}),
+      ...(this.options.approvalSecret ? { approvalSecret: this.options.approvalSecret } : {}),
+      ...(this.options.approvalDir ? { approvalDir: this.options.approvalDir } : {}),
     });
 
     // Re-set silent logger after init (MatimoInstance.init overwrites the global logger)
@@ -275,18 +351,82 @@ export class MCPServer {
   }
 
   /**
+   * Register (or re-register) all skills from `matimo` as MCP resources on `server`.
+   * Removes any previously registered skill resources before adding the current set
+   * so that this method is safe to call multiple times (e.g., from reloadTools).
+   */
+
+  private registerSkillResources(
+    server: McpResourceServer,
+    matimo: MatimoInstance,
+    logger: ReturnType<typeof getGlobalMatimoLogger>
+  ): void {
+    // Remove stale skill resources registered from a previous call
+    for (const [, handle] of this.registeredSkillResources) {
+      try {
+        handle.remove();
+      } catch {
+        // Ignore — resource may already have been removed
+      }
+    }
+    this.registeredSkillResources.clear();
+
+    const skills = matimo.listSkills();
+    let registered = 0;
+    for (const skill of skills) {
+      try {
+        const handle = server.registerResource(
+          skill.name,
+          `skills://${skill.name}`,
+          {
+            title: skill.name,
+            description: skill.description,
+            mimeType: 'text/markdown',
+          },
+          async () => {
+            const content = matimo.getSkillContent(skill.name);
+            return {
+              contents: [
+                {
+                  uri: `skills://${skill.name}`,
+                  text: content ?? `Skill "${skill.name}" content unavailable`,
+                  mimeType: 'text/markdown',
+                },
+              ],
+            };
+          }
+        );
+        this.registeredSkillResources.set(skill.name, handle);
+        registered++;
+      } catch (err) {
+        logger.debug(`Failed to register skill resource '${skill.name}'`, {
+          skillName: skill.name,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+
+    if (registered > 0) {
+      logger.debug(`Registered ${registered} skill resources on MCP server`);
+    }
+  }
+
+  /**
    * Create a new McpServer instance with all filtered tools registered.
    * Each call returns a fresh server — used per-session in HTTP mode.
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private async createMcpServerWithTools(): Promise<any> {
-    // @ts-ignore - wildcard export subpath resolves at runtime via bundler moduleResolution
-    const { McpServer } = await import('@modelcontextprotocol/sdk/server/mcp');
+    const { McpServer } = await import(
+      // @ts-ignore — TS2307: module not found at compile time, resolves at runtime
+      '@modelcontextprotocol/sdk/server/mcp'
+    );
     const logger = getGlobalMatimoLogger();
     const matimo = this.matimo!;
     const version = getPackageVersion();
 
-    const server = new McpServer({ name: 'matimo', version });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const server: any = new McpServer({ name: 'matimo', version });
 
     let registeredCount = 0;
     for (const tool of this.filteredTools) {
@@ -317,7 +457,14 @@ export class MCPServer {
                 }
               }
 
-              const result = await matimo.execute(tool.name, args);
+              // Strip _matimo_approved from args before passing to execute.
+              // When MCP already confirmed approval, pass a per-execution
+              // approval override so MatimoInstance.execute() doesn't
+              // re-prompt via the interactive handler.
+              const { _matimo_approved, ...cleanArgs } = args;
+              const result = await matimo.execute(tool.name, cleanArgs, {
+                approved: _matimo_approved === true,
+              });
 
               return {
                 content: [
@@ -355,6 +502,12 @@ export class MCPServer {
     }
 
     logger.debug(`Registered ${registeredCount}/${this.filteredTools.length} tools on MCP server`);
+
+    // Register skills as MCP resources (skills://name)
+    // This allows agents (Claude Desktop, Cursor, etc.) to attach skills directly
+    // from the resource picker — no tool calls needed.
+    this.registerSkillResources(server, matimo, logger);
+
     return server;
   }
 
@@ -362,8 +515,10 @@ export class MCPServer {
    * Connect via stdio transport (for Claude Desktop, Cursor, etc.)
    */
   private async connectStdio(): Promise<void> {
-    // @ts-ignore - wildcard export subpath
-    const { StdioServerTransport } = await import('@modelcontextprotocol/sdk/server/stdio');
+    const { StdioServerTransport } = await import(
+      // @ts-ignore — TS2307: module not found at compile time, resolves at runtime
+      '@modelcontextprotocol/sdk/server/stdio'
+    );
 
     const server = await this.createMcpServerWithTools();
     this.mcpServer = server;
@@ -386,13 +541,13 @@ export class MCPServer {
   private async connectHttp(): Promise<void> {
     const http = await import('http');
     const { StreamableHTTPServerTransport } = (await import(
-      // @ts-expect-error - optional peer dependency subpath not typed
+      // @ts-ignore — TS2307: module not found at compile time, resolves at runtime
       '@modelcontextprotocol/sdk/server/streamableHttp'
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     )) as any;
     const { randomUUID } = await import('crypto');
     const { isInitializeRequest } = (await import(
-      // @ts-expect-error - optional peer dependency subpath not typed
+      // @ts-ignore — TS2307: module not found at compile time, resolves at runtime
       '@modelcontextprotocol/sdk/types'
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     )) as any;

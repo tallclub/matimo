@@ -10,8 +10,18 @@ Matimo uses a **pnpm workspaces** monorepo with independent, installable package
 packages/core              # Core SDK (matimo on npm)
 ├── Orchestration
 ├── Executors
+├── Policy engine (allowCommand, allowHttp, protectedNamespaces)
 ├── Type definitions
-└── Built-in tools (calculator, echo)
+├── Built-in tools (calculator, echo)
+├── Meta-tools (packages/core/tools/matimo_*/)
+│   ├── matimo_validate_tool / matimo_create_tool / matimo_approve_tool
+│   ├── matimo_reload_tools / matimo_list_user_tools / matimo_get_tool_status
+│   └── matimo_create_skill / matimo_list_skills / matimo_get_skill / matimo_validate_skill
+└── skills/ (built-in SKILL.md domain knowledge)
+    ├── tool-creation/
+    ├── meta-tools-lifecycle/
+    ├── policy-validation/
+    └── tool-discovery/
 
 packages/slack             # Slack tools (@matimo/slack)
 ├── 6+ Slack tool definitions
@@ -64,61 +74,72 @@ examples/tools             # Working examples
                          │                      │
                          └──────────┬───────────┘
                                     │
-            ┌───────────────────────▼────────────────────┐
-            │      SDK Layer (matimo package)            │
-            │      packages/core/src/                    │
-            │                                            │
-            │  ┌──────────────────────────────────────┐  │
-            │  │  MatimoInstance (Orchestrator)       │  │
-            │  │  • Tool registry  • Executor coord   │  │
-            │  │  • Parameter validation              │  │
-            │  │  • Error handling                    │  │
-            │  └──────────────────────────────────────┘  │
-            └───────┬──────────────────────┬─────────────┘
-                    │                      │
-        ┌───────────▼──────┐    ┌──────────▼────────┐
-        │ Command Executor │    │  HTTP Executor    │
-        │                  │    │                   │
-        │ • Shell commands │    │ • REST APIs       │
-        │ • Param template │    │ • Auth injection  │
-        │ • Exit handling  │    │ • Response valid  │
-        └───────┬──────────┘    └──────────┬────────┘
-                │                          │
-                └────────┬─────────────────┘
-                         │
-     ┌───────────────────┴────────────────────┐
-     │                                        │
-     ▼                                        ▼
-┌─────────────────────────┐    ┌──────────────────────────┐
-│  Tool Definitions       │    │  Provider Definitions    │
-│  (YAML files)           │    │  (OAuth2 configs)        │
-│                         │    │                          │
-│ packages/core/tools/    │    │ packages/{provider}/     │
-│ ├─ calculator/          │    │ ├─ definition.yaml       │
-│ ├─ echo-tool/           │    │ └─ tools/{tool}/def.yaml │
-│ │                       │    │                          │
-│ packages/slack/tools/   │    │ Example:                 │
-│ ├─ send-message/        │    │ packages/slack/          │
-│ ├─ list-channels/       │    │ ├─ definition.yaml       │
-│ └─ ...                  │    │ └─ tools/{tool}/*.yaml   │
-│                         │    │                          │
-│ packages/gmail/tools/   │    └──────────────────────────┘
-│ ├─ send-email/          │
-│ └─ ...                  │
-│                         │
-└───────────┬─────────────┘
-            │
-     ┌──────▼────────┐
-     │  External     │
-     │  Services     │
-     │               │
-     │ • Gmail API   │
-     │ • Slack API   │
-     │ • GitHub API  │
-     │ • Shell cmd   │
-     │ • Custom APIs │
-     │               │
-     └───────────────┘
+            ┌───────────────────────▼────────────────────────────────┐
+            │            SDK Layer (packages/core/src/)             │
+            │                                                       │
+            │  ┌─────────────────────────────────────────────────┐  │
+            │  │           MatimoInstance (Orchestrator)         │  │
+            │  │  • Tool registry      • Executor coordination   │  │
+            │  │  • Parameter validation  • Error handling       │  │
+            │  │  • Skills registry    • Auto-discovery          │  │
+            │  └──────────────────────────┬──────────────────────┘  │
+            │                             │                         │
+            │  ┌──────────────────────────▼──────────────────────┐  │
+            │  │                    Policy Gate                  │  │
+            │  │  • allowCommand / allowFunction tools           │  │
+            │  │  • allowedHttpMethods    (default: GET, POST)   │  │
+            │  │  • protectedNamespaces   (default: matimo_)     │  │
+            │  │  • Content validator: 9 security rules          │  │
+            │  │  • HMAC approval verification on tool load      │  │
+            │  │  • Immutable after MatimoInstance.init()        │  │
+            │  └─────────────────────────────────────────────────┘  │
+            └──────────┬──────────────────────┬──────────────┬──────┘
+                       │                      │              │
+       ┌───────────────▼────┐    ┌────────────▼────────┐    ┌▼────────────────────┐
+       │  Command Executor  │    │   HTTP Executor     │    │  Function Executor  │
+       │                    │    │                     │    │                     │
+       │ • Shell commands   │    │ • REST APIs         │    │ • JS/TS direct call │
+       │ • Param templating │    │ • Auth injection    │    │ • Core tools        │
+       │ • Exit handling    │    │ • Response valid    │    │ • Meta-tools        │
+       │ • Legacy scripts   │    │                     │    │ • Skills access     │
+       └──────────┬─────────┘    └──────────┬──────────┘    └─────────┬───────────┘
+                  │                         │                         │
+                  └──────────────┬──────────┘               ┌─────────┘
+                                 │                          │
+     ┌───────────────────────────┴──────┐    ┌──────────────▼──────────────────────────┐
+     │   Tool & Provider Definitions    │    │   Meta-Tools & Skills                   │
+     │   (YAML files)                   │    │   (Built-in, protected namespace)       │
+     │                                  │    │                                         │
+     │   packages/core/tools/           │    │   packages/core/tools/matimo_*/         │
+     │   ├─ calculator/                 │    │   ├─ matimo_validate_tool               │
+     │   ├─ echo-tool/                  │    │   ├─ matimo_create_tool                 │
+     │                                  │    │   ├─ matimo_approve_tool                │
+     │   packages/slack/tools/          │    │   ├─ matimo_reload_tools                │
+     │   ├─ send-message/               │    │   ├─ matimo_list_user_tools             │
+     │   ├─ list-channels/ ...          │    │   ├─ matimo_get_tool_status             │
+     │                                  │    │   ├─ matimo_list_skills                 │
+     │   packages/{provider}/           │    │   ├─ matimo_get_skill                   │
+     │   ├─ definition.yaml (OAuth2)    │    │   ├─ matimo_create_skill                │
+     │   └─ tools/{tool}/def.yaml       │    │   └─ matimo_validate_skill              │
+     │                                  │    │                                         │
+     │                                  │    │   packages/core/skills/                 │
+     │                                  │    │   ├─ tool-creation/SKILL.md             │
+     │                                  │    │   ├─ meta-tools-lifecycle/SKILL.md      │
+     │                                  │    │   ├─ policy-validation/SKILL.md         │
+     │                                  │    │   └─ tool-discovery/SKILL.md            │
+     └──────────────────┬───────────────┘    └─────────────────────────────────────────┘
+                        │
+                 ┌──────▼────────┐
+                 │   External    │
+                 │   Services    │
+                 │               │
+                 │ • Gmail API   │
+                 │ • Slack API   │
+                 │ • GitHub API  │
+                 │ • Shell cmd   │
+                 │ • Custom APIs │
+                 │               │
+                 └───────────────┘
 
 * Recommended for AI agents with automatic tool selection
 ```
@@ -169,6 +190,8 @@ class Agent {
 - Handles errors
 - Manages OAuth2 tokens
 - Validates parameters
+- Enforces policy gate on tool loads and meta-tool operations
+- Routes meta-tool calls to the built-in meta-tools subsystem
 
 ### 4. Tool Management (packages/core/src/core)
 
@@ -188,6 +211,9 @@ tools: Map<name, ToolDefinition>
 ├── slack-send-message (from packages/slack/tools/)
 ├── slack-list-channels (from packages/slack/tools/)
 ├── gmail-send-email (from packages/gmail/tools/)
+├── matimo_validate_tool (built-in meta-tool)
+├── matimo_create_tool   (built-in meta-tool)
+├── matimo_approve_tool  (built-in meta-tool)
 └── ...
 ```
 
@@ -261,6 +287,115 @@ Tools interact with:
 - GitHub REST API
 - Shell commands
 - Custom HTTP APIs
+
+### 8. Policy Gate (packages/core/src/policy)
+
+**PolicyEngine**: Enforces security rules during tool registration and meta-tool operations:
+
+- `allowCommandTools` — block/allow command-type tools (default: `false`)
+- `allowFunctionTools` — block/allow function-type tools that run arbitrary code (default: `false`)
+- `allowedHttpMethods` — restrict HTTP verbs (default: `['GET', 'POST']`)
+- `protectedNamespaces` — namespaces that cannot be overwritten by user tools (default: `['matimo_']`)
+- **Content Validator** — 9 security rules: no path traversal, no env var injection, no credential exposure, etc.
+- **Immutable after init** — `PolicyConfig` is frozen once `MatimoInstance.init()` completes
+
+For full details see [Policy Engine & Lifecycle](../api-reference/POLICY_AND_LIFECYCLE.md).
+
+### 9. Meta-Tools Subsystem (packages/core/tools/matimo_*/)
+
+Built-in tools that manage the tool lifecycle from within the agent. They are always present and cannot be removed or shadowed (protected namespace):
+
+| Tool | Purpose |
+|------|---------|
+| `matimo_validate_tool` | Validate a YAML definition against schema + policy |
+| `matimo_create_tool` | Create a new `.draft` tool definition (policy-safe) |
+| `matimo_approve_tool` | Sign and promote a draft tool (HMAC, integrity) |
+| `matimo_reload_tools` | Hot-reload the live registry without restarting |
+| `matimo_list_user_tools` | List non-meta user tools with metadata |
+| `matimo_get_tool_status` | Check lifecycle state of a single tool |
+| `matimo_create_skill` | Create a new SKILL.md in the skills directory |
+| `matimo_list_skills` | List available SKILL.md files |
+| `matimo_get_skill` | Read a skill by name |
+| `matimo_validate_skill` | Validate a skill against the Agent Skills spec |
+
+For full details see [Meta-Tools Reference](../api-reference/META_TOOLS.md).
+
+### 10. Approval & Integrity Layer
+
+When a tool is approved via `matimo_approve_tool`, the approval system:
+
+1. Computes **SHA-256** hash of the YAML content
+2. Issues an **HMAC-SHA256** signature using a secret key
+3. Writes an entry to `.matimo-approvals.json` in the target directory
+4. Renames the file from `*.draft.yaml` → `*.yaml`
+5. On subsequent loads, verifies the HMAC — any tampering causes load failure
+
+This ensures that agent-written tools cannot be silently altered between sessions.
+
+For full details see [Approval System](../api-reference/APPROVAL-SYSTEM.md).
+
+### 11. Skills System (packages/core/skills/)
+
+Skills are **SKILL.md** files that carry domain knowledge the agent can load on demand. Unlike tools (which execute actions), skills are read-only instruction documents.
+
+```
+packages/core/skills/
+├── tool-creation/SKILL.md        # How to create Matimo tools
+├── meta-tools-lifecycle/SKILL.md # How to use meta-tools
+├── policy-validation/SKILL.md    # How to work within policy constraints
+└── tool-discovery/SKILL.md       # How to discover available tools
+```
+
+Agent runtime skills live in `./matimo-tools/skills/` (created by `matimo_create_skill`).
+
+For full details see [Skills System](../tool-development/SKILLS.md).
+
+---
+
+## Agent Tool Lifecycle
+
+For agents that create tools at runtime (e.g., autonomous coding agents), the full lifecycle is:
+
+```
+1. Agent decides a new tool is needed
+   │
+   └─> matimo_create_tool(name, description, execution, parameters)
+       │
+       ├─ Policy Gate: blocks command/function type if disallowed
+       ├─ Content Validator: 9 security rules
+       ├─ Saves as {name}.draft.yaml in ./matimo-tools/
+       ▼
+2. Agent (or human) reviews the draft
+   │
+   └─> matimo_validate_tool(tool_path)
+       │
+       ├─ Re-runs schema + policy validation
+       ├─ Returns validation_passed: true | false
+       │
+       ▼
+3. Approval
+   │
+   └─> matimo_approve_tool(tool_path)
+       │
+       ├─ Generates SHA-256 hash of YAML content
+       ├─ Signs with HMAC-SHA256
+       ├─ Writes entry to .matimo-approvals.json
+       ├─ Renames .draft.yaml → .yaml
+       │
+       ▼
+4. Reload
+   │
+   └─> matimo_reload_tools(tools_dir)
+       │
+       ├─ Rescans the tools directory
+       ├─ Verifies HMAC for each approved tool
+       ├─ Registers new tools into the live registry
+       │
+       ▼
+5. Use
+   │
+   └─> matimo.execute(new_tool_name, params)
+```
 
 ---
 
@@ -611,6 +746,15 @@ Works with any framework:
 - ✅ Custom framework support
 - ✅ Coming: CrewAI, Vercel AI, etc.
 
+### 6. Secure by Default
+
+Policy engine is on from the start:
+
+- ✅ Command and function tools blocked unless explicitly allowed
+- ✅ Protected namespaces prevent shadowing built-in tools
+- ✅ Agent-created tools must pass policy + content validation
+- ✅ Approved tools are HMAC-signed to prevent silent tampering
+
 ---
 
 ## Extension Points
@@ -654,4 +798,9 @@ Works with any framework:
 
 - **[SDK Usage Patterns](../user-guide/SDK_PATTERNS.md)** — How to use Matimo
 - **[Tool Specification](../tool-development/YAML_TOOLS.md)** — How to build tools
+- **[Policy Engine & Lifecycle](../api-reference/POLICY_AND_LIFECYCLE.md)** — Security controls and tool lifecycle
+- **[Meta-Tools Reference](../api-reference/META_TOOLS.md)** — Built-in tool management
+- **[Approval System](../api-reference/APPROVAL-SYSTEM.md)** — Approval handler configuration
+- **[Skills System](../tool-development/SKILLS.md)** — Domain knowledge via SKILL.md
+- **[Logging](../api-reference/LOGGING.md)** — Winston logger integration
 - **[Troubleshooting](../troubleshooting/FAQ.md)** — Common issues

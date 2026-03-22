@@ -1,11 +1,12 @@
 {
   "name": "matimo-examples",
-  "version": "0.1.0-alpha.12.1",
+  "version": "0.1.0-alpha.13",
   "description": "Matimo SDK examples - Factory Pattern, Decorator Pattern, and LangChain integration with Slack and Gmail",
   "type": "module",
   "scripts": {
     "agent:decorator": "tsx agents/decorator-pattern-agent.ts",
     "agent:factory": "tsx agents/factory-pattern-agent.ts",
+    "agent:skills-policy": "tsx agents/langchain-skills-policy-agent.ts",
     "agent:langchain": "tsx agents/langchain-agent.ts",
     "gmail:factory": "tsx gmail/gmail-factory.ts",
     "gmail:decorator": "tsx gmail/gmail-decorator.ts",
@@ -49,6 +50,14 @@
     "twilio:decorator": "tsx twilio/twilio-decorator.ts",
     "twilio:langchain": "tsx twilio/twilio-langchain.ts",
     "credentials:example": "tsx credentials/credentials-example.ts",
+    "policy:demo": "tsx policy/policy-demo.ts",
+    "skills:demo": "tsx skills/skills-demo.ts",
+    "meta:flow": "tsx meta-flow/meta-tools-integration.ts",
+    "validate:impl": "tsx validate-implementation.ts",
+    "validate:all": "tsx validate-implementation.ts",
+    "validate:policy": "tsx validate-implementation.ts --skip-skills --skip-meta-tools",
+    "validate:skills": "tsx validate-implementation.ts --skip-policy --skip-meta-tools",
+    "validate:meta": "tsx validate-implementation.ts --skip-policy --skip-skills",
     "build": "tsc",
     "clean": "rm -rf dist"
   },

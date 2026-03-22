@@ -136,10 +136,21 @@ export function toolToMcpRegistration(tool: ToolDefinition): {
   description: string;
   inputSchema: Record<string, z.ZodTypeAny>;
 } {
+  const schema = convertParametersToMcpSchema(tool.parameters || {});
+
+  // Tools with requires_approval need the _matimo_approved parameter in
+  // the MCP schema so clients can confirm destructive operations.
+  if (tool.requires_approval) {
+    schema._matimo_approved = z
+      .boolean()
+      .optional()
+      .describe('Set to true to confirm execution of this approval-required tool');
+  }
+
   return {
     title: tool.name,
     description: tool.description || tool.name,
-    inputSchema: convertParametersToMcpSchema(tool.parameters || {}),
+    inputSchema: schema,
   };
 }
 
