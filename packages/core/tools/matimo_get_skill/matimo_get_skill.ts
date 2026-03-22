@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { getGlobalMatimoLogger, getGlobalMatimoInstance, ToolLoader } from '@matimo/core';
+import { getGlobalMatimoLogger, getGlobalMatimoInstance, ToolLoader, SkillSummary } from '@matimo/core';
 import { parseSkillContent, listBundledResources, type BundledResources } from '../shared/skill-validation';
 
 interface GetSkillParams {
@@ -44,7 +44,7 @@ function findSkillDir(skillName: string, explicitSkillsDir?: string): string | n
       const skills = matimo.listSkills();
       const found = skills?.find((s) => s.name === skillName);
       if (found) {
-        const skillPath = (found as any)._path;
+        const skillPath = (found as SkillSummary & { _path?: string })._path;
         if (skillPath && fs.existsSync(path.join(skillPath, 'SKILL.md'))) {
           return skillPath;
         }

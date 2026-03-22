@@ -25,10 +25,57 @@
   - [Listing Skills](#listing-skills)
   - [Reading a Skill](#reading-a-skill)
   - [Validating a Skill](#validating-a-skill)
+- [MCP Server — Skills as Resources](#mcp-server--skills-as-resources)
 - [LangChain Agent with Skills](#langchain-agent-with-skills)
 - [Storage Paths](#storage-paths)
 - [Name Rules](#name-rules)
 - [Examples Demo](#examples-demo)
+- [Coming in Next Release (alpha.14)](#coming-in-next-release-alpha14)
+
+---
+
+## Coming in Next Release (alpha.14)
+
+> **Theme: Skills SDK as Agent-Callable Tools** — Promote programmatic SDK APIs to first-class agent-callable meta-tools, closing the gap between what the SDK can do and what agents can call from their tool loop.
+
+### New Meta-Tools
+
+| Meta-Tool | Wraps SDK API | What agents gain |
+|-----------|--------------|-----------------|
+| `matimo_search_skills` | `semanticSearchSkills()` | Natural language semantic search across all skills (TF-IDF or custom embeddings) |
+| `matimo_get_skill_sections` | `getSkillSections()` | Inventory a skill's sections and token costs before loading (progressive disclosure Level 2.5) |
+| `matimo_get_skill_content` | `getSkillContent()` | Load only specific sections of a skill — token-efficient context loading |
+
+**Why this matters:** Today `semanticSearchSkills`, `getSkillSections`, and `getSkillContent` are SDK-only. LangChain agents and MCP clients (Claude) cannot call them from their tool loop. alpha.14 wraps each as a registered meta-tool in `packages/core/tools/`, making them callable like any other Matimo tool.
+
+### Agent Workflow Upgrade (after alpha.14)
+
+```typescript
+// Current (alpha.13) — agents discover by exact name only
+matimo_list_skills()              // → all skill names + descriptions
+matimo_get_skill('slack')         // → full content
+
+// alpha.14 — agents can search by meaning and load selectively
+matimo_search_skills('rate limiting and retries')  // → ranked TF-IDF results with scores
+matimo_get_skill_sections('slack')                 // → section inventory with token estimates
+matimo_get_skill_content('slack', { sections: ['Messaging'] })  // → targeted section content
+```
+
+### Example Coverage Additions
+
+- **`skills-demo.ts`** — add `getSkillSections()` demo, `getSkillContent(name, { sections })` demo, and `setSkillEmbeddingProvider(provider)` demo
+- **`langchain-skills-policy-agent.ts`** — update system prompt to mention `matimo_search_skills` so agents can discover skills by meaning from their tool loop
+
+### Context Window Tooling
+
+- **Dynamic tool filtering** — when `autoDiscover` loads 128+ tools (at OpenAI's hard limit), a utility to select a subset by provider/tag before binding to LangChain prevents silent tool drops at the API limit
+
+### Acceptance Criteria
+
+- `matimo_search_skills`, `matimo_get_skill_sections`, `matimo_get_skill_content` registered in `packages/core/tools/`
+- Agent in `pnpm agent:skills` can call `matimo_search_skills` with a natural language query and get ranked results
+- All 3 new meta-tools have tests in `packages/core/test/unit/meta-tools/`
+- `META_TOOLS.md` updated with reference entries for the 3 new tools
 
 ---
 
@@ -342,6 +389,8 @@ const results = await matimo.semanticSearchSkills('rate limiting and retries', {
 
 Embeddings are cached per skill — the first search builds the index, subsequent searches are fast.
 
+> **Agent availability:** `semanticSearchSkills` is a **programmatic SDK API** — it is not yet exposed as an agent-callable meta-tool. Agents using LangChain or MCP cannot call TF-IDF search during their tool loop today. Use `buildRelevantSkillPrompt()` (non-MCP LangChain) or the [`matimo_list_skills` + `matimo_get_skill` meta-tools](#agent-skill-lifecycle) instead. A `matimo_search_skills` meta-tool that wraps this API is planned for alpha.14.
+
 ### Custom Embedding Provider
 
 Replace the built-in TF-IDF with OpenAI, Cohere, or any other embedding model:
@@ -443,6 +492,70 @@ Validation checks:
 
 ---
 
+## MCP Server — Skills as Resources
+
+When the Matimo MCP server is running, every registered skill is automatically exposed as an **MCP Resource** under the `skills://` URI scheme. MCP clients (Claude Desktop, Cursor, Windsurf, any MCP-compliant client) can read skill content without calling a tool — they use the Resources protocol directly.
+
+### Resource URIs
+
+Each skill gets a resource at:
+```
+skills://{skill-name}
+```
+
+| Skill | URI | MIME type |
+|-------|-----|-----------|
+| `slack` | `skills://slack` | `text/markdown` |
+| `github` | `skills://github` | `text/markdown` |
+| `tool-creation` | `skills://tool-creation` | `text/markdown` |
+| `code-review` _(agent-created)_ | `skills://code-review` | `text/markdown` |
+
+All skills registered in Matimo — built-in SDK skills, provider skills, and agent-created skills — are exposed automatically. No configuration required.
+
+### How Claude accesses skills
+
+With the MCP server running (`npx matimo mcp`), Claude has two complementary ways to access skills:
+
+**Via Resources (passive read):**
+Claude can browse and read `skills://` resources without invoking a tool. The content is the full `SKILL.md` text. This is equivalent to Level 2 in the progressive disclosure model — full content on demand.
+
+**Via Meta-Tools (agent-driven discovery):**
+Claude can also use the skill meta-tools to actively discover and interact with skills:
+- `matimo_list_skills` → Level 1 metadata (names + descriptions)
+- `matimo_get_skill` → Level 2 full content (same as reading the resource)
+- `matimo_create_skill` → create a new skill (writes to disk + registers new resource)
+- `matimo_validate_skill` → check spec compliance
+
+The practical difference: reading a `skills://` resource is a direct read by the MCP client; calling `matimo_get_skill` is an agent tool call that goes through Matimo's execution layer.
+
+### Hot-reload
+
+When `matimo.reloadTools()` is called (e.g. after `matimo_create_skill` writes a new skill to disk), the MCP server:
+
+1. Removes stale skill resource registrations
+2. Re-registers all current skills from `matimo.listSkills()`
+3. Calls `sendResourceListChanged()` — MCP clients receive an automatic notification and refresh their resource list
+
+Agents and clients never need to reconnect to see newly created skills.
+
+### Starting the MCP server
+
+```bash
+# Expose all tools + skills over stdio (for Claude Desktop, Cursor, Windsurf)
+npx matimo mcp
+
+# Or HTTP mode (remote / Docker)
+npx matimo mcp --transport http --port 3000
+```
+
+After connecting, Claude sees:
+- All tools in the standard MCP `tools/list`
+- All skills as resources in `resources/list` under `skills://*`
+
+See [MCP documentation](../MCP.md) for the full server setup guide.
+
+---
+
 ## LangChain Agent with Skills
 
 Skills are pull-based — they're not auto-injected into LLM context. Instead, agents discover and load skills at runtime using meta-tools. Here's a complete LangChain agent that uses skills as context:
@@ -499,22 +612,40 @@ console.log(response.content);
 3. LLM now has context to correctly call `slack_send_channel_message` with the right parameters
 4. No skill content is wasted on providers the agent doesn't need
 
-**Programmatic skill injection (advanced):**
+**Non-MCP usage — programmatic progressive disclosure:**
 
-For controlled scenarios where you manage context yourself:
+When running LangChain without an MCP server, use the two helper functions to implement the same progressive disclosure pattern in code:
 
 ```typescript
-// Pre-load relevant skill content before the agent loop
-const slackContext = matimo.getSkillContent('slack', {
-  sections: ['Messaging', 'Channel Operations'],
-  maxTokens: 400,
+import {
+  MatimoInstance,
+  getSkillsMetadata,
+  buildRelevantSkillPrompt,
+} from 'matimo';
+import { HumanMessage, SystemMessage } from '@langchain/core/messages';
+
+// Level 1 — once at startup (token-safe, names + descriptions only)
+const meta = getSkillsMetadata(matimo);
+const metaBlock = meta.map((s) => `- **${s.name}**: ${s.description}`).join('\n');
+
+// Level 2 — per request via TF-IDF semantic search (loads only relevant skills)
+const userMessage = 'How do I handle rate limits in Slack?';
+const skillContext = await buildRelevantSkillPrompt(matimo, userMessage, {
+  topK: 2,       // load at most 2 skills
+  minScore: 0.3, // ignore skills below this relevance
 });
 
 const messages = [
-  new SystemMessage(`You are a Slack assistant. Here is domain knowledge:\n\n${slackContext}`),
-  new HumanMessage('Send a message to #general'),
+  new SystemMessage(`You are a helpful agent.\n\nAvailable skills:\n${metaBlock}`),
+  ...(skillContext ? [new SystemMessage(skillContext)] : []),
+  new HumanMessage(userMessage),
 ];
 ```
+
+`getSkillsMetadata` returns `Array<{ name, description }>` — no file I/O, always cheap.  
+`buildRelevantSkillPrompt` runs TF-IDF cosine similarity ranking and loads full content only for top-K matches above `minScore`. Returns an empty string when no skills are relevant, so it's safe to spread into the messages array unconditionally.
+
+See the [LangChain integration guide](../framework-integrations/LANGCHAIN.md#skills-integration-non-mcp) for the full API reference and examples.
 
 ---
 
@@ -555,11 +686,19 @@ pnpm skills:demo
 
 **What it demonstrates:**
 
-1. Agent creates a `security-review` skill (human approves)
+**Phase 2 — Agent missions (goal-driven, no tool names given):**
+1. Agent creates a `code-review` skill (human approves)
 2. Agent lists available skills (Level 1 discovery)
-3. Agent reads `security-review` skill content (Level 2)
-4. Agent applies skill guidelines to improve a code sample
-5. Agent validates the skill is spec-compliant
-6. Agent creates a second skill and compares behaviors
+3. Agent reads `code-review` skill and applies its guidelines to review sample code
+4. Agent creates a `security-checklist` skill (auto-approved via whitelist)
+5. Agent validates both skills against the Agent Skills spec
+6. Agent lists, reads, and applies *all* available skills in one pass
+
+**Phase 4 — Non-MCP progressive disclosure:**
+- `getSkillsMetadata()` — Level 1: names + descriptions only (no file I/O)
+- `semanticSearchSkills(query)` — raw TF-IDF ranked results with scores per skill
+- `buildRelevantSkillPrompt(query)` — Level 2: TF-IDF search loads only relevant skill content
+
+> ⚠️ **Note:** `semanticSearchSkills` is a **programmatic SDK API only** — no agent-callable meta-tool wraps it yet. Agents (LangChain, MCP/Claude) cannot call TF-IDF search directly in their tool loop; they can only discover skills by level with `matimo_list_skills` and `matimo_get_skill`. A `matimo_search_skills` meta-tool is planned for alpha.14.
 
 **Docs:** See [`examples/tools/skills/README.md`](../../examples/tools/skills/README.md) for the full walkthrough.

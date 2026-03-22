@@ -26,6 +26,16 @@ import type { ToolDefinition } from '../core/schema';
 
 // ─── Types ──────────────────────────────────────────────────────────────
 
+/** Minimal interface for MCP server skill-resource registration */
+interface McpResourceServer {
+  registerResource(
+    name: string,
+    uri: string,
+    options: { title: string; description: string; mimeType: string },
+    handler: () => Promise<unknown>
+  ): { remove(): void };
+}
+
 export interface MCPServerOptions {
   /** Transport mode. Default: 'stdio' */
   transport?: 'stdio' | 'http';
@@ -200,7 +210,7 @@ export class MCPServer {
 
     // Re-sync skill resources on the stdio server (remove stale, add new)
     if (this.mcpServer && this.matimo) {
-      this.registerSkillResources(this.mcpServer, this.matimo, logger);
+      this.registerSkillResources(this.mcpServer as McpResourceServer, this.matimo, logger);
 
       if (
         typeof (this.mcpServer as Record<string, unknown>).sendResourceListChanged === 'function'
@@ -347,7 +357,7 @@ export class MCPServer {
    */
 
   private registerSkillResources(
-    server: any,
+    server: McpResourceServer,
     matimo: MatimoInstance,
     logger: ReturnType<typeof getGlobalMatimoLogger>
   ): void {

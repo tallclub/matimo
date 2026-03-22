@@ -10,7 +10,13 @@ import fs from 'fs';
 import path from 'path';
 import YAML from 'js-yaml';
 import { z } from 'zod';
-import { SkillDefinition, SkillFrontmatter, ParsedSkill, BundledResources } from './types';
+import {
+  SkillDefinition,
+  SkillFrontmatter,
+  ParsedSkill,
+  BundledResources,
+  SkillSummary,
+} from './types';
 import { parseSkillSections } from './skill-content-parser';
 import { getGlobalMatimoLogger } from '../logging';
 import { MatimoError, ErrorCode } from '../errors/matimo-error';
@@ -156,7 +162,7 @@ export function parseSkillContent(content: string): ParsedSkill & { error?: stri
 export function extractSkillMetadata(
   content: string,
   source: 'builtin' | 'user' | 'catalog' = 'user'
-): { success: boolean; metadata?: any; error?: string } {
+): { success: boolean; metadata?: SkillSummary; error?: string } {
   const { frontmatter, error } = extractFrontmatter(content);
 
   if (error) {
