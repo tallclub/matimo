@@ -477,15 +477,32 @@ ${SAMPLE_CODE_TO_REVIEW}
       result(`  ${m.name}`, PASS, m.description || '(no description)');
     }
 
-    // Level 2 — semantic search + load only relevant content
+    // Level 2a — raw TF-IDF rankings (semanticSearchSkills directly)
     const testQuery = 'security vulnerability detection';
+    const searchResults = await matimoWithSkills.semanticSearchSkills(testQuery, {
+      limit: 5,
+      minScore: 0.1,
+    });
+    result(
+      `semanticSearchSkills('${testQuery}') — TF-IDF raw results: ${searchResults.length} match(es)`,
+      searchResults.length > 0 ? PASS : WARN
+    );
+    for (const r of searchResults) {
+      result(
+        `  ${r.skill.name}`,
+        PASS,
+        `score: ${r.score.toFixed(4)} — ${r.skill.description?.slice(0, 60) ?? ''}${(r.skill.description?.length ?? 0) > 60 ? '…' : ''}`
+      );
+    }
+
+    // Level 2b — semantic search → load full content for top-K matches
     const relevantPrompt = await buildRelevantSkillPrompt(matimoWithSkills, testQuery, {
       topK: 2,
       minScore: 0.1,
       header: 'Apply these skill guidelines:',
     });
     result(
-      `buildRelevantSkillPrompt('${testQuery}') — Level 2: ${relevantPrompt.length} chars`,
+      `buildRelevantSkillPrompt('${testQuery}') — Level 2: ${relevantPrompt.length} chars loaded`,
       relevantPrompt.length > 0 ? PASS : WARN
     );
     if (relevantPrompt.length > 0) {
@@ -514,6 +531,7 @@ ${SAMPLE_CODE_TO_REVIEW}
 
   Non-MCP Progressive Disclosure (agentskills.io spec):
     ${meta.length > 0 ? PASS : WARN}  getSkillsMetadata() → Level 1: ${meta.length} skill(s), names + descriptions only
+    ${searchResults.length > 0 ? PASS : WARN}  semanticSearchSkills(query) → TF-IDF raw rankings: ${searchResults.length} result(s) with scores
     ${relevantPrompt.length > 0 ? PASS : WARN}  buildRelevantSkillPrompt(query) → Level 2: TF-IDF search → ${relevantPrompt.length} chars loaded
 
   Skills on Disk:
