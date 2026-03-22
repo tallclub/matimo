@@ -1,6 +1,6 @@
 import path from 'path';
 import fs from 'fs';
-import { getGlobalMatimoLogger, getGlobalMatimoInstance, SkillLoader } from '@matimo/core';
+import { getGlobalMatimoLogger, getGlobalMatimoInstance, extractSkillMetadata, ToolLoader } from '@matimo/core';
 
 interface ListSkillsParams {
   skills_dir?: string;
@@ -21,98 +21,117 @@ interface ListSkillsResult {
 }
 
 /**
- * List all skills available in the current Matimo instance, or load from a specific directory.
+ * Helper: Load SKILL.md files from a directory and extract metadata.
+ */
+function loadSkillsFromPath(
+  skillsPath: string,
+  source: 'builtin' | 'user',
+  logger: ReturnType<typeof getGlobalMatimoLogger>,
+): SkillSummary[] {
+  const skills: SkillSummary[] = [];
+
+  if (!fs.existsSync(skillsPath)) return skills;
+
+  try {
+    const entries = fs.readdirSync(skillsPath, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      const skillFilePath = path.join(skillsPath, entry.name, 'SKILL.md');
+      if (!fs.existsSync(skillFilePath)) continue;
+
+      try {
+        const content = fs.readFileSync(skillFilePath, 'utf-8');
+        const result = extractSkillMetadata(content, source);
+        if (result.success && result.metadata) {
+          skills.push(result.metadata);
+        }
+      } catch (err) {
+        logger.debug('matimo_list_skills: failed to extract metadata', {
+          skill: entry.name,
+          error: (err as Error).message,
+        });
+      }
+    }
+  } catch (err) {
+    logger.debug('matimo_list_skills: failed to read directory', {
+      path: skillsPath,
+      error: (err as Error).message,
+    });
+  }
+
+  return skills;
+}
+
+
+
+/**
+ * List all skills available in the current Matimo instance.
  *
- * If skills_dir is provided, loads skills directly from that directory.
- * Otherwise, returns skills from the global MatimoInstance (which includes @matimo/*, core/skills, etc).
+ * Skills are discovered in this order (priority):
+ * 1. Global MatimoInstance (if initialized) — includes auto-discovered @matimo/* skills
+ * 2. Auto-discover from @matimo/* packages in node_modules (like tools do)
+ * 3. Explicit skills_dir if provided
  *
- * Returns name, description, and optional frontmatter fields for each skill
- * following the Agent Skills specification.
+ * Returns METADATA ONLY: name, description, license, version, metadata, source.
+ * Full body content is available via matimo_get_skill when explicitly requested.
+ *
+ * Uses lightweight YAML-only extraction (no body/sections parsing) for efficiency.
+ * This avoids the overhead of parsing skill markdown sections and keeps responses small.
  */
 export default async function matimoListSkills(
   params: ListSkillsParams,
 ): Promise<ListSkillsResult> {
   const logger = getGlobalMatimoLogger();
+  const allSkills = new Map<string, SkillSummary>();
 
   try {
-    // If a specific directory is provided, load skills directly from it
+    // Try global MatimoInstance first
+    try {
+      const matimo = getGlobalMatimoInstance();
+      if (matimo) {
+        const matimoSkills = matimo.listSkills();
+        if (matimoSkills?.length > 0) {
+          logger.debug('matimo_list_skills: from MatimoInstance', { count: matimoSkills.length });
+          matimoSkills.forEach((s) => allSkills.set(s.name, s));
+          return { skills: Array.from(allSkills.values()), total: allSkills.size };
+        }
+      }
+    } catch (err) {
+      logger.debug('matimo_list_skills: MatimoInstance unavailable', {
+        error: (err as Error).message,
+      });
+    }
+
+    // Auto-discover from @matimo/* packages
+    try {
+      const toolLoader = new ToolLoader();
+      const discoveredPaths = toolLoader.autoDiscoverPackages();
+
+      for (const toolPath of discoveredPaths) {
+        const pkgDir = path.dirname(toolPath);
+        const skillsPath = path.join(pkgDir, 'skills');
+        const discovered = loadSkillsFromPath(skillsPath, 'builtin', logger);
+        discovered.forEach((s) => allSkills.set(s.name, s));
+      }
+    } catch (err) {
+      logger.debug('matimo_list_skills: auto-discovery failed', {
+        error: (err as Error).message,
+      });
+    }
+
+    // Load from explicit skills_dir if provided
     if (params.skills_dir) {
       const skillsDir = path.resolve(params.skills_dir);
-      
-      logger.debug('matimo_list_skills: attempting to load from directory', { path: skillsDir });
-      
-      if (!fs.existsSync(skillsDir)) {
-        logger.warn('matimo_list_skills: skills_dir does not exist', { 
-          path: skillsDir,
-          cwd: process.cwd(),
-          note: 'Ensure the path is correct relative to where the tool is executed. Use absolute paths for reliability.'
-        });
-        return { skills: [], total: 0 };
-      }
-
-      try {
-        // Load skills directly from the specified directory
-        const loader = new SkillLoader();
-        const loadedSkills = loader.loadSkillsFromDirectory(skillsDir, 'user');
-        
-        if (!loadedSkills || loadedSkills.length === 0) {
-          logger.warn('matimo_list_skills: no skills found in directory', { 
-            path: skillsDir,
-            note: 'Directory must contain subdirectories with SKILL.md files'
-          });
-          return { skills: [], total: 0 };
-        }
-        
-        const skills: SkillSummary[] = loadedSkills.map((skill) => ({
-          name: skill.name,
-          description: skill.description,
-          version: skill.version,
-          license: skill.license,
-          metadata: skill.metadata,
-          source: skill.source,
-        }));
-
-        logger.debug('matimo_list_skills: loaded from directory', { 
-          count: skills.length, 
-          path: skillsDir,
-          skills: skills.map(s => s.name)
-        });
-        return { skills, total: skills.length };
-      } catch (dirErr) {
-        logger.error('matimo_list_skills: error loading from directory', {
-          path: skillsDir,
-          error: (dirErr as Error).message,
-          stack: (dirErr as Error).stack
-        });
-        return { skills: [], total: 0 };
-      }
+      const discovered = loadSkillsFromPath(skillsDir, 'user', logger);
+      discovered.forEach((s) => allSkills.set(s.name, s));
     }
 
-    // Otherwise, use the global MatimoInstance
-    const matimo = getGlobalMatimoInstance();
-    if (!matimo) {
-      logger.warn('matimo_list_skills: MatimoInstance not available and no skills_dir provided');
-      return { skills: [], total: 0 };
-    }
-
-    // Get skills from the actual Matimo instance (includes auto-discovered @matimo/*/skills)
-    const matimoSkills = matimo.listSkills();
-
-    if (!matimoSkills || matimoSkills.length === 0) {
-      logger.debug('matimo_list_skills: MatimoInstance returned no skills');
-    }
-
-    const skills: SkillSummary[] = matimoSkills;
-
-    logger.debug('matimo_list_skills: retrieved from MatimoInstance', { 
-      count: skills.length,
-      skills: skills.map(s => s.name)
-    });
-    return { skills, total: skills.length };
+    const results = Array.from(allSkills.values());
+    logger.debug('matimo_list_skills: complete', { total: results.length });
+    return { skills: results, total: results.length };
   } catch (err) {
-    logger.error('matimo_list_skills: failed to list skills', {
+    logger.error('matimo_list_skills: failed', {
       error: (err as Error).message,
-      stack: (err as Error).stack
     });
     return { skills: [], total: 0 };
   }

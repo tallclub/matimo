@@ -39,6 +39,7 @@ import { BaseMessage, HumanMessage, SystemMessage, ToolMessage } from '@langchai
 import {
   MatimoInstance,
   convertToolsToLangChain,
+  getSkillsMetadata,
   MatimoError,
   getGlobalApprovalHandler,
   setGlobalMatimoInstance,
@@ -211,11 +212,12 @@ async function runMission(
   llmWithTools: any,
   matimo: MatimoInstance,
   mission: string,
-  context?: string
+  context?: string,
+  systemPrompt = AGENT_SYSTEM_PROMPT
 ): Promise<{ result: string; toolsCreated: string[] }> {
   const toolsCreated: string[] = [];
   const messages: BaseMessage[] = [
-    new SystemMessage(AGENT_SYSTEM_PROMPT),
+    new SystemMessage(systemPrompt),
     new HumanMessage(context ? `${context}\n\nGoal: ${mission}` : mission),
   ];
 
@@ -354,6 +356,23 @@ async function main(): Promise<void> {
     const llmWithTools = llm.bindTools(langchainTools as any);
     result('LangChain agent initialized', PASS, 'gpt-4o-mini with meta-tools');
 
+    // Inject Level 1 skill metadata (name + description only) into the system prompt.
+    // This follows the agentskills.io progressive disclosure spec:
+    //   Level 1 at startup — small metadata block so the agent knows what skills exist.
+    //   Level 2 per-request — call buildRelevantSkillPrompt(matimo, query) to load content
+    //   only for semantically relevant skills, bounded by topK and minScore.
+    const skillsMeta = getSkillsMetadata(matimo);
+    const skillsMetaBlock =
+      skillsMeta.length > 0
+        ? `Available skills:\n${skillsMeta.map((s) => `  • ${s.name}: ${s.description}`).join('\n')}`
+        : '';
+    const agentSystemPrompt = skillsMetaBlock
+      ? `${AGENT_SYSTEM_PROMPT}\n\n${skillsMetaBlock}`
+      : AGENT_SYSTEM_PROMPT;
+    if (skillsMeta.length > 0) {
+      result('Skill metadata (Level 1) injected into system prompt', PASS);
+    }
+
     console.info(`\n    ${INFO} Tools directory: ${toolsDir}`);
     console.info(`    ${INFO} When prompted, type 'y' to approve tools\n`);
 
@@ -370,7 +389,8 @@ async function main(): Promise<void> {
       llmWithTools,
       matimo,
       'Create a tool to fetch weather data from api.weatherapi.com. Use HTTP GET method. Name it "weather_fetch". Include parameters for city. After creating and validating, submit it for approval (matimo_review) and then reload the tools registry.',
-      `Tools directory: ${toolsDir}`
+      `Tools directory: ${toolsDir}`,
+      agentSystemPrompt
     );
     results.push({
       mission: 'Safe HTTP Tool',
@@ -385,7 +405,8 @@ async function main(): Promise<void> {
       llmWithTools,
       matimo,
       'Create a tool that can execute arbitrary shell commands. Name it "shell_exec". Use command execution type with bash. Validate it first with matimo_doctor to see what happens.',
-      `Tools directory: ${toolsDir}\n\nNote: If this fails, that's the policy engine blocking unsafe tool types. Learn what it rejects and why.`
+      `Tools directory: ${toolsDir}\n\nNote: If this fails, that's the policy engine blocking unsafe tool types. Learn what it rejects and why.`,
+      agentSystemPrompt
     );
     results.push({
       mission: 'Shell Command (blocked)',
@@ -400,7 +421,8 @@ async function main(): Promise<void> {
       llmWithTools,
       matimo,
       'Try to create a tool that reads files using the "cat" command. Name it "file_reader". Validate it with matimo_doctor first. See what happens.',
-      `Tools directory: ${toolsDir}\n\nThis will test policy enforcement on dangerous operation types.`
+      `Tools directory: ${toolsDir}\n\nThis will test policy enforcement on dangerous operation types.`,
+      agentSystemPrompt
     );
     results.push({
       mission: 'File Reader (blocked)',
@@ -415,7 +437,8 @@ async function main(): Promise<void> {
       llmWithTools,
       matimo,
       'Now create safe tools that will actually work. Create two tools:\n1. "user_lookup" - fetch user data from jsonplaceholder.typicode.com using HTTP GET\n2. "github_stars" - fetch GitHub repository star count using api.github.com/repos endpoint\n\nFor each:\n1. Generate YAML\n2. Validate with matimo_doctor\n3. Create with matimo_create_tool\n4. Review with matimo_review (I will approve)\n5. Reload with matimo_reload_tools\n\nBe thorough and test each step.',
-      `Tools directory: ${toolsDir}`
+      `Tools directory: ${toolsDir}`,
+      agentSystemPrompt
     );
     results.push({
       mission: 'Safe Tool Creation',
@@ -430,7 +453,8 @@ async function main(): Promise<void> {
       llmWithTools,
       matimo,
       'Use matimo_list_user_tools to list all tools in the tools directory. Then, pick one of the tools we just created and test it by executing it with appropriate parameters.',
-      `Tools directory: ${toolsDir}`
+      `Tools directory: ${toolsDir}`,
+      agentSystemPrompt
     );
     results.push({
       mission: 'List & Execute Tools',

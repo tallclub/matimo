@@ -1,4 +1,8 @@
-import { convertToolsToLangChain } from '../../src/integrations/langchain';
+import {
+  convertToolsToLangChain,
+  getSkillsMetadata,
+  buildRelevantSkillPrompt,
+} from '../../src/integrations/langchain';
 import { ToolDefinition, Parameter } from '../../src/core/types';
 import { MatimoInstance } from '../../src/matimo-instance';
 import { z } from 'zod';
@@ -1489,6 +1493,127 @@ describe('convertToolsToLangChain', () => {
       // But enum validation still applies
       expect(() => prioritySchema.parse('invalid')).toThrow();
       expect(() => prioritySchema.parse('high')).not.toThrow();
+    });
+  });
+});
+
+// ─── Skill context helpers ────────────────────────────────────────────────────
+
+describe('getSkillsMetadata', () => {
+  function makeMockMatimo(skills: Array<{ name: string; description?: string }>): MatimoInstance {
+    return {
+      listSkills: jest.fn().mockReturnValue(skills),
+    } as unknown as MatimoInstance;
+  }
+
+  it('should return an empty array when there are no skills', () => {
+    const matimo = makeMockMatimo([]);
+    expect(getSkillsMetadata(matimo)).toEqual([]);
+  });
+
+  it('should omit skills with no readable content', () => {
+    const matimo = makeMockMatimo([{ name: 'skill-a', description: 'A' }]);
+    expect(getSkillsMetadata(matimo)).toHaveLength(1);
+  });
+
+  it('should map skills to name+description objects', () => {
+    const matimo = makeMockMatimo([
+      { name: 'skill-a', description: 'Skill A' },
+      { name: 'skill-b', description: 'Skill B' },
+    ]);
+    const result = getSkillsMetadata(matimo);
+    expect(result).toHaveLength(2);
+    expect(result[0]).toEqual({ name: 'skill-a', description: 'Skill A' });
+    expect(result[1]).toEqual({ name: 'skill-b', description: 'Skill B' });
+  });
+
+  it('should not include a content property', () => {
+    const matimo = makeMockMatimo([{ name: 'skill-a', description: 'A' }]);
+    const result = getSkillsMetadata(matimo);
+    expect(result[0]).not.toHaveProperty('content');
+  });
+
+  it('should use empty string for missing description', () => {
+    const matimo = makeMockMatimo([{ name: 'skill-a' }]);
+    const result = getSkillsMetadata(matimo);
+    expect(result[0]).toEqual({ name: 'skill-a', description: '' });
+  });
+});
+
+describe('buildRelevantSkillPrompt', () => {
+  type MockSkillResult = {
+    skill: { name: string; description?: string };
+    score: number;
+  };
+
+  function makeMockMatimo(
+    searchResults: MockSkillResult[],
+    contentMap: Record<string, string | null> = {}
+  ): MatimoInstance {
+    return {
+      listSkills: jest.fn().mockReturnValue(searchResults.map((r) => r.skill)),
+      semanticSearchSkills: jest.fn().mockResolvedValue(searchResults),
+      getSkillContent: jest.fn().mockImplementation((name: string) => contentMap[name] ?? null),
+    } as unknown as MatimoInstance;
+  }
+
+  it('should return an empty string when there are no search results', async () => {
+    const matimo = makeMockMatimo([]);
+    expect(await buildRelevantSkillPrompt(matimo, 'some query')).toBe('');
+  });
+
+  it('should return an empty string when no skills have content', async () => {
+    const matimo = makeMockMatimo([{ skill: { name: 'skill-a', description: 'A' }, score: 0.8 }], {
+      'skill-a': null,
+    });
+    expect(await buildRelevantSkillPrompt(matimo, 'some query')).toBe('');
+  });
+
+  it('should include default header and skill block', async () => {
+    const matimo = makeMockMatimo(
+      [{ skill: { name: 'my-skill', description: 'Does something' }, score: 0.85 }],
+      { 'my-skill': '# My Skill\nDo things.' }
+    );
+    const prompt = await buildRelevantSkillPrompt(matimo, 'some query');
+    expect(prompt).toContain('The following skills are relevant to the current request');
+    expect(prompt).toContain('## Skill: my-skill');
+    expect(prompt).toContain('# My Skill');
+  });
+
+  it('should include the relevance score in the skill header', async () => {
+    const matimo = makeMockMatimo(
+      [{ skill: { name: 'my-skill', description: 'A' }, score: 0.75 }],
+      { 'my-skill': '# Content' }
+    );
+    const prompt = await buildRelevantSkillPrompt(matimo, 'some query');
+    expect(prompt).toContain('(relevance: 0.75)');
+  });
+
+  it('should use a custom header when provided', async () => {
+    const matimo = makeMockMatimo([{ skill: { name: 'my-skill', description: 'A' }, score: 0.8 }], {
+      'my-skill': '# Content',
+    });
+    const prompt = await buildRelevantSkillPrompt(matimo, 'some query', {
+      header: 'Custom header text',
+    });
+    expect(prompt.startsWith('Custom header text')).toBe(true);
+  });
+
+  it('should include the skill description in italics when present', async () => {
+    const matimo = makeMockMatimo(
+      [{ skill: { name: 'my-skill', description: 'Does something' }, score: 0.8 }],
+      { 'my-skill': '# Content' }
+    );
+    const prompt = await buildRelevantSkillPrompt(matimo, 'some query');
+    expect(prompt).toContain('_Does something_');
+  });
+
+  it('should pass topK and minScore options to semanticSearchSkills', async () => {
+    const matimo = makeMockMatimo([], {});
+    await buildRelevantSkillPrompt(matimo, 'some query', { topK: 5, minScore: 0.6 });
+    expect(matimo.semanticSearchSkills as jest.Mock).toHaveBeenCalledWith('some query', {
+      limit: 5,
+      minScore: 0.6,
     });
   });
 });

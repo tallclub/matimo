@@ -10,7 +10,6 @@ tags:
   - matimo
   - meta
   - skill
-
 parameters:
   name:
     type: string

@@ -10,6 +10,8 @@
 // Variables prefixed with `mock` are allowed in jest.mock factories
 const mockExecute = jest.fn();
 const mockListTools = jest.fn();
+const mockListSkills = jest.fn().mockReturnValue([]);
+const mockGetSkillContent = jest.fn().mockReturnValue(null);
 const mockReloadTools = jest.fn();
 
 jest.mock('../../../src/matimo-instance', () => ({
@@ -18,6 +20,8 @@ jest.mock('../../../src/matimo-instance', () => ({
       Promise.resolve({
         execute: mockExecute,
         listTools: mockListTools,
+        listSkills: mockListSkills,
+        getSkillContent: mockGetSkillContent,
         reloadTools: mockReloadTools,
       })
     ),
@@ -25,18 +29,22 @@ jest.mock('../../../src/matimo-instance', () => ({
 }));
 
 const mockRegisterTool = jest.fn();
+const mockRegisterResource = jest.fn().mockReturnValue({ remove: jest.fn() });
 const mockConnect = jest.fn().mockResolvedValue(undefined);
 const mockClose = jest.fn().mockResolvedValue(undefined);
 const mockSendToolListChanged = jest.fn();
+const mockSendResourceListChanged = jest.fn();
 
 jest.mock(
   '@modelcontextprotocol/sdk/server/mcp',
   () => ({
     McpServer: jest.fn().mockImplementation(() => ({
       registerTool: mockRegisterTool,
+      registerResource: mockRegisterResource,
       connect: mockConnect,
       close: mockClose,
       sendToolListChanged: mockSendToolListChanged,
+      sendResourceListChanged: mockSendResourceListChanged,
     })),
   }),
   { virtual: true }
@@ -594,6 +602,50 @@ describe('MCPServer', () => {
 
       await server.reloadTools();
       expect(mockSendToolListChanged).toHaveBeenCalledTimes(1);
+
+      await server.stop();
+    });
+
+    it('should remove stale skill resources and re-register current ones on reload', async () => {
+      const mockRemove = jest.fn();
+      mockRegisterResource.mockReturnValue({ remove: mockRemove });
+
+      mockListTools.mockReturnValue([createTestTool()]);
+      // First load: one skill
+      mockListSkills
+        .mockReturnValueOnce([{ name: 'skill-a', description: 'Skill A' }])
+        // Reload: different skill
+        .mockReturnValueOnce([{ name: 'skill-b', description: 'Skill B' }]);
+      mockGetSkillContent.mockReturnValue('# Skill content');
+      mockReloadTools.mockResolvedValue({ loaded: [], removed: [], rejected: [] });
+
+      const server = new MCPServer({ transport: 'stdio', autoDiscover: false });
+      await server.start(); // registers skill-a resource
+
+      const registerCallsAfterStart = mockRegisterResource.mock.calls.length;
+      expect(registerCallsAfterStart).toBeGreaterThanOrEqual(1);
+
+      await server.reloadTools(); // should remove skill-a, register skill-b
+
+      expect(mockRemove).toHaveBeenCalledTimes(1);
+      // At least one new registerResource call for skill-b
+      expect(mockRegisterResource.mock.calls.length).toBeGreaterThan(registerCallsAfterStart);
+
+      await server.stop();
+    });
+
+    it('should call sendResourceListChanged after reloading skill resources', async () => {
+      mockListTools.mockReturnValue([createTestTool()]);
+      mockListSkills.mockReturnValue([{ name: 'skill-a', description: 'Skill A' }]);
+      mockGetSkillContent.mockReturnValue('# content');
+      mockReloadTools.mockResolvedValue({ loaded: [], removed: [], rejected: [] });
+
+      const server = new MCPServer({ transport: 'stdio', autoDiscover: false });
+      await server.start();
+
+      await server.reloadTools();
+
+      expect(mockSendResourceListChanged).toHaveBeenCalledTimes(1);
 
       await server.stop();
     });

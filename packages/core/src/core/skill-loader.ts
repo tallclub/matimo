@@ -64,26 +64,21 @@ const FrontmatterSchema = z.object({
 });
 
 /**
- * Parse YAML frontmatter from SKILL.md content
+ * Helper: Extract and validate YAML frontmatter
+ * @returns { frontmatter, body, error }
  */
-export function parseSkillContent(content: string): ParsedSkill & { error?: string } {
-  if (!content || !content.startsWith('---')) {
-    return {
-      error: 'Skill content must start with YAML frontmatter (---)',
-      frontmatter: { name: '', description: '' },
-      body: '',
-      raw: content,
-    };
+function extractFrontmatter(content: string): {
+  frontmatter?: SkillFrontmatter;
+  body?: string;
+  error?: string;
+} {
+  if (!content?.startsWith('---')) {
+    return { error: 'Skill content must start with YAML frontmatter (---)' };
   }
 
   const endIndex = content.indexOf('---', 3);
   if (endIndex === -1) {
-    return {
-      error: 'Skill content must have closing YAML frontmatter (---)',
-      frontmatter: { name: '', description: '' },
-      body: '',
-      raw: content,
-    };
+    return { error: 'Skill content must have closing YAML frontmatter (---)' };
   }
 
   const frontmatterBlock = content.substring(3, endIndex).trim();
@@ -93,12 +88,7 @@ export function parseSkillContent(content: string): ParsedSkill & { error?: stri
   try {
     parsed = (YAML.load(frontmatterBlock) as Record<string, unknown>) || {};
   } catch (e) {
-    return {
-      error: `Failed to parse YAML frontmatter: ${(e as Error).message}`,
-      frontmatter: { name: '', description: '' },
-      body,
-      raw: content,
-    };
+    return { error: `Failed to parse YAML frontmatter: ${(e as Error).message}` };
   }
 
   // Normalize allowed-tools: convert space-delimited string to array
@@ -112,12 +102,7 @@ export function parseSkillContent(content: string): ParsedSkill & { error?: stri
     const errors = validationResult.error.issues
       .map((e: z.ZodIssue) => `${e.path.join('.')}: ${e.message}`)
       .join('; ');
-    return {
-      error: `Frontmatter validation failed: ${errors}`,
-      frontmatter: { name: '', description: '' },
-      body,
-      raw: content,
-    };
+    return { error: `Frontmatter validation failed: ${errors}` };
   }
 
   const frontmatter: SkillFrontmatter = {
@@ -130,15 +115,65 @@ export function parseSkillContent(content: string): ParsedSkill & { error?: stri
     metadata: validationResult.data.metadata,
   };
 
+  return { frontmatter, body };
+}
+
+/**
+ * Parse YAML frontmatter from SKILL.md content
+ */
+export function parseSkillContent(content: string): ParsedSkill & { error?: string } {
+  const { frontmatter, body, error } = extractFrontmatter(content);
+
+  if (error) {
+    return {
+      error,
+      frontmatter: { name: '', description: '' },
+      body: content.substring(content.indexOf('---', 3) + 3).trim() || '',
+      raw: content,
+    };
+  }
+
   // Parse body into structured sections for selective context loading
-  const parsedContent = parseSkillSections(body);
+  const parsedContent = parseSkillSections(body!);
 
   return {
-    frontmatter,
-    body,
+    frontmatter: frontmatter!,
+    body: body!,
     raw: content,
     sections: parsedContent.sections,
     totalTokens: parsedContent.totalTokens,
+  };
+}
+
+/**
+ * Extract ONLY metadata from SKILL.md without parsing body/sections.
+ *
+ * Optimized for matimo_list_skills — reads YAML frontmatter only.
+ * This avoids the overhead of parsing sections and body content.
+ *
+ * Returns SkillSummary: name, description, version, license, metadata, source.
+ */
+export function extractSkillMetadata(
+  content: string,
+  source: 'builtin' | 'user' | 'catalog' = 'user'
+): { success: boolean; metadata?: any; error?: string } {
+  const { frontmatter, error } = extractFrontmatter(content);
+
+  if (error) {
+    return { success: false, error };
+  }
+
+  // Return only metadata fields (no body, sections, or body content)
+  return {
+    success: true,
+    metadata: {
+      name: frontmatter!.name,
+      description: frontmatter!.description,
+      version: frontmatter!.version,
+      license: frontmatter!.license,
+      metadata: frontmatter!.metadata,
+      source,
+    },
   };
 }
 

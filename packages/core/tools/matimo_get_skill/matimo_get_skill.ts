@@ -1,11 +1,7 @@
 import fs from 'fs';
 import path from 'path';
-import { getGlobalMatimoLogger } from '@matimo/core';
-import {
-  parseSkillContent,
-  listBundledResources,
-  type BundledResources,
-} from '../shared/skill-validation';
+import { getGlobalMatimoLogger, getGlobalMatimoInstance, ToolLoader } from '@matimo/core';
+import { parseSkillContent, listBundledResources, type BundledResources } from '../shared/skill-validation';
 
 interface GetSkillParams {
   name: string;
@@ -30,11 +26,63 @@ interface GetSkillResult {
 const UNSAFE_NAME_PATTERN = /[/\\]|\.\.|[\x00-\x1f]/;
 
 /**
+ * Helper: Find skill directory using auto-discovery (like matimo_list_skills)
+ */
+function findSkillDir(skillName: string, explicitSkillsDir?: string): string | null {
+  // Try explicit skills_dir first
+  if (explicitSkillsDir) {
+    const skillPath = path.join(explicitSkillsDir, skillName, 'SKILL.md');
+    if (fs.existsSync(skillPath)) {
+      return path.join(explicitSkillsDir, skillName);
+    }
+  }
+
+  // Try MatimoInstance
+  try {
+    const matimo = getGlobalMatimoInstance();
+    if (matimo) {
+      const skills = matimo.listSkills();
+      const found = skills?.find((s) => s.name === skillName);
+      if (found) {
+        const skillPath = (found as any)._path;
+        if (skillPath && fs.existsSync(path.join(skillPath, 'SKILL.md'))) {
+          return skillPath;
+        }
+      }
+    }
+  } catch {
+    // Fall through
+  }
+
+  // Auto-discover from @matimo/* packages
+  try {
+    const toolLoader = new ToolLoader();
+    const discoveredPaths = toolLoader.autoDiscoverPackages();
+    for (const toolPath of discoveredPaths) {
+      const pkgDir = path.dirname(toolPath);
+      const skillPath = path.join(pkgDir, 'skills', skillName, 'SKILL.md');
+      if (fs.existsSync(skillPath)) {
+        return path.join(pkgDir, 'skills', skillName);
+      }
+    }
+  } catch {
+    // Fall through
+  }
+
+  return null;
+}
+
+/**
  * Read a skill's content by name — Level 2 activation (SKILL.md) or
  * Level 3 resource access (bundled file).
  *
  * When called without `file`, returns SKILL.md content + metadata + resource listing.
  * When called with `file`, returns the contents of that bundled resource file.
+ *
+ * Skills are discovered in this order (priority):
+ * 1. Explicit skills_dir if provided
+ * 2. Global MatimoInstance (if initialized)
+ * 3. Auto-discovered @matimo/* packages
  *
  * @see https://agentskills.io/specification
  */
@@ -42,7 +90,6 @@ export default async function matimoGetSkill(
   params: GetSkillParams,
 ): Promise<GetSkillResult> {
   const logger = getGlobalMatimoLogger();
-  const skillsDir = params.skills_dir || './matimo-tools/skills';
 
   if (!params.name || params.name.trim().length === 0) {
     return { success: false, message: 'Skill name is required' };
@@ -52,12 +99,13 @@ export default async function matimoGetSkill(
     return { success: false, message: 'Skill name contains invalid characters' };
   }
 
-  const skillDir = path.join(skillsDir, params.name);
-  const skillPath = path.join(skillDir, 'SKILL.md');
-
-  if (!fs.existsSync(skillPath)) {
-    return { success: false, message: `Skill "${params.name}" not found at ${skillPath}` };
+  // Find skill directory using auto-discovery
+  const skillDir = findSkillDir(params.name, params.skills_dir);
+  if (!skillDir) {
+    return { success: false, message: `Skill "${params.name}" not found` };
   }
+
+  const skillPath = path.join(skillDir, 'SKILL.md');
 
   // Level 3: Read a specific bundled resource file
   if (params.file) {

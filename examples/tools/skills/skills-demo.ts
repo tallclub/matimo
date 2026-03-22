@@ -39,6 +39,8 @@ import { BaseMessage, HumanMessage, SystemMessage, ToolMessage } from '@langchai
 import {
   MatimoInstance,
   convertToolsToLangChain,
+  getSkillsMetadata,
+  buildRelevantSkillPrompt,
   setGlobalMatimoInstance,
   getGlobalApprovalHandler,
 } from 'matimo';
@@ -48,6 +50,7 @@ import type { ToolDefinition } from 'matimo';
 
 const PASS = '\x1b[32m✓ PASS\x1b[0m';
 const FAIL = '\x1b[31m✗ FAIL\x1b[0m';
+const WARN = '\x1b[33m⚠ WARN\x1b[0m';
 const INFO = '\x1b[36mℹ\x1b[0m';
 
 function header(title: string): void {
@@ -236,7 +239,7 @@ async function runMission(
     } else {
       const finalText =
         typeof response.content === 'string' ? response.content : JSON.stringify(response.content);
-      console.info(`    💬 Agent conclusion: ${finalText.slice(0, 500)}`);
+      console.info(`    💬 Agent conclusion: ${finalText}`);
       return finalText;
     }
   }
@@ -347,7 +350,7 @@ Remember: the content MUST start with YAML frontmatter (---) containing name and
     console.info(
       '    🎯 Goal: "Apply the code review skill to this code" — agent discovers matimo_get_skill.\n'
     );
-    await runMission(
+    const mission3Result = await runMission(
       llmWithTools,
       matimo,
       `Read the "code-review" skill from "${skillsDir}" and apply its guidelines to review this code. Point out every issue you find based on the skill's checklist:
@@ -356,6 +359,12 @@ Remember: the content MUST start with YAML frontmatter (---) containing name and
 ${SAMPLE_CODE_TO_REVIEW}
 \`\`\``
     );
+    const mission3Passed =
+      mission3Result.length > 100 &&
+      (mission3Result.toLowerCase().includes('eval') ||
+        mission3Result.toLowerCase().includes('password') ||
+        mission3Result.toLowerCase().includes('error') ||
+        mission3Result.toLowerCase().includes('security'));
 
     // ── Mission 4: Create a security checklist skill ────────────────
 
@@ -439,6 +448,51 @@ ${SAMPLE_CODE_TO_REVIEW}
       }
     }
 
+    // ── PHASE 4: Non-MCP Progressive Disclosure ─────────────────────
+    //
+    // agentskills.io progressive disclosure model without an MCP server:
+    //   Level 1 (startup)    — getSkillsMetadata() → name + description only (~50 tokens/skill)
+    //   Level 2 (per-request)— buildRelevantSkillPrompt(matimo, query) uses TF-IDF semantic
+    //                           search to rank skills and loads full content only for the
+    //                           top-K matches, keeping context cost proportional to relevance.
+    //
+    // This is the non-MCP equivalent of:
+    //   matimo_list_skills  → Level 1 (always cheap)
+    //   matimo_get_skill    → Level 2 (on demand, per relevant skill)
+
+    header('PHASE 4: Non-MCP Progressive Disclosure');
+
+    const matimoWithSkills = await MatimoInstance.init({
+      skillPaths: [skillsDir],
+      logLevel: 'silent',
+    });
+
+    // Level 1 — metadata only
+    const meta = getSkillsMetadata(matimoWithSkills);
+    result(
+      `getSkillsMetadata() — Level 1: ${meta.length} skill(s), names + descriptions only`,
+      meta.length > 0 ? PASS : WARN
+    );
+    for (const m of meta) {
+      result(`  ${m.name}`, PASS, m.description || '(no description)');
+    }
+
+    // Level 2 — semantic search + load only relevant content
+    const testQuery = 'security vulnerability detection';
+    const relevantPrompt = await buildRelevantSkillPrompt(matimoWithSkills, testQuery, {
+      topK: 2,
+      minScore: 0.1,
+      header: 'Apply these skill guidelines:',
+    });
+    result(
+      `buildRelevantSkillPrompt('${testQuery}') — Level 2: ${relevantPrompt.length} chars`,
+      relevantPrompt.length > 0 ? PASS : WARN
+    );
+    if (relevantPrompt.length > 0) {
+      console.info(`\n  ${INFO} Injected prompt preview (first 300 chars):`);
+      console.info(`  "${relevantPrompt.slice(0, 300)}…"\n`);
+    }
+
     // ── Summary ─────────────────────────────────────────────────────
 
     header('SUMMARY');
@@ -446,7 +500,7 @@ ${SAMPLE_CODE_TO_REVIEW}
   Skills Lifecycle (Goal-Driven — No Tool Names Given):
     ${skillCreated ? PASS : FAIL}  1. "I need a code review checklist" → created code-review skill
     ${PASS}  2. "What skills are available?" → Level 1 metadata discovery
-    ${PASS}  3. "Apply the skill to this code" → Level 2 activation + applied guidelines
+    ${mission3Passed ? PASS : FAIL}  3. "Apply the skill to this code" → Level 2 activation + applied guidelines
     ${securityCreated ? PASS : FAIL}  4. "I need a security skill" → created security-checklist skill
     ${PASS}  5. "Validate the skills" → spec compliance check
     ${PASS}  6. "Apply ALL skills" → listed, read, and applied multiple skills
@@ -457,6 +511,10 @@ ${SAMPLE_CODE_TO_REVIEW}
     ${PASS}  Progressive disclosure (Level 1 → Level 2 → Level 3)
     ${PASS}  Spec validation via matimo_validate_skill
     ${PASS}  Human-in-the-loop approval for skill creation
+
+  Non-MCP Progressive Disclosure (agentskills.io spec):
+    ${meta.length > 0 ? PASS : WARN}  getSkillsMetadata() → Level 1: ${meta.length} skill(s), names + descriptions only
+    ${relevantPrompt.length > 0 ? PASS : WARN}  buildRelevantSkillPrompt(query) → Level 2: TF-IDF search → ${relevantPrompt.length} chars loaded
 
   Skills on Disk:
     ${INFO}  Directory: ${skillsDir}

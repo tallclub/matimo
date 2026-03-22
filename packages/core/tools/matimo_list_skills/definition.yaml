@@ -3,9 +3,11 @@ version: '1.0.0'
 description: >-
   Level 1 metadata discovery — list all skills available to the system.
   
-  If skills_dir is provided, loads skills directly from that directory.
-  Otherwise, returns skills from the global Matimo instance (which includes
-  auto-discovered skills from @matimo/* packages, core skills, and user-created skills).
+  Skills are auto-discovered in this order (priority):
+  1. From global Matimo instance (if initialized)
+  2. From @matimo/* packages in node_modules (auto-discovery like tools)
+  3. From core skills bundled with @matimo/core
+  4. From optional explicit skills_dir (if provided)
   
   Returns each skill's name, description, and optional frontmatter fields
   (license, compatibility, metadata) per the Agent Skills specification.

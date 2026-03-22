@@ -143,6 +143,8 @@ export class MCPServer {
   private filteredTools: ToolDefinition[] = [];
   /** The active bearer token (explicit, env, or auto-generated) */
   private activeToken: string | null = null;
+  /** Registered skill resources, keyed by skill name, for lifecycle management */
+  private registeredSkillResources = new Map<string, { remove(): void }>();
 
   constructor(options: MCPServerOptions = {}) {
     this.options = {
@@ -194,6 +196,18 @@ export class MCPServer {
     ) {
       (this.mcpServer as { sendToolListChanged: () => void }).sendToolListChanged();
       logger.debug('Notified MCP client of tool list change');
+    }
+
+    // Re-sync skill resources on the stdio server (remove stale, add new)
+    if (this.mcpServer && this.matimo) {
+      this.registerSkillResources(this.mcpServer, this.matimo, logger);
+
+      if (
+        typeof (this.mcpServer as Record<string, unknown>).sendResourceListChanged === 'function'
+      ) {
+        (this.mcpServer as { sendResourceListChanged: () => void }).sendResourceListChanged();
+        logger.debug('Notified MCP client of resource list change');
+      }
     }
   }
 
@@ -327,6 +341,67 @@ export class MCPServer {
   }
 
   /**
+   * Register (or re-register) all skills from `matimo` as MCP resources on `server`.
+   * Removes any previously registered skill resources before adding the current set
+   * so that this method is safe to call multiple times (e.g., from reloadTools).
+   */
+
+  private registerSkillResources(
+    server: any,
+    matimo: MatimoInstance,
+    logger: ReturnType<typeof getGlobalMatimoLogger>
+  ): void {
+    // Remove stale skill resources registered from a previous call
+    for (const [, handle] of this.registeredSkillResources) {
+      try {
+        handle.remove();
+      } catch {
+        // Ignore — resource may already have been removed
+      }
+    }
+    this.registeredSkillResources.clear();
+
+    const skills = matimo.listSkills();
+    let registered = 0;
+    for (const skill of skills) {
+      try {
+        const handle = server.registerResource(
+          skill.name,
+          `skills://${skill.name}`,
+          {
+            title: skill.name,
+            description: skill.description,
+            mimeType: 'text/markdown',
+          },
+          async () => {
+            const content = matimo.getSkillContent(skill.name);
+            return {
+              contents: [
+                {
+                  uri: `skills://${skill.name}`,
+                  text: content ?? `Skill "${skill.name}" content unavailable`,
+                  mimeType: 'text/markdown',
+                },
+              ],
+            };
+          }
+        );
+        this.registeredSkillResources.set(skill.name, handle);
+        registered++;
+      } catch (err) {
+        logger.debug(`Failed to register skill resource '${skill.name}'`, {
+          skillName: skill.name,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+
+    if (registered > 0) {
+      logger.debug(`Registered ${registered} skill resources on MCP server`);
+    }
+  }
+
+  /**
    * Create a new McpServer instance with all filtered tools registered.
    * Each call returns a fresh server — used per-session in HTTP mode.
    */
@@ -417,6 +492,12 @@ export class MCPServer {
     }
 
     logger.debug(`Registered ${registeredCount}/${this.filteredTools.length} tools on MCP server`);
+
+    // Register skills as MCP resources (skills://name)
+    // This allows agents (Claude Desktop, Cursor, etc.) to attach skills directly
+    // from the resource picker — no tool calls needed.
+    this.registerSkillResources(server, matimo, logger);
+
     return server;
   }
 

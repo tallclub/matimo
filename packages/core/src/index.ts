@@ -39,6 +39,7 @@ export {
   extractSkillContent,
   listSkillSections,
 } from './core/skill-content-parser';
+export { extractSkillMetadata } from './core/skill-loader';
 export type { ParsedSkillContent } from './core/skill-content-parser';
 export { TfIdfEmbeddingProvider, cosineSimilarity } from './core/tfidf-embedding';
 
@@ -95,8 +96,12 @@ export { OAuth2ProviderLoader } from './auth/oauth2-provider-loader';
 export { OAuth2Handler } from './auth/oauth2-handler';
 
 // LangChain integration
-export { convertToolsToLangChain } from './integrations/langchain';
-export type { LangChainTool } from './integrations/langchain';
+export {
+  convertToolsToLangChain,
+  getSkillsMetadata,
+  buildRelevantSkillPrompt,
+} from './integrations/langchain';
+export type { LangChainTool, SkillContext } from './integrations/langchain';
 
 // Vercel AI integration
 // export { convertToolsToVercelAI } from './integrations/vercel-ai';

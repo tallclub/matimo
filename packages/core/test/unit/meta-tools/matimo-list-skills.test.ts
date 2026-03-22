@@ -1,11 +1,13 @@
 import matimoListSkills from '../../../tools/matimo_list_skills/matimo_list_skills';
-import { getGlobalMatimoInstance } from '@matimo/core';
+import { getGlobalMatimoInstance, ToolLoader, SkillLoader } from '@matimo/core';
 
 jest.mock('@matimo/core', () => {
   const actual = jest.requireActual('@matimo/core');
   return {
     ...actual,
     getGlobalMatimoInstance: jest.fn(),
+    ToolLoader: jest.fn(),
+    SkillLoader: jest.fn(),
     getGlobalMatimoLogger: () => ({
       debug: jest.fn(),
       info: jest.fn(),
@@ -18,6 +20,8 @@ jest.mock('@matimo/core', () => {
 const mockGetInstance = getGlobalMatimoInstance as jest.MockedFunction<
   typeof getGlobalMatimoInstance
 >;
+const mockToolLoader = ToolLoader as jest.MockedClass<typeof ToolLoader>;
+const mockSkillLoader = SkillLoader as jest.MockedClass<typeof SkillLoader>;
 
 describe('matimo_list_skills', () => {
   afterEach(() => {
@@ -101,6 +105,10 @@ describe('matimo_list_skills', () => {
 
   it('should return empty list when no MatimoInstance is available', async () => {
     mockGetInstance.mockReturnValue(null as unknown as ReturnType<typeof getGlobalMatimoInstance>);
+    // Mock ToolLoader to return empty array (no packages to discover)
+    mockToolLoader.prototype.autoDiscoverPackages = jest.fn().mockReturnValue([]);
+    // Mock SkillLoader to return empty array
+    mockSkillLoader.prototype.loadSkillsFromDirectory = jest.fn().mockReturnValue([]);
 
     const result = await matimoListSkills({});
     expect(result.skills).toHaveLength(0);
@@ -112,6 +120,10 @@ describe('matimo_list_skills', () => {
       listSkills: () => [],
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
+    // Mock ToolLoader to return empty array (no packages to discover)
+    mockToolLoader.prototype.autoDiscoverPackages = jest.fn().mockReturnValue([]);
+    // Mock SkillLoader to return empty array
+    mockSkillLoader.prototype.loadSkillsFromDirectory = jest.fn().mockReturnValue([]);
 
     const result = await matimoListSkills({});
     expect(result.skills).toBeInstanceOf(Array);
@@ -157,6 +169,11 @@ describe('matimo_list_skills', () => {
   });
 
   it('should return empty list when skills_dir does not exist', async () => {
+    // When skills_dir doesn't exist, but auto-discovery finds nothing
+    mockGetInstance.mockReturnValue(null as unknown as ReturnType<typeof getGlobalMatimoInstance>);
+    mockToolLoader.prototype.autoDiscoverPackages = jest.fn().mockReturnValue([]);
+    mockSkillLoader.prototype.loadSkillsFromDirectory = jest.fn().mockReturnValue([]);
+
     const nonExistentDir = '/non/existent/path/to/skills';
     const result = await matimoListSkills({ skills_dir: nonExistentDir });
     expect(result.skills).toHaveLength(0);

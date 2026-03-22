@@ -39,6 +39,8 @@ import { BaseMessage, HumanMessage, SystemMessage, ToolMessage } from '@langchai
 import {
   MatimoInstance,
   convertToolsToLangChain,
+  getSkillsMetadata,
+  buildRelevantSkillPrompt,
   getGlobalApprovalHandler,
   setGlobalMatimoInstance,
 } from 'matimo';
@@ -173,12 +175,10 @@ async function runMission(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   llmWithTools: any,
   matimo: MatimoInstance,
-  mission: string
+  mission: string,
+  systemPrompt = AGENT_SYSTEM_PROMPT
 ): Promise<string> {
-  const messages: BaseMessage[] = [
-    new SystemMessage(AGENT_SYSTEM_PROMPT),
-    new HumanMessage(mission),
-  ];
+  const messages: BaseMessage[] = [new SystemMessage(systemPrompt), new HumanMessage(mission)];
 
   let iterations = 0;
   const MAX_ITERATIONS = 10;
@@ -319,6 +319,24 @@ async function main(): Promise<void> {
     const llmWithTools = llm.bindTools(langchainTools as any);
     status('LLM (gpt-4o-mini) bound with tools');
 
+    // Non-MCP progressive disclosure:
+    //   Level 1 (startup) — inject skill metadata so the agent is aware of all skills.
+    //   Level 2 (per-request) — call buildRelevantSkillPrompt(matimo, query) in the ReAct
+    //   loop to load only the skills that are semantically relevant to each user message.
+    //   The agent can also use matimo_list_skills / matimo_get_skill tools for the same
+    //   progressive disclosure pattern during the loop.
+    const skillsMeta = getSkillsMetadata(matimo);
+    const skillsMetaBlock =
+      skillsMeta.length > 0
+        ? `Available skills (discover relevant ones per query):\n${skillsMeta.map((s) => `  • ${s.name}: ${s.description}`).join('\n')}`
+        : '';
+    const agentSystemPrompt = skillsMetaBlock
+      ? `${AGENT_SYSTEM_PROMPT}\n\n${skillsMetaBlock}`
+      : AGENT_SYSTEM_PROMPT;
+    if (skillsMeta.length > 0) {
+      status('Skill names (Level 1) injected into system prompt');
+    }
+
     // ── Interactive: Agent takes mission from user ─────────────────
 
     header('AGENT MISSION');
@@ -335,7 +353,7 @@ async function main(): Promise<void> {
     subheader('Mission');
     console.info(`    🎯 "${userMission}"\n`);
 
-    const finalResponse = await runMission(llmWithTools, matimo, userMission);
+    const finalResponse = await runMission(llmWithTools, matimo, userMission, agentSystemPrompt);
     console.info(`\n  ${INFO} Final response:`);
     console.info(`    "${finalResponse}"`);
 
