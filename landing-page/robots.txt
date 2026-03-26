@@ -1,0 +1,33 @@
+# robots.txt for Matimo (landing-page)
+# Allow all bots to crawl and index the landing page
+
+User-agent: *
+Allow: /landing-page/
+Disallow: /landing-page/node_modules/
+Disallow: /landing-page/dist/
+Disallow: /landing-page/.git/
+Disallow: /landing-page/tmp/
+
+# Sitemap location
+Sitemap: https://matimo.dev/landing-page/sitemap.xml
+
+# Crawl delay (optional, in seconds)
+Crawl-delay: 1
+
+# Specific bots
+User-agent: Googlebot
+Allow: /landing-page/
+Crawl-delay: 0.5
+
+User-agent: Bingbot
+Allow: /landing-page/
+Crawl-delay: 1
+
+User-agent: GPTBot
+Allow: /landing-page/
+
+User-agent: CCBot
+Allow: /landing-page/
+
+User-agent: anthropic-ai
+Allow: /landing-page/

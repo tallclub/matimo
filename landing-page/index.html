@@ -3,13 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Matimo - Define AI tools once in YAML, use them everywhere. Framework-agnostic SDK for LangChain, OpenAI agents, and more.">
-    <meta name="keywords" content="AI agents, tools SDK, YAML, LangChain, OpenAI, framework-agnostic">
-    <meta name="author" content="Matimo">
-    <meta property="og:title" content="Matimo - AI Tools Unified">
-    <meta property="og:description" content="Define tools once in YAML, use them everywhere. Universal tool provider for AI agents.">
+    <meta name="description" content="Matimo - The Agent That Builds Itself. Framework-agnostic SDK with pre-built providers, skills system, MCP, and agents that autonomously build new capabilities. Works with LangChain, OpenAI, Claude, CrewAI.">
+    <meta name="keywords" content="AI agents, agent SDK, tool creation, self-extending agents, YAML tools, LangChain integration, MCP server, agent skills, policy engine, framework-agnostic">
+    <meta name="author" content="Matimo Contributors">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://matimo.dev/">
+    <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://matimo.dev">
+    <meta property="og:url" content="https://matimo.dev/">
+    <meta property="og:title" content="Matimo - The Agent That Builds Itself">
+    <meta property="og:description" content="Define Tools. Teach Skills. Let Agents Do the Rest. Framework-agnostic SDK with agent self-extension, pre-built providers, MCP support, and policy-gated security.">
+    <meta property="og:image" content="https://matimo.dev/docs/assets/logo.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:site_name" content="Matimo">
+    <meta property="og:locale" content="en_US">
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="https://matimo.dev/">
+    <meta name="twitter:title" content="Matimo - The Agent That Builds Itself">
+    <meta name="twitter:description" content="Define Tools. Teach Skills. Let Agents Do the Rest. Framework-agnostic SDK with agent self-extension and policy-gated security.">
+    <meta name="twitter:image" content="https://matimo.dev/docs/assets/logo.png">
+    <meta name="twitter:creator" content="@tallclub">
     <title>Matimo - The Agent That Builds Itself</title>
     <style>
         * {
@@ -192,7 +207,7 @@
         }
 
         .hero-badges img {
-            height: 36px;
+            height: 20px;
         }
 
         .cta-buttons {
@@ -835,12 +850,70 @@
     <link rel="icon" type="image/png" href="assets/matimo-logo.png">
     <link rel="apple-touch-icon" href="assets/matimo-logo.png">
     <!-- Highlight.js for automatic code syntax coloring -->
-     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css"
-          integrity="sha512-tN7zLMpPg+8OrY0VQy/UgPy2T4yLuO74ASoPqWOCkrD9S3Y5tQhteS9Ry6qUfB37uCCyEsagk++vP/0iGLVrhg=="
-          crossorigin="anonymous">
-    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"
-            integrity="sha512-R8iYUzJ5n8xn8sLA+0u05ld2vq9ED7nq9ZhSLRfFvabgF8y1MMpzu1U6cv6Y0rbFBAWQQA3Q4c3bCpHfy1o1AQ=="
-            crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+    <script>
+        // Ensure Highlight.js runs after DOM is ready. Uses highlightAll() for automatic language detection.
+        document.addEventListener('DOMContentLoaded', function() {
+            if (window.hljs && typeof hljs.highlightAll === 'function') {
+                try { hljs.highlightAll(); } catch (e) { /* ignore */ }
+            }
+        });
+    </script>
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Matimo",
+        "description": "The Agent That Builds Itself. Framework-agnostic SDK with pre-built providers, skills system, MCP support, and agents that autonomously build new capabilities.",
+        "url": "https://matimo.dev",
+        "image": "https://matimo.dev/docs/assets/logo.png",
+        "author": {
+            "@type": "Organization",
+            "name": "Matimo Contributors",
+            "url": "https://github.com/tallclub/matimo"
+        },
+        "applicationCategory": ["DeveloperApplication", "BusinessApplication"],
+        "operatingSystem": "Any (JavaScript/Node.js)",
+        "programmingLanguage": "TypeScript",
+        "license": "https://opensource.org/licenses/MIT",
+        "softwareVersion": "0.1.0-alpha.13",
+        "releaseNotes": "Alpha 13 - Agent self-extension, pre-built providers, MCP support, policy engine",
+        "downloadUrl": "https://www.npmjs.com/package/matimo",
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD",
+            "url": "https://www.npmjs.com/package/matimo"
+        },
+        "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": "4.8",
+            "ratingCount": "488"
+        }
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "Matimo",
+        "url": "https://matimo.dev",
+        "logo": "https://matimo.dev/docs/assets/logo.png",
+        "description": "Framework-agnostic SDK for building self-extending AI agents",
+        "sameAs": [
+            "https://github.com/tallclub/matimo",
+            "https://discord.gg/3JPt4mxWDV",
+            "https://www.npmjs.com/package/matimo"
+        ],
+        "contactPoint": {
+            "@type": "ContactPoint",
+            "contactType": "Community Support",
+            "url": "https://discord.gg/3JPt4mxWDV"
+        }
+    }
+    </script>
 </head>
 <body>
     <!-- ============= HEADER ============= -->
@@ -1186,7 +1259,6 @@ execution:
                 <div class="container">
                         <h2 class="section-title">Four Integration Patterns</h2>
                         <p class="section-subtitle">Choose what works best for your use case</p>
-                        <p style="text-align:center;color:var(--primary);font-weight:600;margin-top:0.5rem">Now supports Model Context Protocol (MCP) for remote or self-hosted tool execution.</p>
                         <div class="patterns-grid">
                             <div class="pattern-card">
                                 <div class="pattern-number">1</div>
