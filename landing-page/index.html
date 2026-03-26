@@ -835,8 +835,12 @@
     <link rel="icon" type="image/png" href="assets/matimo-logo.png">
     <link rel="apple-touch-icon" href="assets/matimo-logo.png">
     <!-- Highlight.js for automatic code syntax coloring -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css"
+          integrity="sha512-tN7zLMpPg+8OrY0VQy/UgPy2T4yLuO74ASoPqWOCkrD9S3Y5tQhteS9Ry6qUfB37uCCyEsagk++vP/0iGLVrhg=="
+          crossorigin="anonymous">
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"
+            integrity="sha512-R8iYUzJ5n8xn8sLA+0u05ld2vq9ED7nq9ZhSLRfFvabgF8y1MMpzu1U6cv6Y0rbFBAWQQA3Q4c3bCpHfy1o1AQ=="
+            crossorigin="anonymous"></script>
 </head>
 <body>
     <!-- ============= HEADER ============= -->
@@ -1147,7 +1151,7 @@ const weather = await matimo.execute('fetch-weather', { city: 'Bangalore' });</c
                     <li><strong>Open Source</strong> — MIT licensed, fully transparent</li>
                     <li><strong>Agent Self-Extension</strong> — Agents build and deploy new tools at runtime</li>
                     <li><strong>Multi-Tenant Credentials</strong> — Per-execution credential isolation via getRequiredCredentials()</li>
-                    <li><strong>1,884 Tests Passing</strong> — 96 test suites, 100% coverage on core modules</li>
+                    <li><strong>Extensive Test Coverage</strong> — Dozens of test suites with high coverage on core modules</li>
                 </ul>
             </div>
             <div class="benefits-visual">
