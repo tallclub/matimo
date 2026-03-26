@@ -9,7 +9,11 @@
         <priority>1.0</priority>
     </url>
     
-    <!-- Documentation -->
+        <!-- Documentation -->
+        <!-- NOTE: This sitemap currently lists URLs across multiple hosts (docs.matimo.dev, github.com, npmjs.com, discord.gg).
+            The sitemap protocol expects URLs to be on the same host as the sitemap. Other-host URLs may be ignored by crawlers.
+            Consider limiting this sitemap to https://matimo.dev/* and publishing separate sitemaps for other subdomains/sites,
+            or omit external links entirely. -->
     <url>
         <loc>https://docs.matimo.dev/</loc>
         <lastmod>2026-03-26</lastmod>
@@ -64,28 +68,5 @@
         <changefreq>monthly</changefreq>
         <priority>0.7</priority>
     </url>
-    
-    <!-- GitHub -->
-    <url>
-        <loc>https://github.com/tallclub/matimo</loc>
-        <lastmod>2026-03-26</lastmod>
-        <changefreq>weekly</changefreq>
-        <priority>0.8</priority>
-    </url>
-    
-    <!-- npm Package -->
-    <url>
-        <loc>https://www.npmjs.com/package/matimo</loc>
-        <lastmod>2026-03-26</lastmod>
-        <changefreq>monthly</changefreq>
-        <priority>0.8</priority>
-    </url>
-    
-    <!-- Community -->
-    <url>
-        <loc>https://discord.gg/3JPt4mxWDV</loc>
-        <lastmod>2026-03-26</lastmod>
-        <changefreq>weekly</changefreq>
-        <priority>0.6</priority>
-    </url>
+</urlset>
 </urlset>

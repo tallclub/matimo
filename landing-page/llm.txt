@@ -134,7 +134,7 @@ npx matimo mcp --transport http --port 3000  # HTTP mode
 
 ## What NOT to Do
 
-- **Don't hardcode secrets** — Use environment variables (MATIMO_TOOL_NAME_AUTH_TYPE)
+- - **Don't hardcode secrets** — Use environment variables (Matimo checks `MATIMO_<PARAM>` first, then `<PARAM>`, e.g. `MATIMO_AUTH_TYPE` / `AUTH_TYPE`)
 - **Don't skip validation** — Always use Zod for parameter/response parsing
 - **Don't log sensitive data** — Never expose API keys, tokens, or PII in logs
 - **Don't modify YAML outside tool definitions** — Keep changes in packages/{provider}/tools/
