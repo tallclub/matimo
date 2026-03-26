@@ -1,0 +1,172 @@
+# Matimo — The Agent That Builds Itself
+
+## Project Overview
+
+Matimo is a framework-agnostic SDK that enables agents to autonomously build new tools and skills at runtime. Define tools once in YAML, deploy everywhere — SDK, LangChain, MCP, CrewAI, or any AI framework.
+
+**Core Innovation:** Unlike traditional tool SDKs, Matimo allows agents to extend themselves by creating new tools and domain knowledge (skills) without server restarts. All agent-created capabilities are validated by a policy engine and governed by human-in-the-loop controls.
+
+## What Matimo Does
+
+### Framework-Agnostic Tool Definition
+- Write tool definitions once in YAML
+- Reuse across TypeScript SDK, LangChain, MCP Server, custom agents
+- No schema duplication, no fragmented integration logic
+- Automatic parameter validation and OAuth2 support
+
+### Agent Self-Extension
+- **Tool Creation**: Agents write YAML tool definitions at runtime via `matimo_create_tool`
+- **Skill Creation**: Agents author domain knowledge (SKILL.md) via `matimo_create_skill`
+- **Hot-Reload**: Updated tools and skills live immediately without server restart (via `matimo_reload_tools`)
+- **Policy-Gated**: All agent-created capabilities validated against 9 security rules
+- **HITL Approval**: Human-in-the-loop quarantine for medium/high-risk operations
+
+### Pre-built Provider Ecosystem
+- **Slack**: Send messages, manage channels, reactions, threads
+- **Gmail**: Send/read email, manage threads and drafts
+- **GitHub**: Issues, PRs, releases, code search
+- **Notion**: Pages, databases, blocks, semantic search
+- **HubSpot**: Contacts, companies, deals, activity
+- **PostgreSQL**: Query/modify data with safety checks
+- **Twilio**: Send SMS/MMS, manage conversations
+- **Mailchimp**: Audiences, campaigns, subscriber management
+- **MCP Server**: Expose all tools to Claude Desktop, Cursor, Windsurf, any MCP client
+
+### Skills System
+- Structured domain knowledge files (SKILL.md) compliant with [Agent Skills spec](https://agentskills.io)
+- Semantic search across skills
+- Progressive disclosure (load sections on-demand to save context)
+- Agents discover and learn capabilities without hardcoded instruction
+
+### Security & Governance
+- **9 Deterministic Rules**: SSRF detection, namespace protection, credential allowlists, etc.
+- **SHA-256 Integrity Tracking**: Verify tool definitions haven't been tampered with
+- **HMAC Approvals**: Cryptographically sign tool approvals and skill commits
+- **Audit Trail**: Structured events for all tool executions and approvals
+- **HITL Quarantine**: Flag medium/high-risk operations for human review
+
+## Key Capabilities
+
+| Feature | Details |
+|---------|---------|
+| **Tool Definition** | YAML-based with parameters, execution types (http/command/function), auth config |
+| **Execution Types** | HTTP requests, shell commands, JavaScript functions, custom executors |
+| **Validation** | Zod schemas for parameters and responses; optional hard validation |
+| **Authentication** | API keys, OAuth2, Bearer tokens, Basic auth; provider-agnostic flows |
+| **Auto-Discovery** | Automatic detection of `@matimo/*` packages from node_modules |
+| **CLI Tools** | `matimo list`, `matimo search`, `matimo install`, `matimo doctor`, `matimo mcp`, `matimo review` |
+| **TypeScript SDK** | Factory pattern, Decorator pattern, full type safety, IDE autocomplete |
+| **LangChain** | Direct integration; tools expose OpenAI function schemas |
+| **MCP Server** | Stdio or HTTP transport; works with Claude Desktop, Cursor, Windsurf |
+| **Error Handling** | Configurable retry + backoff strategies per tool |
+| **Logging** | Winston integration; configurable levels (silent/error/warn/info/debug) |
+| **Testing** | Jest test suite with fixtures; 85%+ coverage standards |
+
+## How to Use
+
+### Installation
+```bash
+npm install matimo @matimo/slack @matimo/gmail
+```
+
+### Factory Pattern (Simplest)
+```typescript
+import { MatimoInstance } from 'matimo';
+
+const matimo = await MatimoInstance.init({ autoDiscover: true });
+const result = await matimo.execute('slack_send_channel_message', {
+  channel: '#general',
+  text: 'Hello from Matimo!',
+});
+```
+
+### Decorator Pattern
+```typescript
+setGlobalMatimoInstance(matimo);
+
+class MyAgent {
+  @tool('slack_send_channel_message')
+  async sendMessage(channel: string, text: string) {
+    // Auto-executed via Matimo
+  }
+}
+```
+
+### LangChain Integration
+```typescript
+const tools = matimo.listTools().map(tool => ({
+  type: 'function',
+  function: { name: tool.name, description: tool.description, ... }
+}));
+const response = await llm.invoke(messages, { tools });
+```
+
+### MCP Server
+```bash
+npx matimo mcp  # Run MCP server
+npx matimo mcp setup  # Generate client config
+npx matimo mcp --transport http --port 3000  # HTTP mode
+```
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────┐
+│  Application Layer: Agent / Framework           │
+│  (LangChain, decorator-based, factory pattern)  │
+└────────────────┬────────────────────────────────┘
+                 │
+┌────────────────▼────────────────────────────────┐
+│  SDK Layer: MatimoInstance                      │
+│  - ToolLoader, ToolRegistry, Execute dispatcher │
+└────────────────┬────────────────────────────────┘
+                 │
+┌────────────────▼────────────────────────────────┐
+│  Execution Layer                                 │
+│  - CommandExecutor, HttpExecutor, ...            │
+│  - Validation, Authentication, Logging          │
+└────────────────┬────────────────────────────────┘
+                 │
+┌────────────────▼────────────────────────────────┐
+│  Tool Definitions (YAML)                        │
+│  - Execution config, Auth, Validation schemas   │
+└─────────────────────────────────────────────────┘
+
+## What NOT to Do
+
+- - **Don't hardcode secrets** — Use environment variables (Matimo checks `MATIMO_<PARAM>` first, then `<PARAM>`, e.g. `MATIMO_AUTH_TYPE` / `AUTH_TYPE`)
+- **Don't skip validation** — Always use Zod for parameter/response parsing
+- **Don't log sensitive data** — Never expose API keys, tokens, or PII in logs
+- **Don't modify YAML outside tool definitions** — Keep changes in packages/{provider}/tools/
+- **Don't use `any` type** — Maintain strict TypeScript
+- **Don't skip tests before commit** — Run `pnpm test` and lint before pushing
+- **Don't trust agent-created tools without policy validation** — All tools go through security checks
+
+## Learning Resources
+
+- [Quick Start](https://docs.matimo.dev/getting-started/QUICK_START)
+- [API Reference](https://docs.matimo.dev/api-reference/SDK)
+- [Tool Development](https://docs.matimo.dev/tool-development/ADDING_TOOLS)
+- [Policy & Lifecycle](https://docs.matimo.dev/api-reference/POLICY_AND_LIFECYCLE)
+- [MCP Server](https://github.com/tallclub/matimo/blob/main/docs/MCP.md)
+- [Skills System](https://docs.matimo.dev/skills/SKILLS.md)
+- [Examples](https://github.com/tallclub/matimo/tree/main/examples)
+
+## Contributing
+
+Matimo is open source under MIT License. Contributions welcome!
+
+- **Repository**: https://github.com/tallclub/matimo
+- **Issues**: https://github.com/tallclub/matimo/issues
+- **Discussion**: https://github.com/tallclub/matimo/discussions
+- **Discord**: https://discord.gg/3JPt4mxWDV
+
+See [Contributing Guide](https://github.com/tallclub/matimo/blob/main/CONTRIBUTING.md) for details.
+
+## Version
+
+Alpha 13 (v0.1.0-alpha.13)
+
+## License
+
+MIT © 2026 Matimo Contributors

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <!-- External links sitemap: include only non-matimo.dev hosts. Some crawlers may ignore external sitemaps when submitted for matimo.dev. -->
+
+    <url>
+        <loc>https://github.com/tallclub/matimo</loc>
+        <lastmod>2026-03-26</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+    <url>
+        <loc>https://www.npmjs.com/package/matimo</loc>
+        <lastmod>2026-03-26</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+    <url>
+        <loc>https://discord.gg/3JPt4mxWDV</loc>
+        <lastmod>2026-03-26</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.6</priority>
+    </url>
+</urlset>

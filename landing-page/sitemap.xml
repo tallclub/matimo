@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+    <!-- Homepage -->
+    <url>
+        <loc>https://matimo.dev/</loc>
+        <lastmod>2026-03-26</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>1.0</priority>
+    </url>
+    
+        <!-- Documentation -->
+        <!-- NOTE: This sitemap currently lists URLs across multiple hosts (docs.matimo.dev, github.com, npmjs.com, discord.gg).
+            The sitemap protocol expects URLs to be on the same host as the sitemap. Other-host URLs may be ignored by crawlers.
+            Consider limiting this sitemap to https://matimo.dev/* and publishing separate sitemaps for other subdomains/sites,
+            or omit external links entirely. -->
+    <url>
+        <loc>https://docs.matimo.dev/</loc>
+        <lastmod>2026-03-26</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.9</priority>
+    </url>
+    <url>
+        <loc>https://docs.matimo.dev/getting-started/QUICK_START</loc>
+        <lastmod>2026-03-26</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.9</priority>
+    </url>
+    <url>
+        <loc>https://docs.matimo.dev/api-reference/SDK</loc>
+        <lastmod>2026-03-26</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+    <url>
+        <loc>https://docs.matimo.dev/tool-development/ADDING_TOOLS</loc>
+        <lastmod>2026-03-26</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+    <url>
+        <loc>https://docs.matimo.dev/api-reference/POLICY_AND_LIFECYCLE</loc>
+        <lastmod>2026-03-26</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+    <url>
+        <loc>https://docs.matimo.dev/skills/SKILLS.md</loc>
+        <lastmod>2026-03-26</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+    <url>
+        <loc>https://docs.matimo.dev/framework-integrations/LANGCHAIN</loc>
+        <lastmod>2026-03-26</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
+    </url>
+    <url>
+        <loc>https://docs.matimo.dev/MCP</loc>
+        <lastmod>2026-03-26</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+    <url>
+        <loc>https://docs.matimo.dev/ROADMAP</loc>
+        <lastmod>2026-03-26</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
+    </url>
+</urlset>
+</urlset>

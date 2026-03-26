@@ -1,0 +1,22 @@
+User-agent: *
+Allow: /
+Disallow: /node_modules/
+Disallow: /dist/
+Disallow: /.git/
+Disallow: /tmp/
+# Sitemap location
+Sitemap: https://matimo.dev/sitemap.xml
+# Crawl delay (optional, in seconds)
+Crawl-delay: 1
+# Specific bots
+User-agent: Googlebot
+Allow: /
+User-agent: Bingbot
+Allow: /
+Crawl-delay: 1
+User-agent: GPTBot
+Allow: /
+User-agent: CCBot
+Allow: /
+User-agent: anthropic-ai
+Allow: /
