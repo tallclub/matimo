@@ -1,7 +1,7 @@
 {
   "name": "matimo",
   "version": "0.1.0-alpha.13",
-  "description": "Universal tool provider SDK: Framework-agnostic YAML-driven tool ecosystem for AI agents. Execute a library of pre-built tools (Slack, Gmail, GitHub, AWS, etc.) or define your own in YAML.",
+  "description": "A framework-agnostic SDK with pre-built providers, a skills knowledge layer, MCP out of the box, and agents that autonomously build new capabilities — governed by a policy engine you control.",
   "main": "packages/core/dist/index.js",
   "types": "packages/core/dist/index.d.ts",
   "bin": {
