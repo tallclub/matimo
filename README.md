@@ -1,10 +1,10 @@
-# Matimo — Toolbox For AI Agents
+# Matimo — The Agent That Builds Itself
 
 <p align="center">
   <img src="./docs/assets/logo.png" alt="Matimo Logo" width="300" />
 </p>
 <p align="center">
-    <strong>Matimo - "to be powerful"</strong>
+    <strong>Let The Agent Build Itself</strong>
 </p>
 
 <p align="center">
@@ -19,9 +19,11 @@
   <a href="https://discord.gg/3JPt4mxWDV"><img src="https://img.shields.io/badge/Discord-Join%20Chat-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord"></a>
 </p>
 
-**Matimo** is a universal, configuration‑driven AI tools ecosystem. Define tools **once in YAML** and reuse them across the SDK, LangChain, custom agents, and a single MCP server, without re‑implementing schemas or fragmenting integration logic.
+**Matimo** is a framework-agnostic SDK with pre-built providers, a skills knowledge layer, MCP out of the box, and agents that autonomously build new capabilities — governed by a policy engine you control.
 
-**Define once → Plug into any agent ecosystem.**
+Define tools **once in YAML**. Let agents extend themselves with new capabilities. Works with LangChain, OpenAI, Claude, CrewAI — any framework.
+
+**Key differentiator:** Unlike other SDKs that give agents tools, Matimo gives agents the power to build new tools themselves — validated, approved, and live — without restarting.
 
 [📖 Documentation](./docs) · [🚀 Quick Start](./docs/getting-started/QUICK_START.md) · [📚 API Reference](./docs/api-reference/SDK.md) · [🛠️ Add Tools](./docs/tool-development/ADDING_TOOLS.md) · [🤖 Examples](./examples)
 
@@ -78,21 +80,33 @@ Matimo ships with built-in support for:
 
 ## Why Matimo?
 
-**The Problem:** Every AI framework (LangChain, CrewAI, custom agents, etc.) defines tools differently. You duplicate tool logic across frameworks.
+**The Problem:** Every AI framework (LangChain, CrewAI, custom agents, etc.) defines tools differently. You duplicate tool logic across frameworks. And most SDKs can't handle agents that need to build new tools at runtime.
 
-**The Solution:** Define tools **once** in clean YAML, use them **everywhere** — with built-in:
+**The Solution:** 
 
+1. **Write Once, Use Everywhere** — Define tools in clean YAML, deploy to SDK, LangChain, MCP, or custom agents without duplication.
+2. **Agent Self-Extension** — Agents autonomously build new tools and skills at runtime without restarting:
+   - **Tool Creation**: `matimo_create_tool` — agents write YAML definitions, submit for approval, and use instantly
+   - **Skill Creation**: `matimo_create_skill` — agents author domain knowledge (SKILL.md) directly into the system
+   - **Hot-Reload**: `matimo_reload_tools` — updated capabilities live immediately without server restart
+   - **Policy-Gated**: All agent-created tools validated against security rules; HITL approval for high-risk changes
+3. **Pre-built Ecosystem** — 9 providers (Slack, Gmail, GitHub, Notion, HubSpot, Postgres, Twilio, Mailchimp, etc.) ready to go.
+4. **Skills + Policies** — Teach agents domain knowledge via SKILL.md files. Control what agents can do with deterministic security rules and HITL quarantine.
+
+Included:
 - TypeScript SDK (factory & decorator patterns)
 - LangChain integration (with examples)
-- Matimo CLI (tool discovery & management)
+- Matimo CLI (tool discovery & setup)
+- MCP Server (Claude Desktop, Cursor, Windsurf, any MCP client)
 - Auto-discovery from npm packages
 - OAuth2 support + parameter validation
+- 9 security rules + HITL approval system
 
 See [Contributing](./CONTRIBUTING.md) for details.
 
 ---
 
-## Three Integration Patterns
+## Four Integration Patterns
 
 ### 1️⃣ Factory Pattern (Simplest)
 
