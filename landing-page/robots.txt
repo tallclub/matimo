@@ -6,9 +6,9 @@ Disallow: /.git/
 Disallow: /tmp/
 # Sitemap location
 Sitemap: https://matimo.dev/sitemap.xml
-# Also expose landing-page specific sitemaps
-Sitemap: https://matimo.dev/landing-page/sitemap.xml
-Sitemap: https://matimo.dev/landing-page/sitemap-external.xml
+# Sitemap locations (landing page is served at site root)
+Sitemap: https://matimo.dev/sitemap.xml
+Sitemap: https://matimo.dev/sitemap-external.xml
 # Crawl delay (optional, in seconds)
 Crawl-delay: 1
 # Specific bots

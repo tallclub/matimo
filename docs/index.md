@@ -8,9 +8,10 @@
   <a href="https://discord.gg/3JPt4mxWDV"><img src="https://img.shields.io/badge/Discord-Join%20Chat-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord"></a>
 </p>
 
-**Matimo** YAML‑defined tools layer for AI agents. — Define tools once in YAML, use them everywhere.
+**Matimo — Enable Agents To Extentend Itsel.**.
+Most SDKs give agents tools. Matimo gives agents the ability to build new tools — validated, approved, and live — without restarting. The meta-tool layer is Matimo's core differentiator.
 
-> Built to solve the universal tool orchestration problem for AI agents.
+> A framework-agnostic SDK with pre-built provider tools, a skills knowledge layer, MCP out of the box, and agents that autonomously build new capabilities — governed by a policy engine you control
 
 Complete documentation for Matimo.
 
