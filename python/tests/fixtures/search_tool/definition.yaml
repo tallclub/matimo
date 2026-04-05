@@ -1,0 +1,21 @@
+name: search_tool
+version: "1.0.0"
+description: "Search for information"
+parameters:
+  query:
+    type: string
+    description: "Search query"
+    required: true
+execution:
+  type: function
+  code: ./search_tool.py
+  timeout: 10000
+output_schema:
+  type: object
+  properties:
+    results:
+      type: array
+    total:
+      type: number
+tags:
+  - search

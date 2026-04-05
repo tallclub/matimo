@@ -1,0 +1,93 @@
+name: github-list-pull-requests
+description: List pull requests in a repository with filtering and sorting options
+version: '1.0.0'
+
+parameters:
+  owner:
+    type: string
+    required: true
+    description: Repository owner username or organization
+  repo:
+    type: string
+    required: true
+    description: Repository name
+  state:
+    type: string
+    required: false
+    description: Filter by state - open, closed, or all
+    default: open
+  head:
+    type: string
+    required: false
+    description: Filter by head branch (user:ref-name)
+  base:
+    type: string
+    required: false
+    description: Filter by base branch name
+  sort:
+    type: string
+    required: false
+    description: Sort by - created, updated, popularity, or long-running
+    default: created
+  direction:
+    type: string
+    required: false
+    description: Sort direction - asc or desc
+    default: desc
+  per_page:
+    type: number
+    required: false
+    description: Results per page (max 100)
+    default: 30
+  page:
+    type: number
+    required: false
+    description: Page number for pagination
+    default: 1
+
+execution:
+  type: http
+  method: GET
+  url: 'https://api.github.com/repos/{owner}/{repo}/pulls'
+  query_params:
+    state: '{state}'
+    sort: '{sort}'
+    direction: '{direction}'
+    per_page: '{per_page}'
+    page: '{page}'
+  headers:
+    Accept: application/vnd.github+json
+    Authorization: 'Bearer {GITHUB_TOKEN}'
+    X-GitHub-Api-Version: '2022-11-28'
+  timeout: 15000
+
+authentication:
+  type: bearer
+  location: header
+  notes:
+    env: GITHUB_TOKEN
+    optional: Public repos don't require authentication
+
+output_schema:
+  type: array
+  items:
+    type: object
+    description: Pull request object
+
+error_handling:
+  retry: 2
+  backoff_type: exponential
+  initial_delay_ms: 1000
+
+examples:
+  - name: List open PRs
+    params:
+      owner: kubernetes
+      repo: kubernetes
+      state: open
+  - name: List recently updated PRs
+    params:
+      owner: nodejs
+      repo: node
+      sort: updated
+      direction: desc

@@ -1,0 +1,68 @@
+name: pg_slow_queries
+description: >-
+  Fetch the top slow queries from pg_stat_statements in PostgreSQL. USE THIS
+  TOOL for performance tuning, identifying bottlenecks, and prioritizing query
+  optimization work.
+version: 1.0.0
+requires_approval: true
+parameters:
+  limit:
+    type: number
+    required: false
+    description: >-
+      Number of top slow queries to return, ordered by total execution time
+      descending.
+    default: 20
+  minCalls:
+    type: number
+    required: false
+    description: >-
+      Minimum number of times a query must have been called to appear in
+      results. Filters out one-off queries.
+    default: 5
+execution:
+  type: http
+  method: POST
+  url: '{PG_API_URL}/query'
+  headers:
+    Authorization: Bearer {PG_API_KEY}
+    Content-Type: application/json
+  body:
+    sql: >-
+      SELECT query, calls, round(total_exec_time::numeric, 2) AS total_ms,
+      round(mean_exec_time::numeric, 2) AS avg_ms,
+      round(stddev_exec_time::numeric, 2) AS stddev_ms, rows, round(100.0 *
+      shared_blks_hit / nullif(shared_blks_hit + shared_blks_read, 0), 2) AS
+      cache_hit_pct FROM pg_stat_statements WHERE calls >= {minCalls} ORDER BY
+      total_exec_time DESC LIMIT {limit}
+authentication:
+  type: bearer
+output_schema:
+  type: object
+  properties:
+    rows:
+      type: array
+      description: Slow query records
+    rowCount:
+      type: number
+      description: Number of queries returned
+  required:
+    - rows
+    - rowCount
+error_handling:
+  retry: 2
+  backoff_type: exponential
+  initial_delay_ms: 500
+  retry_on_status:
+    - 500
+    - 503
+examples:
+  - name: Top 10 slow queries
+    params:
+      limit: 10
+      minCalls: 10
+  - name: Default top 20 slow queries
+    params:
+      limit: 20
+      minCalls: 5
+status: approved

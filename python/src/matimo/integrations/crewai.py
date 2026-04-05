@@ -1,0 +1,112 @@
+"""
+CrewAI integration — converts Matimo tools to CrewAI BaseTool subclasses.
+Mirrors the LangChain pattern, adapted to CrewAI's BaseTool API.
+
+Install with: pip install matimo[crewai]
+"""
+from __future__ import annotations
+
+import asyncio
+from typing import TYPE_CHECKING, Any, Type
+
+if TYPE_CHECKING:
+    from matimo.core.models import ToolDefinition
+    from matimo.instance import Matimo
+
+
+def convert_tools_to_crewai(
+    tools: list["ToolDefinition"],
+    matimo: "Matimo",
+    credentials: dict[str, str] | None = None,
+) -> list[Any]:
+    """
+    Convert a list of Matimo ToolDefinitions to CrewAI BaseTool objects.
+
+    Args:
+        tools:       List of Matimo ToolDefinition objects.
+        matimo:      Matimo instance used to execute tools.
+        credentials: Optional per-call credential overrides.
+
+    Returns:
+        List of CrewAI BaseTool instances.
+
+    Raises:
+        ImportError if crewai is not installed.
+    """
+    try:
+        from crewai.tools import BaseTool  # type: ignore[import]
+    except ImportError as exc:
+        raise ImportError(
+            "crewai is required for CrewAI integration. "
+            "Install with: pip install matimo[crewai]"
+        ) from exc
+
+    return [
+        _make_crewai_tool(tool, matimo, credentials)
+        for tool in tools
+    ]
+
+
+def _make_crewai_tool(
+    tool_def: "ToolDefinition",
+    matimo: "Matimo",
+    credentials: dict[str, str] | None,
+) -> Any:
+    """Build a single CrewAI BaseTool subclass from a ToolDefinition."""
+    from crewai.tools import BaseTool  # type: ignore[import]
+    import pydantic
+    from matimo.integrations.langchain import is_secret_parameter, _parameter_to_pydantic_field
+
+    # Build Pydantic args schema (excluding secrets)
+    fields: dict[str, Any] = {}
+    for param_name, param in (tool_def.parameters or {}).items():
+        if is_secret_parameter(param_name):
+            continue
+        py_type, field_def = _parameter_to_pydantic_field(param)
+        fields[param_name] = (py_type, field_def)
+
+    ArgsSchema: Type[pydantic.BaseModel] = pydantic.create_model(  # noqa: N806
+        f"{tool_def.name}_args",
+        **fields,
+    )
+
+    class MatimoCrewTool(BaseTool):
+        name: str = tool_def.name
+        description: str = tool_def.description
+        args_schema: Type[pydantic.BaseModel] = ArgsSchema  # type: ignore[assignment]
+
+        def _run(self, **kwargs: Any) -> Any:
+            """Synchronous execution — runs async execute in an event loop."""
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+
+            if loop.is_running():
+                # If already in an event loop (e.g. Jupyter), use run_until_complete
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                    future = executor.submit(
+                        asyncio.run,
+                        matimo.execute(tool_def.name, kwargs, credentials=credentials),
+                    )
+                    return future.result()
+            else:
+                return loop.run_until_complete(
+                    matimo.execute(tool_def.name, kwargs, credentials=credentials)
+                )
+
+        async def _arun(self, **kwargs: Any) -> Any:
+            return await matimo.execute(
+                tool_def.name, kwargs, credentials=credentials
+            )
+
+    # Capture outer variables
+    matimo = matimo  # noqa: PLW0127
+
+    # Give the dynamically-created class a unique name so CrewAI introspection works
+    MatimoCrewTool.__name__ = f"MatimoTool_{tool_def.name}"
+    MatimoCrewTool.__qualname__ = f"MatimoTool_{tool_def.name}"
+
+    return MatimoCrewTool()

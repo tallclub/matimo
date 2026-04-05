@@ -1,0 +1,40 @@
+name: slack_set_channel_topic
+description: |-
+  Set or update the topic (description) for a channel.
+  Uses conversations.setTopic API method.
+  Topic is displayed below the channel name in Slack UI.
+version: '1.0.0'
+parameters:
+  channel:
+    type: string
+    required: true
+    description: Channel ID to update
+  topic:
+    type: string
+    required: true
+    description: |-
+      New topic text.
+      Max 250 characters.
+      Supports text formatting (@mentions, links, etc.)
+execution:
+  type: http
+  method: POST
+  url: 'https://slack.com/api/conversations.setTopic'
+  headers:
+    Authorization: 'Bearer {SLACK_BOT_TOKEN}'
+    Content-Type: application/json
+  body:
+    channel: '{channel}'
+    topic: '{topic}'
+  timeout: 10000
+authentication:
+  type: api_key
+  location: header
+  name: Authorization
+notes:
+  env: SLACK_BOT_TOKEN
+  scopes: conversations:manage
+  important: |-
+    - Bot must be channel member to set topic
+    - Topic limited to 250 characters
+    - Visible in channel info below channel name

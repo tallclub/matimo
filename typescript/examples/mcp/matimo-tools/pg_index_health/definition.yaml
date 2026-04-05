@@ -1,0 +1,65 @@
+name: pg_index_health
+description: >-
+  Inspect PostgreSQL index usage, bloat, and unused indexes. USE THIS TOOL when
+  optimizing query performance, identifying redundant indexes, or auditing index
+  coverage.
+version: 1.0.0
+requires_approval: true
+parameters:
+  schema:
+    type: string
+    required: false
+    description: Schema name to filter. Defaults to 'public'.
+    default: public
+  showUnused:
+    type: boolean
+    required: false
+    description: >-
+      If true, returns only indexes that have never been used (idx_scan = 0).
+      Useful for cleanup.
+    default: false
+execution:
+  type: http
+  method: POST
+  url: '{PG_API_URL}/query'
+  headers:
+    Authorization: Bearer {PG_API_KEY}
+    Content-Type: application/json
+  body:
+    sql: >-
+      SELECT schemaname, tablename, indexname, idx_scan AS scans, idx_tup_read
+      AS tuples_read, idx_tup_fetch AS tuples_fetched,
+      pg_size_pretty(pg_relation_size(indexrelid)) AS index_size FROM
+      pg_stat_user_indexes WHERE schemaname = '{schema}' AND ('{showUnused}' =
+      'false' OR idx_scan = 0) ORDER BY pg_relation_size(indexrelid) DESC
+authentication:
+  type: bearer
+output_schema:
+  type: object
+  properties:
+    rows:
+      type: array
+      description: Index health records
+    rowCount:
+      type: number
+      description: Number of indexes returned
+  required:
+    - rows
+    - rowCount
+error_handling:
+  retry: 2
+  backoff_type: exponential
+  initial_delay_ms: 500
+  retry_on_status:
+    - 500
+    - 503
+examples:
+  - name: All indexes in public schema
+    params:
+      schema: public
+      showUnused: false
+  - name: Find unused indexes
+    params:
+      schema: public
+      showUnused: true
+status: approved

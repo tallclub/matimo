@@ -1,0 +1,51 @@
+name: github-delete-repository
+description: Delete a repository (requires admin access)
+version: '1.0.0'
+requires_approval: true
+
+parameters:
+  owner:
+    type: string
+    required: true
+    description: Repository owner username or organization
+  repo:
+    type: string
+    required: true
+    description: Repository name
+
+execution:
+  type: http
+  method: DELETE
+  url: 'https://api.github.com/repos/{owner}/{repo}'
+  headers:
+    Accept: application/vnd.github+json
+    Authorization: 'Bearer {GITHUB_TOKEN}'
+    X-GitHub-Api-Version: '2022-11-28'
+  timeout: 15000
+
+authentication:
+  type: bearer
+  location: header
+  notes:
+    env: GITHUB_TOKEN
+    required: true
+    permission: Admin (repository deletion/destruction)
+    caution: This is a destructive operation and cannot be undone
+
+output_schema:
+  type: object
+  properties:
+    status:
+      type: number
+      description: HTTP 204 status code on success
+
+error_handling:
+  retry: 1
+  backoff_type: exponential
+  initial_delay_ms: 1000
+
+examples:
+  - name: Delete repository
+    params:
+      owner: myorg
+      repo: deprecated-project

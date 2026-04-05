@@ -1,0 +1,70 @@
+name: notion_list_databases
+description: |
+  List all databases (data sources) available in your Notion workspace.
+  Use this to discover what databases exist before querying them.
+  Each database has an id, title, icon, and URL that you can use for further operations.
+version: "1.0.0"
+
+parameters:
+  page_size:
+    type: number
+    required: true
+    description: How many databases to return (1-100). Set this explicitly to avoid sending a literal placeholder when omitted.
+
+execution:
+  type: http
+  method: POST
+  url: "https://api.notion.com/v1/search"
+  headers:
+    Authorization: "Bearer {NOTION_API_KEY}"
+    "Notion-Version": "2025-09-03"
+    Content-Type: application/json
+  body:
+    filter:
+      property: object
+      value: data_source
+    page_size: "{page_size}"
+  timeout: 15000
+
+authentication:
+  type: bearer
+  location: header
+  name: Authorization
+notes:
+  env: NOTION_API_KEY
+  caution: "Lists only databases shared with your integration. Respects integration's read capabilities."
+
+output_schema:
+  type: object
+  properties:
+    object:
+      type: string
+    results:
+      type: array
+      items:
+        type: object
+        properties:
+          id:
+            type: string
+          title:
+            type: array
+          icon:
+            type: object
+          url:
+            type: string
+    has_more:
+      type: boolean
+    next_cursor:
+      type:
+        - string
+        - "null"
+
+examples:
+  - name: "List all databases in workspace"
+    params:
+      page_size: 10
+    expected_result: "Returns array of database objects with id, title, icon, and url"
+  - name: "List first database only"
+    params:
+      page_size: 1
+    expected_result: "Returns single database object"

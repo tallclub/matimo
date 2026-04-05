@@ -1,0 +1,103 @@
+name: github-create-pull-request
+description: Create a new pull request
+version: '1.0.0'
+requires_approval: true
+
+parameters:
+  owner:
+    type: string
+    required: true
+    description: Repository owner username or organization
+  repo:
+    type: string
+    required: true
+    description: Repository name
+  title:
+    type: string
+    required: true
+    description: Pull request title
+  body:
+    type: string
+    required: false
+    description: Pull request description
+  head:
+    type: string
+    required: true
+    description: Head branch name or user:ref
+  base:
+    type: string
+    required: true
+    description: Base branch name
+  draft:
+    type: boolean
+    required: false
+    description: Whether PR is a draft
+    default: false
+  maintainer_can_modify:
+    type: boolean
+    required: false
+    description: Allow maintainers to edit PR
+    default: true
+
+execution:
+  type: http
+  method: POST
+  url: 'https://api.github.com/repos/{owner}/{repo}/pulls'
+  headers:
+    Accept: application/vnd.github+json
+    Authorization: 'Bearer {GITHUB_TOKEN}'
+    X-GitHub-Api-Version: '2022-11-28'
+    Content-Type: application/json
+  body:
+    title: '{title}'
+    body: '{body}'
+    head: '{head}'
+    base: '{base}'
+    draft: '{draft}'
+    maintainer_can_modify: '{maintainer_can_modify}'
+  timeout: 15000
+
+authentication:
+  type: bearer
+  location: header
+  notes:
+    env: GITHUB_TOKEN
+    required: true
+    permission: Pull requests write
+
+output_schema:
+  type: object
+  properties:
+    id:
+      type: number
+    number:
+      type: number
+    title:
+      type: string
+    state:
+      type: string
+    html_url:
+      type: string
+
+error_handling:
+  retry: 1
+  backoff_type: exponential
+  initial_delay_ms: 1000
+
+examples:
+  - name: Create pull request
+    params:
+      owner: myorg
+      repo: myrepo
+      title: Add new feature
+      body: This PR adds support for...
+      head: feature/new-feature
+      base: main
+  - name: Create draft PR
+    params:
+      owner: myorg
+      repo: myrepo
+      title: WIP - Feature in progress
+      head: feature/experimental
+      base: main
+      draft: true

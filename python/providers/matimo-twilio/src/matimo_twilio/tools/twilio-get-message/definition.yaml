@@ -1,0 +1,133 @@
+name: twilio-get-message
+version: '1.0.0'
+description: >
+  Fetch a single Message resource from the Twilio Programmable Messaging API.
+  Returns the full details of a message identified by its Message SID,
+  including its current status, body, sender, recipient, and timestamps.
+
+parameters:
+  account_sid:
+    type: string
+    required: true
+    description: >
+      The SID of the Account associated with the Message resource.
+      Found on the Twilio Console dashboard: https://console.twilio.com
+      Pattern: ^AC[0-9a-fA-F]{32}$
+  message_sid:
+    type: string
+    required: true
+    description: >
+      The SID of the Message resource to fetch.
+      Pattern: ^(SM|MM)[0-9a-fA-F]{32}$
+      SMS messages start with "SM", MMS messages start with "MM".
+
+execution:
+  type: http
+  method: GET
+  url: 'https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Messages/{message_sid}.json'
+  timeout: 30000
+
+authentication:
+  type: basic
+  username_env: TWILIO_ACCOUNT_SID
+  password_env: TWILIO_AUTH_TOKEN
+
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request was successful (2xx status)
+    data:
+      type: object
+      description: The Twilio Message resource
+      properties:
+        sid:
+          type: string
+          description: The unique SID identifying this Message resource
+        account_sid:
+          type: string
+          description: The SID of the Account associated with this Message
+        to:
+          type: string
+          description: The recipient's phone number in E.164 format
+        from:
+          type: string
+          description: The sender's phone number in E.164 format
+        body:
+          type: string
+          description: The text content of the message (empty string if redacted)
+        status:
+          type: string
+          description: >
+            The current status of the Message.
+            Possible values: queued, sending, sent, failed, delivered, undelivered,
+            receiving, received, accepted, scheduled, canceled, read
+        direction:
+          type: string
+          description: >
+            The direction of the message.
+            Possible values: inbound, outbound-api, outbound-call, outbound-reply
+        date_created:
+          type: string
+          description: The RFC 2822 timestamp (GMT) when the Message resource was created
+        date_sent:
+          type: string
+          description: The RFC 2822 timestamp (GMT) when the message was sent
+        date_updated:
+          type: string
+          description: The RFC 2822 timestamp (GMT) when the Message resource was last updated
+        error_code:
+          type: string
+          description: The error code if status is failed or undelivered, otherwise null
+        error_message:
+          type: string
+          description: The description of the error_code, otherwise null
+        price:
+          type: string
+          description: The amount billed for the message in the currency of price_unit
+        price_unit:
+          type: string
+          description: The currency in which price is measured (ISO 4127 format, e.g. usd)
+        num_segments:
+          type: string
+          description: Number of SMS segments that make up the complete message
+        num_media:
+          type: string
+          description: Number of media files associated with the Message resource
+        messaging_service_sid:
+          type: string
+          description: The SID of the Messaging Service associated with this Message
+        api_version:
+          type: string
+          description: The API version used to process the Message
+        uri:
+          type: string
+          description: The URI of this Message resource, relative to https://api.twilio.com
+        subresource_uris:
+          type: object
+          description: URIs of sub-resources (media, feedback) relative to the API root
+    statusCode:
+      type: number
+      description: HTTP status code of the response
+
+error_handling:
+  retry: 2
+  backoff_type: exponential
+  initial_delay_ms: 500
+  retry_on_status:
+    - 429
+    - 500
+    - 503
+
+examples:
+  - name: 'Fetch an SMS message by SID'
+    params:
+      account_sid: ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+      message_sid: SMaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    expected_result: 'Returns full Message resource including current status, body, and timestamps'
+  - name: 'Fetch an MMS message by SID'
+    params:
+      account_sid: ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+      message_sid: MMaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    expected_result: 'Returns Message resource with num_media > 0 and subresource_uris.media'

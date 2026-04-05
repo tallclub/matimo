@@ -1,0 +1,35 @@
+name: matimo_reload_tools
+version: '1.0.0'
+description: >-
+  Hot-reload all tools from configured toolPaths. Clears the registry, re-reads
+  YAML definitions from disk, re-validates untrusted tools against the active
+  policy, and returns a summary of loaded, removed, revalidated, and rejected
+  tools. Use after matimo_create_tool + matimo_approve_tool to bring new tools
+  into the live registry without restarting the process.
+requires_approval: true
+tags:
+  - matimo
+  - meta
+  - lifecycle
+
+parameters: {}
+
+execution:
+  type: function
+  code: './matimo_reload_tools.ts'
+
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+    loaded:
+      type: number
+    removed:
+      type: number
+    revalidated:
+      type: number
+    rejected:
+      type: array
+    message:
+      type: string

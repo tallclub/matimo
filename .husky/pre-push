@@ -1,4 +1,10 @@
 #!/bin/sh
 # Run comprehensive tests and coverage check before push
-echo "Running tests and coverage check..."
-pnpm test:coverage
+
+# TypeScript
+echo "[pre-push] TypeScript tests + coverage..."
+cd typescript && pnpm test:coverage
+
+# Python
+echo "[pre-push] Python tests..."
+cd ../python && python -m pytest tests/

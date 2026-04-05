@@ -1,0 +1,64 @@
+name: mailchimp-remove-list-member
+version: '1.0.0'
+description: >
+  Archive (unsubscribe and remove) a subscriber from a Mailchimp audience/list.
+  This action archives the contact so they no longer appear as an active member.
+  Use the MD5 hash of the lowercase email address as the subscriber_hash.
+  ⚠️ This action requires approval — it cannot be undone from this tool.
+
+requires_approval: true
+
+parameters:
+  server_prefix:
+    type: string
+    required: true
+    description: >
+      Your Mailchimp data center prefix (e.g. "us6"). Found at the end of your API key:
+      "abc123-us6" → server_prefix is "us6".
+  list_id:
+    type: string
+    required: true
+    description: The unique ID of the Mailchimp audience/list the member belongs to
+  subscriber_hash:
+    type: string
+    required: true
+    description: >
+      The MD5 hash of the subscriber's lowercase email address. You can generate this
+      using MD5("email@example.com"). Use the id field from list member responses.
+
+execution:
+  type: http
+  method: DELETE
+  url: 'https://{server_prefix}.api.mailchimp.com/3.0/lists/{list_id}/members/{subscriber_hash}'
+  headers:
+    Authorization: 'apikey {MAILCHIMP_API_KEY}'
+    Content-Type: application/json
+  timeout: 30000
+
+authentication:
+  type: api_key
+  location: header
+  name: Authorization
+  notes:
+    env: MAILCHIMP_API_KEY
+
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+    statusCode:
+      type: number
+
+error_handling:
+  retry: 1
+  backoff_type: linear
+  initial_delay_ms: 1000
+
+examples:
+  - name: 'Remove a subscriber'
+    params:
+      server_prefix: us6
+      list_id: abc123def4
+      subscriber_hash: b775e3e869bc8eae5fcb23cdc5ec64ff
+    expected_result: 'Returns 204 No Content on success (success: true, statusCode: 204)'

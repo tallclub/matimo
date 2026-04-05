@@ -1,0 +1,162 @@
+name: twilio-send-mms
+version: '1.0.0'
+description: >
+  Send an outbound MMS message with one or more media files via the Twilio
+  Programmable Messaging API. Supported media types include jpeg, jpg, gif,
+  and png (up to 5 MB each), and other accepted media types up to 500 KB.
+  Up to 10 media URLs can be included per message.
+
+parameters:
+  account_sid:
+    type: string
+    required: true
+    description: >
+      Your Twilio Account SID (e.g. "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx").
+      Found on the Twilio Console dashboard: https://console.twilio.com
+  to:
+    type: string
+    required: true
+    description: >
+      The recipient's phone number in E.164 format (e.g. "+15558675310").
+      Must be a valid phone number capable of receiving MMS.
+  from:
+    type: string
+    required: true
+    description: >
+      The sender's Twilio phone number in E.164 format (e.g. "+15557122661").
+      Must be a Twilio MMS-capable number that belongs to your account.
+  media_url:
+    type: string
+    required: true
+    description: >
+      The URL of a media file to include in the MMS message.
+      Fully supported types: jpeg, jpg, gif, png (up to 5 MB).
+      Other accepted types: up to 500 KB.
+      Must be a publicly accessible URL.
+  body:
+    type: string
+    required: false
+    description: >
+      Optional text content to accompany the media.
+      Can be up to 1,600 characters. Note: WhatsApp does not support
+      including a text body in the same message as video, audio, document,
+      contact, or location media types.
+  status_callback:
+    type: string
+    required: false
+    description: >
+      The URL of the endpoint to which Twilio sends Message status callback
+      requests when the Message status changes. URL must contain a valid
+      hostname and underscores are not allowed.
+
+execution:
+  type: http
+  method: POST
+  url: 'https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Messages.json'
+  headers:
+    Content-Type: application/x-www-form-urlencoded
+  body:
+    To: '{to}'
+    From: '{from}'
+    MediaUrl: '{media_url}'
+    Body: '{body}'
+    StatusCallback: '{status_callback}'
+  timeout: 30000
+
+authentication:
+  type: basic
+  username_env: TWILIO_ACCOUNT_SID
+  password_env: TWILIO_AUTH_TOKEN
+
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request was successful (2xx status)
+    data:
+      type: object
+      description: The Twilio Message resource returned by the API
+      properties:
+        sid:
+          type: string
+          description: The unique SID identifying this Message resource (e.g. MMxxx for MMS)
+        account_sid:
+          type: string
+          description: The SID of the Account that created this Message resource
+        to:
+          type: string
+          description: The recipient's phone number in E.164 format
+        from:
+          type: string
+          description: The sender's phone number in E.164 format
+        body:
+          type: string
+          description: The text content of the message (if provided)
+        status:
+          type: string
+          description: >
+            The status of the Message. For new outbound MMS this is 'queued'.
+            Possible values: queued, sending, sent, failed, delivered, undelivered
+        direction:
+          type: string
+          description: The direction of the message (outbound-api for REST API messages)
+        date_created:
+          type: string
+          description: The RFC 2822 timestamp (GMT) when the Message resource was created
+        date_sent:
+          type: string
+          description: The RFC 2822 timestamp (GMT) when the message was sent
+        date_updated:
+          type: string
+          description: The RFC 2822 timestamp (GMT) when the Message resource was last updated
+        error_code:
+          type: string
+          description: The error code if status is failed or undelivered, otherwise null
+        error_message:
+          type: string
+          description: The description of the error_code, otherwise null
+        num_media:
+          type: string
+          description: Number of media files associated with the Message resource
+        num_segments:
+          type: string
+          description: Number of SMS segments (typically '1' for MMS)
+        messaging_service_sid:
+          type: string
+          description: The SID of the Messaging Service associated with this Message
+        uri:
+          type: string
+          description: The URI of this Message resource, relative to https://api.twilio.com
+        subresource_uris:
+          type: object
+          description: URIs of sub-resources (media, feedback) relative to the API root
+    statusCode:
+      type: number
+      description: HTTP status code of the response
+
+error_handling:
+  retry: 2
+  backoff_type: exponential
+  initial_delay_ms: 500
+  retry_on_status:
+    - 429
+    - 500
+    - 503
+
+examples:
+  - name: 'Send MMS with image'
+    params:
+      account_sid: ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+      to: '+15558675310'
+      from: '+15557122661'
+      media_url: 'https://example.com/images/photo.jpg'
+      body: 'Check out this photo!'
+    expected_result: 'Returns Message resource with sid (MM...) and num_media: "1"'
+  - name: 'Send MMS with image only (no text body)'
+    params:
+      account_sid: ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+      to: '+15558675310'
+      from: '+15557122661'
+      media_url: 'https://example.com/logo.png'
+    expected_result: 'Returns Message resource with sid and status: queued'

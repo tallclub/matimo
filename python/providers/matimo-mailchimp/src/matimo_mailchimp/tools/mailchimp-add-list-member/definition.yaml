@@ -1,0 +1,117 @@
+name: mailchimp-add-list-member
+version: '1.0.0'
+description: >
+  Add a new subscriber to a Mailchimp audience (list). Use this to subscribe
+  a contact to receive email campaigns. Supports setting merge fields (first name, last name)
+  and tags for segmentation.
+
+parameters:
+  server_prefix:
+    type: string
+    required: true
+    description: >
+      Your Mailchimp data center prefix (e.g. "us6"). Found at the end of your API key:
+      "abc123-us6" → server_prefix is "us6".
+  list_id:
+    type: string
+    required: true
+    description: The unique ID of the Mailchimp audience/list to add the member to
+  email_address:
+    type: string
+    required: true
+    description: The email address of the subscriber to add
+  status:
+    type: string
+    required: true
+    description: >
+      Subscriber status: "subscribed" (opted in), "unsubscribed" (opted out),
+      "pending" (requires email confirmation), or "cleaned" (invalid email)
+    enum:
+      - subscribed
+      - unsubscribed
+      - pending
+      - cleaned
+  merge_fields:
+    type: object
+    required: false
+    description: >
+      Key-value pairs for merge fields such as FNAME (first name) and LNAME (last name).
+      Example: {"FNAME": "Jane", "LNAME": "Doe"}
+  tags:
+    type: array
+    required: false
+    description: Array of tag names to apply to the subscriber for segmentation
+
+execution:
+  type: http
+  method: POST
+  url: 'https://{server_prefix}.api.mailchimp.com/3.0/lists/{list_id}/members'
+  headers:
+    Authorization: 'apikey {MAILCHIMP_API_KEY}'
+    Content-Type: application/json
+  body:
+    email_address: '{email_address}'
+    status: '{status}'
+    merge_fields: '{merge_fields}'
+    tags: '{tags}'
+  timeout: 30000
+
+authentication:
+  type: api_key
+  location: header
+  name: Authorization
+  notes:
+    env: MAILCHIMP_API_KEY
+
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+    data:
+      type: object
+      properties:
+        id:
+          type: string
+          description: MD5 hash of the subscriber email (subscriber_hash)
+        email_address:
+          type: string
+        status:
+          type: string
+        merge_fields:
+          type: object
+        tags:
+          type: array
+        list_id:
+          type: string
+        timestamp_opt:
+          type: string
+        timestamp_signup:
+          type: string
+
+error_handling:
+  retry: 2
+  backoff_type: exponential
+  initial_delay_ms: 500
+
+examples:
+  - name: 'Subscribe a new contact'
+    params:
+      server_prefix: us6
+      list_id: abc123def4
+      email_address: jane@example.com
+      status: subscribed
+      merge_fields:
+        FNAME: Jane
+        LNAME: Doe
+    expected_result: 'Returns the new member record with id (subscriber_hash) and status'
+  - name: 'Add pending subscriber with tags'
+    params:
+      server_prefix: us6
+      list_id: abc123def4
+      email_address: pending@example.com
+      status: pending
+      tags:
+        - newsletter
+        - vip
+    expected_result: 'Returns member record with pending status awaiting confirmation'

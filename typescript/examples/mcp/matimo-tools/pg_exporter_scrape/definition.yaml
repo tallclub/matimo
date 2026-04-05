@@ -1,0 +1,42 @@
+# Proposed by: sajesh
+# Justification: Scrape real-time PostgreSQL metrics from running postgres-exporter for live database audit
+
+name: pg_exporter_scrape
+description: >-
+  Scrape live PostgreSQL metrics from a running postgres-exporter Prometheus
+  endpoint. Returns raw metrics including connections, table stats, bloat,
+  vacuum status, and query performance. USE THIS TOOL to do a real-time audit of
+  a PostgreSQL database via its exporter.
+version: 1.0.0
+requires_approval: true
+parameters:
+  exporterUrl:
+    type: string
+    required: false
+    description: >-
+      Base URL of the postgres-exporter metrics endpoint (e.g.
+      http://localhost:9187). Defaults to localhost.
+    default: http://localhost:9187
+execution:
+  type: http
+  method: GET
+  url: '{exporterUrl}/metrics'
+  headers:
+    Accept: text/plain
+authentication:
+  type: api_key
+  location: header
+  name: X-No-Auth
+output_schema:
+  type: object
+  properties:
+    metrics:
+      type: string
+      description: Raw Prometheus metrics text
+  required:
+    - metrics
+examples:
+  - name: Scrape local exporter
+    params:
+      exporterUrl: http://localhost:9187
+status: draft

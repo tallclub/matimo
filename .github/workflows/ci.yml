@@ -7,7 +7,7 @@ on:
     branches: [main, develop]
 
 jobs:
-  test:
+  test-typescript:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -41,18 +41,62 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install
+        working-directory: typescript
 
       - name: Lint
         run: pnpm lint
+        working-directory: typescript
 
       - name: Build
         run: pnpm build
+        working-directory: typescript
 
       - name: Test with coverage
         run: pnpm test:coverage
+        working-directory: typescript
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
-          files: ./coverage/lcov.info
+          files: ./typescript/coverage/lcov.info
+          flags: typescript
+          fail_ci_if_error: false
+
+  test-python:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.12']
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Setup Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: uv sync --dev
+        working-directory: python
+
+      - name: Lint
+        run: uv run ruff check src/ tests/
+        working-directory: python
+
+      - name: Type check
+        run: uv run mypy
+        working-directory: python
+
+      - name: Test with coverage
+        run: uv run pytest tests/ --cov --cov-report=xml
+        working-directory: python
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./python/coverage.xml
+          flags: python
           fail_ci_if_error: false

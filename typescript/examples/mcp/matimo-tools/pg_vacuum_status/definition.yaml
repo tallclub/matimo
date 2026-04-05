@@ -1,0 +1,66 @@
+name: pg_vacuum_status
+description: >-
+  Check PostgreSQL VACUUM and autovacuum status for all user tables. USE THIS
+  TOOL to identify tables with high dead tuple counts, assess bloat risk, and
+  determine if manual VACUUM is needed.
+version: 1.0.0
+requires_approval: true
+parameters:
+  schema:
+    type: string
+    required: false
+    description: Schema to filter tables by. Defaults to 'public'.
+    default: public
+  deadTupleThreshold:
+    type: number
+    required: false
+    description: >-
+      Only return tables with dead tuples exceeding this count. Use to find
+      tables urgently needing VACUUM.
+    default: 0
+execution:
+  type: http
+  method: POST
+  url: '{PG_API_URL}/query'
+  headers:
+    Authorization: Bearer {PG_API_KEY}
+    Content-Type: application/json
+  body:
+    sql: >-
+      SELECT relname AS table_name, schemaname, n_live_tup AS live_rows,
+      n_dead_tup AS dead_rows, round(100.0 * n_dead_tup / NULLIF(n_live_tup +
+      n_dead_tup, 0), 2) AS dead_pct, last_vacuum, last_autovacuum,
+      last_analyze, last_autoanalyze, autovacuum_count, autoanalyze_count FROM
+      pg_stat_user_tables WHERE schemaname = '{schema}' AND n_dead_tup >=
+      {deadTupleThreshold} ORDER BY n_dead_tup DESC
+authentication:
+  type: bearer
+output_schema:
+  type: object
+  properties:
+    rows:
+      type: array
+      description: Vacuum status records per table
+    rowCount:
+      type: number
+      description: Number of tables returned
+  required:
+    - rows
+    - rowCount
+error_handling:
+  retry: 2
+  backoff_type: exponential
+  initial_delay_ms: 500
+  retry_on_status:
+    - 500
+    - 503
+examples:
+  - name: All tables vacuum status
+    params:
+      schema: public
+      deadTupleThreshold: 0
+  - name: Bloated tables with 10k+ dead tuples
+    params:
+      schema: public
+      deadTupleThreshold: 10000
+status: approved

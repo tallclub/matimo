@@ -1,0 +1,35 @@
+name: slack_join_channel
+description: |-
+  Add bot to a channel.
+  Uses conversations.join API method.
+  Bot must be invited to private channels by an admin first.
+version: '1.0.0'
+parameters:
+  channel:
+    type: string
+    required: true
+    description: |-
+      Channel ID or name to join.
+      Format: C followed by alphanumeric (e.g., C123456)
+execution:
+  type: http
+  method: POST
+  url: 'https://slack.com/api/conversations.join'
+  headers:
+    Authorization: 'Bearer {SLACK_BOT_TOKEN}'
+    Content-Type: application/json
+  body:
+    channel: '{channel}'
+  timeout: 10000
+authentication:
+  type: api_key
+  location: header
+  name: Authorization
+notes:
+  env: SLACK_BOT_TOKEN
+  scopes: channels:manage
+  important: |-
+    - Public channels: Bot joins automatically
+    - Private channels: Admin must invite bot first
+    - Bot cannot join archived channels
+    - Use for gaining access before sending messages

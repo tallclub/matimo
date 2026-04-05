@@ -1,0 +1,79 @@
+name: github-list-repositories
+description: List repositories for an organization or user with filtering and sorting
+version: '1.0.0'
+
+parameters:
+  owner:
+    type: string
+    required: true
+    description: Organization or user login/username
+  type:
+    type: string
+    required: false
+    description: Filter by type - all, public, private, forks, sources, member
+    default: all
+  sort:
+    type: string
+    required: false
+    description: Sort by - created, updated, pushed, or full_name
+    default: created
+  direction:
+    type: string
+    required: false
+    description: Sort direction - asc or desc
+    default: desc
+  per_page:
+    type: number
+    required: false
+    description: Results per page (max 100)
+    default: 30
+  page:
+    type: number
+    required: false
+    description: Page number for pagination
+    default: 1
+
+execution:
+  type: http
+  method: GET
+  url: 'https://api.github.com/orgs/{owner}/repos'
+  query_params:
+    type: '{type}'
+    sort: '{sort}'
+    direction: '{direction}'
+    per_page: '{per_page}'
+    page: '{page}'
+  headers:
+    Accept: application/vnd.github+json
+    Authorization: 'Bearer {GITHUB_TOKEN}'
+    X-GitHub-Api-Version: '2022-11-28'
+  timeout: 15000
+
+authentication:
+  type: bearer
+  location: header
+  notes:
+    env: GITHUB_TOKEN
+    optional: Public repos don't require authentication
+
+output_schema:
+  type: array
+  items:
+    type: object
+    description: Repository object
+
+error_handling:
+  retry: 2
+  backoff_type: exponential
+  initial_delay_ms: 1000
+
+examples:
+  - name: List organization repositories
+    params:
+      owner: kubernetes
+      type: all
+      sort: updated
+  - name: List user public repositories
+    params:
+      owner: torvalds
+      type: public

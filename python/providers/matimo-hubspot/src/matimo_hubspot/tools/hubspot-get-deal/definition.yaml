@@ -1,0 +1,42 @@
+name: hubspot-get-deal
+version: '1.0.0'
+description: Retrieve a specific deal by ID from HubSpot CRM.
+
+parameters:
+  id:
+    type: string
+    required: true
+    description: The HubSpot deal ID to retrieve.
+
+execution:
+  type: http
+  method: GET
+  url: 'https://api.hubapi.com/crm/v3/objects/deals/{id}'
+  headers:
+    Authorization: 'Bearer {MATIMO_HUBSPOT_API_KEY}'
+  timeout: 30000
+
+authentication:
+  type: bearer
+  location: header
+  name: Authorization
+  notes:
+    env: MATIMO_HUBSPOT_API_KEY
+
+output_schema:
+  type: object
+  properties:
+    id: { type: string }
+    properties: { type: object }
+  required: [id, properties]
+
+error_handling:
+  retry: 2
+  backoff_type: exponential
+  initial_delay_ms: 500
+
+examples:
+  - name: 'Get deal by ID'
+    params:
+      id: '789'
+    expected_result: 'Deal object with all properties.'

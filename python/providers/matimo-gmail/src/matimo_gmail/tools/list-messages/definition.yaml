@@ -1,0 +1,84 @@
+name: gmail-list-messages
+description: List messages from Gmail mailbox with filtering and pagination
+version: '1.0.0'
+
+parameters:
+  query:
+    type: string
+    description: Gmail search query (e.g., 'from:user@example.com', 'subject:hello', 'is:unread')
+    required: false
+    example: 'is:unread'
+
+  maxResults:
+    type: number
+    description: Maximum number of messages to return (1-500, defaults to 100)
+    required: false
+    default: 100
+    example: 20
+
+  pageToken:
+    type: string
+    description: Page token for pagination
+    required: false
+    example: 'NEXT_PAGE_TOKEN'
+
+  includeSpamTrash:
+    type: boolean
+    description: Include spam and trash in results (defaults to false)
+    required: false
+    default: false
+
+  labelIds:
+    type: string
+    description: Comma-separated label IDs to filter by
+    required: false
+    example: 'INBOX,IMPORTANT'
+
+execution:
+  type: http
+  method: GET
+  url: 'https://www.googleapis.com/gmail/v1/users/me/messages'
+  query_params:
+    q: '{query}'
+    maxResults: '{maxResults}'
+    pageToken: '{pageToken}'
+    includeSpamTrash: '{includeSpamTrash}'
+    labelIds: '{labelIds}'
+  headers:
+    Authorization: 'Bearer {GMAIL_ACCESS_TOKEN}'
+
+authentication:
+  type: oauth2
+  provider: google
+  scopes:
+    - 'https://www.googleapis.com/auth/gmail.readonly'
+
+output_schema:
+  type: object
+  properties:
+    messages:
+      type: array
+      description: List of message objects (contains only id and threadId)
+      items:
+        type: object
+        properties:
+          id:
+            type: string
+          threadId:
+            type: string
+    nextPageToken:
+      type: string
+      description: Token for fetching next page of results
+    resultSizeEstimate:
+      type: number
+      description: Estimated total number of results
+
+error_handling:
+  retry: 3
+  backoff_type: exponential
+  initial_delay_ms: 1000
+  retryable_status_codes:
+    - 429
+    - 500
+    - 502
+    - 503

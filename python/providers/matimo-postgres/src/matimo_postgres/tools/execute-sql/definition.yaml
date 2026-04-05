@@ -1,0 +1,59 @@
+name: postgres-execute-sql
+version: '1.0.0'
+description: Execute arbitrary SQL against a Postgres database. Supports both connection string and explicit env var configuration.
+
+parameters:
+  sql:
+    type: string
+    description: "SQL statement to execute. Use parameterized queries for safety (e.g. $1, $2)."
+    required: true
+  params:
+    type: array
+    description: "Optional array of parameters to pass to the query."
+    required: false
+  schema:
+    type: string
+    description: "Optional schema name to search for tables or qualify queries."
+    required: false
+
+execution:
+  type: function
+  # The function file path is resolved relative to this definition.yaml
+  code: ./execute-sql.ts
+  timeout: 30000
+
+authentication:
+  type: custom
+  notes: |
+    The tool supports two authentication modes (choose either):
+    1. Connection string - set `MATIMO_POSTGRES_URL` to a full Postgres connection string (recommended).
+    2. Separate env vars - set `MATIMO_POSTGRES_HOST`, `MATIMO_POSTGRES_PORT`, `MATIMO_POSTGRES_USER`, `MATIMO_POSTGRES_PASSWORD`, `MATIMO_POSTGRES_DB`.
+  # Consumers should treat secrets as env variables. This custom auth type
+  # documents expected environment variables but does not enforce a single
+  # auth scheme - the executor reads either `MATIMO_POSTGRES_URL` or the
+  # individual env vars at runtime.
+
+error_handling:
+  retry: 1
+  backoff_type: exponential
+  initial_delay_ms: 500
+
+output_schema:
+  type: object
+  properties:
+    rows:
+      type: array
+      items:
+        type: object
+    rowCount:
+      type: number
+
+examples:
+  - name: Simple select
+    params:
+      sql: "SELECT id, name FROM users WHERE id = $1"
+      params: [1]
+
+  - name: Parameterless query
+    params:
+      sql: "SELECT count(*) as cnt FROM users"

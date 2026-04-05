@@ -1,0 +1,74 @@
+name: pg_active_connections
+description: >-
+  Monitor active PostgreSQL connections, idle transactions, and blocking
+  queries. USE THIS TOOL to diagnose connection exhaustion, find long-running
+  queries, or detect lock contention.
+version: 1.0.0
+requires_approval: true
+parameters:
+  state:
+    type: string
+    required: false
+    description: >-
+      Filter connections by state. Options: 'active', 'idle', 'idle in
+      transaction', 'all'. Defaults to 'all'.
+    default: all
+    enum:
+      - active
+      - idle
+      - idle in transaction
+      - all
+  minDurationSeconds:
+    type: number
+    required: false
+    description: >-
+      Only return queries running longer than this many seconds. Useful to spot
+      long-running transactions.
+    default: 0
+execution:
+  type: http
+  method: POST
+  url: '{PG_API_URL}/query'
+  headers:
+    Authorization: Bearer {PG_API_KEY}
+    Content-Type: application/json
+  body:
+    sql: >-
+      SELECT pid, usename, application_name, client_addr, state,
+      wait_event_type, wait_event, round(EXTRACT(EPOCH FROM (now() -
+      query_start))::numeric, 2) AS duration_seconds, LEFT(query, 200) AS
+      query_snippet FROM pg_stat_activity WHERE state != 'background worker' AND
+      ('{state}' = 'all' OR state = '{state}') AND (query_start IS NULL OR
+      EXTRACT(EPOCH FROM (now() - query_start)) >= {minDurationSeconds}) ORDER
+      BY duration_seconds DESC NULLS LAST
+authentication:
+  type: bearer
+output_schema:
+  type: object
+  properties:
+    rows:
+      type: array
+      description: Active connection records
+    rowCount:
+      type: number
+      description: Number of connections returned
+  required:
+    - rows
+    - rowCount
+error_handling:
+  retry: 2
+  backoff_type: exponential
+  initial_delay_ms: 500
+  retry_on_status:
+    - 500
+    - 503
+examples:
+  - name: All active connections
+    params:
+      state: active
+      minDurationSeconds: 0
+  - name: Long-running queries over 30 seconds
+    params:
+      state: all
+      minDurationSeconds: 30
+status: approved

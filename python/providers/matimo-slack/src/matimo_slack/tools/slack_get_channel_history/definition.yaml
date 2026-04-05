@@ -1,0 +1,58 @@
+name: slack_get_channel_history
+description: |-
+  Retrieve message history from a channel.
+  Uses conversations.history API method.
+  Supports time range filtering and cursor-based pagination.
+version: '1.0.0'
+parameters:
+  channel:
+    type: string
+    required: true
+    description: Channel ID to fetch messages from
+  limit:
+    type: number
+    required: false
+    default: 50
+    description: |-
+      Maximum number of messages to return.
+      Default: 50, Max: 1000
+  latest:
+    type: string
+    required: false
+    description: |-
+      End timestamp (inclusive).
+      Messages up to this timestamp. Now by default.
+  oldest:
+    type: string
+    required: false
+    description: |-
+      Start timestamp (inclusive).
+      Messages from this timestamp onward.
+  cursor:
+    type: string
+    required: false
+    description: Pagination cursor from response_metadata.next_cursor
+execution:
+  type: http
+  method: GET
+  url: 'https://slack.com/api/conversations.history'
+  headers:
+    Authorization: 'Bearer {SLACK_BOT_TOKEN}'
+  query_params:
+    channel: '{channel}'
+    limit: '{limit}'
+    latest: '{latest}'
+    oldest: '{oldest}'
+    cursor: '{cursor}'
+  timeout: 15000
+authentication:
+  type: api_key
+  location: header
+  name: Authorization
+notes:
+  env: SLACK_BOT_TOKEN
+  scopes: conversations:history
+  important: |-
+    - Messages returned in reverse chronological order
+    - Use cursor-based pagination for large result sets
+    - Timestamps in Unix format with decimal precision

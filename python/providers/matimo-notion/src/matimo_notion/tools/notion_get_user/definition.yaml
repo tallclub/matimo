@@ -1,0 +1,55 @@
+name: notion_get_user
+description: Retrieve information about a Notion user
+version: "1.0.0"
+parameters:
+  user_id:
+    type: string
+    required: true
+    description: The UUID of the user to retrieve
+
+execution:
+  type: http
+  method: GET
+  url: "https://api.notion.com/v1/users/{user_id}"
+  headers:
+    Authorization: "Bearer {NOTION_API_KEY}"
+    "Notion-Version": "2025-09-03"
+  timeout: 10000
+
+authentication:
+  type: bearer
+  location: header
+  name: Authorization
+notes:
+  env: NOTION_API_KEY
+  caution: "Ensure 'Read user information' capability is enabled. Returns user details including name, avatar, email (if available). User IDs can be obtained from page.created_by, page.last_edited_by, or database results."
+
+output_schema:
+  type: object
+  properties:
+    object:
+      type: string
+    id:
+      type: string
+    type:
+      type: string
+    name:
+      type: string
+    avatar_url:
+      type: string
+    person:
+      type: object
+      properties:
+        email:
+          type: string
+  required: ["object", "id", "type"]
+
+examples:
+  - name: "Get user information"
+    params:
+      user_id: "e79a0b74-3aba-4149-9f74-0bb5791a6ee6"
+    expected_result: "Returns user details with name, avatar, email"
+  - name: "Get bot user info"
+    params:
+      user_id: "c2f20311-9e54-4d11-8c79-7398424ae41e"
+    expected_result: "Returns bot/integration user information"

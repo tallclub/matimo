@@ -1,5 +1,17 @@
 #!/bin/sh
 # Run linting and formatting before commit
-pnpm lint
-pnpm format:check
 
+REPO_ROOT=$(git rev-parse --show-toplevel)
+
+# TypeScript
+echo "[pre-commit] TypeScript lint + format..."
+cd "$REPO_ROOT/typescript" && pnpm lint && pnpm format:check || exit 1
+
+# Python
+if command -v uv >/dev/null 2>&1; then
+	echo "[pre-commit] Python lint..."
+	cd "$REPO_ROOT/python" && uv run ruff check src/ || exit 1
+	cd "$REPO_ROOT"
+else
+	echo "[pre-commit] Skipping Python lint (uv not found)"
+fi

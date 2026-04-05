@@ -1,0 +1,37 @@
+name: slack_send_dm
+description: |-
+  Open or resume a direct message (DM) or multi-person direct message (MPIM) conversation.
+  Uses conversations.open API method.
+  After opening, use chat.postMessage to send the actual message.
+version: '1.0.0'
+parameters:
+  user:
+    type: string
+    required: true
+    description: |-
+      User ID or comma-separated user IDs for multi-person DM.
+      - 1 user ID: Creates a 1:1 DM
+      - Multiple user IDs (2-8): Creates an MPIM
+      Do not include the authenticated bot's user ID.
+execution:
+  type: http
+  method: POST
+  url: 'https://slack.com/api/conversations.open'
+  headers:
+    Authorization: 'Bearer {SLACK_BOT_TOKEN}'
+    Content-Type: application/json
+  body:
+    users: '{user}'
+  timeout: 15000
+authentication:
+  type: api_key
+  location: header
+  name: Authorization
+notes:
+  env: SLACK_BOT_TOKEN
+  scopes: im:write, mpim:write
+  important: |-
+    - This method OPENS a conversation, it does not send a message
+    - Returns channel ID (D...) to use with chat.postMessage
+    - Subsequent calls with same users return existing conversation
+    - For 1:1 DMs, use user ID (U...), not DM channel ID (D...)

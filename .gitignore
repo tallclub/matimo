@@ -1,15 +1,28 @@
 # Dependencies
-node_modules/
+**/node_modules/
 package-lock.json
 yarn.lock
 
 # Build output
-dist/
+**/dist/
 *.tsbuildinfo
 
+# Python compiled / build
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+**/build/
+**/.eggs/
+**/.venv/
+**/.mypy_cache/
+**/.ruff_cache/
+**/.pytest_cache/
+
 # Test coverage
-coverage/
-.nyc_output/
+**/coverage/
+**/.nyc_output/
 
 # IDE
 .vscode/
@@ -38,3 +51,13 @@ Thumbs.db
 tmp/
 temp/
 *.tmp
+typescript/examples/mcp/matimo-tools/.matimo-approvals.json
+typescript/examples/mcp/matimo-tools/fetch-weather/definition.yaml
+typescript/examples/mcp/matimo-tools/npm_downloads/definition.yaml
+typescript/examples/mcp/matimo-tools/skills/ecosystem-health/SKILL.md
+typescript/examples/mcp/matimo-tools/skills/matimo-health-check/SKILL.md
+typescript/examples/mcp/matimo-tools/skills/moltbook-identity/SKILL.md
+typescript/packages/cli/.matimo/certs/server.crt
+typescript/packages/cli/.matimo/certs/server.key
+typescript/examples/mcp/.matimo/certs/server.crt
+typescript/examples/mcp/.matimo/certs/server.key

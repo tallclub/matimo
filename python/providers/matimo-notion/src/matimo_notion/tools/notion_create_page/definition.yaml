@@ -1,0 +1,127 @@
+name: notion_create_page
+description: Create a new page in a Notion database or as a child of an existing page
+version: "1.0.0"
+parameters:
+  parent:
+    type: object
+    required: true
+    description: |
+      Where to create the page. Provide ONE of:
+      - {"database_id": "..."}  to create in a database
+      - {"page_id": "..."}  to create as a sub-page
+      Get database_id from notion_list_databases.
+  properties:
+    type: object
+    required: false
+    description: |
+      Optional page properties (title, fields, etc).
+      Properties must match the parent database schema.
+      Simpler: just use 'markdown' parameter instead for content.
+  icon:
+    type: object
+    required: false
+    description: Page icon - object with type (emoji, external, file) and icon content
+  cover:
+    type: object
+    required: false
+    description: Page cover image - object with type (file, external) and image details
+  children:
+    type: array
+    required: false
+    description: Array of block objects to add to the page. Max 100 items
+  markdown:
+    type: string
+    required: false
+    description: |
+      Page content using Markdown syntax. Simple and works anywhere.
+      Example: "# My Title\n\nSome content here"
+      EASIEST WAY TO ADD CONTENT - use this instead of 'properties' for simplicity.
+  template:
+    type: object
+    required: false
+    description: Template to use for the page. Specify type and optional template_id
+  position:
+    type: object
+    required: false
+    description: Position of page in parent. Can specify before_id or after_id
+
+execution:
+  type: function
+  code: './index.ts'
+
+authentication:
+  type: bearer
+  location: header
+  name: Authorization
+notes:
+  env: NOTION_API_KEY
+  caution: "Ensure 'Insert content' capability is enabled on the parent. Properties must match parent database schema. For database parents, properties are required. For page parents, only title is supported via properties. Either children or markdown can be used, not both. When using template, children parameter is not allowed."
+
+output_schema:
+  type: object
+  properties:
+    object:
+      type: string
+    id:
+      type: string
+    created_time:
+      type: string
+    last_edited_time:
+      type: string
+    archived:
+      type: boolean
+    in_trash:
+      type: boolean
+    is_locked:
+      type: boolean
+    url:
+      type: string
+    public_url:
+      type: string
+    parent:
+      type: object
+    properties:
+      type: object
+    icon:
+      type: object
+    cover:
+      type: object
+  required: ["object", "id", "url"]
+
+examples:
+  - name: "Create page in database"
+    params:
+      parent:
+        database_id: a1d8501e-1ac1-43e9-a6bd-ea9fe6c8822b
+      properties:
+        Name:
+          title:
+            - text:
+                content: "New Page"
+    expected_result: "Creates a new page in the database with the specified properties"
+  - name: "Create page under existing page"
+    params:
+      parent:
+        page_id: be633bf1-dfa0-436d-b259-571129a590e5
+      children:
+        - object: block
+          type: paragraph
+          paragraph:
+            rich_text:
+              - type: text
+                text:
+                  content: "Page content"
+    expected_result: "Creates a subpage with content blocks"
+  - name: "Create page with emoji icon"
+    params:
+      parent:
+        database_id: a1d8501e-1ac1-43e9-a6bd-ea9fe6c8822b
+      properties:
+        Name:
+          title:
+            - text:
+                content: "Task"
+      icon:
+        type: emoji
+        emoji: "✅"
+    expected_result: "Creates a page with an emoji icon"

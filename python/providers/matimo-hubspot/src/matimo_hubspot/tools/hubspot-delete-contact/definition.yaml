@@ -1,0 +1,43 @@
+name: hubspot-delete-contact
+version: '1.0.0'
+description: Delete a contact from HubSpot CRM.
+
+parameters:
+  id:
+    type: string
+    required: true
+    description: The HubSpot contact ID to delete.
+
+execution:
+  type: http
+  method: DELETE
+  url: 'https://api.hubapi.com/crm/v3/objects/contacts/{id}'
+  headers:
+    Authorization: 'Bearer {MATIMO_HUBSPOT_API_KEY}'
+  timeout: 30000
+
+authentication:
+  type: bearer
+  location: header
+  name: Authorization
+  notes:
+    env: MATIMO_HUBSPOT_API_KEY
+
+requires_approval: true
+
+output_schema:
+  type: object
+  properties:
+    status: { type: string }
+  required: [status]
+
+error_handling:
+  retry: 2
+  backoff_type: exponential
+  initial_delay_ms: 500
+
+examples:
+  - name: 'Delete contact by ID'
+    params:
+      id: '123'
+    expected_result: 'Contact successfully deleted.'

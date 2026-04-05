@@ -1,0 +1,55 @@
+name: hubspot-list-invoices
+version: '1.0.0'
+description: List invoices from HubSpot CRM with pagination support.
+
+parameters:
+  limit:
+    type: number
+    required: false
+    description: Maximum number of invoices to retrieve (default 10, max 100).
+  after:
+    type: string
+    required: false
+    description: Pagination cursor for retrieving next page of results.
+  properties:
+    type: array
+    required: false
+    description: Array of property names to retrieve.
+
+execution:
+  type: http
+  method: GET
+  url: 'https://api.hubapi.com/crm/v3/objects/invoices'
+  headers:
+    Authorization: 'Bearer {MATIMO_HUBSPOT_API_KEY}'
+  query_params:
+    limit: '{limit}'
+    after: '{after}'
+    properties: '{properties}'
+  timeout: 30000
+
+authentication:
+  type: bearer
+  location: header
+  name: Authorization
+
+output_schema:
+  type: object
+  properties:
+    results:
+      type: array
+    paging:
+      type: object
+
+error_handling:
+  retry: 2
+  backoff_type: exponential
+  initial_delay_ms: 500
+
+requires_approval: false
+
+examples:
+  - name: List invoices
+    params:
+      limit: 50
+    expected_result: Array of up to 50 invoices

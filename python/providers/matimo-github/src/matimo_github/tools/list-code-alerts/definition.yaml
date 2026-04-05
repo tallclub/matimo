@@ -1,0 +1,85 @@
+name: github-list-code-alerts
+description: List code scanning security alerts for a repository
+version: '1.0.0'
+
+parameters:
+  owner:
+    type: string
+    required: true
+    description: Repository owner username or organization
+  repo:
+    type: string
+    required: true
+    description: Repository name
+  state:
+    type: string
+    required: false
+    description: Filter by state - open, closed, dismissed, or fixed
+  severity:
+    type: string
+    required: false
+    description: Filter by severity - critical, high, medium, low, warning, note, or error
+  sort:
+    type: string
+    required: false
+    description: Sort by - created or updated
+    default: created
+  direction:
+    type: string
+    required: false
+    description: Sort direction - asc or desc
+    default: desc
+  per_page:
+    type: number
+    required: false
+    description: Results per page (max 100)
+    default: 30
+
+execution:
+  type: http
+  method: GET
+  url: 'https://api.github.com/repos/{owner}/{repo}/code-scanning/alerts'
+  query_params:
+    state: '{state}'
+    severity: '{severity}'
+    sort: '{sort}'
+    direction: '{direction}'
+    per_page: '{per_page}'
+  headers:
+    Accept: application/vnd.github+json
+    Authorization: 'Bearer {GITHUB_TOKEN}'
+    X-GitHub-Api-Version: '2022-11-28'
+  timeout: 15000
+
+authentication:
+  type: bearer
+  location: header
+  notes:
+    env: GITHUB_TOKEN
+    required: true
+    permission: Security events read
+    note: Requires GitHub Advanced Security enabled
+
+output_schema:
+  type: array
+  items:
+    type: object
+    description: Code alert object with severity and status
+
+error_handling:
+  retry: 2
+  backoff_type: exponential
+  initial_delay_ms: 1000
+
+examples:
+  - name: List critical security alerts
+    params:
+      owner: myorg
+      repo: myrepo
+      state: open
+      severity: critical
+  - name: List all alerts
+    params:
+      owner: myorg
+      repo: myrepo
+      sort: updated

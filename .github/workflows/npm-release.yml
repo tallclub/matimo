@@ -44,15 +44,19 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install
+        working-directory: typescript
 
       - name: Build
         run: pnpm build
+        working-directory: typescript
 
       - name: Run tests
         run: pnpm test
+        working-directory: typescript
 
       - name: Publish to npm
         run: pnpm -r publish --access public --no-git-checks
+        working-directory: typescript
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
