@@ -37,7 +37,6 @@ from pathlib import Path
 
 from crewai import Agent, Crew, Process, Task
 from dotenv import load_dotenv
-from langchain_openai import ChatOpenAI
 from matimo_hubspot import get_tools_path
 
 from matimo import Matimo
@@ -72,8 +71,6 @@ async def run(task: str) -> None:
     print(f"🔧  {len(crewai_tools)} CrewAI tools ready\n")
 
     # ── 3. Build Agent + Task + Crew ─────────────────────────────────────────
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
-
     agent = Agent(
         role="CRM Research Analyst",
         goal="Query HubSpot to find contacts, companies, and deals, then synthesise the data into useful reports.",
@@ -82,7 +79,7 @@ async def run(task: str) -> None:
             "You excel at searching for contacts, uncovering deal pipeline gaps, and "
             "producing actionable summaries for sales teams."
         ),
-        llm=llm,
+        model="gpt-4o-mini",
         tools=crewai_tools,
         verbose=True,
     )

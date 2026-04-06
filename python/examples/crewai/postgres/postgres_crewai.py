@@ -42,7 +42,6 @@ from pathlib import Path
 
 from crewai import Agent, Crew, Process, Task
 from dotenv import load_dotenv
-from langchain_openai import ChatOpenAI
 from matimo_postgres import get_tools_path
 
 from matimo import Matimo
@@ -82,8 +81,6 @@ async def run(task: str) -> None:
     print(f"🔧  {len(crewai_tools)} CrewAI tools ready\n")
 
     # ── 3. Build Agent + Task + Crew ─────────────────────────────────────────
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
-
     agent = Agent(
         role="Database Analyst",
         goal="Query and analyse the PostgreSQL database to answer data questions accurately and safely.",
@@ -92,7 +89,7 @@ async def run(task: str) -> None:
             "You can explore schemas, write efficient queries, and translate raw data "
             "into clear, actionable insights for stakeholders."
         ),
-        llm=llm,
+        model="gpt-4o-mini",
         tools=crewai_tools,
         verbose=True,
     )

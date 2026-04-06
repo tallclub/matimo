@@ -34,6 +34,7 @@ AVAILABLE EXECUTE TOOL PARAMETERS:
 
 import asyncio
 from pathlib import Path
+from typing import Any, Dict
 from dotenv import load_dotenv
 
 from matimo import Matimo
@@ -55,44 +56,101 @@ async def main() -> None:
 
     try:
         # Example 1: List files in current directory
-        print("1. Running: ls\n")
-        ls_result = await matimo.execute(
-            "execute",
-            {"command": "ls", "timeout": 10000}
-        )
-        print(f"Success: {ls_result.get('success', False)}")
-        output = ls_result.get("stdout", "")
-        print(f"Output (first 200 chars): {output[:200]}")
+        print("1️⃣  Running: ls\n")
+        try:
+            ls_result: Dict[str, Any] = await matimo.execute(
+                "execute",
+                {
+                    "command": "ls",
+                    "timeout": 10000,
+                }
+            )
+            
+            print(f"Success: {ls_result.get('success', False)}")
+            stdout = ls_result.get("stdout", "")
+            
+            # Show first 200 chars of output
+            if stdout:
+                preview = stdout[:200]
+                print(f"Output: {preview}")
+            else:
+                print("Output: (empty)")
+                
+            # Check for errors
+            stderr = ls_result.get("stderr", "")
+            if stderr:
+                print(f"Errors: {stderr[:100]}")
+        except Exception as e:
+            print(f"Error in Example 1: {e}")
         print("---\n")
 
         # Example 2: Get current working directory
-        print("2. Running: pwd\n")
-        pwd_result = await matimo.execute(
-            "execute",
-            {"command": "pwd"}
-        )
-        print(f"Success: {pwd_result.get('success', False)}")
-        print(f"Output: {pwd_result.get('stdout', '').strip()}")
+        print("2️⃣  Running: pwd\n")
+        try:
+            pwd_result: Dict[str, Any] = await matimo.execute(
+                "execute",
+                {
+                    "command": "pwd",
+                }
+            )
+            
+            print(f"Success: {pwd_result.get('success', False)}")
+            stdout = pwd_result.get("stdout", "").strip()
+            print(f"Output: {stdout}")
+        except Exception as e:
+            print(f"Error in Example 2: {e}")
         print("---\n")
 
         # Example 3: Echo command
-        print("3. Running: echo 'Hello from Matimo'\n")
-        echo_result = await matimo.execute(
-            "execute",
-            {"command": 'echo "Hello from Matimo"'}
-        )
-        print(f"Success: {echo_result.get('success', False)}")
-        print(f"Output: {echo_result.get('stdout', '').strip()}")
+        print('3️⃣  Running: echo "Hello from Matimo"\n')
+        try:
+            echo_result: Dict[str, Any] = await matimo.execute(
+                "execute",
+                {
+                    "command": 'echo "Hello from Matimo"',
+                }
+            )
+            
+            print(f"Success: {echo_result.get('success', False)}")
+            stdout = echo_result.get("stdout", "").strip()
+            print(f"Output: {stdout}")
+        except Exception as e:
+            print(f"Error in Example 3: {e}")
         print("---\n")
 
         # Example 4: Get system information
-        print("4. Running: uname -a\n")
-        uname_result = await matimo.execute(
-            "execute",
-            {"command": "uname -a"}
-        )
-        print(f"Success: {uname_result.get('success', False)}")
-        print(f"Output: {uname_result.get('stdout', '').strip()}")
+        print("4️⃣  Running: uname -a\n")
+        try:
+            uname_result: Dict[str, Any] = await matimo.execute(
+                "execute",
+                {
+                    "command": "uname -a",
+                }
+            )
+            
+            print(f"Success: {uname_result.get('success', False)}")
+            stdout = uname_result.get("stdout", "").strip()
+            print(f"Output: {stdout}")
+        except Exception as e:
+            print(f"Error in Example 4: {e}")
+        print("---\n")
+
+        # Example 5: File count in directory
+        print("5️⃣  Running: find . -type f | wc -l\n")
+        try:
+            find_result: Dict[str, Any] = await matimo.execute(
+                "execute",
+                {
+                    "command": "find . -type f | wc -l",
+                    "timeout": 15000,
+                }
+            )
+            
+            print(f"Success: {find_result.get('success', False)}")
+            stdout = find_result.get("stdout", "").strip()
+            print(f"File count: {stdout}")
+        except Exception as e:
+            print(f"Error in Example 5: {e}")
         print("---\n")
 
     except Exception as error:

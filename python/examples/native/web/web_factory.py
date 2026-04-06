@@ -36,12 +36,24 @@ AVAILABLE WEB TOOL PARAMETERS:
 """
 
 import asyncio
+import json
 from pathlib import Path
+from typing import Any, Dict
 from dotenv import load_dotenv
 
 from matimo import Matimo
 
 load_dotenv(Path(__file__).parent.parent.parent / ".env")
+
+
+def _parse_content(content: Any) -> str:
+    """Parse content response, handling both dict and string formats."""
+    if isinstance(content, dict):
+        return json.dumps(content, indent=2)
+    elif isinstance(content, str):
+        return content
+    else:
+        return str(content)
 
 
 async def main() -> None:
@@ -57,100 +69,141 @@ async def main() -> None:
     print(f"✅  Loaded {len(all_tools)} tools\n")
 
     try:
-        # Example 1: Fetch public API (JSONPlaceholder)
-        print("1. Fetching user data from JSONPlaceholder API\n")
-        result1 = await matimo.execute(
-            "web",
-            {
-                "url": "https://jsonplaceholder.typicode.com/users/1",
-                "method": "GET"
-            }
-        )
-        
-        if result1.get("success"):
-            print(f"Status Code: {result1.get('statusCode')}")
-            print(f"Content Type: {result1.get('contentType')}")
-            content = result1.get("content", "")
-            if isinstance(content, dict):
-                print(f"User: {content.get('name')} ({content.get('email')})")
+        # Example 1: Fetch GitHub API (public endpoint) ────────────────────────
+        print("1️⃣  Fetching GitHub API (public endpoint)\n")
+        try:
+            result1: Dict[str, Any] = await matimo.execute(
+                "web",
+                {
+                    "url": "https://api.github.com/repos/tallclub/matimo",
+                }
+            )
+            
+            if result1.get("success", False):
+                print(f"Status Code: {result1.get('statusCode')}")
+                print(f"Content Size: {result1.get('size')} bytes")
+                
+                # Content is already parsed as an object
+                content = result1.get("content", {})
+                if isinstance(content, dict):
+                    print(f"Repository: {content.get('full_name')}")
+                    print(f"Description: {content.get('description')}")
+                else:
+                    parsed = json.loads(content) if isinstance(content, str) else content
+                    print(f"Repository: {parsed.get('full_name')}")
+                    print(f"Description: {parsed.get('description')}")
             else:
-                print(f"Content (first 200 chars): {str(content)[:200]}")
-        else:
-            print(f"Request failed: {result1.get('error')}")
+                print(f"Request failed: {result1.get('error', 'Unknown error')}")
+        except Exception as e:
+            print(f"Error in Example 1: {e}")
         print("---\n")
 
-        # Example 2: Fetch JSON data
-        print("2. Fetching GitHub repository info\n")
-        result2 = await matimo.execute(
-            "web",
-            {
-                "url": "https://api.github.com/repos/tallclub/matimo",
-                "method": "GET"
-            }
-        )
-        
-        if result2.get("success"):
-            print(f"Status Code: {result2.get('statusCode')}")
-            content = result2.get("content", {})
-            if isinstance(content, dict):
-                print(f"Repository: {content.get('full_name')}")
-                print(f"Description: {content.get('description', 'N/A')}")
-                print(f"Stars: {content.get('stargazers_count', 0)}")
-                print(f"Forks: {content.get('forks_count', 0)}")
+        # Example 2: Fetch HTML content ──────────────────────────────────────────
+        print("2️⃣  Fetching HTML content\n")
+        try:
+            result2: Dict[str, Any] = await matimo.execute(
+                "web",
+                {
+                    "url": "https://www.example.com",
+                    "timeout": 15000,
+                }
+            )
+            
+            if result2.get("success", False):
+                print(f"Status Code: {result2.get('statusCode')}")
+                print(f"Content Type: {result2.get('contentType')}")
+                print(f"Content Size: {result2.get('size')} bytes")
+                
+                content = result2.get("content", "")
+                if isinstance(content, str):
+                    content_preview = content[:200]
+                else:
+                    content_preview = str(content)[:200]
+                print(f"Content preview:")
+                print(content_preview)
             else:
-                print(f"Content (first 300 chars): {str(content)[:300]}")
-        else:
-            print(f"Request failed: {result2.get('error')}")
+                print(f"Request failed: {result2.get('error', 'Unknown error')}")
+        except Exception as e:
+            print(f"Error in Example 2: {e}")
         print("---\n")
 
-        # Example 3: POST request with body
-        print("3. Making a POST request to echo service\n")
-        result3 = await matimo.execute(
-            "web",
-            {
-                "url": "https://httpbin.org/post",
-                "method": "POST",
-                "headers": {"Content-Type": "application/json"},
-                "body": '{"message": "Hello from Matimo", "test": true}',
-                "timeout": 15000
-            }
-        )
-        
-        if result3.get("success"):
-            print(f"Status Code: {result3.get('statusCode')}")
-            content = result3.get("content", {})
-            if isinstance(content, dict):
-                json_data = content.get("json", {})
-                print(f"Echoed data: {json_data}")
+        # Example 3: POST request ────────────────────────────────────────────────
+        print("3️⃣  POST request (echo service)\n")
+        try:
+            result3: Dict[str, Any] = await matimo.execute(
+                "web",
+                {
+                    "url": "https://httpbin.org/post",
+                    "method": "POST",
+                    "body": json.dumps({"message": "Hello from Matimo"}),
+                    "headers": {"Content-Type": "application/json"},
+                }
+            )
+            
+            if result3.get("success", False):
+                print(f"Status Code: {result3.get('statusCode')}")
+                
+                content = result3.get("content", {})
+                content_str = _parse_content(content)
+                print(f"Response: {content_str[:200]}")
             else:
-                print(f"Response received: {str(content)[:200]}")
-        else:
-            print(f"Request failed: {result3.get('error')}")
+                print(f"Request failed: {result3.get('error', 'Unknown error')}")
+        except Exception as e:
+            print(f"Error in Example 3: {e}")
         print("---\n")
 
-        # Example 4: Fetch HTML content
-        print("4. Fetching HTML content\n")
-        result4 = await matimo.execute(
-            "web",
-            {
-                "url": "https://www.example.com",
-                "timeout": 15000
-            }
-        )
-        
-        if result4.get("success"):
-            print(f"Status Code: {result4.get('statusCode')}")
-            print(f"Content Type: {result4.get('contentType')}")
-            print(f"Content Size: {result4.get('size')} bytes")
-            content = result4.get("content", "")
-            if isinstance(content, str):
-                print(f"Content (first 300 chars):\n{content[:300]}")
-        else:
-            print(f"Request failed: {result4.get('error')}")
+        # Example 4: Fetch JSON data with custom headers and timeout
+        print("4️⃣  Fetch user data with custom timeout\n")
+        try:
+            result4: Dict[str, Any] = await matimo.execute(
+                "web",
+                {
+                    "url": "https://jsonplaceholder.typicode.com/users/1",
+                    "timeout": 10000,
+                }
+            )
+            
+            if result4.get("success", False):
+                print(f"Status Code: {result4.get('statusCode')}")
+                
+                content = result4.get("content", {})
+                if isinstance(content, dict):
+                    print(f"User Name: {content.get('name')}")
+                    print(f"Email: {content.get('email')}")
+                    print(f"Phone: {content.get('phone')}")
+                else:
+                    parsed = json.loads(content) if isinstance(content, str) else content
+                    print(f"User Name: {parsed.get('name')}")
+                    print(f"Email: {parsed.get('email')}")
+                    print(f"Phone: {parsed.get('phone')}")
+            else:
+                print(f"Request failed: {result4.get('error', 'Unknown error')}")
+        except Exception as e:
+            print(f"Error in Example 4: {e}")
+        print("---\n")
+
+        # Example 5: HEAD request to check endpoint availability
+        print("5️⃣  HEAD request to check endpoint availability\n")
+        try:
+            result5: Dict[str, Any] = await matimo.execute(
+                "web",
+                {
+                    "url": "https://httpbin.org/status/200",
+                    "method": "HEAD",
+                }
+            )
+            
+            if result5.get("success", False):
+                print(f"Status Code: {result5.get('statusCode')}")
+                print(f"Endpoint is accessible")
+            else:
+                print(f"Request failed: {result5.get('error', 'Unknown error')}")
+        except Exception as e:
+            print(f"Error in Example 5: {e}")
         print("---\n")
 
     except Exception as error:
-        print(f"❌  Error making web request: {error}\n")
+        print(f"❌  Error fetching web content: {error}\n")
 
 
 if __name__ == "__main__":

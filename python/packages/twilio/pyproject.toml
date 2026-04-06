@@ -1,0 +1,28 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "matimo-twilio"
+version = "0.1.0"
+description = "Matimo provider — Twilio tools (SMS, MMS, message history)"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+keywords = ["ai", "tools", "agents", "matimo", "twilio"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+]
+dependencies = [
+    "matimo-core>=0.1.0",
+    "twilio>=8.0",
+]
+
+[project.entry-points."matimo.providers"]
+twilio = "matimo_twilio:get_tools_path"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/matimo_twilio"]

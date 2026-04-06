@@ -37,7 +37,6 @@ from pathlib import Path
 
 from crewai import Agent, Crew, Process, Task
 from dotenv import load_dotenv
-from langchain_openai import ChatOpenAI
 
 from matimo import Matimo
 from matimo.integrations.crewai import convert_tools_to_crewai
@@ -70,8 +69,6 @@ async def run(task: str) -> None:
     print(f"🔧  {len(crewai_tools)} CrewAI tools ready\n")
 
     # ── 3. Build Agent + Task + Crew ─────────────────────────────────────────
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
-
     agent = Agent(
         role="Matimo Integration Specialist",
         goal="Use the provided tools to complete the user's request accurately and concisely.",
@@ -79,7 +76,7 @@ async def run(task: str) -> None:
             "You are an expert at using integration tools to interact with external services. "
             "You always pick the right tool for the job and return clean, structured results."
         ),
-        llm=llm,
+        model="gpt-4o-mini",
         tools=crewai_tools,
         verbose=True,
     )

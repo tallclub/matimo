@@ -36,7 +36,6 @@ from pathlib import Path
 
 from crewai import Agent, Crew, Process, Task
 from dotenv import load_dotenv
-from langchain_openai import ChatOpenAI
 from matimo_github import get_tools_path
 
 from matimo import Matimo
@@ -71,8 +70,6 @@ async def run(task: str) -> None:
     print(f"🔧  {len(crewai_tools)} CrewAI tools ready\n")
 
     # ── 3. Build Agent + Task + Crew ─────────────────────────────────────────
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
-
     agent = Agent(
         role="GitHub Code Research Analyst",
         goal="Search and analyse GitHub repositories, issues, and pull requests to provide actionable insights.",
@@ -81,7 +78,7 @@ async def run(task: str) -> None:
             "and repository analysis. You can quickly navigate GitHub to find relevant "
             "information and synthesise it into clear reports."
         ),
-        llm=llm,
+        model="gpt-4o-mini",
         tools=crewai_tools,
         verbose=True,
     )

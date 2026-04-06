@@ -1,162 +1,184 @@
 #!/usr/bin/env python3
 """
-============================================================================
-EDIT TOOL — FACTORY PATTERN
-============================================================================
+Edit Tool - Factory Pattern with Interactive Approval
 
-PATTERN: SDK Factory Pattern
-────────────────────────────────────────────────────────────────────────────
-Direct tool execution via Matimo.init() — the simplest way to edit files.
-Includes interactive approval for sensitive file operations.
-
-Use this pattern when:
-  ✅ Building simple scripts or CLI tools
-  ✅ Direct file editing without LLM overhead
-  ✅ Quick prototyping and testing
-  ✅ One-off file modifications
-
-SETUP:
-────────────────────────────────────────────────────────────────────────────
-  The edit tool is built-in to Matimo core (no API key required).
-  Requires MATIMO_AUTO_APPROVE=true or interactive terminal for approval.
-
-USAGE:
-────────────────────────────────────────────────────────────────────────────
-  export MATIMO_AUTO_APPROVE=true
-  uv run python edit/edit_factory.py
-
-AVAILABLE EDIT TOOL PARAMETERS:
-────────────────────────────────────────────────────────────────────────────
-  filePath     (str, required)  - Path to file to edit
-  newContent   (str, required)  - New content to write
-  createIfMissing (bool, optional) - Create file if it doesn't exist
-
-⚠️  WARNING: This tool modifies files on disk. Use with caution!
-
-============================================================================
+Example: Edit and modify content using Matimo's edit tool
+Demonstrates editing and modifying file contents with interactive approval
 """
 
 import asyncio
+import os
+import sys
 import tempfile
 from pathlib import Path
+
 from dotenv import load_dotenv
 
-from matimo import Matimo
-
-load_dotenv(Path(__file__).parent.parent.parent / ".env")
+from matimo import Matimo, get_global_approval_handler
 
 
-async def main() -> None:
-    print("\n╔════════════════════════════════════════════════════════╗")
-    print("║     Edit Tool — Factory Pattern                       ║")
-    print("║     (Direct execution — simplest approach)            ║")
-    print("║     ⚠️  WARNING: This modifies files!                 ║")
-    print("╚════════════════════════════════════════════════════════╝\n")
+def create_approval_callback():
+    """Create an interactive approval callback for file operations"""
 
-    # ── Initialize Matimo with autoDiscover to find all tools ─────────────────
-    print("🚀  Initializing Matimo…")
+    async def approval_handler(request):
+        """
+        Handle approval requests interactively
+        
+        Args:
+            request: ApprovalRequest with toolName, description, params
+            
+        Returns:
+            bool: True if approved, False otherwise
+        """
+        is_interactive = sys.stdin.isatty()
+
+        print('\n' + '=' * 70)
+        print('🔒 APPROVAL REQUIRED FOR FILE OPERATION')
+        print('=' * 70)
+        print(f'\n📋 Tool: {request["toolName"]}')
+        print(f'📝 Description: {request.get("description", "(no description provided)")}')
+        print('\n📝 File Operation:')
+        print(f'   Path: {request["params"].get("filePath", "N/A")}')
+        print(f'   Operation: {request["params"].get("operation", "N/A")}')
+        
+        if request['params'].get('startLine'):
+            print(f'   Start Line: {request["params"]["startLine"]}')
+        if request['params'].get('endLine'):
+            print(f'   End Line: {request["params"]["endLine"]}')
+
+        if not is_interactive:
+            print('\n❌ REJECTED - Non-interactive environment (no terminal)')
+            print('\n💡 To enable auto-approval in CI/scripts:')
+            print('   export MATIMO_AUTO_APPROVE=true')
+            print('\n💡 Or approve specific patterns:')
+            print('   export MATIMO_APPROVED_PATTERNS="edit"')
+            print('\n' + '=' * 70 + '\n')
+            return False
+
+        # Interactive mode: prompt user
+        print('\n❓ User Action Required')
+        user_input = input('   Type "yes" to approve or "no" to reject: ').strip().lower()
+        approved = user_input in ('yes', 'y')
+
+        if approved:
+            print('   ✅ Operation APPROVED by user')
+        else:
+            print('   ❌ Operation REJECTED by user')
+        print('=' * 70 + '\n')
+
+        return approved
+
+    return approval_handler
+
+
+async def main():
+    """
+    Main entry point for edit factory example
+    
+    Demonstrates:
+    1️⃣ Replacing content in a file (replace line 2)
+    2️⃣ Inserting new content into a file
+    """
+    # Load environment variables
+    load_dotenv()
+
+    # Initialize Matimo with auto-discovery to find all tools
     matimo = await Matimo.init(auto_discover=True)
-    all_tools = matimo.list_tools()
-    print(f"✅  Loaded {len(all_tools)} tools\n")
 
+    # Configure centralized approval handler
+    approval_handler = get_global_approval_handler()
+    approval_handler.set_approval_callback(create_approval_callback())
+
+    print('=== Edit Tool - Factory Pattern (Interactive Approval) ===\n')
+
+    # Create a temporary file for demonstration
+    temp_file = None
     try:
-        # Create a temporary file for testing
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt') as tmp:
-            tmp_path = tmp.name
-            tmp.write("Original content\n")
+        # Create temp file with initial content
+        with tempfile.NamedTemporaryFile(
+            mode='w',
+            suffix='.txt',
+            delete=False,
+            dir='/tmp'
+        ) as f:
+            temp_file = Path(f.name)
+            f.write('Line 1\nLine 2\nLine 3\n')
 
-        print(f"Created temporary file: {tmp_path}\n")
+        # 1️⃣ Example 1: Replace text in file (replace line 2)
+        print('1️⃣ Replacing content in file\n')
+        print('Original content:')
+        with open(temp_file, 'r') as f:
+            original_content = f.read()
+        print(original_content)
+        print('---\n')
 
-        # Example 1: Replace entire file content
-        print("1. Replacing entire file content\n")
-        new_content = "Hello from Matimo!\nThis is the new content.\n"
-        result1 = await matimo.execute(
-            "edit",
-            {
-                "filePath": tmp_path,
-                "newContent": new_content
-            }
-        )
+        try:
+            result = await matimo.execute(
+                'edit',
+                {
+                    'filePath': str(temp_file),
+                    'operation': 'replace',
+                    'content': 'Line 2 (Modified)',
+                    'startLine': 2,
+                    'endLine': 2,
+                }
+            )
+
+            if result.get('success'):
+                print(f'Edit Result: {result.get("success")}')
+                print(f'Lines Affected: {result.get("linesAffected")}')
+                print('\nModified content:')
+                with open(temp_file, 'r') as f:
+                    modified_content = f.read()
+                print(modified_content)
+            else:
+                print(f'Edit denied: {result.get("error")}')
+        except Exception as e:
+            print(f'Error: {e}')
         
-        if result1.get("success"):
-            print(f"File edited successfully")
-            print(f"Status: {result1.get('status')}")
-            # Read the file to verify
-            with open(tmp_path, 'r') as f:
-                content = f.read()
-            print(f"Verified content:\n{content}")
-        else:
-            print(f"Edit failed: {result1.get('error', 'Unknown error')}")
-        print("---\n")
+        print('---\n')
 
-        # Example 2: Create a new file
-        print("2. Creating a new file\n")
-        new_file = tempfile.mktemp(suffix='.py', prefix='test_')
-        new_python_content = '''#!/usr/bin/env python3
-"""Auto-generated Python file from Matimo edit tool."""
-
-def hello():
-    """Say hello."""
-    print("Hello from Matimo!")
-
-if __name__ == "__main__":
-    hello()
-'''
+        # 2️⃣ Example 2: Insert new content
+        print('2️⃣ Inserting new line\n')
         
-        result2 = await matimo.execute(
-            "edit",
-            {
-                "filePath": new_file,
-                "newContent": new_python_content,
-                "createIfMissing": True
-            }
-        )
-        
-        if result2.get("success"):
-            print(f"File created: {new_file}")
-            print(f"Status: {result2.get('status')}")
-            # Verify file was created
-            if Path(new_file).exists():
-                print("✓ File exists on disk")
-                with open(new_file, 'r') as f:
-                    print(f"Content preview:\n{f.read()[:150]}...")
-        else:
-            print(f"File creation failed: {result2.get('error')}")
-        print("---\n")
+        try:
+            insert_result = await matimo.execute(
+                'edit',
+                {
+                    'filePath': str(temp_file),
+                    'operation': 'insert',
+                    'content': 'New inserted line',
+                    'startLine': 2,
+                }
+            )
 
-        # Example 3: Append content to existing file
-        print("3. Modifying file content (append)\n")
-        append_content = tmp_path  # Use existing file
-        new_content_with_append = "Hello from Matimo!\nThis is the new content.\n\n--- Appended content ---\n"
-        new_content_with_append += "This was appended by the edit tool.\n"
+            if insert_result.get('success'):
+                print(f'Insert Result: {insert_result.get("success")}')
+                print(f'Lines Affected: {insert_result.get("linesAffected")}')
+                print('\nFinal content:')
+                with open(temp_file, 'r') as f:
+                    final_content = f.read()
+                print(final_content)
+            else:
+                print(f'Insert denied: {insert_result.get("error")}')
+        except Exception as e:
+            print(f'Error: {e}')
         
-        result3 = await matimo.execute(
-            "edit",
-            {
-                "filePath": append_content,
-                "newContent": new_content_with_append
-            }
-        )
-        
-        if result3.get("success"):
-            print(f"File appended successfully")
-            with open(append_content, 'r') as f:
-                content = f.read()
-            print(f"Updated content:\n{content}")
-        else:
-            print(f"Failed: {result3.get('error')}")
-        print("---\n")
-
-        # Clean up
-        print("Cleaning up temporary files…")
-        Path(tmp_path).unlink(missing_ok=True)
-        if Path(new_file).exists():
-            Path(new_file).unlink()
-        print("✓ Cleanup complete\n")
+        print('---\n')
 
     except Exception as error:
-        print(f"❌  Error editing file: {error}\n")
+        print(f'Error editing file: {error}')
+        if hasattr(error, 'message'):
+            print(f'Error message: {error.message}')
+    
+    finally:
+        # Clean up temporary file
+        if temp_file and temp_file.exists():
+            try:
+                temp_file.unlink()
+            except Exception as e:
+                print(f'Warning: Could not delete temp file: {e}')
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     asyncio.run(main())

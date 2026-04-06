@@ -9,9 +9,9 @@ description = "Matimo Python SDK examples — Factory, Decorator, and LangChain 
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    # Core SDK — uses installed version (local dev or PyPI)
-    "matimo>=0.1.0",
-    # Provider packages — use installed versions (local dev or PyPI)
+    # Core SDK (installs as `matimo` Python module)
+    "matimo-core>=0.1.0",
+    # Provider packages
     "matimo-slack>=0.1.0",
     "matimo-github>=0.1.0",
     "matimo-gmail>=0.1.0",
@@ -32,6 +32,21 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["rich>=13.0"]
+
+[tool.uv.sources]
+matimo-core      = { workspace = true }
+matimo-slack     = { workspace = true }
+matimo-github    = { workspace = true }
+matimo-gmail     = { workspace = true }
+matimo-hubspot   = { workspace = true }
+matimo-notion    = { workspace = true }
+matimo-postgres  = { workspace = true }
+matimo-mailchimp = { workspace = true }
+matimo-twilio    = { workspace = true }
+
+# Do not install examples/ itself as a wheel — it's a script-only project
+[tool.uv]
+package = false
 
 # ─── Entry points: run examples directly ───────────────────────────────────
 

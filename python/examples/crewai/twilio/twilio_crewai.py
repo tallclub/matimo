@@ -39,7 +39,6 @@ from pathlib import Path
 
 from crewai import Agent, Crew, Process, Task
 from dotenv import load_dotenv
-from langchain_openai import ChatOpenAI
 from matimo_twilio import get_tools_path
 
 from matimo import Matimo
@@ -78,8 +77,6 @@ async def run(task: str) -> None:
     print(f"🔧  {len(crewai_tools)} CrewAI tools ready\n")
 
     # ── 3. Build Agent + Task + Crew ─────────────────────────────────────────
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
-
     agent = Agent(
         role="Communications Monitoring Specialist",
         goal="Monitor and manage SMS and messaging operations, ensuring reliable message delivery.",
@@ -88,7 +85,7 @@ async def run(task: str) -> None:
             "You track message delivery, identify failures, and ensure that all "
             "critical communications reach their intended recipients."
         ),
-        llm=llm,
+        model="gpt-4o-mini",
         tools=crewai_tools,
         verbose=True,
     )

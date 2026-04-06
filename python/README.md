@@ -12,7 +12,7 @@ Matimo is a configuration-driven AI tools SDK. Define tools once in YAML and exe
 ```python
 from matimo import Matimo
 
-matimo = await Matimo.init("./tools")
+matimo = await Matimo.init(auto_discover=True)
 result = await matimo.execute("slack_send_channel_message", {
     "channel": "#general",
     "text": "Hello from Matimo!",
@@ -21,53 +21,81 @@ result = await matimo.execute("slack_send_channel_message", {
 
 ---
 
-## Features
+## Repository Structure
 
-- **YAML-first tool definitions** — parameters, HTTP config, auth, output schema in one file
-- **Three execution types** — `http`, `command`, `function`
-- **Framework integrations** — LangChain, CrewAI, MCP
-- **Policy engine** — risk classification, content validation, HITL approval, audit events
-- **Provider packages** — 112 pre-built tools across 8 services (Slack, GitHub, Gmail, HubSpot, Notion, PostgreSQL, Mailchimp, Twilio)
-- **`@tool` decorator** — class-based agent pattern
-- **Typed, async, Pydantic v2** throughout
+This is a **monorepo** with independent packages managed by `uv` workspaces:
+
+```
+python/
+  packages/
+    core/              # Core SDK (tool loading, execution, policy engine)
+      src/matimo/
+      tests/
+    cli/               # CLI tool manager
+      src/matimo_cli/
+    github/            # GitHub provider (23 tools)
+    gmail/             # Gmail provider (5 tools)
+    hubspot/           # HubSpot provider (55 tools)
+    mailchimp/         # Mailchimp provider (7 tools)
+    notion/            # Notion provider (7 tools)
+    postgres/          # PostgreSQL provider (1 tool)
+    slack/             # Slack provider (19 tools)
+    twilio/            # Twilio provider (4 tools)
+  examples/
+    native/            # Pure Python examples (factory, decorator, provider-specific)
+    langchain/         # LangChain integration examples
+    crewai/            # CrewAI integration examples
+  scripts/
+    build_providers.py # Build all provider packages
+    validate_tools.py  # Validate all YAML tool definitions
+  Makefile             # Developer commands (mirrors TypeScript package.json scripts)
+  pyproject.toml       # Workspace config + shared dev dependencies
+```
+
+Each package has independent versioning and dependencies. The core package is the base; providers depend on it.
 
 ---
 
 ## Installation
 
+### From PyPI (when published)
+
 ```bash
 pip install matimo
-```
-
-**With framework integrations:**
-
-```bash
 pip install "matimo[langchain]"   # LangChain
 pip install "matimo[crewai]"      # CrewAI
 pip install "matimo[mcp]"         # Model Context Protocol
-pip install "matimo[all]"         # Everything
+pip install "matimo[all]"         # All extras
 ```
 
-**With provider tools:**
+### From Local Monorepo (Development)
 
 ```bash
-pip install matimo-slack matimo-github matimo-gmail
+cd python
+uv sync --all-extras --dev   # Install all packages + dev tools
 ```
 
-Available providers: `matimo-slack`, `matimo-github`, `matimo-gmail`, `matimo-hubspot`, `matimo-notion`, `matimo-postgres`, `matimo-mailchimp`, `matimo-twilio`
+Install individual packages:
+```bash
+cd python
+uv run pip install packages/core
+uv run pip install packages/slack
+uv run pip install "packages/core[langchain]"
+```
 
 ---
 
 ## Quick Start
 
-### 1. Factory pattern (simplest)
+### 1. Factory Pattern (Simplest)
 
 ```python
 import asyncio
 from matimo import Matimo
 
 async def main():
-    matimo = await Matimo.init("./tools")
+    # Auto-discover all installed provider tools
+    matimo = await Matimo.init(auto_discover=True)
 
     result = await matimo.execute("calculator", {
         "operation": "add",
@@ -79,83 +107,95 @@ async def main():
 asyncio.run(main())
 ```
 
-### 2. Provider packages
-
-```python
-from matimo import Matimo
-from matimo_slack import get_tools_path
-
-matimo = await Matimo.init(get_tools_path())
-
-await matimo.execute("slack_send_channel_message", {
-    "channel": "#general",
-    "text": "Hello from Matimo!",
-})
+**Run example:**
+```bash
+cd python
+uv run python examples/native/agents/factory_pattern_agent.py
 ```
 
-### 3. `@tool` decorator (class-based agents)
+### 2. Using Provider Tools
 
 ```python
+import asyncio
+from matimo import Matimo
+
+async def main():
+    # Load all Slack tools via auto-discovery
+    matimo = await Matimo.init(auto_discover=True, providers=["slack"])
+
+    await matimo.execute("slack_send_channel_message", {
+        "channel": "#general",
+        "text": "Hello from Matimo!",
+    })
+
+asyncio.run(main())
+```
+
+**Run example:**
+```bash
+cd python
+SLACK_BOT_TOKEN=xoxb-... uv run python examples/native/slack/slack_factory.py
+```
+
+### 3. Class-Based Agent with `@tool` Decorator
+
+```python
+import asyncio
 from matimo import Matimo
 from matimo.decorators import tool, set_global_matimo_instance
 
-matimo = await Matimo.init("./tools")
-set_global_matimo_instance(matimo)
+async def main():
+    matimo = await Matimo.init(auto_discover=True)
+    set_global_matimo_instance(matimo)
 
-class SlackAgent:
-    @tool("slack_send_channel_message")
-    async def notify(self, channel: str, text: str): ...
+    class SlackAgent:
+        @tool("slack_send_channel_message")
+        async def notify(self, channel: str, text: str): ...
 
-    @tool("slack_get_channel_history")
-    async def history(self, channel: str, limit: int = 10): ...
+        @tool("slack_get_channel_history")
+        async def history(self, channel: str, limit: int = 10): ...
 
-agent = SlackAgent()
-await agent.notify(channel="#ops", text="Deploy complete")
+    agent = SlackAgent()
+    await agent.notify(channel="#ops", text="Deploy complete")
+
+asyncio.run(main())
 ```
 
-### 4. LangChain integration
+### 4. LangChain Integration
 
 ```python
-from matimo import Matimo
-from matimo_slack import get_tools_path
+import asyncio
+from matimo import Matimo, convert_tools_to_langchain
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage
 
-matimo = await Matimo.init(get_tools_path())
+async def main():
+    matimo = await Matimo.init(auto_discover=True)
 
-# Convert Matimo tools → OpenAI function schemas
-tools = [
-    {
-        "type": "function",
-        "function": {
-            "name": t.name,
-            "description": t.description,
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    k: {"type": v.type.value, "description": v.description or ""}
-                    for k, v in (t.parameters or {}).items()
-                },
-                "required": [k for k, v in (t.parameters or {}).items() if v.required],
-            },
-        },
-    }
-    for t in matimo.list_tools()
-]
+    # Convert all Matimo tools → LangChain-compatible tool schemas
+    tools = convert_tools_to_langchain(matimo)
 
-llm = ChatOpenAI(model="gpt-4o-mini")
-response = await llm.ainvoke([HumanMessage(content="Send hi to #general")], tools=tools)
+    llm = ChatOpenAI(model="gpt-4o-mini")
+    response = await llm.ainvoke([HumanMessage(content="Send hi to #general")], tools=tools)
 
-if response.tool_calls:
-    for call in response.tool_calls:
-        result = await matimo.execute(call["name"], call["args"])
+    if response.tool_calls:
+        for call in response.tool_calls:
+            result = await matimo.execute(call["name"], call["args"])
+
+asyncio.run(main())
+```
+
+**Run example:**
+```bash
+cd python
+OPENAI_API_KEY=sk-... SLACK_BOT_TOKEN=xoxb-... uv run python examples/langchain/agents/langchain_agent.py
 ```
 
 ---
 
 ## Defining Tools
 
-Tools live in `tools/{tool-name}/definition.yaml`:
+Tools live in `packages/{provider}/tools/{tool-name}/definition.yaml`:
 
 ```yaml
 name: send_notification
@@ -234,10 +274,82 @@ matimo = await Matimo.init("./tools", policy_config=config, on_hitl=approve)
 from matimo import Matimo
 from matimo.mcp.server import MatimoMCPServer
 
-matimo = await Matimo.init("./tools")
-server = MatimoMCPServer(matimo, name="my-agent")
-await server.run()  # stdio MCP transport
+async def main():
+    matimo = await Matimo.init(auto_discover=True)
+    server = MatimoMCPServer(matimo, name="my-agent")
+    await server.run()  # stdio MCP transport
+
+asyncio.run(main())
 ```
+
+---
+
+## Development
+
+The Python SDK uses a `Makefile` for all developer commands, mirroring the TypeScript `package.json` scripts. Run all commands from the `python/` directory.
+
+### Setup
+
+```bash
+cd python
+make install   # uv sync --all-extras --dev
+```
+
+### Makefile Commands
+
+| Command | Description |
+|---------|-------------|
+| `make install` / `make sync` | Install all packages + dev tools |
+| `make test` | Run full test suite |
+| `make test-unit` | Unit tests only |
+| `make test-integration` | Integration tests only |
+| `make test-watch` | Watch mode (TDD) |
+| `make test-coverage` | Coverage report (HTML) |
+| `make lint` | Ruff lint check |
+| `make lint-fix` | Auto-fix lint issues |
+| `make format` | Format code with ruff |
+| `make format-check` | Check formatting (for CI) |
+| `make typecheck` | mypy type checking |
+| `make validate-tools` | Validate all YAML tool definitions |
+| `make build` | Build all provider packages |
+| `make clean` | Remove build artifacts |
+
+### Running Tests
+
+```bash
+cd python
+make test             # All tests
+make test-unit        # packages/core/tests/unit/
+make test-integration # packages/core/tests/integration/
+make test-coverage    # HTML report in htmlcov/
+```
+
+### Lint, Format, Type Check
+
+```bash
+cd python
+make lint        # Check for issues
+make lint-fix    # Auto-fix lint issues
+make format      # Format all code
+make typecheck   # mypy on core package
+```
+
+### Validating Tools
+
+```bash
+cd python
+make validate-tools   # Validates all definition.yaml files across providers
+```
+
+This runs `scripts/validate_tools.py` which walks all `packages/*/tools/*/definition.yaml` files and validates them against the Pydantic schema. Exits non-zero on any violation.
+
+### Adding a New Tool
+
+1. Create tool definition: `packages/{provider}/tools/{tool-name}/definition.yaml`
+2. Update provider's `pyproject.toml` if adding new dependencies
+3. Add tests to `packages/{provider}/tests/`
+4. Run `make validate-tools` to verify the YAML
+5. Run `make test` to ensure all tests pass
 
 ---
 
@@ -252,41 +364,94 @@ await server.run()  # stdio MCP transport
 
 ---
 
-## Project Structure
+## Monorepo Structure
 
 ```
-python/
-├── src/matimo/
-│   ├── core/          # models, loader, registry
-│   ├── executors/     # http, command, function
-│   ├── policy/        # engine, risk classifier, content validator
-│   ├── approval/      # HITL handler
-│   ├── auth/          # credential injection
-│   ├── encodings/     # parameter encodings (MIME, JSON, URL)
-│   ├── integrations/  # LangChain, CrewAI
-│   ├── mcp/           # MCP server
-│   ├── decorators/    # @tool decorator
-│   └── instance.py    # Matimo entry point
-├── providers/         # matimo-slack, matimo-github, …
-├── examples/
-│   ├── factory_example.py
-│   ├── langchain_slack_agent.py
-│   ├── langchain_github_agent.py
-│   └── crewai_project_manager.py
-└── tests/
+packages/
+  core/                    # Core SDK (matimo-core)
+    src/matimo/
+      __init__.py
+      instance.py          # Matimo entry point
+      core/                # models, loader, registry
+      executors/           # http, command, function
+      policy/              # engine, risk classifier, content validator
+      approval/            # HITL handler
+      auth/                # credential injection
+      integrations/        # LangChain, CrewAI
+      mcp/                 # MCP server
+      decorators/          # @tool decorator
+    tests/
+    pyproject.toml
+
+  cli/                     # CLI tool (matimo-cli)
+    src/matimo_cli/
+    tests/
+    pyproject.toml
+
+  {provider}/              # Provider packages (slack, github, gmail, etc.)
+    tools/
+      {tool-name}/
+        definition.yaml
+    src/matimo_{provider}/
+      __init__.py
+      discovery.py         # Tool path discovery
+    tests/
+    pyproject.toml
+
+examples/
+  native/                  # Pure Python examples (factory, decorator, provider-specific)
+    agents/
+    slack/  github/  gmail/  ...
+  langchain/               # LangChain integration examples
+    agents/
+    slack/  github/  gmail/  ...
+  crewai/                  # CrewAI integration examples
+    agents/
+    slack/  github/  gmail/  ...
+
+scripts/
+  build_providers.py       # Build all provider packages
+  validate_tools.py        # Validate all YAML definitions
+
+Makefile                   # Developer commands
+pyproject.toml             # Workspace config + shared dev deps
 ```
 
 ---
 
 ## Contributing
 
-See [CONTRIBUTING.md](../CONTRIBUTING.md). All PRs require tests (`pytest`) and lint (`ruff`).
+See [CONTRIBUTING.md](../CONTRIBUTING.md). All PRs require tests and linting.
+
+### Before Committing
 
 ```bash
-pip install -e ".[dev]"
-pytest
-ruff check src/
+cd python
+
+make test         # Run full test suite
+make lint-fix     # Auto-fix lint issues
+make format       # Format code
+make typecheck    # Type checking
 ```
+
+### Pre-commit Hooks
+
+From the workspace root:
+
+```bash
+husky install
+```
+
+Pre-commit will run linting on Python changes automatically.
+
+---
+
+## Resources
+
+- **Documentation**: See [docs/](../docs/)
+- **Examples**: See [examples/](./examples/)
+- **Contributing**: See [CONTRIBUTING.md](../CONTRIBUTING.md)
+- **Architecture**: See [../docs/architecture/](../docs/architecture/)
 
 ---
 
