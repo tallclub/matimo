@@ -1,6 +1,98 @@
 # Installation & Setup
 
-## Requirements
+## Choose Your SDK
+
+Matimo is available for both **TypeScript/Node.js** and **Python**. Pick the language that matches your project.
+
+| SDK | Package manager | Min version |
+|-----|----------------|-------------|
+| TypeScript | npm / pnpm | Node.js ≥ 18, pnpm ≥ 8.15 |
+| Python | pip / uv | Python ≥ 3.11 |
+
+---
+
+## Python SDK
+
+### Requirements
+
+- **Python**: 3.11 or higher
+- **uv** (recommended) or pip
+
+### Option 1: From PyPI (Recommended for Users)
+
+```bash
+# Core SDK only
+pip install matimo
+# or with uv (recommended)
+uv add matimo
+
+# With LangChain integration
+pip install "matimo[langchain]"
+uv add "matimo[langchain]"
+
+# With CrewAI integration
+pip install "matimo[crewai]"
+
+# With all optional extras
+pip install "matimo[langchain,crewai]"
+```
+
+Provider packages are published separately:
+
+```bash
+pip install matimo-slack matimo-github matimo-gmail
+uv add matimo-slack matimo-github matimo-gmail
+```
+
+### Option 2: From Source (Recommended for Contributors)
+
+```bash
+# Clone the repository
+git clone https://github.com/tallclub/matimo.git
+cd matimo/python
+
+# Install all workspace packages with dev dependencies
+uv sync --dev
+
+# Run tests to verify installation
+uv run -w . pytest packages/core/tests/ -v
+```
+
+### Verify Installation
+
+```python
+# test_install.py
+import asyncio
+from matimo import Matimo
+
+async def main():
+    matimo = await Matimo.init('./tools')
+    print(f"✅ Matimo installed successfully")
+    print(f"📦 Loaded {len(matimo.list_tools())} tools")
+
+asyncio.run(main())
+```
+
+Run it:
+
+```bash
+python test_install.py
+# or with uv
+uv run python test_install.py
+```
+
+### Python Next Steps
+
+- **New Users**: Go to [Quick Start](./QUICK_START.md#python-sdk)
+- **Building Tools**: Read [Tool Specification](../tool-development/YAML_TOOLS.md) (YAML format is identical)
+- **LangChain / CrewAI**: See [LangChain Integration](../framework-integrations/LANGCHAIN.md)
+- **Examples**: See [python/examples/](../../python/examples/)
+
+---
+
+## TypeScript SDK
+
+### Requirements
 
 - **Node.js**: v18.0.0 or higher
 - **pnpm**: v8.15.0 or higher (preferred package manager)
@@ -70,6 +162,39 @@ npx tsx test-install.ts
 
 ## Troubleshooting Installation
 
+### Python: Version Error
+
+```bash
+python --version  # Should be 3.11+
+```
+
+If lower, install Python 3.11+ from [python.org](https://python.org) or via pyenv:
+
+```bash
+pyenv install 3.11
+pyenv global 3.11
+```
+
+### Python: uv Installation
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+uv --version
+```
+
+### Python: Import Error After Install
+
+```bash
+# Verify the package is installed in the right environment
+pip show matimo
+# or
+uv pip show matimo
+```
+
+---
+
+## Troubleshooting Installation (TypeScript)
+
 ### Node.js Version Error
 
 ```bash
@@ -98,6 +223,8 @@ If issues persist, check [Troubleshooting Guide](../troubleshooting/FAQ.md)
 
 ## System Requirements
 
+### TypeScript SDK
+
 | Component  | Requirement                |
 | ---------- | -------------------------- |
 | Node.js    | ≥ 18.0.0                   |
@@ -105,6 +232,15 @@ If issues persist, check [Troubleshooting Guide](../troubleshooting/FAQ.md)
 | TypeScript | ≥ 5.0 (included)           |
 | Disk Space | ~500MB (with node_modules) |
 | Memory     | ≥ 512MB for build          |
+
+### Python SDK
+
+| Component  | Requirement      |
+| ---------- | ---------------- |
+| Python     | ≥ 3.11           |
+| uv         | Latest (recommended) |
+| Disk Space | ~200MB (with venv) |
+| Memory     | ≥ 256MB          |
 
 ## IDE Setup
 

@@ -1,6 +1,241 @@
 # SDK Usage Patterns
 
-Learn the three main ways to use Matimo SDK, from simplest to most powerful.
+Learn the three main ways to use Matimo SDK, from simplest to most powerful. Both **TypeScript** and **Python** SDKs support all three patterns.
+
+- [Python SDK Patterns](#python-sdk)
+- [TypeScript SDK Patterns](#typescript-sdk)
+
+---
+
+## Python SDK
+
+### Pattern 1: Factory Pattern
+
+The simplest way — initialise once, call `execute()` anywhere.
+
+#### Basic Setup
+
+```python
+import asyncio
+from matimo import Matimo
+
+async def main():
+    matimo = await Matimo.init('./tools')
+    # or auto-discover installed provider packages:
+    # matimo = await Matimo.init(auto_discover=True)
+```
+
+#### Execute a Tool
+
+```python
+result = await matimo.execute('calculator', {
+    'operation': 'add',
+    'a': 5,
+    'b': 3,
+})
+print(result)  # {'result': 8}
+```
+
+#### Discover Tools
+
+```python
+# List all tools
+all_tools = matimo.list_tools()
+print(f"Loaded {len(all_tools)} tools")
+
+# Get a specific tool
+tool = matimo.get_tool('calculator')
+print(f"Tool: {tool.name} - {tool.description}")
+
+# Search tools
+results = matimo.search_tools('slack')
+for t in results:
+    print(f"Found: {t.name}")
+```
+
+#### Handle Errors
+
+```python
+from matimo.errors import MatimoError, ErrorCode
+
+try:
+    result = await matimo.execute('slack_send_channel_message', {
+        'channel': '#general',
+        'text': 'Hello',
+    })
+except MatimoError as e:
+    if e.code == ErrorCode.TOOL_NOT_FOUND:
+        print(f"Tool not available: {e.message}")
+    elif e.code == ErrorCode.VALIDATION_FAILED:
+        print(f"Bad parameters: {e.context}")
+    elif e.code == ErrorCode.EXECUTION_FAILED:
+        print(f"Tool error: {e.context}")
+```
+
+#### Multi-Tenant: Per-Call Credentials
+
+```python
+# Pass credentials per call instead of environment variables
+result = await matimo.execute(
+    'slack_send_channel_message',
+    {'channel': '#general', 'text': 'Hello'},
+    credentials={'SLACK_BOT_TOKEN': user_token},
+)
+```
+
+#### Complete Example
+
+```python
+import asyncio
+from matimo import Matimo
+
+async def main():
+    # 1. Initialise
+    matimo = await Matimo.init('./tools')
+
+    # 2. List available tools
+    tools = matimo.list_tools()
+    print(f"📦 Loaded {len(tools)} tools")
+
+    # 3. Execute tool
+    result = await matimo.execute('slack_send_channel_message', {
+        'channel': '#general',
+        'text': 'Hello from Matimo!',
+    })
+    print('✅ Message sent:', result)
+
+asyncio.run(main())
+```
+
+**Best for:** Scripts, CLI tools, async backends, cron jobs, webhooks
+
+---
+
+### Pattern 2: Decorator Pattern
+
+Ideal for class-based agents — bind tools directly to method signatures.
+
+#### Basic Setup
+
+```python
+from matimo import Matimo
+from matimo.decorators import tool, set_global_matimo_instance
+
+async def setup():
+    matimo = await Matimo.init('./tools')
+    # Make instance available to all @tool decorators
+    set_global_matimo_instance(matimo)
+    return matimo
+```
+
+#### Define Methods with @tool
+
+```python
+class EmailBot:
+    @tool('slack_send_channel_message')
+    async def send_message(self, channel: str, text: str):
+        ...  # Body is ignored — decorator executes the tool
+
+    @tool('slack_list_channels')
+    async def list_channels(self):
+        ...
+```
+
+#### How the Decorator Works
+
+```
+1. Call: bot.send_message('#general', 'Hello!')
+2. Decorator maps positional/keyword args to tool params:
+       → {'channel': '#general', 'text': 'Hello!'}
+3. Calls: await matimo.execute('slack_send_channel_message', {...})
+4. Returns result to caller
+```
+
+#### Advanced: Multi-Tool Orchestration
+
+```python
+from matimo import Matimo
+from matimo.decorators import tool, set_global_matimo_instance
+
+class SmartAssistant:
+    @tool('calculator')
+    async def calculate(self, operation: str, a: float, b: float):
+        ...
+
+    @tool('slack_send_channel_message')
+    async def notify_slack(self, channel: str, text: str):
+        ...
+
+    # Orchestration method — not decorated
+    async def run_daily_report(self, channel: str):
+        result = await self.calculate('add', 100, 50)
+        await self.notify_slack(channel, f"Daily total: {result['result']}")
+
+# Usage
+async def main():
+    matimo = await Matimo.init('./tools')
+    set_global_matimo_instance(matimo)
+
+    assistant = SmartAssistant()
+    await assistant.run_daily_report('#reports')
+```
+
+**Best for:** Class-based agents, frameworks using method dispatch
+
+---
+
+### Pattern 3: LangChain / Framework Integration
+
+Convert Matimo tools to LangChain `StructuredTool` objects in one call.
+
+```python
+import asyncio
+from matimo import Matimo
+from matimo.integrations.langchain import convert_tools_to_langchain
+from langchain_openai import ChatOpenAI
+from langchain.agents import AgentExecutor, create_tool_calling_agent
+from langchain_core.prompts import ChatPromptTemplate
+
+async def main():
+    # 1. Load Matimo tools
+    matimo = await Matimo.init(auto_discover=True)
+
+    # 2. Convert to LangChain (one line)
+    lc_tools = convert_tools_to_langchain(
+        matimo.list_tools(),
+        matimo,
+        credentials={'SLACK_BOT_TOKEN': os.environ['SLACK_BOT_TOKEN']},
+    )
+
+    # 3. Build LangChain agent
+    llm = ChatOpenAI(model='gpt-4o-mini')
+    prompt = ChatPromptTemplate.from_messages([
+        ('system', 'You are a helpful assistant.'),
+        ('human', '{input}'),
+        ('placeholder', '{agent_scratchpad}'),
+    ])
+    agent = create_tool_calling_agent(llm, lc_tools, prompt)
+    executor = AgentExecutor(agent=agent, tools=lc_tools)
+
+    result = await executor.ainvoke({'input': 'List all Slack channels'})
+    print(result['output'])
+
+asyncio.run(main())
+```
+
+**Install:**
+
+```bash
+pip install "matimo[langchain]" langchain-openai
+```
+
+**Best for:** AI agents with automatic tool selection (LangChain, CrewAI)
+
+See [LangChain Integration Guide](../framework-integrations/LANGCHAIN.md) for the full reference.
+
+---
+
+## TypeScript SDK
 
 ## Pattern 1: Factory Pattern (Recommended for Simple Use Cases)
 
