@@ -71,7 +71,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.27.1",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "axios": "^1.13.4",
     "dotenv": "^17.2.3",
     "js-yaml": "^4.1.1",
@@ -98,14 +98,14 @@
     "@types/jest": "^30.0.0",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^25.1.0",
-    "@typescript-eslint/eslint-plugin": "^8.54.0",
-    "@typescript-eslint/parser": "^8.54.0",
+    "@typescript-eslint/eslint-plugin": "^8.58.0",
+    "@typescript-eslint/parser": "^8.58.0",
     "eslint": "^9.39.2",
     "husky": "^9.1.7",
     "jest": "^30.2.0",
     "langchain": "^1.2.18",
     "prettier": "^3.8.1",
-    "ts-jest": "^29.4.6",
+    "ts-jest": "^29.4.9",
     "ts-node": "^10.9.2",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
