@@ -89,7 +89,7 @@ class FunctionExecutor:
             else:
                 # Run sync function in executor to avoid blocking the event loop
                 result = await asyncio.wait_for(
-                    asyncio.get_running_loop().run_in_executor(None, run_fn, call_params),
+                    asyncio.get_event_loop().run_in_executor(None, run_fn, call_params),
                     timeout=timeout_s,
                 )
         except TimeoutError:

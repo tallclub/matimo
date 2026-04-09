@@ -87,7 +87,7 @@ class VaultSecretResolver:
         self,
         addr: str | None = None,
         token: str | None = None,
-        secret_path: str = "secret/data/matimo",
+        secret_path: str = "secret/data/matimo",  # noqa: S107
         namespace: str | None = None,
         cache_ttl_ms: int = 300_000,
     ) -> None:
@@ -146,7 +146,7 @@ class AwsSecretsManagerResolver:
     def __init__(
         self,
         region: str | None = None,
-        secret_id: str = "matimo/secrets",
+        secret_id: str = "matimo/secrets",  # noqa: S107
         cache_ttl_ms: int = 300_000,
     ) -> None:
         self._region = region or os.environ.get("AWS_DEFAULT_REGION", "us-east-1")

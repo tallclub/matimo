@@ -21,27 +21,25 @@ import logging
 import time
 import uuid
 from dataclasses import dataclass, field
-from pathlib import Path
+from datetime import UTC
 from typing import Any
 
 from matimo.auth.injection import inject_auth_parameters
 from matimo.core.loader import ToolLoader
-from matimo.core.models import ExecuteOptions, PolicyContext, ToolDefinition
+from matimo.core.models import PolicyContext, ToolDefinition
 from matimo.core.registry import ToolRegistry
 from matimo.errors import ErrorCode, MatimoError
 from matimo.executors.command_executor import CommandExecutor
 from matimo.executors.function_executor import FunctionExecutor
 from matimo.executors.http_executor import HttpExecutor
-from matimo.logging import MatimoLogger, get_global_matimo_logger, setup_logger
+from matimo.logging import MatimoLogger, setup_logger
 from matimo.policy.default_policy import DefaultPolicyEngine, PolicyEngine
 from matimo.policy.types import (
     HITLCallback,
-    MatimoEvent,
     MatimoEventHandler,
     PolicyConfig,
     PolicyDenied,
     PolicyPendingApproval,
-    RiskLevel,
 )
 
 logger = logging.getLogger("matimo")
@@ -141,7 +139,7 @@ class Matimo:
         on_hitl: HITLCallback | None = None,
         log_level: str | None = None,
         log_format: str | None = None,
-    ) -> "Matimo":
+    ) -> Matimo:
         """
         Initialise Matimo by loading tool definitions and configuring the policy engine.
 
@@ -220,7 +218,7 @@ class Matimo:
         credentials: dict[str, str] | None = None,
         context: PolicyContext | None = None,
         approved: bool = False,
-    ) -> Any:
+    ) -> Any:  # noqa: ANN401
         """
         Execute a tool by name.
 
@@ -233,7 +231,7 @@ class Matimo:
             approved:    Skip approval check (use when already confirmed out-of-band).
 
         Returns:
-            Tool execution result.
+            Tool execution result — arbitrary value (JSON, text, etc.).
 
         Raises:
             MatimoError(TOOL_NOT_FOUND)    if tool is not registered.
@@ -376,7 +374,8 @@ class Matimo:
         tool: ToolDefinition,
         params: dict[str, Any],
         credentials: dict[str, str] | None,
-    ) -> Any:
+    ) -> Any:  # noqa: ANN401
+        # Returns Any: tool execution results are arbitrary JSON/values dispatched to executors.
         exec_type = tool.execution.type
         if exec_type == "http":
             return await self._http_executor.execute(tool, params, credentials)
@@ -465,7 +464,7 @@ class _MatimoNamespace:
     @staticmethod
     async def init(
         tool_paths: str | list[str] | None = None,
-        **kwargs: Any,
+        **kwargs: object,
     ) -> Matimo:
         return await Matimo.init(tool_paths, **kwargs)
 
@@ -479,5 +478,5 @@ matimo = _MatimoNamespace()
 
 
 def _now() -> str:
-    from datetime import datetime, timezone
-    return datetime.now(timezone.utc).isoformat()
+    from datetime import datetime
+    return datetime.now(UTC).isoformat()

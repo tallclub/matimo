@@ -12,6 +12,7 @@ import os
 import tempfile
 import uuid
 from dataclasses import asdict, dataclass
+from datetime import UTC
 from pathlib import Path
 
 logger = logging.getLogger("matimo")
@@ -83,14 +84,14 @@ class ApprovalManifest:
         approved_by: str | None = None,
     ) -> ApprovalRecord:
         """Record a new approval for a tool."""
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         signature = self._sign(tool_name, content_hash)
         record = ApprovalRecord(
             name=tool_name,
             hash=content_hash,
             signature=signature,
-            approved_at=datetime.now(timezone.utc).isoformat(),
+            approved_at=datetime.now(UTC).isoformat(),
             approved_by=approved_by,
         )
         self._records[tool_name] = record
@@ -115,7 +116,7 @@ class ApprovalManifest:
     # ------------------------------------------------------------------
 
     def _sign(self, tool_name: str, content_hash: str) -> str:
-        message = f"{tool_name}:{content_hash}".encode("utf-8")
+        message = f"{tool_name}:{content_hash}".encode()
         return hmac.new(self._secret, message, hashlib.sha256).hexdigest()
 
     def _verify_signature(self, record: ApprovalRecord) -> bool:

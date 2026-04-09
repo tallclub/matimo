@@ -56,7 +56,7 @@ class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str | None = None
     expires_in: int  # seconds
-    token_type: str = "Bearer"
+    token_type: str = "Bearer"  # noqa: S105
     scope: str | None = None
 
 

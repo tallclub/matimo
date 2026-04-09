@@ -6,13 +6,13 @@ from __future__ import annotations
 
 import hashlib
 import logging
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 
 logger = logging.getLogger("matimo")
 
 
-class IntegrityAction(str, Enum):
+class IntegrityAction(StrEnum):
     KEEP = "keep"           # content unchanged — skip re-validation
     REVALIDATE = "revalidate"  # content or source changed — re-validate
     VALIDATE = "validate"   # new tool — run full validation

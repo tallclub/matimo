@@ -37,7 +37,8 @@ def _print_table(headers: list[str], rows: list[list[str]]) -> None:
         max(len(h), *(len(r[i]) if i < len(r) else 0 for r in rows))
         for i, h in enumerate(headers)
     ]
-    fmt = lambda row: "│ " + " │ ".join(c.ljust(w) for c, w in zip(row, widths)) + " │"
+    def fmt(row):
+        return "│ " + " │ ".join(c.ljust(w) for c, w in zip(row, widths)) + " │"
 
     print("┌" + "┬".join("─" * (w + 2) for w in widths) + "┐")
     print(fmt(headers))

@@ -4,20 +4,21 @@ Mirrors: packages/core/src/policy/types.ts
 """
 from __future__ import annotations
 
-from enum import Enum
-from typing import Any, Awaitable, Callable, Literal, Union
+from collections.abc import Awaitable, Callable
+from enum import StrEnum
+from typing import Any, Literal
 
 from pydantic import BaseModel
 
 
-class RiskLevel(str, Enum):
+class RiskLevel(StrEnum):
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
     CRITICAL = "critical"
 
 
-class PolicyTier(str, Enum):
+class PolicyTier(StrEnum):
     AUTO = "auto"
     APPROVAL_REQUIRED = "approval-required"
     BLOCKED = "blocked"
@@ -45,7 +46,7 @@ class PolicyPendingApproval(BaseModel):
     tool_name: str | None = None
 
 
-PolicyDecision = Union[PolicyAllowed, PolicyDenied, PolicyPendingApproval]
+PolicyDecision = PolicyAllowed | PolicyDenied | PolicyPendingApproval
 
 
 # ---------------------------------------------------------------------------
@@ -173,18 +174,18 @@ class ToolsReloadedEvent(BaseModel):
     timestamp: str
 
 
-MatimoEvent = Union[
-    ToolCreatedEvent,
-    ToolApprovedEvent,
-    ToolRejectedEvent,
-    ToolRevokedEvent,
-    ToolExecutedEvent,
-    ToolExecutionDeniedEvent,
-    ToolQuarantinedEvent,
-    ToolQuarantineApprovedEvent,
-    ToolQuarantineRejectedEvent,
-    PolicyReloadedEvent,
-    ToolsReloadedEvent,
-]
+MatimoEvent = (
+    ToolCreatedEvent
+    | ToolApprovedEvent
+    | ToolRejectedEvent
+    | ToolRevokedEvent
+    | ToolExecutedEvent
+    | ToolExecutionDeniedEvent
+    | ToolQuarantinedEvent
+    | ToolQuarantineApprovedEvent
+    | ToolQuarantineRejectedEvent
+    | PolicyReloadedEvent
+    | ToolsReloadedEvent
+)
 
 MatimoEventHandler = Callable[[MatimoEvent], None]

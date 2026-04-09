@@ -128,7 +128,7 @@ def _scan_string(value: str | None, out: set[str]) -> None:
         out.add(m.group(1))
 
 
-def _scan_object(obj: Any, out: set[str]) -> None:
+def _scan_object(obj: object, out: set[str]) -> None:
     if obj is None:
         return
     if isinstance(obj, str):

@@ -147,7 +147,7 @@ def cosine_similarity(a: list[float], b: list[float]) -> float:
     if len(a) != len(b) or not a:
         return 0.0
 
-    dot = sum(ai * bi for ai, bi in zip(a, b))
+    dot = sum(ai * bi for ai, bi in zip(a, b, strict=False))
     norm_a = math.sqrt(sum(ai * ai for ai in a))
     norm_b = math.sqrt(sum(bi * bi for bi in b))
 

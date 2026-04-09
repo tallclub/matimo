@@ -97,7 +97,7 @@ class DefaultPolicyEngine:
             )
 
         # 2. Draft tools blocked in production without admin role
-        if (tool.status.value == "draft" or tool.status.value == "draft") and _is_production(env) and "admin" not in roles:
+        if tool.status.value == "draft" and _is_production(env) and "admin" not in roles:
             return PolicyDenied(
                 allowed=False,
                 reason=f"Tool '{tool.name}' is in draft status and cannot be used in production",

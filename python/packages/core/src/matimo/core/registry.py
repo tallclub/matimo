@@ -5,7 +5,7 @@ Mirrors: packages/core/src/core/tool-registry.ts (ToolRegistry class)
 from __future__ import annotations
 
 import logging
-from typing import Iterator
+from collections.abc import Iterator
 
 from matimo.core.models import ToolDefinition
 from matimo.errors import ErrorCode, MatimoError

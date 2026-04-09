@@ -40,16 +40,16 @@ class MatimoLogger:
 
     # --- levelled methods ---
 
-    def debug(self, message: str, **meta: Any) -> None:
+    def debug(self, message: str, **meta: object) -> None:
         self._logger.debug(message, extra={"meta": meta} if meta else {})
 
-    def info(self, message: str, **meta: Any) -> None:
+    def info(self, message: str, **meta: object) -> None:
         self._logger.info(message, extra={"meta": meta} if meta else {})
 
-    def warn(self, message: str, **meta: Any) -> None:
+    def warn(self, message: str, **meta: object) -> None:
         self._logger.warning(message, extra={"meta": meta} if meta else {})
 
-    def error(self, message: str, **meta: Any) -> None:
+    def error(self, message: str, **meta: object) -> None:
         self._logger.error(message, extra={"meta": meta} if meta else {})
 
     def is_silent(self) -> bool:

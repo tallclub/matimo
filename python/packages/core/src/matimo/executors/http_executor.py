@@ -37,18 +37,11 @@ class HttpExecutor:
         tool: ToolDefinition,
         params: dict[str, Any],
         credentials: dict[str, str] | None = None,
-    ) -> Any:
+    ) -> Any:  # noqa: ANN401
         """
         Execute an HTTP tool.
 
-        Args:
-            tool:        The validated ToolDefinition (type: http).
-            params:      Caller-supplied parameter values.
-            credentials: Per-call credential overrides (multi-tenant).
-                         Keys match env var names referenced in YAML.
-
-        Returns:
-            Parsed JSON response body or raw text.
+        Returns Any because tools return parsed JSON (dict/list/str/number) or raw text.
 
         Raises:
             MatimoError on validation, timeout, or HTTP error.
@@ -99,7 +92,7 @@ class HttpExecutor:
             try:
                 query_params[k] = self._template(v, working_params, creds)
             except MatimoError as exc:
-                if exc.error_code == ErrorCode.INVALID_PARAMETER:
+                if exc.code == ErrorCode.INVALID_PARAMETER:
                     # Optional param not provided — omit from query string
                     param_def = (tool.parameters or {}).get(k)
                     is_optional = param_def is None or not getattr(param_def, "required", True)
@@ -198,10 +191,11 @@ class HttpExecutor:
 
     def _template_object(
         self,
-        obj: Any,
+        obj: object,
         params: dict[str, Any],
         creds: dict[str, str],
-    ) -> Any:
+    ) -> Any:  # noqa: ANN401
+        # Returns the same JSON-like structure (str/dict/list/None) — Any is accurate.
         """Recursively template strings within dicts/lists."""
         if obj is None:
             return None

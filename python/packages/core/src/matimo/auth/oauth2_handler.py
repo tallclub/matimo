@@ -251,8 +251,8 @@ class OAuth2Handler:
                         "token": token.access_token,
                     },
                 )
-        except Exception:
-            # Log but don't fail — token may already be revoked
+        except Exception:  # noqa: BLE001, S110
+            # Intentionally silent — token may already be revoked before this call
             pass
 
     def is_token_valid(self, token: OAuth2Token) -> bool:

@@ -4,11 +4,11 @@ Mirrors: packages/core/src/errors/matimo-error.ts
 """
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 
-class ErrorCode(str, Enum):
+class ErrorCode(StrEnum):
     """Structured error codes — mirrors TypeScript ErrorCode enum."""
 
     INVALID_SCHEMA = "INVALID_SCHEMA"
@@ -91,6 +91,6 @@ def from_http_error(error: Exception, message: str = "HTTP request failed") -> M
         details["status_code"] = getattr(response, "status_code", None)
         try:
             details["body"] = response.text[:500]  # truncate — never log full body
-        except Exception:
-            pass
+        except Exception:  # noqa: BLE001, S110
+            pass  # response.text access failed — continue without body
     return MatimoError(message, ErrorCode.EXECUTION_FAILED, details, cause=error)

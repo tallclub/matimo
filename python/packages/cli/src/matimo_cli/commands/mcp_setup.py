@@ -9,7 +9,6 @@ import json
 import os
 import re
 import sys
-from pathlib import Path
 
 _AUTH_PATTERNS = {"TOKEN", "SECRET", "KEY", "PASSWORD", "CREDENTIAL", "AUTH"}
 _PLACEHOLDER_RE = re.compile(r"\{(\w+)\}")

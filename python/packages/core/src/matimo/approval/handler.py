@@ -7,8 +7,8 @@ from __future__ import annotations
 import fnmatch
 import logging
 import os
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import Awaitable, Callable
 
 logger = logging.getLogger("matimo")
 

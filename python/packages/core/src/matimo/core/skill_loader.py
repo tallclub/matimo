@@ -124,8 +124,8 @@ def parse_skill_content(content: str) -> ParsedSkill:
             raw=content,
         )
 
-    assert frontmatter is not None
-    assert body is not None
+    assert frontmatter is not None  # noqa: S101
+    assert body is not None  # noqa: S101
 
     parsed_content = parse_skill_sections(body)
 
@@ -152,7 +152,7 @@ def extract_skill_metadata(
     if error:
         return False, None, error
 
-    assert frontmatter is not None
+    assert frontmatter is not None  # noqa: S101
     return (
         True,
         SkillSummary(

@@ -16,23 +16,24 @@ import asyncio
 import functools
 import inspect
 import logging
-from typing import TYPE_CHECKING, Any, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from matimo.instance import Matimo
 
 logger = logging.getLogger("matimo")
 
-_global_instance: "Matimo | None" = None
+_global_instance: Matimo | None = None
 
 
-def set_global_matimo_instance(instance: "Matimo") -> None:
+def set_global_matimo_instance(instance: Matimo) -> None:
     """Set the global Matimo instance used by the @tool decorator."""
     global _global_instance
     _global_instance = instance
 
 
-def get_global_matimo_instance() -> "Matimo | None":
+def get_global_matimo_instance() -> Matimo | None:
     """Return the current global Matimo instance."""
     return _global_instance
 
@@ -54,13 +55,15 @@ def tool(tool_name: str) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
 
     def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
         @functools.wraps(fn)
-        async def async_wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
+        async def async_wrapper(self: object, *args: object, **kwargs: object) -> Any:  # noqa: ANN401
+            # Return type is Any: tool execution results are arbitrary JSON/values.
             instance = _resolve_instance(self)
             params = _build_params(fn, args, kwargs)
             return await instance.execute(tool_name, params)
 
         @functools.wraps(fn)
-        def sync_wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
+        def sync_wrapper(self: object, *args: object, **kwargs: object) -> Any:  # noqa: ANN401
+            # Return type is Any: tool execution results are arbitrary JSON/values.
             instance = _resolve_instance(self)
             params = _build_params(fn, args, kwargs)
             # Run async execute synchronously
@@ -90,7 +93,7 @@ def tool(tool_name: str) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
 # ---------------------------------------------------------------------------
 
 
-def _resolve_instance(self: Any) -> "Matimo":
+def _resolve_instance(self: object) -> Matimo:
     """
     Resolve the Matimo instance from the object's matimo attribute or the global.
     """

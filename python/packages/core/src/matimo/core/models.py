@@ -7,18 +7,17 @@ All field names use snake_case matching the YAML keys.
 """
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
-
 
 # ---------------------------------------------------------------------------
 # Parameter
 # ---------------------------------------------------------------------------
 
 
-class ParameterType(str, Enum):
+class ParameterType(StrEnum):
     STRING = "string"
     NUMBER = "number"
     BOOLEAN = "boolean"
@@ -47,7 +46,7 @@ class Parameter(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class AuthType(str, Enum):
+class AuthType(StrEnum):
     NONE = "none"
     API_KEY = "api_key"
     BEARER = "bearer"
@@ -56,7 +55,7 @@ class AuthType(str, Enum):
     CUSTOM = "custom"
 
 
-class AuthLocation(str, Enum):
+class AuthLocation(StrEnum):
     HEADER = "header"
     QUERY = "query"
     BODY = "body"
@@ -82,7 +81,7 @@ class AuthConfig(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class ToolStatus(str, Enum):
+class ToolStatus(StrEnum):
     """Tool lifecycle status. Mirrors TS tool status literals."""
 
     STABLE = "stable"
@@ -96,7 +95,7 @@ class ToolStatus(str, Enum):
 # ---------------------------------------------------------------------------
 
 
-class ParameterEncodingType(str, Enum):
+class ParameterEncodingType(StrEnum):
     """Supported encoding types for parameter_encoding configs."""
 
     MIME_RFC2822_BASE64URL = "mime_rfc2822_base64url"
@@ -147,7 +146,8 @@ class HttpExecution(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def _normalise_method(cls, data: Any) -> Any:
+    def _normalise_method(cls, data: Any) -> Any:  # noqa: ANN401
+        # Pydantic passes raw (pre-validation) input here; Any is the correct type per pydantic docs.
         if isinstance(data, dict) and "method" in data:
             data["method"] = str(data["method"]).upper()
         return data
