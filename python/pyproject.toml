@@ -5,6 +5,7 @@ description = "Matimo Python monorepo workspace"
 requires-python = ">=3.11"
 dependencies = [
     "matimo-core",
+    "matimo-cli",
 ]
 
 [dependency-groups]
@@ -24,6 +25,7 @@ dev = [
 members = [
     "packages/core",
     "packages/cli",
+    "packages/matimo",
     "packages/github",
     "packages/gmail",
     "packages/hubspot",
@@ -37,6 +39,7 @@ members = [
 
 [tool.uv.sources]
 matimo-core = { workspace = true }
+matimo = { workspace = true }
 matimo-cli = { workspace = true }
 matimo-github = { workspace = true }
 matimo-gmail = { workspace = true }
