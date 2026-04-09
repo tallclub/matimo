@@ -128,6 +128,46 @@ class TestSetupLogger:
         # Should not raise, defaults to INFO
         assert isinstance(log, MatimoLogger)
 
+    def test_setup_logger_reconfigures_handlers_on_second_call(self) -> None:
+        # Clean up existing matimo logger
+        stdlib_logger = logging.getLogger("matimo")
+        for h in list(stdlib_logger.handlers):
+            stdlib_logger.removeHandler(h)
+
+        # First call: set to INFO, simple format
+        log1 = setup_logger("info", log_format="simple")
+        assert log1.level == logging.INFO
+        handler1 = stdlib_logger.handlers[0]
+        assert isinstance(handler1.formatter, logging.Formatter)
+        assert not isinstance(handler1.formatter, _JsonFormatter)
+
+        # Second call: change to DEBUG, JSON format
+        log2 = setup_logger("debug", log_format="json")
+        assert log2.level == logging.DEBUG
+        # Should still have only 1 handler (reconfigured, not added)
+        assert len(stdlib_logger.handlers) == 1
+        handler2 = stdlib_logger.handlers[0]
+        assert isinstance(handler2.formatter, _JsonFormatter)
+        assert handler2.level == logging.DEBUG
+
+    def test_setup_logger_updates_handler_level_on_reconfigure(self) -> None:
+        stdlib_logger = logging.getLogger("matimo")
+        for h in list(stdlib_logger.handlers):
+            stdlib_logger.removeHandler(h)
+
+        # First call: ERROR level
+        log1 = setup_logger("error")
+        assert log1.level == logging.ERROR
+        handler1 = stdlib_logger.handlers[0]
+        assert handler1.level == logging.ERROR
+
+        # Second call: INFO level
+        log2 = setup_logger("info")
+        assert log2.level == logging.INFO
+        handler2 = stdlib_logger.handlers[0]
+        # Handler should have updated level
+        assert handler2.level == logging.INFO
+
 
 class TestGlobalMatimoLogger:
     def setup_method(self) -> None:
@@ -210,6 +250,68 @@ class TestJsonFormatter:
         parsed = json.loads(output)
         assert "exception" in parsed
         assert "ValueError" in parsed["exception"]
+
+    def test_token_redacted_in_meta(self) -> None:
+        import json
+        formatter = _JsonFormatter()
+        record = self._make_record()
+        record.meta = {"token": "secret_token_abc123", "user": "john"}  # type: ignore[attr-defined]
+        output = formatter.format(record)
+        parsed = json.loads(output)
+        assert parsed["meta"]["token"] == "[REDACTED]"
+        assert parsed["meta"]["user"] == "john"
+
+    def test_api_key_redacted_in_meta(self) -> None:
+        import json
+        formatter = _JsonFormatter()
+        record = self._make_record()
+        record.meta = {"api_key": "key_xyz789", "status": "active"}  # type: ignore[attr-defined]
+        output = formatter.format(record)
+        parsed = json.loads(output)
+        assert parsed["meta"]["api_key"] == "[REDACTED]"
+        assert parsed["meta"]["status"] == "active"
+
+    def test_password_redacted_in_meta(self) -> None:
+        import json
+        formatter = _JsonFormatter()
+        record = self._make_record()
+        record.meta = {"password": "super_secret", "username": "admin"}  # type: ignore[attr-defined]
+        output = formatter.format(record)
+        parsed = json.loads(output)
+        assert parsed["meta"]["password"] == "[REDACTED]"
+        assert parsed["meta"]["username"] == "admin"
+
+    def test_multiple_sensitive_keys_redacted(self) -> None:
+        import json
+        formatter = _JsonFormatter()
+        record = self._make_record()
+        record.meta = {  # type: ignore[attr-defined]
+            "access_token": "token1",
+            "refresh_token": "token2",
+            "api_secret": "secret1",
+            "client_secret": "secret2",
+            "webhook_secret": "secret3",
+            "data": "public",
+        }
+        output = formatter.format(record)
+        parsed = json.loads(output)
+        assert parsed["meta"]["access_token"] == "[REDACTED]"
+        assert parsed["meta"]["refresh_token"] == "[REDACTED]"
+        assert parsed["meta"]["api_secret"] == "[REDACTED]"
+        assert parsed["meta"]["client_secret"] == "[REDACTED]"
+        assert parsed["meta"]["webhook_secret"] == "[REDACTED]"
+        assert parsed["meta"]["data"] == "public"
+
+    def test_case_insensitive_secret_detection(self) -> None:
+        import json
+        formatter = _JsonFormatter()
+        record = self._make_record()
+        record.meta = {"SECRET": "hidden", "Token": "also_hidden", "data": "visible"}  # type: ignore[attr-defined]
+        output = formatter.format(record)
+        parsed = json.loads(output)
+        assert parsed["meta"]["SECRET"] == "[REDACTED]"
+        assert parsed["meta"]["Token"] == "[REDACTED]"
+        assert parsed["meta"]["data"] == "visible"
 
 
 # Need to import logging.handlers for MemoryHandler used in tests
