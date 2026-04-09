@@ -79,7 +79,7 @@ async def main():
 asyncio.run(main())
 ```
 
-See [Three Integration Patterns](#four-integration-patterns) and [examples/](./examples) for more. Python SDK reference: [python/README.md](./python/README.md).
+See [Four Integration Patterns](#four-integration-patterns) and [examples/](./examples) for more. Python SDK reference: [python/README.md](./python/README.md).
 
 ## What's Included
 
