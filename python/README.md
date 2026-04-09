@@ -173,7 +173,7 @@ async def main():
     matimo = await Matimo.init(auto_discover=True)
 
     # Convert all Matimo tools → LangChain-compatible tool schemas
-    tools = convert_tools_to_langchain(matimo)
+    tools = convert_tools_to_langchain(matimo.list_tools(), matimo)
 
     llm = ChatOpenAI(model="gpt-4o-mini")
     response = await llm.ainvoke([HumanMessage(content="Send hi to #general")], tools=tools)
