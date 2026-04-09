@@ -13,7 +13,7 @@
   web-factory web-decorator web-langchain \
   edit-factory edit-decorator edit-langchain \
   credentials policy skills meta-flow \
-  agent-langchain agent-crewai agent-langchain-skills-policy
+  agent-langchain agent-crewai multi-agent-crewai agent-langchain-skills-policy
 
 # ── Detect the right Python runner ──────────────────────────────────────────
 PYTHON := $(shell command -v uv >/dev/null 2>&1 && echo "uv run python" || echo "python")
@@ -27,7 +27,8 @@ help:
 	@echo ""
 	@echo "  ─ Generic agents ──────────────────────────"
 	@echo "  make agent-langchain      LangChain ReAct agent"
-	@echo "  make agent-crewai         CrewAI agent"
+	@echo "  make agent-crewai         CrewAI single-agent (all tools)"
+	@echo "  make multi-agent-crewai   CrewAI multi-agent crew (role-based tools)"
 	@echo ""
 	@echo "  ─ Slack ───────────────────────────────────"
 	@echo "  make slack-factory        Direct tool execution (native)"
@@ -118,6 +119,10 @@ agent-langchain:
 	$(PYTHON) langchain/agents/langchain_agent.py
 agent-crewai:
 	$(PYTHON) crewai/agents/crewai_agent.py
+multi-agent-crewai:
+	$(PYTHON) crewai/agents/multi_agent_crew.py
+multi-agent-crewai:
+	$(PYTHON) crewai/agents/multi_agent_crew.py
 
 # ── Slack ─────────────────────────────────────────────────────────────────────
 slack-factory:
