@@ -24,7 +24,7 @@ from matimo_cli.commands.mcp import mcp_command
 from matimo_cli.commands.review import review_command
 from matimo_cli.commands.search import search_command
 
-_VERSION = "0.1.0"
+_VERSION = "0.1.0-alpha.14"
 
 _HELP = f"""\
 🔨 Matimo CLI — Tool Package Manager  (v{_VERSION})

@@ -1,6 +1,6 @@
 {
   "name": "@matimo/github",
-  "version": "0.1.0-alpha.13",
+  "version": "0.1.0-alpha.14",
   "description": "GitHub API tools for Matimo - Full-featured GitHub integration with OAuth2 and PAT support",
   "type": "module",
   "files": [

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "matimo-core"
-version = "0.1.0"
+version = "0.1.0-alpha.14"
 description = "Configuration-driven AI tools SDK — core module"
 readme = "README.md"
 license = { text = "MIT" }

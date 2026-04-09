@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "matimo-mailchimp"
-version = "0.1.0"
+version = "0.1.0-alpha.14"
 description = "Matimo provider — Mailchimp tools (campaigns, lists, members)"
 readme = "README.md"
 license = { text = "MIT" }
