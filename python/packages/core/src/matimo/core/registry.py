@@ -15,8 +15,10 @@ logger = logging.getLogger("matimo")
 
 class ToolRegistry:
     """
-    Thread-safe in-memory store of ToolDefinition objects.
+    In-memory store of ToolDefinition objects.
     Mirrors: ToolRegistry in tool-registry.ts
+
+    NOT thread-safe: use register_or_replace() for concurrent loads.
     """
 
     def __init__(self) -> None:
@@ -29,8 +31,8 @@ class ToolRegistry:
 
     def register(self, tool: ToolDefinition) -> None:
         """
-        Register a single tool. Raises MatimoError(INVALID_SCHEMA) on duplicate
-        unless the existing entry has the same name (treated as idempotent reload).
+        Register a single tool. Raises MatimoError(INVALID_SCHEMA) on duplicate.
+        For idempotent reload, use register_or_replace().
         """
         if tool.name in self._tools:
             raise MatimoError(
