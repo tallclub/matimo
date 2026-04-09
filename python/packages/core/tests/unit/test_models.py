@@ -20,28 +20,28 @@ from matimo.core.models import (
 
 
 class TestParameter:
-    def test_required_defaults_to_false_or_none(self):
+    def test_required_defaults_to_false_or_none(self) -> None:
         p = Parameter(type=ParameterType.STRING, description="desc")
         # required is Optional[bool], defaults to None (falsy)
         assert not p.required
 
-    def test_all_parameter_types_valid(self):
+    def test_all_parameter_types_valid(self) -> None:
         for pt in ParameterType:
             p = Parameter(type=pt, description="x")
             assert p.type == pt
 
-    def test_enum_values_as_strings_list(self):
+    def test_enum_values_as_strings_list(self) -> None:
         p = Parameter(type=ParameterType.STRING, description="x", enum=["a", "b"])
         assert p.enum == ["a", "b"]
 
-    def test_unknown_field_ignored_extra_allow(self):
+    def test_unknown_field_ignored_extra_allow(self) -> None:
         # Models use extra='allow' for forward-compat
         p = Parameter(type=ParameterType.STRING, description="x", future_field="y")
         assert p.future_field == "y"  # type: ignore[attr-defined]
 
 
 class TestHttpExecution:
-    def test_minimal_http(self):
+    def test_minimal_http(self) -> None:
         e = HttpExecution(type="http", method="GET", url="https://example.com")
         assert e.method == "GET"
         assert e.url == "https://example.com"
@@ -49,19 +49,19 @@ class TestHttpExecution:
         assert e.query_params == {}
         assert e.body is None
 
-    def test_method_uppercased(self):
+    def test_method_uppercased(self) -> None:
         e = HttpExecution(type="http", method="post", url="https://x.com")
         assert e.method == "POST"
 
-    def test_type_must_be_http(self):
+    def test_type_must_be_http(self) -> None:
         with pytest.raises(ValidationError):
             HttpExecution(type="command", method="GET", url="https://x.com")
 
-    def test_body_dict(self):
+    def test_body_dict(self) -> None:
         e = HttpExecution(type="http", method="POST", url="https://x.com", body={"k": "v"})
         assert e.body == {"k": "v"}
 
-    def test_parameter_encodings_list(self):
+    def test_parameter_encodings_list(self) -> None:
         enc = ParameterEncoding(param="payload", encoding=ParameterEncodingType.JSON)
         e = HttpExecution(
             type="http", method="POST", url="https://x.com", parameter_encodings=[enc]
@@ -71,33 +71,33 @@ class TestHttpExecution:
 
 
 class TestCommandExecution:
-    def test_minimal_command(self):
+    def test_minimal_command(self) -> None:
         e = CommandExecution(type="command", command="echo")
         assert e.command == "echo"
         assert e.args == []
         assert e.timeout == 30_000
 
-    def test_type_must_be_command(self):
+    def test_type_must_be_command(self) -> None:
         with pytest.raises(ValidationError):
             CommandExecution(type="http", command="echo")
 
-    def test_custom_timeout(self):
+    def test_custom_timeout(self) -> None:
         e = CommandExecution(type="command", command="sleep", timeout=5000)
         assert e.timeout == 5000
 
 
 class TestFunctionExecution:
-    def test_minimal_function(self):
+    def test_minimal_function(self) -> None:
         e = FunctionExecution(type="function", code="path/to/func.py")
         assert e.code == "path/to/func.py"
 
-    def test_type_must_be_function(self):
+    def test_type_must_be_function(self) -> None:
         with pytest.raises(ValidationError):
             FunctionExecution(type="command", code="x.py")
 
 
 class TestToolDefinition:
-    def test_minimal_required_fields(self):
+    def test_minimal_required_fields(self) -> None:
         tool = ToolDefinition(
             name="my_tool",
             description="Test",
@@ -110,18 +110,18 @@ class TestToolDefinition:
         assert tool.tags == []
         assert tool.requires_approval is False
 
-    def test_missing_name_raises(self):
+    def test_missing_name_raises(self) -> None:
         with pytest.raises(ValidationError):
             ToolDefinition(
                 description="No name",
                 execution=HttpExecution(type="http", method="GET", url="https://x.com"),
             )
 
-    def test_missing_execution_raises(self):
+    def test_missing_execution_raises(self) -> None:
         with pytest.raises(ValidationError):
             ToolDefinition(name="tool", description="No exec")
 
-    def test_deprecated_status(self):
+    def test_deprecated_status(self) -> None:
         tool = ToolDefinition(
             name="old_tool",
             description="Deprecated",
@@ -130,7 +130,7 @@ class TestToolDefinition:
         )
         assert tool.status == ToolStatus.DEPRECATED
 
-    def test_discriminated_union_http(self):
+    def test_discriminated_union_http(self) -> None:
         tool = ToolDefinition(
             name="t",
             description="d",
@@ -138,7 +138,7 @@ class TestToolDefinition:
         )
         assert isinstance(tool.execution, HttpExecution)
 
-    def test_discriminated_union_command(self):
+    def test_discriminated_union_command(self) -> None:
         tool = ToolDefinition(
             name="t",
             description="d",
@@ -146,7 +146,7 @@ class TestToolDefinition:
         )
         assert isinstance(tool.execution, CommandExecution)
 
-    def test_discriminated_union_function(self):
+    def test_discriminated_union_function(self) -> None:
         tool = ToolDefinition(
             name="t",
             description="d",
@@ -154,7 +154,7 @@ class TestToolDefinition:
         )
         assert isinstance(tool.execution, FunctionExecution)
 
-    def test_set_definition_path(self):
+    def test_set_definition_path(self) -> None:
         tool = ToolDefinition(
             name="t",
             description="d",
@@ -164,7 +164,7 @@ class TestToolDefinition:
         tool.set_definition_path("/path/to/definition.yaml")
         assert tool.definition_path == "/path/to/definition.yaml"
 
-    def test_auth_config(self):
+    def test_auth_config(self) -> None:
         auth = AuthConfig(type=AuthType.API_KEY, location="header", name="Authorization")
         tool = ToolDefinition(
             name="t",
@@ -175,7 +175,7 @@ class TestToolDefinition:
         assert tool.authentication is not None
         assert tool.authentication.type == AuthType.API_KEY
 
-    def test_requires_approval_flag(self):
+    def test_requires_approval_flag(self) -> None:
         tool = ToolDefinition(
             name="t",
             description="d",
@@ -184,7 +184,7 @@ class TestToolDefinition:
         )
         assert tool.requires_approval is True
 
-    def test_tags_list(self):
+    def test_tags_list(self) -> None:
         tool = ToolDefinition(
             name="t",
             description="d",

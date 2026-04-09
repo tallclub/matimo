@@ -3,19 +3,18 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import httpx
 import pytest
 import respx
-import httpx
 
 from matimo.instance import Matimo
-
 
 FIXTURES_DIR = Path(__file__).parent.parent / "fixtures"
 
 
 class TestMatimoInitFromFixtures:
     @pytest.mark.asyncio
-    async def test_init_loads_all_fixture_tools(self):
+    async def test_init_loads_all_fixture_tools(self) -> None:
         matimo = await Matimo.init(str(FIXTURES_DIR))
         tools = matimo.list_tools()
         assert len(tools) >= 4
@@ -25,7 +24,7 @@ class TestMatimoInitFromFixtures:
         assert "echo_tool" in names
 
     @pytest.mark.asyncio
-    async def test_search_after_init(self):
+    async def test_search_after_init(self) -> None:
         matimo = await Matimo.init(str(FIXTURES_DIR))
         results = matimo.search_tools("slack")
         assert len(results) >= 1
@@ -33,7 +32,7 @@ class TestMatimoInitFromFixtures:
 
     @respx.mock
     @pytest.mark.asyncio
-    async def test_execute_echo_tool(self):
+    async def test_execute_echo_tool(self) -> None:
         respx.get(url__regex=r"https://httpbin.org/get.*").mock(
             return_value=httpx.Response(200, json={"args": {"message": "hello"}, "ok": True})
         )
@@ -42,7 +41,7 @@ class TestMatimoInitFromFixtures:
         assert result is not None
 
     @pytest.mark.asyncio
-    async def test_get_tool_definition(self):
+    async def test_get_tool_definition(self) -> None:
         matimo = await Matimo.init(str(FIXTURES_DIR))
         tool = matimo.get_tool("calculator")
         assert tool is not None
@@ -52,7 +51,7 @@ class TestMatimoInitFromFixtures:
 
 class TestMatimoReload:
     @pytest.mark.asyncio
-    async def test_reload_after_adding_tool(self, tmp_path: Path):
+    async def test_reload_after_adding_tool(self, tmp_path: Path) -> None:
         tool_a_dir = tmp_path / "tool_a"
         tool_a_dir.mkdir()
         (tool_a_dir / "definition.yaml").write_text(

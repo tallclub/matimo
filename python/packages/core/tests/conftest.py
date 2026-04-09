@@ -4,10 +4,13 @@ Shared pytest fixtures for the Matimo Python SDK test suite.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING
 
 import pytest
 import pytest_asyncio
+
+if TYPE_CHECKING:
+    from matimo.instance import Matimo
 
 from matimo.core.loader import ToolLoader
 from matimo.core.models import (
@@ -162,13 +165,13 @@ def loader() -> ToolLoader:
 
 
 @pytest_asyncio.fixture()
-async def matimo_instance(http_tool: ToolDefinition):
+async def matimo_instance(http_tool: ToolDefinition) -> Matimo:
     """A Matimo instance pre-loaded with the echo_tool fixture."""
-    from matimo.instance import Matimo
-    from matimo.core.registry import ToolRegistry
     from matimo.core.loader import ToolLoader
-    from matimo.policy.default_policy import DefaultPolicyEngine
+    from matimo.core.registry import ToolRegistry
+    from matimo.instance import Matimo
     from matimo.logging import setup_logger
+    from matimo.policy.default_policy import DefaultPolicyEngine
 
     reg = ToolRegistry()
     reg.register(http_tool)
