@@ -34,11 +34,52 @@ def apply_parameter_encodings(
     """
     result = dict(params)
 
-    for enc in encodings:
-        source_keys: list[str] = enc.get("source", [])
-        target_key: str = enc.get("target", "")
-        encoding: str = enc.get("encoding", "")
-        options: dict[str, Any] = enc.get("options") or {}
+    for index, enc in enumerate(encodings):
+        # Validate source
+        source_keys_raw = enc.get("source")
+        if not isinstance(source_keys_raw, list) or not source_keys_raw:
+            raise MatimoError(
+                f"Invalid parameter encoding config at index {index}: 'source' must be a non-empty list.",
+                ErrorCode.INVALID_PARAMETER,
+                {"index": index, "source": source_keys_raw},
+            )
+        if any(not isinstance(k, str) or not k for k in source_keys_raw):
+            raise MatimoError(
+                f"Invalid parameter encoding config at index {index}: all 'source' entries must be non-empty strings.",
+                ErrorCode.INVALID_PARAMETER,
+                {"index": index, "source": source_keys_raw},
+            )
+        source_keys: list[str] = source_keys_raw
+
+        # Validate target
+        target_key_raw = enc.get("target")
+        if not isinstance(target_key_raw, str) or not target_key_raw:
+            raise MatimoError(
+                f"Invalid parameter encoding config at index {index}: 'target' must be a non-empty string.",
+                ErrorCode.INVALID_PARAMETER,
+                {"index": index, "target": target_key_raw},
+            )
+        target_key: str = target_key_raw
+
+        # Validate encoding
+        encoding_raw = enc.get("encoding")
+        if not isinstance(encoding_raw, str) or not encoding_raw:
+            raise MatimoError(
+                f"Invalid parameter encoding config at index {index}: 'encoding' must be a non-empty string.",
+                ErrorCode.INVALID_PARAMETER,
+                {"index": index, "encoding": encoding_raw},
+            )
+        encoding: str = encoding_raw
+
+        # Validate options
+        options_raw = enc.get("options")
+        if options_raw is not None and not isinstance(options_raw, dict):
+            raise MatimoError(
+                f"Invalid parameter encoding config at index {index}: 'options' must be a dict when provided.",
+                ErrorCode.INVALID_PARAMETER,
+                {"index": index, "options": options_raw},
+            )
+        options: dict[str, Any] = options_raw or {}
 
         # Gather source values
         source_values: dict[str, Any] = {k: result[k] for k in source_keys if k in result}

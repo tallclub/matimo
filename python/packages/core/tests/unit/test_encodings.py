@@ -102,3 +102,109 @@ class TestUnknownEncoding:
         with pytest.raises(MatimoError) as exc:
             apply_parameter_encodings(params, encodings)
         assert exc.value.code == ErrorCode.INVALID_PARAMETER
+
+
+class TestValidation:
+    def test_missing_source_raises(self) -> None:
+        params = {"key": "val"}
+        encodings = [{"target": "out", "encoding": "json_compact"}]
+        with pytest.raises(MatimoError) as exc:
+            apply_parameter_encodings(params, encodings)
+        assert exc.value.code == ErrorCode.INVALID_PARAMETER
+        assert "source" in str(exc.value)
+
+    def test_empty_source_list_raises(self) -> None:
+        params = {"key": "val"}
+        encodings = [{"source": [], "target": "out", "encoding": "json_compact"}]
+        with pytest.raises(MatimoError) as exc:
+            apply_parameter_encodings(params, encodings)
+        assert exc.value.code == ErrorCode.INVALID_PARAMETER
+        assert "source" in str(exc.value)
+
+    def test_non_list_source_raises(self) -> None:
+        params = {"key": "val"}
+        encodings = [{"source": "key", "target": "out", "encoding": "json_compact"}]
+        with pytest.raises(MatimoError) as exc:
+            apply_parameter_encodings(params, encodings)
+        assert exc.value.code == ErrorCode.INVALID_PARAMETER
+        assert "source" in str(exc.value)
+
+    def test_non_string_source_entries_raises(self) -> None:
+        params = {"key": "val"}
+        encodings = [{"source": ["key", 42], "target": "out", "encoding": "json_compact"}]
+        with pytest.raises(MatimoError) as exc:
+            apply_parameter_encodings(params, encodings)
+        assert exc.value.code == ErrorCode.INVALID_PARAMETER
+        assert "source" in str(exc.value)
+
+    def test_empty_string_source_entries_raises(self) -> None:
+        params = {"key": "val"}
+        encodings = [{"source": ["key", ""], "target": "out", "encoding": "json_compact"}]
+        with pytest.raises(MatimoError) as exc:
+            apply_parameter_encodings(params, encodings)
+        assert exc.value.code == ErrorCode.INVALID_PARAMETER
+        assert "source" in str(exc.value)
+
+    def test_missing_target_raises(self) -> None:
+        params = {"key": "val"}
+        encodings = [{"source": ["key"], "encoding": "json_compact"}]
+        with pytest.raises(MatimoError) as exc:
+            apply_parameter_encodings(params, encodings)
+        assert exc.value.code == ErrorCode.INVALID_PARAMETER
+        assert "target" in str(exc.value)
+
+    def test_empty_target_raises(self) -> None:
+        params = {"key": "val"}
+        encodings = [{"source": ["key"], "target": "", "encoding": "json_compact"}]
+        with pytest.raises(MatimoError) as exc:
+            apply_parameter_encodings(params, encodings)
+        assert exc.value.code == ErrorCode.INVALID_PARAMETER
+        assert "target" in str(exc.value)
+
+    def test_non_string_target_raises(self) -> None:
+        params = {"key": "val"}
+        encodings = [{"source": ["key"], "target": 123, "encoding": "json_compact"}]
+        with pytest.raises(MatimoError) as exc:
+            apply_parameter_encodings(params, encodings)
+        assert exc.value.code == ErrorCode.INVALID_PARAMETER
+        assert "target" in str(exc.value)
+
+    def test_missing_encoding_raises(self) -> None:
+        params = {"key": "val"}
+        encodings = [{"source": ["key"], "target": "out"}]
+        with pytest.raises(MatimoError) as exc:
+            apply_parameter_encodings(params, encodings)
+        assert exc.value.code == ErrorCode.INVALID_PARAMETER
+        assert "encoding" in str(exc.value)
+
+    def test_empty_encoding_raises(self) -> None:
+        params = {"key": "val"}
+        encodings = [{"source": ["key"], "target": "out", "encoding": ""}]
+        with pytest.raises(MatimoError) as exc:
+            apply_parameter_encodings(params, encodings)
+        assert exc.value.code == ErrorCode.INVALID_PARAMETER
+        assert "encoding" in str(exc.value)
+
+    def test_non_string_encoding_raises(self) -> None:
+        params = {"key": "val"}
+        encodings = [{"source": ["key"], "target": "out", "encoding": 42}]
+        with pytest.raises(MatimoError) as exc:
+            apply_parameter_encodings(params, encodings)
+        assert exc.value.code == ErrorCode.INVALID_PARAMETER
+        assert "encoding" in str(exc.value)
+
+    def test_invalid_options_type_raises(self) -> None:
+        params = {"key": "val"}
+        encodings = [{"source": ["key"], "target": "out", "encoding": "json_compact", "options": "invalid"}]
+        with pytest.raises(MatimoError) as exc:
+            apply_parameter_encodings(params, encodings)
+        assert exc.value.code == ErrorCode.INVALID_PARAMETER
+        assert "options" in str(exc.value)
+
+    def test_valid_options_dict_accepted(self) -> None:
+        params = {"key": "val"}
+        encodings = [
+            {"source": ["key"], "target": "out", "encoding": "json_compact", "options": {"compact": True}}
+        ]
+        result = apply_parameter_encodings(params, encodings)
+        assert "out" in result
