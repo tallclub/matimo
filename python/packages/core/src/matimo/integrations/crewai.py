@@ -7,7 +7,7 @@ Install with: pip install matimo[crewai]
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING, Any, Type
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from matimo.core.models import ToolDefinition
@@ -15,8 +15,8 @@ if TYPE_CHECKING:
 
 
 def convert_tools_to_crewai(
-    tools: list["ToolDefinition"],
-    matimo: "Matimo",
+    tools: list[ToolDefinition],
+    matimo: Matimo,
     credentials: dict[str, str] | None = None,
 ) -> list[Any]:
     """
@@ -34,7 +34,7 @@ def convert_tools_to_crewai(
         ImportError if crewai is not installed.
     """
     try:
-        from crewai.tools import BaseTool  # type: ignore[import]
+        from crewai.tools import BaseTool  # type: ignore[import] # noqa: F401
     except ImportError as exc:
         raise ImportError(
             "crewai is required for CrewAI integration. "
@@ -48,14 +48,18 @@ def convert_tools_to_crewai(
 
 
 def _make_crewai_tool(
-    tool_def: "ToolDefinition",
-    matimo: "Matimo",
+    tool_def: ToolDefinition,
+    matimo: Matimo,
     credentials: dict[str, str] | None,
-) -> Any:
-    """Build a single CrewAI BaseTool subclass from a ToolDefinition."""
-    from crewai.tools import BaseTool  # type: ignore[import]
+) -> Any:  # noqa: ANN401
+    """Build a single CrewAI BaseTool subclass from a ToolDefinition.
+
+    Returns Any because BaseTool is from an optional dependency (crewai).
+    """
     import pydantic
-    from matimo.integrations.langchain import is_secret_parameter, _parameter_to_pydantic_field
+    from crewai.tools import BaseTool  # type: ignore[import]
+
+    from matimo.integrations.langchain import _parameter_to_pydantic_field, is_secret_parameter
 
     # Build Pydantic args schema (excluding secrets)
     fields: dict[str, Any] = {}
@@ -65,7 +69,7 @@ def _make_crewai_tool(
         py_type, field_def = _parameter_to_pydantic_field(param)
         fields[param_name] = (py_type, field_def)
 
-    ArgsSchema: Type[pydantic.BaseModel] = pydantic.create_model(  # noqa: N806
+    ArgsSchema: type[pydantic.BaseModel] = pydantic.create_model(  # noqa: N806
         f"{tool_def.name}_args",
         **fields,
     )
@@ -73,10 +77,14 @@ def _make_crewai_tool(
     class MatimoCrewTool(BaseTool):
         name: str = tool_def.name
         description: str = tool_def.description
-        args_schema: Type[pydantic.BaseModel] = ArgsSchema  # type: ignore[assignment]
+        args_schema: type[pydantic.BaseModel] = ArgsSchema  # type: ignore[assignment]
 
-        def _run(self, **kwargs: Any) -> Any:
+        def _run(self, **kwargs: object) -> Any:  # noqa: ANN401
             """Synchronous execution — runs async execute in an event loop."""
+            # Returns Any: must match CrewAI BaseTool._run signature; results are arbitrary.
+            call_kwargs: dict[str, Any] = {}
+            if credentials is not None:
+                call_kwargs["credentials"] = credentials
             try:
                 loop = asyncio.get_event_loop()
             except RuntimeError:
@@ -89,21 +97,22 @@ def _make_crewai_tool(
                 with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
                     future = executor.submit(
                         asyncio.run,
-                        matimo.execute(tool_def.name, kwargs, credentials=credentials),
+                        matimo.execute(tool_def.name, dict(kwargs), **call_kwargs),
                     )
                     return future.result()
             else:
                 return loop.run_until_complete(
-                    matimo.execute(tool_def.name, kwargs, credentials=credentials)
+                    matimo.execute(tool_def.name, dict(kwargs), **call_kwargs)
                 )
 
-        async def _arun(self, **kwargs: Any) -> Any:
+        async def _arun(self, **kwargs: object) -> Any:  # noqa: ANN401
+            # Returns Any: must match CrewAI BaseTool._arun signature; results are arbitrary.
+            call_kwargs: dict[str, Any] = {}
+            if credentials is not None:
+                call_kwargs["credentials"] = credentials
             return await matimo.execute(
-                tool_def.name, kwargs, credentials=credentials
+                tool_def.name, dict(kwargs), **call_kwargs
             )
-
-    # Capture outer variables
-    matimo = matimo  # noqa: PLW0127
 
     # Give the dynamically-created class a unique name so CrewAI introspection works
     MatimoCrewTool.__name__ = f"MatimoTool_{tool_def.name}"

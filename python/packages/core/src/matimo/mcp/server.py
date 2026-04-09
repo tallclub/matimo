@@ -10,15 +10,13 @@ Dependencies: mcp>=1.0  (install with: pip install matimo[mcp])
 from __future__ import annotations
 
 import logging
-import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from matimo.errors import ErrorCode, MatimoError
 
 if TYPE_CHECKING:
     from matimo.instance import Matimo
-    from matimo.mcp.secrets import SecretResolverChain
 
 logger = logging.getLogger("matimo")
 
@@ -80,14 +78,14 @@ class MCPServer:
     async def start(self) -> None:
         """Start the MCP server on the configured transport."""
         try:
-            from mcp.server import Server  # type: ignore[import]
-            from mcp.server.models import InitializationOptions  # type: ignore[import]
             import mcp.types as mcp_types  # type: ignore[import]
-        except ImportError:
+            from mcp.server import Server  # type: ignore[import]
+            from mcp.server.models import InitializationOptions  # type: ignore[import] # noqa: F401
+        except ImportError as exc:
             raise MatimoError(
                 "MCP Python SDK not installed. Install with: pip install matimo[mcp]",
                 ErrorCode.EXECUTION_FAILED,
-            )
+            ) from exc
 
         server = Server("matimo")
         self._server = server
@@ -109,11 +107,14 @@ class MCPServer:
         else:
             await self._run_http(server)
 
-    async def _run_stdio(self, server: Any) -> None:
-        """Run as stdio MCP server (for Claude Desktop integration)."""
-        from mcp.server.stdio import stdio_server  # type: ignore[import]
-        from mcp.server.models import InitializationOptions  # type: ignore[import]
+    async def _run_stdio(self, server: Any) -> None:  # noqa: ANN401
+        """Run as stdio MCP server (for Claude Desktop integration).
+
+        server: Any because the MCP Server type is from an optional dependency (mcp).
+        """
         import mcp.types as mcp_types  # type: ignore[import]
+        from mcp.server.models import InitializationOptions  # type: ignore[import]
+        from mcp.server.stdio import stdio_server  # type: ignore[import]
 
         async with stdio_server() as (read_stream, write_stream):
             await server.run(
@@ -129,10 +130,19 @@ class MCPServer:
                 ),
             )
 
-    async def _run_http(self, server: Any) -> None:
-        """Run as HTTP MCP server (future: SSE transport)."""
+    async def _run_http(self, server: Any) -> None:  # noqa: ANN401
+        """Run as HTTP/SSE MCP server transport.
+
+        HTTP transport is on the roadmap (see https://matimo.dev/docs/MCP.md).
+        For now use transport='stdio' which is supported by Claude Desktop,
+        Cursor, and all major MCP clients.
+
+        server: Any because the MCP Server type is from an optional dependency (mcp).
+        """
         raise MatimoError(
-            "HTTP transport is not yet implemented for the Python MCP server",
+            "HTTP/SSE transport is not yet implemented for the Python MCP server. "
+            "Use transport='stdio' instead. "
+            "HTTP support is planned — see https://matimo.dev/docs/MCP.md for updates.",
             ErrorCode.EXECUTION_FAILED,
         )
 

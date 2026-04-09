@@ -27,8 +27,8 @@ def is_secret_parameter(name: str) -> bool:
 
 
 def convert_tools_to_langchain(
-    tools: list["ToolDefinition"],
-    matimo: "Matimo",
+    tools: list[ToolDefinition],
+    matimo: Matimo,
     credentials: dict[str, str] | None = None,
 ) -> list[Any]:
     """
@@ -50,7 +50,7 @@ def convert_tools_to_langchain(
         ImportError if langchain-core is not installed.
     """
     try:
-        from langchain_core.tools import StructuredTool  # type: ignore[import]
+        from langchain_core.tools import StructuredTool  # type: ignore[import] # noqa: F401
     except ImportError as exc:
         raise ImportError(
             "langchain-core is required for LangChain integration. "
@@ -65,13 +65,16 @@ def convert_tools_to_langchain(
 
 
 def _make_langchain_tool(
-    tool: "ToolDefinition",
-    matimo: "Matimo",
+    tool: ToolDefinition,
+    matimo: Matimo,
     credentials: dict[str, str] | None,
-) -> Any:
-    """Build a single LangChain StructuredTool from a ToolDefinition."""
-    from langchain_core.tools import StructuredTool  # type: ignore[import]
+) -> Any:  # noqa: ANN401
+    """Build a single LangChain StructuredTool from a ToolDefinition.
+
+    Returns Any because StructuredTool is from an optional dependency (langchain-core).
+    """
     import pydantic
+    from langchain_core.tools import StructuredTool  # type: ignore[import]
 
     # Build a Pydantic model for the tool's non-secret parameters
     fields: dict[str, Any] = {}
@@ -87,8 +90,9 @@ def _make_langchain_tool(
         **fields,
     )
 
-    async def _invoke(**kwargs: Any) -> Any:
-        return await matimo.execute(tool.name, kwargs, credentials=credentials)
+    async def _invoke(**kwargs: object) -> Any:  # noqa: ANN401
+        # Returns Any: tool execution results are arbitrary JSON/values.
+        return await matimo.execute(tool.name, dict(kwargs), credentials=credentials)
 
     return StructuredTool(
         name=tool.name,
@@ -99,14 +103,14 @@ def _make_langchain_tool(
 
 
 def _parameter_to_pydantic_field(
-    param: "Parameter",
+    param: Parameter,
 ) -> tuple[type, Any]:
     """Map a Matimo Parameter to a (Python type, pydantic.Field) tuple."""
     import pydantic
 
     type_map: dict[str, type] = {
         "string": str,
-        "number": float,
+        "number": int | float,  # YAML 'number' covers both integers (port, limit) and floats
         "boolean": bool,
         "array": list,
         "object": dict,
@@ -121,7 +125,6 @@ def _parameter_to_pydantic_field(
     field_def = pydantic.Field(default=default, description=param.description or "")
 
     if not param.required:
-        from typing import Optional
-        py_type = Optional[py_type]  # type: ignore[assignment]
+        py_type = py_type | None  # type: ignore[assignment]
 
     return py_type, field_def

@@ -22,6 +22,42 @@ CrewAI integration:
 """
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from matimo.instance import Matimo
+
+__version__ = "0.1.0"
+
+# ---------------------------------------------------------------------------
+# Approval
+# ---------------------------------------------------------------------------
+from matimo.approval.handler import (
+    ApprovalCallback,
+    ApprovalHandler,
+    ApprovalRequest,
+    get_global_approval_handler,
+    set_global_approval_handler,
+)
+
+# ---------------------------------------------------------------------------
+# Auth
+# ---------------------------------------------------------------------------
+from matimo.auth.injection import extract_parameter_placeholders, inject_auth_parameters
+from matimo.auth.oauth2_config import (
+    AuthorizationOptions,
+    OAuth2Config,
+    OAuth2Token,
+    TokenResponse,
+)
+from matimo.auth.oauth2_handler import OAuth2Handler
+from matimo.auth.oauth2_provider_loader import OAuth2ProviderLoader
+
+# ---------------------------------------------------------------------------
+# Core loading + registry
+# ---------------------------------------------------------------------------
+from matimo.core.loader import ToolLoader
+
 # ---------------------------------------------------------------------------
 # Core models
 # ---------------------------------------------------------------------------
@@ -39,7 +75,6 @@ from matimo.core.models import (
     ParameterEncoding,
     ParameterEncodingConfig,
     ParameterEncodingType,
-    ToolStatus,
     ParameterType,
     ParsedSkill,
     PolicyContext,
@@ -53,14 +88,10 @@ from matimo.core.models import (
     SkillSummary,
     ToolDefinition,
     ToolExample,
+    ToolStatus,
     ValidationError,
     ValidationResult,
 )
-
-# ---------------------------------------------------------------------------
-# Core loading + registry
-# ---------------------------------------------------------------------------
-from matimo.core.loader import ToolLoader
 from matimo.core.registry import ToolRegistry
 
 # ---------------------------------------------------------------------------
@@ -81,40 +112,30 @@ from matimo.core.tfidf_embedding import (
 )
 
 # ---------------------------------------------------------------------------
+# Encodings
+# ---------------------------------------------------------------------------
+from matimo.encodings.parameter_encoding import apply_parameter_encodings
+
+# ---------------------------------------------------------------------------
 # Executors
 # ---------------------------------------------------------------------------
 from matimo.executors.command_executor import CommandExecutor
 from matimo.executors.function_executor import FunctionExecutor
 from matimo.executors.http_executor import HttpExecutor
-
-# ---------------------------------------------------------------------------
-# Auth
-# ---------------------------------------------------------------------------
-from matimo.auth.injection import extract_parameter_placeholders, inject_auth_parameters
-from matimo.auth.oauth2_config import (
-    AuthorizationOptions,
-    OAuth2Config,
-    OAuth2Token,
-    TokenResponse,
-)
-from matimo.auth.oauth2_handler import OAuth2Handler
-from matimo.auth.oauth2_provider_loader import OAuth2ProviderLoader
-
-# ---------------------------------------------------------------------------
-# Approval
-# ---------------------------------------------------------------------------
-from matimo.approval.handler import (
-    ApprovalCallback,
-    ApprovalHandler,
-    ApprovalRequest,
-    get_global_approval_handler,
-    set_global_approval_handler,
+from matimo.mcp.secrets import (
+    AwsSecretsManagerResolver,
+    DotenvSecretResolver,
+    EnvSecretResolver,
+    SecretResolverChain,
+    VaultSecretResolver,
+    create_resolver_chain,
 )
 
 # ---------------------------------------------------------------------------
-# Encodings
+# MCP
 # ---------------------------------------------------------------------------
-from matimo.encodings.parameter_encoding import apply_parameter_encodings
+from matimo.mcp.server import MCPServer, MCPServerOptions, create_mcp_server
+from matimo.mcp.tool_converter import convert_parameters_to_mcp_schema
 
 # ---------------------------------------------------------------------------
 # Policy
@@ -140,31 +161,25 @@ from matimo.policy.types import (
 )
 
 # ---------------------------------------------------------------------------
-# MCP
-# ---------------------------------------------------------------------------
-from matimo.mcp.server import MCPServer, MCPServerOptions, create_mcp_server
-from matimo.mcp.tool_converter import convert_parameters_to_mcp_schema
-from matimo.mcp.secrets import (
-    AwsSecretsManagerResolver,
-    DotenvSecretResolver,
-    EnvSecretResolver,
-    SecretResolverChain,
-    VaultSecretResolver,
-    create_resolver_chain,
-)
-
-# ---------------------------------------------------------------------------
 # Integrations (lazy — raise ImportError with hint on missing optional dep)
 # ---------------------------------------------------------------------------
 
 
-def convert_tools_to_langchain(tools, matimo_instance, credentials=None):  # type: ignore[no-untyped-def]
+def convert_tools_to_langchain(
+    tools: list[Any],
+    matimo_instance: Matimo,
+    credentials: dict[str, str] | None = None,
+) -> list[Any]:
     """Convert Matimo tools to LangChain StructuredTool list. Requires langchain-core."""
     from matimo.integrations.langchain import convert_tools_to_langchain as _inner
     return _inner(tools, matimo_instance, credentials)
 
 
-def convert_tools_to_crewai(tools, matimo_instance, credentials=None):  # type: ignore[no-untyped-def]
+def convert_tools_to_crewai(
+    tools: list[Any],
+    matimo_instance: Matimo,
+    credentials: dict[str, str] | None = None,
+) -> list[Any]:
     """Convert Matimo tools to CrewAI BaseTool list. Requires crewai."""
     from matimo.integrations.crewai import convert_tools_to_crewai as _inner
     return _inner(tools, matimo_instance, credentials)
@@ -173,26 +188,16 @@ def convert_tools_to_crewai(tools, matimo_instance, credentials=None):  # type: 
 # ---------------------------------------------------------------------------
 # Decorators
 # ---------------------------------------------------------------------------
-from matimo.decorators import (
+from matimo.decorators import (  # noqa: E402
     get_global_matimo_instance,
     set_global_matimo_instance,
     tool,
 )
 
 # ---------------------------------------------------------------------------
-# Logging
-# ---------------------------------------------------------------------------
-from matimo.logging import (
-    MatimoLogger,
-    get_global_matimo_logger,
-    set_global_matimo_logger,
-    setup_logger,
-)
-
-# ---------------------------------------------------------------------------
 # Errors
 # ---------------------------------------------------------------------------
-from matimo.errors import (
+from matimo.errors import (  # noqa: E402
     ErrorCode,
     MatimoError,
     create_execution_error,
@@ -203,7 +208,22 @@ from matimo.errors import (
 # ---------------------------------------------------------------------------
 # Main entry point
 # ---------------------------------------------------------------------------
-from matimo.instance import InitOptions, Matimo, ReloadResult, matimo
+from matimo.instance import InitOptions, Matimo, ReloadResult, matimo  # noqa: E402
+
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
+from matimo.logging import (  # noqa: E402
+    MatimoLogger,
+    get_global_matimo_logger,
+    set_global_matimo_logger,
+    setup_logger,
+)
+
+# ---------------------------------------------------------------------------
+# Synchronous API
+# ---------------------------------------------------------------------------
+from matimo.sync import MatimoSync  # noqa: E402
 
 __all__ = [
     # Core models
@@ -264,5 +284,5 @@ __all__ = [
     "MatimoError", "ErrorCode",
     "create_execution_error", "create_validation_error", "from_http_error",
     # Instance
-    "Matimo", "matimo", "InitOptions", "ReloadResult",
+    "Matimo", "MatimoSync", "matimo", "InitOptions", "ReloadResult",
 ]
