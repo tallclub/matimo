@@ -36,8 +36,8 @@ def doctor_command() -> None:
     v = sys.version_info
     check(
         f"Python {v.major}.{v.minor}.{v.micro}",
-        v >= (3, 10),
-        f"Python 3.10+ required. You are running {v.major}.{v.minor}. Upgrade: https://python.org",
+        v >= (3, 11),
+        f"Python 3.11+ required. You are running {v.major}.{v.minor}. Upgrade: https://python.org",
     )
     print()
 

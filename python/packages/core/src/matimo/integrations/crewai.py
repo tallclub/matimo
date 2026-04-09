@@ -59,14 +59,14 @@ def _make_crewai_tool(
     import pydantic
     from crewai.tools import BaseTool  # type: ignore[import]
 
-    from matimo.integrations.langchain import _parameter_to_pydantic_field, is_secret_parameter
+    from matimo.integrations._pydantic_utils import is_secret_parameter, parameter_to_pydantic_field
 
     # Build Pydantic args schema (excluding secrets)
     fields: dict[str, Any] = {}
     for param_name, param in (tool_def.parameters or {}).items():
         if is_secret_parameter(param_name):
             continue
-        py_type, field_def = _parameter_to_pydantic_field(param)
+        py_type, field_def = parameter_to_pydantic_field(param)
         fields[param_name] = (py_type, field_def)
 
     ArgsSchema: type[pydantic.BaseModel] = pydantic.create_model(  # noqa: N806

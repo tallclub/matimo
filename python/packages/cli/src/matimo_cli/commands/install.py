@@ -32,6 +32,6 @@ def install_command(tool_names: list[str]) -> None:
 
     print("\n✅ Installation complete!")
     print("\nNext steps:")
-    print("  from matimo import MatimoInstance")
-    print("  matimo = await MatimoInstance.init(auto_discover=True)")
+    print("  from matimo import Matimo")
+    print("  matimo = await Matimo.init(auto_discover=True)")
     print("\n📖 For more info: https://github.com/tallclub/matimo#readme")

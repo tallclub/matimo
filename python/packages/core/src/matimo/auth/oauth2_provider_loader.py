@@ -67,7 +67,9 @@ class OAuth2ProviderLoader:
                 except Exception:
                     # Not all directories contain valid provider definitions — skip
                     logger.debug(
-                        "Skipping non-provider definition: %s", definition_path
+                        "Skipping non-provider definition: %s",
+                        definition_path,
+                        exc_info=True,
                     )
 
             return self._providers

@@ -24,7 +24,7 @@ def create_approval_callback():
         Handle approval requests interactively
         
         Args:
-            request: ApprovalRequest with toolName, description, params
+            request: ApprovalRequest with tool_name, description, params
             
         Returns:
             bool: True if approved, False otherwise
@@ -34,15 +34,15 @@ def create_approval_callback():
         print('\n' + '=' * 70)
         print('🔒 APPROVAL REQUIRED FOR FILE OPERATION')
         print('=' * 70)
-        print(f'\n📋 Tool: {request["toolName"]}')
-        print(f'📝 Description: {request.get("description", "(no description provided)")}')
+        print(f'\n📋 Tool: {request.tool_name}')
+        print(f'📝 Description: {request.description or "(no description provided)"}')
         print('\n📄 File Operation:')
-        print(f'   Path: {request["params"].get("filePath", "N/A")}')
+        print(f'   Path: {request.params.get("filePath", "N/A")}')
         
-        if request['params'].get('startLine'):
-            print(f'   Start Line: {request["params"]["startLine"]}')
-        if request['params'].get('endLine'):
-            print(f'   End Line: {request["params"]["endLine"]}')
+        if request.params.get('startLine'):
+            print(f'   Start Line: {request.params["startLine"]}')
+        if request.params.get('endLine'):
+            print(f'   End Line: {request.params["endLine"]}')
 
         if not is_interactive:
             print('\n❌ REJECTED - Non-interactive environment (no terminal)')

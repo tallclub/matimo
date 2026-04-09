@@ -7,23 +7,13 @@ Install with: pip install matimo[langchain]
 """
 from __future__ import annotations
 
-import re
 from typing import TYPE_CHECKING, Any
 
+from matimo.integrations._pydantic_utils import is_secret_parameter, parameter_to_pydantic_field
+
 if TYPE_CHECKING:
-    from matimo.core.models import Parameter, ToolDefinition
+    from matimo.core.models import ToolDefinition
     from matimo.instance import Matimo
-
-# Patterns that identify a parameter as a secret (should be hidden from LLM schema)
-_SECRET_RE = re.compile(
-    r"(?:^|_)(TOKEN|KEY|SECRET|PASSWORD)(?:_|$)|"
-    r"[a-z](Token|Key|Secret|Password)",
-)
-
-
-def is_secret_parameter(name: str) -> bool:
-    """Return True if the parameter name looks like a credential."""
-    return bool(_SECRET_RE.search(name))
 
 
 def convert_tools_to_langchain(
@@ -81,7 +71,7 @@ def _make_langchain_tool(
     for param_name, param in (tool.parameters or {}).items():
         if is_secret_parameter(param_name):
             continue
-        py_type, field_def = _parameter_to_pydantic_field(param)
+        py_type, field_def = parameter_to_pydantic_field(param)
         fields[param_name] = (py_type, field_def)
 
     # Dynamically create a Pydantic model class
@@ -100,31 +90,3 @@ def _make_langchain_tool(
         args_schema=ArgsModel,
         coroutine=_invoke,
     )
-
-
-def _parameter_to_pydantic_field(
-    param: Parameter,
-) -> tuple[type, Any]:
-    """Map a Matimo Parameter to a (Python type, pydantic.Field) tuple."""
-    import pydantic
-
-    type_map: dict[str, type] = {
-        "string": str,
-        "number": int | float,  # YAML 'number' covers both integers (port, limit) and floats
-        "boolean": bool,
-        "array": list,
-        "object": dict,
-    }
-    py_type: type = type_map.get(param.type.value, Any)  # type: ignore[assignment]
-
-    # Handle optional vs required
-    default = param.default if param.default is not None else (
-        pydantic.fields.PydanticUndefined if param.required else None
-    )
-
-    field_def = pydantic.Field(default=default, description=param.description or "")
-
-    if not param.required:
-        py_type = py_type | None  # type: ignore[assignment]
-
-    return py_type, field_def
