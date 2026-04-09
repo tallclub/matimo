@@ -1,0 +1,81 @@
+name: mailchimp-get-lists
+version: '1.0.0'
+description: >
+  Get all Mailchimp audiences (lists) for the authenticated account.
+  Returns a paginated list of all audiences with subscriber counts and settings.
+
+parameters:
+  server_prefix:
+    type: string
+    required: true
+    description: >
+      Your Mailchimp data center prefix (e.g. "us6"). Found at the end of your API key:
+      "abc123-us6" → server_prefix is "us6".
+  count:
+    type: number
+    required: false
+    description: Number of audiences to return (default 10, max 1000)
+    default: 10
+    min: 1
+    max: 1000
+  offset:
+    type: number
+    required: false
+    description: Number of records to skip for pagination (default 0)
+    default: 0
+    min: 0
+
+execution:
+  type: http
+  method: GET
+  url: 'https://{server_prefix}.api.mailchimp.com/3.0/lists'
+  headers:
+    Authorization: 'apikey {MAILCHIMP_API_KEY}'
+    Content-Type: application/json
+  query_params:
+    count: '{count}'
+    offset: '{offset}'
+  timeout: 30000
+
+authentication:
+  type: api_key
+  location: header
+  name: Authorization
+  notes:
+    env: MAILCHIMP_API_KEY
+
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+    data:
+      type: object
+      properties:
+        lists:
+          type: array
+          description: Array of audience objects
+        total_items:
+          type: number
+          description: Total number of audiences in the account
+        _links:
+          type: array
+
+error_handling:
+  retry: 2
+  backoff_type: exponential
+  initial_delay_ms: 500
+
+examples:
+  - name: 'Get first 10 audiences'
+    params:
+      server_prefix: us6
+      count: 10
+      offset: 0
+    expected_result: 'Returns a list of audiences with total_items count'
+  - name: 'Get next page of audiences'
+    params:
+      server_prefix: us6
+      count: 10
+      offset: 10
+    expected_result: 'Returns the second page of audiences'

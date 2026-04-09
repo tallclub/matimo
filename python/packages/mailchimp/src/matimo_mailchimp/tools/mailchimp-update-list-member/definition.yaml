@@ -1,0 +1,105 @@
+name: mailchimp-update-list-member
+version: '1.0.0'
+description: >
+  Update an existing subscriber's information in a Mailchimp audience/list.
+  Use the subscriber_hash (MD5 hash of the lowercase email address) to identify the member.
+  Supports updating status, email address, and merge fields.
+
+parameters:
+  server_prefix:
+    type: string
+    required: true
+    description: >
+      Your Mailchimp data center prefix (e.g. "us6"). Found at the end of your API key:
+      "abc123-us6" → server_prefix is "us6".
+  list_id:
+    type: string
+    required: true
+    description: The unique ID of the Mailchimp audience/list the member belongs to
+  subscriber_hash:
+    type: string
+    required: true
+    description: >
+      The MD5 hash of the subscriber's lowercase email address. You can generate this
+      using MD5("email@example.com"). Use the id field from mailchimp-add-list-member response.
+  status:
+    type: string
+    required: false
+    description: >
+      Update subscription status. Options: "subscribed", "unsubscribed", "pending", "cleaned"
+    enum:
+      - subscribed
+      - unsubscribed
+      - pending
+      - cleaned
+  email_address:
+    type: string
+    required: false
+    description: New email address for the subscriber (updates the email)
+  merge_fields:
+    type: object
+    required: false
+    description: >
+      Key-value pairs for merge fields to update. Example: {"FNAME": "Jane", "LNAME": "Smith"}
+
+execution:
+  type: http
+  method: PATCH
+  url: 'https://{server_prefix}.api.mailchimp.com/3.0/lists/{list_id}/members/{subscriber_hash}'
+  headers:
+    Authorization: 'apikey {MAILCHIMP_API_KEY}'
+    Content-Type: application/json
+  body:
+    status: '{status}'
+    email_address: '{email_address}'
+    merge_fields: '{merge_fields}'
+  timeout: 30000
+
+authentication:
+  type: api_key
+  location: header
+  name: Authorization
+  notes:
+    env: MAILCHIMP_API_KEY
+
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+    data:
+      type: object
+      properties:
+        id:
+          type: string
+        email_address:
+          type: string
+        status:
+          type: string
+        merge_fields:
+          type: object
+        list_id:
+          type: string
+
+error_handling:
+  retry: 2
+  backoff_type: exponential
+  initial_delay_ms: 500
+
+examples:
+  - name: 'Unsubscribe a member'
+    params:
+      server_prefix: us6
+      list_id: abc123def4
+      subscriber_hash: b775e3e869bc8eae5fcb23cdc5ec64ff
+      status: unsubscribed
+    expected_result: 'Returns updated member record with unsubscribed status'
+  - name: 'Update subscriber name'
+    params:
+      server_prefix: us6
+      list_id: abc123def4
+      subscriber_hash: b775e3e869bc8eae5fcb23cdc5ec64ff
+      merge_fields:
+        FNAME: Jane
+        LNAME: Smith
+    expected_result: 'Returns updated member record with new merge fields'

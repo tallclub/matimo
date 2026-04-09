@@ -1,0 +1,73 @@
+name: github-add-collaborator
+description: Add a user as a collaborator to a repository
+version: '1.0.0'
+requires_approval: true
+
+parameters:
+  owner:
+    type: string
+    required: true
+    description: Repository owner username or organization
+  repo:
+    type: string
+    required: true
+    description: Repository name
+  username:
+    type: string
+    required: true
+    description: GitHub username to add
+  permission:
+    type: string
+    required: false
+    description: Permission level - pull, triage, push, maintain, or admin
+    default: push
+
+execution:
+  type: http
+  method: PUT
+  url: 'https://api.github.com/repos/{owner}/{repo}/collaborators/{username}'
+  headers:
+    Accept: application/vnd.github+json
+    Authorization: 'Bearer {GITHUB_TOKEN}'
+    X-GitHub-Api-Version: '2022-11-28'
+    Content-Type: application/json
+  body:
+    permission: '{permission}'
+  timeout: 15000
+
+authentication:
+  type: bearer
+  location: header
+  notes:
+    env: GITHUB_TOKEN
+    required: true
+    permission: Repository administration
+
+output_schema:
+  type: object
+  properties:
+    id:
+      type: number
+    invitee:
+      type: object
+    permissions:
+      type: string
+
+error_handling:
+  retry: 1
+  backoff_type: exponential
+  initial_delay_ms: 1000
+
+examples:
+  - name: Add collaborator with push access
+    params:
+      owner: myorg
+      repo: myrepo
+      username: newuser
+      permission: push
+  - name: Add collaborator with admin access
+    params:
+      owner: myorg
+      repo: myrepo
+      username: admin_user
+      permission: admin

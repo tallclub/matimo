@@ -1,0 +1,46 @@
+name: slack-list-channels
+description: |-
+  List all Slack conversations (channels, direct messages, multi-person DMs).
+  Uses conversations.list API method. Supports filtering by type and pagination.
+version: '1.0.0'
+parameters:
+  types:
+    type: string
+    description: |-
+      Comma-separated conversation types to include.
+      Valid values: public_channel, private_channel, mpim, im
+      Default: public_channel
+    required: false
+  limit:
+    type: number
+    description: |-
+      Maximum number of items to return (max 1000).
+      We recommend no more than 200 results at a time.
+      Default: 100
+    required: false
+  cursor:
+    type: string
+    description: Pagination cursor for fetching next page (from response_metadata.next_cursor)
+    required: false
+execution:
+  type: http
+  method: GET
+  url: 'https://slack.com/api/conversations.list'
+  headers:
+    Authorization: 'Bearer {SLACK_BOT_TOKEN}'
+  query_params:
+    types: '{types}'
+    limit: '{limit}'
+    cursor: '{cursor}'
+  timeout: 15000
+authentication:
+  type: api_key
+  location: header
+  name: Authorization
+notes:
+  env: SLACK_BOT_TOKEN
+  scopes: channels:read, groups:read, im:read, mpim:read
+  important: |-
+    - The bot must be a member of private channels to list them
+    - Use cursor-based pagination for large result sets
+    - Supports org-level tokens with team_id parameter

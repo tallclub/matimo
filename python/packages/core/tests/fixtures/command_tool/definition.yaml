@@ -1,0 +1,25 @@
+name: delete_resource
+version: "1.0.0"
+description: "Delete a resource via HTTP DELETE"
+parameters:
+  resource_id:
+    type: string
+    description: "ID of the resource to delete"
+    required: true
+  API_KEY:
+    type: string
+    description: "API key"
+    required: true
+execution:
+  type: http
+  method: DELETE
+  url: "https://api.example.com/resources/{resource_id}"
+  headers:
+    Authorization: "Bearer {API_KEY}"
+authentication:
+  type: bearer
+  location: header
+  name: Authorization
+requires_approval: true
+tags:
+  - destructive

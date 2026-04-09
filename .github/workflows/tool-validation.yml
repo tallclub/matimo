@@ -3,8 +3,8 @@ name: Tool Validation
 on:
   pull_request:
     paths:
-      - 'tools/**/*.yaml'
-      - 'test/fixtures/tools/**/*.yaml'
+      - 'typescript/packages/**/*.yaml'
+      - 'python/providers/**/*.yaml'
 
 jobs:
   validate:
@@ -38,9 +38,24 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install
+        working-directory: typescript
 
       - name: Validate tools
         run: pnpm validate-tools
+        working-directory: typescript
 
       - name: Run full test suite
         run: pnpm test
+        working-directory: typescript
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v2
+
+      - name: Validate Python tools
+        run: uv run python scripts/validate_tools.py
+        working-directory: python

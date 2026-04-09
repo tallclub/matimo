@@ -1,0 +1,99 @@
+name: gmail-create-draft
+description: Create a draft email in Gmail without sending it
+version: '1.0.0'
+
+parameters:
+  to:
+    type: string
+    description: Email address of the recipient(s), comma-separated for multiple recipients
+    required: true
+    example: 'user@example.com'
+
+  subject:
+    type: string
+    description: Subject line of the draft email
+    required: true
+    example: 'Draft Email'
+
+  body:
+    type: string
+    description: Email body content (plain text or HTML)
+    required: true
+    example: 'This is a draft email'
+
+  cc:
+    type: string
+    description: CC email addresses, comma-separated
+    required: false
+    example: 'cc@example.com'
+
+  bcc:
+    type: string
+    description: BCC email addresses, comma-separated
+    required: false
+    example: 'bcc@example.com'
+
+  isHtml:
+    type: boolean
+    description: Whether the body content is HTML (default is plain text)
+    required: false
+    default: false
+
+  raw:
+    type: string
+    description: 'Base64url-encoded MIME message (RFC 2822 format). If provided, overrides to/subject/body/cc/bcc parameters.'
+    required: false
+    example: 'VG8...'
+
+execution:
+  type: http
+  method: POST
+  url: 'https://www.googleapis.com/gmail/v1/users/me/drafts'
+  headers:
+    Content-Type: 'application/json'
+    Authorization: 'Bearer {GMAIL_ACCESS_TOKEN}'
+
+  # Parameter encoding: automatically convert to/subject/body to MIME format
+  parameter_encoding:
+    - source: [to, subject, body, cc, bcc, isHtml]
+      target: raw
+      encoding: mime_rfc2822_base64url
+
+  body:
+    message:
+      raw: '{raw}'
+
+authentication:
+  type: oauth2
+  provider: google
+  scopes:
+    - 'https://www.googleapis.com/auth/gmail.compose'
+
+output_schema:
+  type: object
+  properties:
+    id:
+      type: string
+      description: Draft ID
+    message:
+      type: object
+      description: The created message object
+      properties:
+        id:
+          type: string
+        threadId:
+          type: string
+        labelIds:
+          type: array
+          items:
+            type: string
+
+error_handling:
+  retry: 3
+  backoff_type: exponential
+  initial_delay_ms: 1000
+  retryable_status_codes:
+    - 429
+    - 500
+    - 502
+    - 503

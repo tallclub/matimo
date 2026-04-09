@@ -1,0 +1,30 @@
+name: slack-send-message
+description: Post a message to a Slack channel using the Web API (chat.postMessage)
+version: '1.0.0'
+parameters:
+  channel:
+    type: string
+    description: Channel ID or user ID to send the message to
+    required: true
+  text:
+    type: string
+    description: Plain-text message to post (optional if blocks provided, recommended as fallback for accessibility)
+    required: false
+execution:
+  type: http
+  method: POST
+  url: 'https://slack.com/api/chat.postMessage'
+  headers:
+    Authorization: 'Bearer {SLACK_BOT_TOKEN}'
+    Content-Type: application/json
+  body:
+    channel: '{channel}'
+    text: '{text}'
+  timeout: 15000
+authentication:
+  type: api_key
+  location: header
+  name: Authorization
+notes:
+  env: SLACK_BOT_TOKEN
+  caution: 'Ensure the bot token has chat:write scope. Either text or blocks is required (Slack API will reject if neither provided). Unresolved placeholders will be sent as literal strings.'

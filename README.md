@@ -10,9 +10,11 @@
 <p align="center">
   <a href="https://github.com/tallclub/matimo/actions/workflows/ci.yml?branch=main"><img src="https://img.shields.io/github/actions/workflow/status/tallclub/matimo/ci.yml?branch=main&style=for-the-badge" alt="CI status"></a>
   <a href="https://www.npmjs.com/package/matimo"><img src="https://img.shields.io/npm/v/matimo.svg?style=for-the-badge" alt="npm version"></a>
+  <a href="https://pypi.org/project/matimo/"><img src="https://img.shields.io/pypi/v/matimo.svg?style=for-the-badge" alt="PyPI version"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge" alt="MIT License"></a>
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-5.9+-blue?style=for-the-badge" alt="TypeScript"></a>
   <a href="https://nodejs.org/"><img src="https://img.shields.io/badge/Node.js-18+-green?style=for-the-badge" alt="Node.js"></a>
+  <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.11+-blue?style=for-the-badge" alt="Python"></a>
 </p>
 
 <p align="center">
@@ -34,9 +36,16 @@ Define tools **once in YAML**. Let agents extend themselves with new capabilitie
 ### Installation
 
 ```bash
+# TypeScript / Node.js
 npm install matimo
 # OR auto-discover tools from node_modules/@matimo/*
 npm install matimo @matimo/slack @matimo/gmail
+
+# Python
+pip install matimo
+pip install "matimo[langchain]"   # with LangChain support
+pip install "matimo[crewai]"      # with CrewAI support
+pip install "matimo[all]"         # all extras
 ```
 
 ### Minimal Example (TypeScript)
@@ -54,7 +63,23 @@ const result = await matimo.execute('slack_send_channel_message', {
 });
 ```
 
-See [Three Integration Patterns](#three-integration-patterns) and [examples/](./examples) for more.
+### Minimal Example (Python)
+
+```python
+import asyncio
+from matimo import Matimo
+
+async def main():
+    matimo = await Matimo.init(auto_discover=True)
+    result = await matimo.execute('slack_send_channel_message', {
+        'channel': '#general',
+        'text': 'Hello from Matimo!',
+    })
+
+asyncio.run(main())
+```
+
+See [Four Integration Patterns](#four-integration-patterns) and [examples/](./examples) for more. Python SDK reference: [python/README.md](./python/README.md).
 
 ## What's Included
 
@@ -75,6 +100,7 @@ Matimo ships with built-in support for:
 - **OAuth2 Support**: Provider-agnostic authorization for Slack, Gmail, GitHub, etc.
 - **Framework Support**: Factory pattern, Decorator pattern, LangChain, CrewAI
 - **TypeScript SDK**: Full type safety and IDE support
+- **Python SDK**: Full feature parity with TypeScript — factory pattern, decorator, LangChain, CrewAI, MCP, policy engine
 - **Agent Skills System**: [SKILL.md](https://agentskills.io) knowledge files with semantic search, content chunking, and progressive disclosure
 - **Policy Engine**: 9 security rules, HITL quarantine, hot-reload, SHA-256 integrity tracking, HMAC approvals, audit events
 
@@ -95,6 +121,7 @@ Matimo ships with built-in support for:
 
 Included:
 - TypeScript SDK (factory & decorator patterns)
+- **Python SDK** (factory, decorator, LangChain, CrewAI, MCP — full parity)
 - LangChain integration (with examples)
 - Matimo CLI (tool discovery & setup)
 - MCP Server (Claude Desktop, Cursor, Windsurf, any MCP client)
@@ -152,7 +179,7 @@ See [SDK Usage Patterns](./docs/user-guide/SDK_PATTERNS.md), [LangChain Integrat
 
 ## Installation
 
-### From npm (Recommended)
+### TypeScript / Node.js
 
 ```bash
 npm install matimo
@@ -166,6 +193,24 @@ Then use with auto-discovery:
 ```typescript
 const matimo = await MatimoInstance.init({ autoDiscover: true });
 ```
+
+### Python
+
+```bash
+pip install matimo
+pip install "matimo[langchain]"   # LangChain support
+pip install "matimo[crewai]"      # CrewAI support
+pip install "matimo[all]"         # all extras
+```
+
+Then use with auto-discovery:
+
+```python
+from matimo import Matimo
+matimo = await Matimo.init(auto_discover=True)
+```
+
+See [python/README.md](./python/README.md) for the full Python SDK reference.
 
 ### Matimo CLI (Tool Management)
 
@@ -251,7 +296,6 @@ See [Policy & Lifecycle Docs](./docs/api-reference/POLICY_AND_LIFECYCLE.md) for 
 ## Features **Coming Soon:**
 
 - More tool providers (Stripe, Jira, Linear, etc.)
-- Python SDK
 - Custom Tool Marketplace
 
 ---
@@ -299,6 +343,7 @@ See [Adding Tools to Matimo](./docs/tool-development/ADDING_TOOLS.md) for the co
 ## Documentation
 
 - [Getting Started](./docs/getting-started/)
+- [Python SDK](./python/README.md)
 - [API Reference](./docs/api-reference/SDK.md)
 - [Skills System](./docs/skills/SKILLS.md)
 - [Policy Engine & Tool Lifecycle](./docs/api-reference/POLICY_AND_LIFECYCLE.md)

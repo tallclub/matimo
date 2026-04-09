@@ -1,0 +1,62 @@
+name: hubspot-update-contact
+version: '1.0.0'
+description: Update an existing contact in HubSpot CRM.
+
+parameters:
+  id:
+    type: string
+    required: true
+    description: The HubSpot contact ID to update.
+  properties:
+    type: object
+    required: true
+    description: Object containing contact properties to update (e.g., firstname, lastname, email, phone).
+
+execution:
+  type: http
+  method: PATCH
+  url: 'https://api.hubapi.com/crm/v3/objects/contacts/{id}'
+  headers:
+    Authorization: 'Bearer {MATIMO_HUBSPOT_API_KEY}'
+    Content-Type: application/json
+  body:
+    properties: '{properties}'
+  timeout: 30000
+
+authentication:
+  type: bearer
+  location: header
+  name: Authorization
+  notes:
+    env: MATIMO_HUBSPOT_API_KEY
+
+requires_approval: true
+
+output_schema:
+  type: object
+  properties:
+    id: { type: string }
+    properties: { type: object }
+    updatedAt: { type: string }
+  required: [id, properties]
+
+error_handling:
+  retry: 2
+  backoff_type: exponential
+  initial_delay_ms: 500
+
+examples:
+  - name: 'Update contact email'
+    params:
+      id: '123'
+      properties:
+        email: 'newemail@example.com'
+    expected_result: 'Updated contact with new email.'
+  - name: 'Update multiple properties'
+    params:
+      id: '123'
+      properties:
+        firstname: 'Jane'
+        lastname: 'Doe'
+        phone: '+1-555-0100'
+    expected_result: 'Updated contact with new properties.'

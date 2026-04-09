@@ -1,0 +1,49 @@
+name: slack_reply_to_message
+description: |-
+  Post a reply to a message thread.
+  Uses chat.postMessage API method with thread_ts parameter.
+version: '1.0.0'
+parameters:
+  channel:
+    type: string
+    required: true
+    description: Channel ID containing the parent message
+  thread_ts:
+    type: string
+    required: true
+    description: |-
+      Timestamp of the parent message that starts the thread.
+      Use parent's ts value, never use a reply's ts value.
+  text:
+    type: string
+    required: false
+    description: |-
+      Reply text (optional if using blocks for rich formatting).
+      Recommended as fallback for notifications and accessibility.
+  blocks:
+    type: array
+    required: false
+    description: Block Kit JSON array for rich message formatting
+execution:
+  type: http
+  method: POST
+  url: 'https://slack.com/api/chat.postMessage'
+  headers:
+    Authorization: 'Bearer {SLACK_BOT_TOKEN}'
+    Content-Type: application/json
+  body:
+    channel: '{channel}'
+    text: '{text}'
+    thread_ts: '{thread_ts}'
+  timeout: 15000
+authentication:
+  type: api_key
+  location: header
+  name: Authorization
+notes:
+  env: SLACK_BOT_TOKEN
+  scopes: chat:write
+  important: |-
+    - thread_ts must be parent message timestamp, not a reply
+    - Either text or blocks is recommended (both optional)
+    - Threads keep conversations organized by topic

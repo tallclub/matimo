@@ -1,0 +1,100 @@
+name: notion_query_database
+description: Query pages from a Notion database to retrieve content. Use notion_list_databases first to get the database ID.
+version: "1.0.0"
+parameters:
+  database_id:
+    type: string
+    required: true
+    description: The ID of the database to query. Get from notion_list_databases (item.id)
+  sorts:
+    type: array
+    required: false
+    description: Array of sort objects to order results by properties or timestamps
+  filter:
+    type: object
+    required: false
+    description: Filter criteria as JSON object to narrow results
+  page_size:
+    type: number
+    required: false
+    description: Number of results per request (default 100, max 100)
+  start_cursor:
+    type: string
+    required: false
+    description: Cursor for pagination to retrieve next set of results
+  archived:
+    type: boolean
+    required: false
+    description: If true, include archived pages in results
+  in_trash:
+    type: boolean
+    required: false
+    description: If true, include pages in trash in results
+  result_type:
+    type: string
+    required: false
+    description: Filter results by type - page or data_source (for wikis only)
+
+execution:
+  type: http
+  method: POST
+  url: "https://api.notion.com/v1/data_sources/{database_id}/query"
+  headers:
+    Authorization: "Bearer {NOTION_API_KEY}"
+    "Notion-Version": "2025-09-03"
+    Content-Type: application/json
+  body:
+    sorts: "{sorts}"
+    filter: "{filter}"
+    page_size: "{page_size}"
+    start_cursor: "{start_cursor}"
+    archived: "{archived}"
+    in_trash: "{in_trash}"
+    result_type: "{result_type}"
+  timeout: 15000
+
+authentication:
+  type: bearer
+  location: header
+  name: Authorization
+notes:
+  env: NOTION_API_KEY
+  api_version: "2025-09-03"
+  caution: "Uses current Notion API (2025-09-03). Ensure 'Read content' capability is enabled on the integration. Filter and sort are optional - omit if not needed. API returns max 100 items per call."
+
+output_schema:
+  type: object
+  properties:
+    object:
+      type: string
+    type:
+      type: string
+    results:
+      type: array
+    has_more:
+      type: boolean
+    next_cursor:
+      type: string
+  required: ["object", "results", "has_more"]
+
+examples:
+  - name: "Query data source - all pages"
+    params:
+      database_id: "d9824bdc-8445-4327-be8b-5b47500af6ce"
+    expected_result: "Returns paginated list of all pages in the database"
+  - name: "Query data source - with filter"
+    params:
+      database_id: "d9824bdc-8445-4327-be8b-5b47500af6ce"
+      filter:
+        property: Status
+        status:
+          equals: Done
+    expected_result: "Returns pages where the Status property equals 'Done'"
+  - name: "Query data source - with sorting"
+    params:
+      database_id: "d9824bdc-8445-4327-be8b-5b47500af6ce"
+      sorts:
+        - property: Created
+          direction: descending
+      page_size: 25
+    expected_result: "Returns up to 25 pages sorted by creation date (descending)"

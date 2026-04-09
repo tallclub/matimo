@@ -1,0 +1,117 @@
+name: notion_update_page
+description: Update properties, icon, cover, or other attributes of an existing Notion page
+version: "1.0.0"
+parameters:
+  page_id:
+    type: string
+    required: true
+    description: The ID of the page to update (UUID format, dashes optional)
+  properties:
+    type: object
+    required: false
+    description: Page properties to update as JSON object - must match parent data source schema
+  icon:
+    type: object
+    required: false
+    description: Page icon object with type and content (emoji, external URL, or file)
+  cover:
+    type: object
+    required: false
+    description: Page cover image object with type and file/external URL details
+  is_locked:
+    type: boolean
+    required: false
+    description: Whether to lock page from editing in Notion UI
+  template:
+    type: object
+    required: false
+    description: Template object to apply - type default or template_id with specific template ID
+  erase_content:
+    type: boolean
+    required: false
+    description: Whether to erase all existing page content (use with template to replace content)
+  archived:
+    type: boolean
+    required: false
+    description: Whether to archive or restore the page
+  in_trash:
+    type: boolean
+    required: false
+    description: Whether to move page to trash or restore it
+
+execution:
+  type: http
+  method: PATCH
+  url: "https://api.notion.com/v1/pages/{page_id}"
+  headers:
+    Authorization: "Bearer {NOTION_API_KEY}"
+    "Notion-Version": "2025-09-03"
+    Content-Type: application/json
+  body:
+    properties: "{properties}"
+    icon: "{icon}"
+    cover: "{cover}"
+    is_locked: "{is_locked}"
+    template: "{template}"
+    erase_content: "{erase_content}"
+    archived: "{archived}"
+    in_trash: "{in_trash}"
+  timeout: 15000
+
+authentication:
+  type: bearer
+  location: header
+  name: Authorization
+notes:
+  env: NOTION_API_KEY
+  caution: "Ensure 'Update content' capability is enabled. Only include parameters you want to change. Cannot update parent, created_by, created_time, last_edited_by, last_edited_time, or rollup properties via API."
+
+output_schema:
+  type: object
+  properties:
+    object:
+      type: string
+    id:
+      type: string
+    created_time:
+      type: string
+    last_edited_time:
+      type: string
+    archived:
+      type: boolean
+    in_trash:
+      type: boolean
+    is_locked:
+      type: boolean
+    properties:
+      type: object
+  required: ["object", "id", "last_edited_time"]
+
+examples:
+  - name: "Update page title"
+    params:
+      page_id: "be633bf1-dfa0-436d-b259-571129a590e5"
+      properties:
+        Name:
+          title:
+            - text:
+                content: Updated Title
+    expected_result: "Page title updated to 'Updated Title'"
+  - name: "Update page icon"
+    params:
+      page_id: "be633bf1-dfa0-436d-b259-571129a590e5"
+      icon:
+        type: emoji
+        emoji: "🎉"
+    expected_result: "Page icon changed to celebration emoji"
+  - name: "Update page with cover and apply template"
+    params:
+      page_id: "be633bf1-dfa0-436d-b259-571129a590e5"
+      cover:
+        type: external
+        external:
+          url: https://example.com/image.png
+      template:
+        type: default
+      erase_content: true
+    expected_result: "Page cover set, default template applied, existing content replaced"

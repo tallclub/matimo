@@ -1,8 +1,125 @@
 # Quick Start — 5 Minutes
 
-Get Matimo up and running in 5 minutes.
+Get Matimo up and running in 5 minutes. Available in **TypeScript** and **Python**.
 
 ---
+
+## Python SDK
+
+### Path D: Python Quick Start
+
+**Install:**
+
+```bash
+pip install matimo
+# or with uv
+uv add matimo
+```
+
+**Use pre-built tools immediately:**
+
+```bash
+pip install matimo matimo-slack matimo-github
+```
+
+```python
+import asyncio
+from matimo import Matimo
+
+async def main():
+    # Load all installed provider packages automatically
+    matimo = await Matimo.init(auto_discover=True)
+
+    # Execute a Slack tool
+    result = await matimo.execute('slack_send_channel_message', {
+        'channel': '#general',
+        'text': 'Hello from Matimo!',
+    })
+    print('Message sent!', result)
+
+asyncio.run(main())
+```
+
+**Build your own Python tool (5 min):**
+
+**1. Create `tools/calculator/definition.yaml`:**
+
+```yaml
+name: calculator
+description: Perform basic math operations
+version: '1.0.0'
+
+parameters:
+  operation:
+    type: string
+    enum: [add, subtract, multiply, divide]
+    required: true
+  a:
+    type: number
+    required: true
+  b:
+    type: number
+    required: true
+
+execution:
+  type: command
+  command: python
+  args:
+    - -c
+    - |
+      import sys, json, operator
+      op, a, b = sys.argv[1], float(sys.argv[2]), float(sys.argv[3])
+      ops = {'add': a+b, 'subtract': a-b, 'multiply': a*b, 'divide': a/b}
+      print(json.dumps({'result': ops[op]}))
+    - '{operation}'
+    - '{a}'
+    - '{b}'
+
+output_schema:
+  type: object
+  properties:
+    result:
+      type: number
+  required: [result]
+```
+
+**2. Create `main.py`:**
+
+```python
+import asyncio
+from matimo import Matimo
+
+async def main():
+    matimo = await Matimo.init('./tools')
+    tools = matimo.list_tools()
+    print(f"📦 Loaded {len(tools)} tools")
+
+    result = await matimo.execute('calculator', {
+        'operation': 'add',
+        'a': 10,
+        'b': 5,
+    })
+    print('✅ Result:', result)  # {'result': 15.0}
+
+asyncio.run(main())
+```
+
+**3. Run it:**
+
+```bash
+python main.py
+# or
+uv run python main.py
+```
+
+**Python next steps:**
+- [SDK Patterns (Python)](#python-sdk-patterns) — factory, decorator, LangChain
+- [LangChain Integration](../framework-integrations/LANGCHAIN.md)
+- [Examples →](../../python/examples/)
+
+---
+
+## TypeScript SDK
 
 ## Choose Your Path
 

@@ -1,0 +1,46 @@
+name: slack_search_messages
+description: |-
+  Search across Slack message history.
+  Uses search.messages API method.
+  Supports filtering by channel, date range, and other criteria.
+version: '1.0.0'
+parameters:
+  query:
+    type: string
+    required: true
+    description: |-
+      Search query text.
+      Supports operators: from:@user, in:#channel, after:YYYY-MM-DD, etc.
+  sort:
+    type: string
+    required: false
+    description: |-
+      Sort results by: score (relevance, default) or timestamp
+  count:
+    type: number
+    required: false
+    description: |-
+      Number of results to return.
+      Default: 20, Max: 100
+execution:
+  type: http
+  method: GET
+  url: 'https://slack.com/api/search.messages'
+  headers:
+    Authorization: 'Bearer {SLACK_BOT_TOKEN}'
+  query_params:
+    query: '{query}'
+    sort: '{sort}'
+    count: '{count}'
+  timeout: 15000
+authentication:
+  type: api_key
+  location: header
+  name: Authorization
+notes:
+  env: SLACK_BOT_TOKEN
+  scopes: search:read
+  important: |-
+    - Query supports advanced search operators
+    - Example: "from:@alice in:#engineering after:2024-01-01"
+    - Default sort is by relevance score

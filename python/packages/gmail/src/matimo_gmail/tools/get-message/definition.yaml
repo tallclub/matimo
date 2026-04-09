@@ -1,0 +1,90 @@
+name: gmail-get-message
+description: Get full details of a specific Gmail message including headers and body
+version: '1.0.0'
+
+parameters:
+  messageId:
+    type: string
+    description: ID of the message to retrieve
+    required: true
+    example: '187a65b7f3f2f11e'
+
+  format:
+    type: string
+    enum:
+      - minimal
+      - full
+      - raw
+    description: Format of the message to return
+    required: false
+    default: full
+    example: full
+
+  metadataHeaders:
+    type: string
+    description: Comma-separated headers to include in metadata (when format=minimal)
+    required: false
+    example: 'From,Subject,Date'
+
+execution:
+  type: http
+  method: GET
+  url: 'https://www.googleapis.com/gmail/v1/users/me/messages/{messageId}'
+  query_params:
+    format: '{format}'
+    metadataHeaders: '{metadataHeaders}'
+  headers:
+    Authorization: 'Bearer {GMAIL_ACCESS_TOKEN}'
+    Accept: 'application/json'
+
+authentication:
+  type: oauth2
+  provider: google
+  scopes:
+    - 'https://www.googleapis.com/auth/gmail.readonly'
+
+output_schema:
+  type: object
+  properties:
+    id:
+      type: string
+      description: Message ID
+    threadId:
+      type: string
+      description: Thread ID
+    labelIds:
+      type: array
+      items:
+        type: string
+      description: Array of label IDs applied to this message
+    snippet:
+      type: string
+      description: Short snippet of the message text
+    sizeEstimate:
+      type: number
+      description: Estimated size of the message in bytes
+    headers:
+      type: object
+      description: Message headers (From, To, Subject, Date, etc.)
+    body:
+      type: object
+      description: Message body with data and mimeType
+      properties:
+        mimeType:
+          type: string
+        data:
+          type: string
+          description: Message body data (base64 encoded if raw format)
+    error:
+      type: string
+      description: Error message if request failed
+
+error_handling:
+  retry: 3
+  backoff_type: exponential
+  initial_delay_ms: 1000
+  retryable_status_codes:
+    - 429
+    - 500
+    - 502
+    - 503

@@ -1,0 +1,110 @@
+name: Publish Python SDK
+
+on:
+  push:
+    tags:
+      - "python/v*"   # e.g. python/v0.1.0  → publishes matimo core
+      - "python/providers/*/v*"  # e.g. python/providers/slack/v0.1.0
+
+jobs:
+  # -------------------------------------------------------------------------
+  # Test gate — must pass before any publish
+  # -------------------------------------------------------------------------
+  test:
+    name: Test Python SDK
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: python
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run tests
+        run: uv run pytest packages/core/tests/ --tb=short -q
+
+      - name: Coverage check
+        run: uv run pytest packages/core/tests/ --cov=packages/core/src/matimo --cov-fail-under=95 -q --tb=no
+
+  # -------------------------------------------------------------------------
+  # Publish core matimo package
+  # -------------------------------------------------------------------------
+  publish-core:
+    name: Publish matimo-core + matimo to PyPI
+    runs-on: ubuntu-latest
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/python/v')
+    environment: pypi
+    permissions:
+      id-token: write   # OIDC trusted publishing — no API token needed
+
+    defaults:
+      run:
+        working-directory: python
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Build matimo-core wheel + sdist
+        run: uv build --package matimo-core
+
+      - name: Build matimo umbrella wheel + sdist
+        run: uv build --package matimo
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: python/dist/
+
+  # -------------------------------------------------------------------------
+  # Publish provider packages
+  # -------------------------------------------------------------------------
+  publish-provider:
+    name: Publish provider package to PyPI
+    runs-on: ubuntu-latest
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/python/providers/')
+    environment: pypi
+    permissions:
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract provider from tag
+        id: parse
+        run: |
+          # Tag format: python/providers/{provider}/v{version}
+          TAG="${GITHUB_REF#refs/tags/}"
+          PROVIDER=$(echo "$TAG" | cut -d'/' -f3)
+          echo "provider=$PROVIDER" >> "$GITHUB_OUTPUT"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Build provider wheel
+        working-directory: python
+        run: uv build --package matimo-${{ steps.parse.outputs.provider }}
+
+      - name: Publish provider to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: python/dist/

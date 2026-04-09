@@ -1,0 +1,83 @@
+name: github-search-repositories
+description: Search for repositories on GitHub by name, description, topics, or stars
+version: '1.0.0'
+
+parameters:
+  query:
+    type: string
+    required: true
+    description: Search query (e.g., 'language:javascript stars:>1000')
+  sort:
+    type: string
+    required: false
+    description: Sort field - stars, forks, help-wanted-issues, or updated
+    default: stars
+  order:
+    type: string
+    required: false
+    description: Sort order - asc or desc
+    default: desc
+  per_page:
+    type: number
+    required: false
+    description: Results per page (max 100)
+    default: 30
+  page:
+    type: number
+    required: false
+    description: Page number for pagination
+    default: 1
+
+execution:
+  type: http
+  method: GET
+  url: 'https://api.github.com/search/repositories'
+  query_params:
+    q: '{query}'
+    sort: '{sort}'
+    order: '{order}'
+    per_page: '{per_page}'
+    page: '{page}'
+  headers:
+    Accept: application/vnd.github+json
+    Authorization: 'Bearer {GITHUB_TOKEN}'
+    X-GitHub-Api-Version: '2022-11-28'
+  timeout: 30000
+
+authentication:
+  type: bearer
+  location: header
+  name: Authorization
+  notes:
+    env: GITHUB_TOKEN
+    types: OAuth2 token or Personal Access Token
+    rate_limit: 30 req/min authenticated
+
+output_schema:
+  type: object
+  properties:
+    total_count:
+      type: number
+      description: Total number of matching repositories
+    incomplete_results:
+      type: boolean
+      description: Whether results were truncated
+    items:
+      type: array
+      description: Array of repository objects
+
+error_handling:
+  retry: 2
+  backoff_type: exponential
+  initial_delay_ms: 1000
+
+examples:
+  - name: Search popular JavaScript repos
+    params:
+      query: 'language:javascript stars:>5000'
+      sort: stars
+  - name: Search recently updated Python projects
+    params:
+      query: 'language:python updated:>2024-01-01'
+      sort: updated
+      order: desc

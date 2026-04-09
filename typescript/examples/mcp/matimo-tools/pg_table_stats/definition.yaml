@@ -1,0 +1,66 @@
+name: pg_table_stats
+description: >-
+  Get PostgreSQL table statistics including size, row count, dead tuples, and
+  bloat. USE THIS TOOL when diagnosing table health, planning VACUUMs, or
+  auditing storage usage.
+version: 1.0.0
+requires_approval: true
+parameters:
+  schema:
+    type: string
+    required: false
+    description: Schema name to filter tables. Defaults to 'public'.
+    default: public
+  table:
+    type: string
+    required: false
+    description: >-
+      Specific table name to inspect. If omitted, returns stats for all tables
+      in the schema.
+execution:
+  type: http
+  method: POST
+  url: '{PG_API_URL}/query'
+  headers:
+    Authorization: Bearer {PG_API_KEY}
+    Content-Type: application/json
+  body:
+    sql: >-
+      SELECT relname AS table_name, schemaname,
+      pg_size_pretty(pg_total_relation_size(relid)) AS total_size,
+      pg_size_pretty(pg_relation_size(relid)) AS table_size,
+      pg_size_pretty(pg_total_relation_size(relid) - pg_relation_size(relid)) AS
+      index_size, n_live_tup AS live_rows, n_dead_tup AS dead_rows, last_vacuum,
+      last_autovacuum, last_analyze FROM pg_stat_user_tables WHERE schemaname =
+      '{schema}' AND (relname = '{table}' OR '{table}' = '') ORDER BY
+      pg_total_relation_size(relid) DESC
+authentication:
+  type: bearer
+output_schema:
+  type: object
+  properties:
+    rows:
+      type: array
+      description: Table stats rows
+    rowCount:
+      type: number
+      description: Number of tables returned
+  required:
+    - rows
+    - rowCount
+error_handling:
+  retry: 2
+  backoff_type: exponential
+  initial_delay_ms: 500
+  retry_on_status:
+    - 500
+    - 503
+examples:
+  - name: All tables in public schema
+    params:
+      schema: public
+  - name: Single table stats
+    params:
+      schema: public
+      table: orders
+status: approved

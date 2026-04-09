@@ -1,0 +1,41 @@
+name: slack_create_channel
+description: |-
+  Create a new public or private Slack channel.
+  Uses conversations.create API method.
+version: '1.0.0'
+parameters:
+  name:
+    type: string
+    required: true
+    description: |-
+      Name of the channel.
+      Must be lowercase letters, numbers, hyphens, underscores only.
+      Max 80 characters.
+  is_private:
+    type: boolean
+    required: false
+    description: |-
+      Set to true to create a private channel.
+      Default: false (creates public channel)
+execution:
+  type: http
+  method: POST
+  url: 'https://slack.com/api/conversations.create'
+  headers:
+    Authorization: 'Bearer {SLACK_BOT_TOKEN}'
+    Content-Type: application/json
+  body:
+    name: '{name}'
+    is_private: '{is_private}'
+  timeout: 15000
+authentication:
+  type: api_key
+  location: header
+  name: Authorization
+notes:
+  env: SLACK_BOT_TOKEN
+  scopes: channels:manage, channels:write, groups:write
+  important: |-
+    - Store both returned channel ID and name from response
+    - Channel names are validated by Slack
+    - Private channels require additional scopes

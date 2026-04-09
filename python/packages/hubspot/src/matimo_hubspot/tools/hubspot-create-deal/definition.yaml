@@ -1,0 +1,69 @@
+name: hubspot-create-deal
+version: '1.0.0'
+description: Create a new deal in HubSpot CRM.
+
+parameters:
+  dealname:
+    type: string
+    required: true
+    description: Name of the deal
+  dealstage:
+    type: string
+    required: true
+    description: Pipeline stage of the deal (e.g., negotiation, contractsent, won)
+  pipeline:
+    type: string
+    required: false
+    description: Pipeline ID (uses default if not specified)
+  amount:
+    type: number
+    required: false
+    description: Deal amount
+  closedate:
+    type: string
+    required: false
+    description: Close date in ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)
+
+execution:
+  type: http
+  method: POST
+  url: 'https://api.hubapi.com/crm/v3/objects/deals'
+  headers:
+    Authorization: 'Bearer {MATIMO_HUBSPOT_API_KEY}'
+    Content-Type: application/json
+  body:
+    properties:
+      dealname: '{dealname}'
+      dealstage: '{dealstage}'
+      pipeline: '{pipeline}'
+      amount: '{amount}'
+      closedate: '{closedate}'
+  timeout: 30000
+
+authentication:
+  type: bearer
+  location: header
+  name: Authorization
+  notes:
+    env: MATIMO_HUBSPOT_API_KEY
+
+output_schema:
+  type: object
+  properties:
+    id: { type: string }
+    properties: { type: object }
+    createdAt: { type: string }
+  required: [id, properties]
+
+error_handling:
+  retry: 2
+  backoff_type: exponential
+  initial_delay_ms: 500
+
+examples:
+  - name: 'Create deal with name and stage'
+    params:
+      dealname: 'Enterprise Sale'
+      dealstage: 'negotiation'
+      amount: 50000
+    expected_result: 'Deal created with id and properties.'

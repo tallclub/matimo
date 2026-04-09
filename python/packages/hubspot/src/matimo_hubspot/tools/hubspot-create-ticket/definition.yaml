@@ -1,0 +1,64 @@
+name: hubspot-create-ticket
+version: '1.0.0'
+description: Create a new ticket in HubSpot CRM.
+
+parameters:
+  subject:
+    type: string
+    required: true
+    description: Ticket subject
+  description:
+    type: string
+    required: false
+    description: Ticket description
+  priority:
+    type: string
+    required: false
+    description: Ticket priority (LOW, MEDIUM, HIGH, URGENT)
+  ticketstatus:
+    type: string
+    required: false
+    description: Ticket status (BACKLOG, TODO, IN_PROGRESS, DONE)
+
+execution:
+  type: http
+  method: POST
+  url: 'https://api.hubapi.com/crm/v3/objects/tickets'
+  headers:
+    Authorization: 'Bearer {MATIMO_HUBSPOT_API_KEY}'
+    Content-Type: application/json
+  body:
+    properties:
+      subject: '{subject}'
+      description: '{description}'
+      priority: '{priority}'
+      ticketstatus: '{ticketstatus}'
+  timeout: 30000
+
+authentication:
+  type: bearer
+  location: header
+  name: Authorization
+  notes:
+    env: MATIMO_HUBSPOT_API_KEY
+
+output_schema:
+  type: object
+  properties:
+    id: { type: string }
+    properties: { type: object }
+    createdAt: { type: string }
+  required: [id, properties]
+
+error_handling:
+  retry: 2
+  backoff_type: exponential
+  initial_delay_ms: 500
+
+examples:
+  - name: 'Create ticket with subject and priority'
+    params:
+      subject: 'Support Request'
+      priority: 'high'
+      description: 'Customer cannot login'
+    expected_result: 'Ticket created with id and properties.'

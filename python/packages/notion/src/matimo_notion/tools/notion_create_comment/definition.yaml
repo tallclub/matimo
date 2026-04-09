@@ -1,0 +1,97 @@
+name: notion_create_comment
+description: Add a comment to a Notion page, block, or discussion thread
+version: "1.0.0"
+parameters:
+  parent:
+    type: object
+    required: false
+    description: Parent target - provide one of page_id, block_id, or neither if using discussion_id
+  discussion_id:
+    type: string
+    required: false
+    description: The ID of existing discussion thread to respond to (alternative to parent)
+  rich_text:
+    type: array
+    required: true
+    description: Array of rich text objects representing comment content
+  attachments:
+    type: array
+    required: false
+    description: Array of file objects to attach to comment (max 3 allowed)
+  display_name:
+    type: object
+    required: false
+    description: Display name configuration for the comment author
+
+execution:
+  type: http
+  method: POST
+  url: "https://api.notion.com/v1/comments"
+  headers:
+    Authorization: "Bearer {NOTION_API_KEY}"
+    "Notion-Version": "2025-09-03"
+    Content-Type: application/json
+  body:
+    parent: "{parent}"
+    discussion_id: "{discussion_id}"
+    rich_text: "{rich_text}"
+    attachments: "{attachments}"
+    display_name: "{display_name}"
+  timeout: 15000
+
+authentication:
+  type: bearer
+  location: header
+  name: Authorization
+notes:
+  env: NOTION_API_KEY
+  caution: "Ensure 'Insert comments' capability is enabled. Either page_id, block_id, or discussion_id required. Cannot start new inline discussions via API - must respond to existing threads or comment on pages/blocks."
+
+output_schema:
+  type: object
+  properties:
+    object:
+      type: string
+    id:
+      type: string
+    created_time:
+      type: string
+    last_edited_time:
+      type: string
+    rich_text:
+      type: array
+    parent:
+      type: object
+  required: ["object", "id"]
+
+examples:
+  - name: "Comment on page with simple text"
+    params:
+      parent:
+        page_id: be633bf1-dfa0-436d-b259-571129a590e5
+      rich_text:
+        - type: text
+          text:
+            content: "This looks great! Consider adding more examples."
+    expected_result: "Comment posted on the page"
+  - name: "Reply to discussion thread"
+    params:
+      discussion_id: "discussion-thread-id"
+      rich_text:
+        - type: text
+          text:
+            content: "I agree with this suggestion"
+          annotations:
+            bold: true
+    expected_result: "Reply added to existing discussion thread"
+  - name: "Comment on block with attachment"
+    params:
+      parent:
+        block_id: block-id-uuid
+      rich_text:
+        - type: text
+          text:
+            content: "Attached document:"
+      attachments:
+        - url: https://example.com/document.pdf
+    expected_result: "Comment posted on block with file attachment"

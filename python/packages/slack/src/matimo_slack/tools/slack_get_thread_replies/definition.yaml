@@ -1,0 +1,45 @@
+name: slack_get_thread_replies
+description: |-
+  Retrieve all replies in a message thread.
+  Uses conversations.replies API method.
+  Includes the parent message as first result.
+version: '1.0.0'
+parameters:
+  channel:
+    type: string
+    required: true
+    description: Channel ID containing the thread
+  ts:
+    type: string
+    required: true
+    description: |-
+      Timestamp of the parent message (thread root).
+      Include parent message ts, not a reply ts.
+  limit:
+    type: number
+    required: false
+    description: |-
+      Maximum number of messages to return.
+      Default: 100, Max: 1000
+execution:
+  type: http
+  method: GET
+  url: 'https://slack.com/api/conversations.replies'
+  headers:
+    Authorization: 'Bearer {SLACK_BOT_TOKEN}'
+  query_params:
+    channel: '{channel}'
+    ts: '{ts}'
+    limit: '{limit}'
+  timeout: 15000
+authentication:
+  type: api_key
+  location: header
+  name: Authorization
+notes:
+  env: SLACK_BOT_TOKEN
+  scopes: conversations:history
+  important: |-
+    - ts must be parent message, not a reply
+    - Parent message included in response
+    - Sorted by timestamp

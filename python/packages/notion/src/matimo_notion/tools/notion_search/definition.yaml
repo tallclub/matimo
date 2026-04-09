@@ -1,0 +1,87 @@
+name: notion_search
+description: Search across all pages and data sources in Notion workspace by title
+version: "1.0.0"
+parameters:
+  query:
+    type: string
+    required: false
+    description: Search text to find in page/data_source titles - omit to return all shared items
+  filter_object:
+    type: object
+    required: false
+    description: Filter results by object type - page or data_source
+  sort_direction:
+    type: string
+    required: false
+    description: Sort direction - ascending or descending
+  sort_timestamp:
+    type: string
+    required: false
+    description: Sort by timestamp - last_edited_time (default) or created_time
+  page_size:
+    type: number
+    required: false
+    description: Number of results per request
+  start_cursor:
+    type: string
+    required: false
+    description: Cursor for pagination to retrieve next set of results
+
+execution:
+  type: http
+  method: POST
+  url: "https://api.notion.com/v1/search"
+  headers:
+    Authorization: "Bearer {NOTION_API_KEY}"
+    "Notion-Version": "2025-09-03"
+    Content-Type: application/json
+  body:
+    query: "{query}"
+    filter: "{filter_object}"
+    sort:
+      direction: "{sort_direction}"
+      timestamp: "{sort_timestamp}"
+    page_size: "{page_size}"
+    start_cursor: "{start_cursor}"
+  timeout: 15000
+
+authentication:
+  type: bearer
+  location: header
+  name: Authorization
+notes:
+  env: NOTION_API_KEY
+  caution: "Omit 'query' parameter to return all pages/data sources shared with integration. Filter and sort are optional. Results respect integration's read capabilities. API version 2025-09-03."
+
+output_schema:
+  type: object
+  properties:
+    object:
+      type: string
+    type:
+      type: string
+    page_or_data_source:
+      type: object
+    results:
+      type: array
+    has_more:
+      type: boolean
+    next_cursor:
+      type: string
+  required: ["object", "type", "results", "has_more"]
+
+examples:
+  - name: "Search for pages by title"
+    params:
+      query: "meeting notes"
+    expected_result: "Returns all pages with 'meeting notes' in title"
+  - name: "Search data sources only"
+    params:
+      filter_object: "data_source"
+      sort_timestamp: "last_edited_time"
+      sort_direction: "descending"
+    expected_result: "Returns recently edited data sources only"
+  - name: "Get all shared items"
+    params:
+      page_size: 50
+    expected_result: "Returns first 50 pages and data sources shared with integration"
