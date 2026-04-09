@@ -9,6 +9,7 @@ resolution-markers = [
 
 [manifest]
 members = [
+    "matimo",
     "matimo-cli",
     "matimo-core",
     "matimo-examples",
@@ -1829,6 +1830,50 @@ wheels = [
 ]
 
 [[package]]
+name = "matimo"
+version = "0.1.0"
+source = { editable = "packages/matimo" }
+dependencies = [
+    { name = "matimo-core" },
+]
+
+[package.optional-dependencies]
+all = [
+    { name = "matimo-core", extra = ["all"] },
+]
+aws = [
+    { name = "matimo-core", extra = ["aws"] },
+]
+crewai = [
+    { name = "matimo-core", extra = ["crewai"] },
+]
+dotenv = [
+    { name = "matimo-core", extra = ["dotenv"] },
+]
+langchain = [
+    { name = "matimo-core", extra = ["langchain"] },
+]
+mcp = [
+    { name = "matimo-core", extra = ["mcp"] },
+]
+vault = [
+    { name = "matimo-core", extra = ["vault"] },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "matimo-core", editable = "packages/core" },
+    { name = "matimo-core", extras = ["all"], marker = "extra == 'all'", editable = "packages/core" },
+    { name = "matimo-core", extras = ["aws"], marker = "extra == 'aws'", editable = "packages/core" },
+    { name = "matimo-core", extras = ["crewai"], marker = "extra == 'crewai'", editable = "packages/core" },
+    { name = "matimo-core", extras = ["dotenv"], marker = "extra == 'dotenv'", editable = "packages/core" },
+    { name = "matimo-core", extras = ["langchain"], marker = "extra == 'langchain'", editable = "packages/core" },
+    { name = "matimo-core", extras = ["mcp"], marker = "extra == 'mcp'", editable = "packages/core" },
+    { name = "matimo-core", extras = ["vault"], marker = "extra == 'vault'", editable = "packages/core" },
+]
+provides-extras = ["langchain", "crewai", "mcp", "dotenv", "vault", "aws", "all"]
+
+[[package]]
 name = "matimo-cli"
 version = "0.1.0"
 source = { editable = "packages/cli" }
@@ -1849,11 +1894,8 @@ version = "0.1.0"
 source = { editable = "packages/core" }
 dependencies = [
     { name = "anyio" },
-    { name = "crewai" },
     { name = "httpx" },
-    { name = "langchain-openai" },
     { name = "pydantic" },
-    { name = "python-dotenv" },
     { name = "pyyaml" },
     { name = "typing-extensions" },
 ]
@@ -1896,19 +1938,10 @@ vault = [
     { name = "hvac" },
 ]
 
-[package.dev-dependencies]
-dev = [
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-    { name = "pytest-cov" },
-    { name = "respx" },
-]
-
 [package.metadata]
 requires-dist = [
     { name = "anyio", specifier = ">=4.0" },
     { name = "boto3", marker = "extra == 'aws'", specifier = ">=1.34" },
-    { name = "crewai", specifier = ">=0.80" },
     { name = "crewai", marker = "extra == 'all'", specifier = ">=0.80" },
     { name = "crewai", marker = "extra == 'crewai'", specifier = ">=0.80" },
     { name = "crewai", marker = "extra == 'dev'", specifier = ">=0.80" },
@@ -1918,7 +1951,6 @@ requires-dist = [
     { name = "langchain-core", marker = "extra == 'all'", specifier = ">=0.3" },
     { name = "langchain-core", marker = "extra == 'dev'", specifier = ">=0.3" },
     { name = "langchain-core", marker = "extra == 'langchain'", specifier = ">=0.3" },
-    { name = "langchain-openai", specifier = ">=1.1.12" },
     { name = "mcp", marker = "extra == 'all'", specifier = ">=1.0" },
     { name = "mcp", marker = "extra == 'mcp'", specifier = ">=1.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.10" },
@@ -1926,7 +1958,6 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.24" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=5.0" },
-    { name = "python-dotenv", specifier = ">=1.1.1" },
     { name = "python-dotenv", marker = "extra == 'all'", specifier = ">=1.0" },
     { name = "python-dotenv", marker = "extra == 'dotenv'", specifier = ">=1.0" },
     { name = "pyyaml", specifier = ">=6.0" },
@@ -1936,14 +1967,6 @@ requires-dist = [
     { name = "typing-extensions", specifier = ">=4.9" },
 ]
 provides-extras = ["langchain", "crewai", "mcp", "vault", "aws", "dotenv", "all", "dev"]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = ">=9.0.2" },
-    { name = "pytest-asyncio", specifier = ">=1.3.0" },
-    { name = "pytest-cov", specifier = ">=7.1.0" },
-    { name = "respx", specifier = ">=0.22.0" },
-]
 
 [[package]]
 name = "matimo-examples"
@@ -2092,6 +2115,7 @@ name = "matimo-workspace"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "matimo-cli" },
     { name = "matimo-core" },
 ]
 
@@ -2109,7 +2133,10 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "matimo-core", editable = "packages/core" }]
+requires-dist = [
+    { name = "matimo-cli", editable = "packages/cli" },
+    { name = "matimo-core", editable = "packages/core" },
+]
 
 [package.metadata.requires-dev]
 dev = [
