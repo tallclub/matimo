@@ -1,10 +1,20 @@
 #!/bin/sh
 # Run comprehensive tests and coverage check before push
 
+REPO_ROOT=$(git rev-parse --show-toplevel)
+
 # TypeScript
 echo "[pre-push] TypeScript tests + coverage..."
-cd typescript && pnpm test:coverage
+cd "$REPO_ROOT/typescript" && pnpm test:coverage || exit 1
 
 # Python
-echo "[pre-push] Python tests..."
-cd ../python && python -m pytest tests/
+echo "[pre-push] Python tests + coverage..."
+if command -v uv >/dev/null 2>&1; then
+  cd "$REPO_ROOT/python" && uv run pytest packages/core/tests/ \
+    --cov=packages/core/src/matimo \
+    --cov-fail-under=95 \
+    -q --tb=short || exit 1
+  cd "$REPO_ROOT"
+else
+  echo "[pre-push] Skipping Python tests (uv not found)"
+fi

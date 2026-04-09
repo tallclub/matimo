@@ -9,9 +9,9 @@ cd "$REPO_ROOT/typescript" && pnpm lint && pnpm format:check || exit 1
 
 # Python
 if command -v uv >/dev/null 2>&1; then
-	echo "[pre-commit] Python lint..."
-	cd "$REPO_ROOT/python" && uv run ruff check src/ || exit 1
-	cd "$REPO_ROOT"
+  echo "[pre-commit] Python lint..."
+  cd "$REPO_ROOT/python" && uv run -w . ruff check packages/ || exit 1
+  cd "$REPO_ROOT"
 else
-	echo "[pre-commit] Skipping Python lint (uv not found)"
+  echo "[pre-commit] Skipping Python lint (uv not found)"
 fi
