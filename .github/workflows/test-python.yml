@@ -38,13 +38,13 @@ jobs:
         run: uv sync --extra dev
 
       - name: Lint (ruff)
-        run: uv run ruff check src/ || true   # non-blocking until lint is fully clean
+        run: uv run -w . ruff check packages/
 
       - name: Type check (mypy)
-        run: uv run mypy src/matimo || true   # non-blocking during early development
+        run: uv run -w . mypy packages/
 
       - name: Run tests with coverage
-        run: uv run pytest tests/ --cov=matimo --cov-report=xml --cov-report=term-missing -q
+        run: uv run pytest packages/core/tests/ --cov=packages/core/src/matimo --cov-report=xml --cov-fail-under=95 -q --tb=short
 
       - name: Upload coverage
         if: matrix.python-version == '3.11'
