@@ -7,11 +7,23 @@ Install with: pip install matimo[crewai]
 from __future__ import annotations
 
 import asyncio
+import concurrent.futures
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from matimo.core.models import ToolDefinition
     from matimo.instance import Matimo
+
+# Shared thread pool executor for running async code in already-running event loops
+_THREAD_EXECUTOR: concurrent.futures.ThreadPoolExecutor | None = None
+
+
+def _get_executor() -> concurrent.futures.ThreadPoolExecutor:
+    """Get or create the shared thread pool executor."""
+    global _THREAD_EXECUTOR  # noqa: PLW0603
+    if _THREAD_EXECUTOR is None:
+        _THREAD_EXECUTOR = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+    return _THREAD_EXECUTOR
 
 
 def convert_tools_to_crewai(
@@ -96,14 +108,14 @@ def _make_crewai_tool(
                 asyncio.set_event_loop(loop)
 
             if loop.is_running():
-                # If already in an event loop (e.g. Jupyter), use run_until_complete
-                import concurrent.futures
-                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-                    future = executor.submit(
-                        asyncio.run,
-                        matimo.execute(tool_def.name, dict(kwargs), **call_kwargs),
-                    )
-                    return future.result()
+                # If already in an event loop (e.g. Jupyter), run asyncio.run in a thread
+                # to avoid "RuntimeError: asyncio.run() cannot be called from a running event loop"
+                executor = _get_executor()
+                future = executor.submit(
+                    asyncio.run,
+                    matimo.execute(tool_def.name, dict(kwargs), **call_kwargs),
+                )
+                return future.result()
             else:
                 return loop.run_until_complete(
                     matimo.execute(tool_def.name, dict(kwargs), **call_kwargs)
