@@ -41,12 +41,21 @@ export class CommandExecutor {
 
     // SECURITY: command must be a fixed executable — never a templated value.
     // Only 'args' may contain {placeholder} tokens.
-    if (/\{[^}]+\}/u.test(command)) {
+    // ReDoS protection: commands are typically <256 chars; limit regex testing to 1024 chars
+    // to prevent polynomial backtracking on malicious inputs (e.g. repeated opening braces).
+    if (command.length <= 1024 && /\{[^}]+\}/u.test(command)) {
       throw new MatimoError(
         `execution.command must not contain parameter placeholders — only 'args' may be templated. ` +
           `Found: '${command}'. Move the dynamic part into 'args'.`,
         ErrorCode.EXECUTION_FAILED,
         { toolName: tool.name }
+      );
+    } else if (command.length > 1024) {
+      throw new MatimoError(
+        `execution.command exceeds maximum length (1024 chars): ${command.length} chars. ` +
+          'Command must be a simple executable path.',
+        ErrorCode.EXECUTION_FAILED,
+        { toolName: tool.name, length: command.length }
       );
     }
     const templatedCommand = command; // Never template the executable
