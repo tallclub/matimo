@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "matimo-hubspot"
-version = "0.1.0-alpha.14"
+version = "0.1.0a14"
 description = "Matimo provider — HubSpot CRM tools (contacts, deals, companies, tickets)"
 readme = "README.md"
 license = { text = "MIT" }

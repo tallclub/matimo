@@ -4,10 +4,10 @@ build-backend = "hatchling.build"
 
 [project]
 name = "matimo-cli"
-version = "0.1.0-alpha.14"
+version = "0.1.0a14"
 description = "Matimo CLI — Tool package manager & MCP server launcher"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [{ name = "Matimo" }]
 keywords = ["matimo", "cli", "ai-tools", "mcp"]

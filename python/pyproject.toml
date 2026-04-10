@@ -1,6 +1,6 @@
 [project]
 name = "matimo-workspace"
-version = "0.1.0-alpha.14"
+version = "0.1.0a14"
 description = "Matimo Python monorepo workspace"
 requires-python = ">=3.11"
 dependencies = [

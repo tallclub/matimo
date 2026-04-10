@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "matimo-twilio"
-version = "0.1.0-alpha.14"
+version = "0.1.0a14"
 description = "Matimo provider — Twilio tools (SMS, MMS, message history)"
 readme = "README.md"
 license = { text = "MIT" }
