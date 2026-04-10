@@ -67,7 +67,8 @@ class TestResolveInstance:
         obj = MagicMock(spec=[])  # no _matimo attribute
         with pytest.raises(MatimoError) as exc_info:
             _resolve_instance(obj)
-        assert exc_info.value.code == ErrorCode.TOOL_NOT_FOUND
+        assert exc_info.value.code == ErrorCode.INVALID_PARAMETER
+        assert "set_global_matimo_instance" in str(exc_info.value)
 
 
 # ---------------------------------------------------------------------------
@@ -160,7 +161,7 @@ class TestToolDecoratorAsync:
         agent = MyAgent()
         with pytest.raises(MatimoError) as exc_info:
             await agent.run("test")  # type: ignore[call-arg]
-        assert exc_info.value.code == ErrorCode.TOOL_NOT_FOUND
+        assert exc_info.value.code == ErrorCode.INVALID_PARAMETER
 
     def setup_method(self) -> None:
         set_global_matimo_instance(None)  # type: ignore[arg-type]
@@ -214,7 +215,7 @@ class TestToolDecoratorSync:
         agent = MyAgent()
         with pytest.raises(MatimoError) as exc_info:
             agent.run("x")  # type: ignore[call-arg]
-        assert exc_info.value.code == ErrorCode.TOOL_NOT_FOUND
+        assert exc_info.value.code == ErrorCode.INVALID_PARAMETER
 
     def test_decorator_preserves_function_metadata(self) -> None:
         mock_matimo = _make_matimo_mock()

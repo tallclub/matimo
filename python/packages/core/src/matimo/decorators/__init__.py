@@ -95,7 +95,10 @@ def tool(tool_name: str) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
 
 def _resolve_instance(self: object) -> Matimo:
     """
-    Resolve the Matimo instance from the object's matimo attribute or the global.
+    Resolve the Matimo instance from the object's _matimo attribute or the global.
+    
+    Looks for instance set via decorator's _matimo_instance parameter,
+    falls back to global instance set via set_global_matimo_instance().
     """
     instance = getattr(self, "_matimo", None) or _global_instance
     if instance is None:
@@ -103,7 +106,7 @@ def _resolve_instance(self: object) -> Matimo:
         raise MatimoError(
             "No Matimo instance available. "
             "Call set_global_matimo_instance(matimo) before using @tool.",
-            ErrorCode.TOOL_NOT_FOUND,
+            ErrorCode.INVALID_PARAMETER,
         )
     return instance
 
