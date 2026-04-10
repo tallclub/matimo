@@ -43,10 +43,10 @@ jobs:
         run: uv tool run ruff check packages/
 
       - name: Type check (mypy)
-        run: uv run -w . mypy packages/ || true   # non-blocking: union type refinement work in progress
+        run: uv tool run mypy packages/ || true   # non-blocking: union type refinement work in progress
 
       - name: Run tests with coverage
-        run: uv run pytest packages/core/tests/ --cov=packages/core/src/matimo --cov-report=xml --cov-fail-under=95 -q --tb=short
+        run: uv tool run pytest packages/core/tests/ --cov=packages/core/src/matimo --cov-report=xml --cov-fail-under=95 -q --tb=short
 
       - name: Upload coverage
         if: matrix.python-version == '3.11'
