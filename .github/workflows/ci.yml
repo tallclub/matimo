@@ -91,11 +91,11 @@ jobs:
         working-directory: python
 
       - name: Type check
-        run: uv tool run mypy packages/ || true   # non-blocking: union type refinement work in progress
+        run: uv run mypy packages/ || true   # non-blocking: union type refinement work in progress
         working-directory: python
 
       - name: Test with coverage
-        run: uv tool run pytest packages/core/tests/ --cov=packages/core/src/matimo --cov-report=xml --cov-fail-under=95 -q --tb=short
+        run: uv run pytest packages/core/tests/ --cov=packages/core/src/matimo --cov-report=xml --cov-fail-under=95 -q --tb=short
         working-directory: python
 
       - name: Upload coverage to Codecov
