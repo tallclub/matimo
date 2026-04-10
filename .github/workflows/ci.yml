@@ -9,6 +9,8 @@ on:
 jobs:
   test-typescript:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     strategy:
       matrix:
         node-version: [18.x, 20.x]
@@ -64,6 +66,8 @@ jobs:
 
   test-python:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     strategy:
       matrix:
         python-version: ['3.11', '3.12']
