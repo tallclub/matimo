@@ -2,80 +2,124 @@
 
 ## Current Status
 
-**Latest Release**: v0.1.0-alpha.13 (March 22, 2026)
+**Latest Release**: v0.1.0-alpha.14 (April 10, 2026) — **🐍 Python SDK Official Launch + Security Hardening**
+
+### 🎉 Major Milestone Completed
+✅ **Python SDK Now Available** — Feature parity with TypeScript, full LangChain + CrewAI support, 40+ production examples, 657 tests (97.38% coverage)
 
 ✅ **Completed Features**:
 
-- OAuth2 authentication with multi-provider support
+**Core SDK (TypeScript + Python)**
+- OAuth2 authentication with multi-provider setup
 - Tool execution (function, command, and HTTP types)
-- YAML-based tool definitions with Zod validation
-- SDK patterns (Factory, Decorator, LangChain)
-- Core tools suite (execute, read, edit, search, web, calculator)
-- Provider integrations (Slack with 16+ tools, Gmail with 5 tools, GitHub, HubSpot with 50+ tools, Notion with 7 tools)
-- CLI tool management (list, search, install, help)
-- 1,884 comprehensive tests passing across 96 suites with consistent coverage targets
-- Complete documentation and examples
-- Structured error handling with MatimoError and error chaining
-- Enhanced HTTP executor with parameter embedding (objects, arrays)
-- MCP Server (dual-transport stdio + HTTP, pluggable secrets, Claude Desktop integration)
-- **Per-execution credential override** — multi-tenant `options.credentials` on `execute()`
-- **`getRequiredCredentials()`** — DX helper to discover required credential keys per tool
-- Package-level release workflow via Changesets
-- **Skills System** — First-class skill discovery, semantic search (`semanticSearchSkills`), section loading
-- **Policy Engine** — Risk classification, approval tiers, policy-as-YAML, atomic hot-reload
-- **Meta-tools** — Tool lifecycle management (create, validate, approve, reload, list, describe)
-- **CLI enhancements** — `matimo doctor`, `matimo review`, comprehensive diagnostics
-- **Security hardening** — 20 vulnerability fixes, ReDoS prevention, sensitive data protection
+- YAML-based tool definitions + Pydantic v2 validation (Python)
+- SDK patterns: Factory, Decorator, LangChain, CrewAI
+- Core tools (execute, read, edit, search, web, calculator)
+- CLI: list, search, install, help, doctor, review
+- MCP Server (stdio + HTTP, Claude Desktop compatible)
 
-**See [RELEASES.md](./RELEASES.md)** for detailed release notes on completed features.
+**Provider Ecosystem** (110+ tools across 8 providers)
+- Slack (16+), GitHub (10+), Gmail (5+), Notion (7+), HubSpot (50+), Mailchimp (8+), Postgres (6+), Twilio (4+)
+- All providers have Python SDK, LangChain, and CrewAI examples
+
+**Python SDK Launch (0.1.0a14)**
+- ✅ 657 tests, 97.38% coverage
+- ✅ Python 3.11+ (asyncio-based)
+- ✅ `convert_tools_to_langchain()` — LangChain integration
+- ✅ `convert_tools_to_crewai()` — CrewAI integration
+- ✅ `create_mcp_server()` — MCP server support
+- ✅ Decorator + Factory patterns with full examples
+- ✅ 40+ production examples (native, LangChain, CrewAI)
+- ✅ Complete type hints + documentation
+
+**Security Hardening (0.1.0-alpha.14)**
+- ✅ 6 critical patches (MCP isolation, command injection prevention, production fail-fast, embedded code sandboxing)
+- ✅ Case-insensitive secret detection (prevents credential leakage)
+- ✅ Tool name sanitization (hyphenated → valid identifiers)
+- ✅ 19 comprehensive auth injection tests
+- ✅ CrewAI performance optimization (shared executor)
+- ✅ PEP 440 version compliance
+- ✅ GitHub Actions CI/CD fixes
+
+**Skills System** (from 0.1.0-alpha.13)
+- ✅ TF-IDF semantic search (`semanticSearchSkills`)
+- ✅ Progressive skill disclosure (Level 1, 2, 2.5)
+- ✅ MCP resource exposure (`skills://`)
+- ✅ LangChain helpers (`getSkillsMetadata`, `buildRelevantSkillPrompt`)
+
+**Policy Engine** (from 0.1.0-alpha.13)
+- ✅ Risk classification + approval tiers
+- ✅ HITL quarantine workflow
+- ✅ Integrity tracking (file tampering detection)
+- ✅ Hot-reload atomicity with rollback support
+
+**Meta-tools** (10 callable tools for agents)
+- ✅ Tool lifecycle: create, validate, approve, reload, list, describe, status
+- ✅ Skill management: create, get, list, validate skills
+- ✅ Full MCP + LangChain agent integration
+
+**Quality Metrics**
+- ✅ 2,541 total tests (1,884 TypeScript + 657 Python)
+- ✅ 97.38% coverage (exceeds 95% requirement)
+- ✅ Parity across both SDKs
+
+**See [RELEASES.md](./RELEASES.md)** for detailed setup and migration guide.
 
 ---
 
-## v0.1.0-alpha.14 — Next Release (Skills SDK as Agent Callable Tools)
+## v0.1.0-alpha.15 — Next Release (Skills Meta-Tools & Agent Call ability)
 
-> **Theme:** Promote the skills SDK APIs to first-class agent-callable meta-tools, and demonstrate all skills capabilities in examples. Currently `semanticSearchSkills`, `getSkillSections`, and `getSkillContent` are SDK-only — agents (LangChain, MCP) cannot call them. This release closes that gap.
+> **Theme:** Expose skills discovery and content loading as first-class agent-callable meta-tools. Currently `semanticSearchSkills`, `getSkillSections`, and `getSkillContent` are SDK-only APIs — agents (LangChain, MCP) cannot directly call them. This release closes that gap by wrapping them as callable tools.
 
 ### Skills Meta-Tools (New)
 
-- [ ] **`matimo_search_skills`** — Wrap `semanticSearchSkills()` as a meta-tool so LangChain agents and MCP clients can semantic-search skills by natural language query (backed by TF-IDF or custom embedding provider)
-- [ ] **`matimo_get_skill_sections`** — Expose `getSkillSections()` as a meta-tool so agents can inventory a skill's sections and token costs before loading (progressive disclosure Level 2.5)
-- [ ] **`matimo_get_skill_content`** — Expose `getSkillContent()` as a meta-tool so agents can load only specific sections of a skill rather than the full SKILL.md (token-efficient context loading)
+- [ ] **`matimo_search_skills`** — Wrap `semanticSearchSkills()` as a meta-tool
+  - Allows LangChain agents and MCP clients to semantic-search skills by natural language query
+  - Backed by TF-IDF or custom embedding provider
+  - Returns: `Array<{ name, description, relevanceScore }>`
+  
+- [ ] **`matimo_get_skill_sections`** — Expose `getSkillSections()` as a meta-tool
+  - Enables agents to inventory a skill's sections and token costs before loading
+  - Progressive disclosure Level 2.5
+  - Returns: `Array<{ sectionName, tokenEstimate }>`
+  
+- [ ] **`matimo_get_skill_content`** — Expose `getSkillContent()` as a meta-tool
+  - Allows agents to load only specific sections of a skill (token-efficient)
+  - Replaces full-file loads with selective section retrieval
+  - Returns: `{ skillName, content, tokensUsed }`
 
 ### Skills Example Coverage
 
-- [x] **`skills-demo.ts` — Non-MCP progressive disclosure** — Implemented `getSkillsMetadata` (Level 1), `semanticSearchSkills()` (raw TF-IDF scores per skill), and `buildRelevantSkillPrompt` (Level 2 via TF-IDF) demonstrated in Phase 4 of the skills demo
-  - `getSkillsMetadata(matimo)` → names + descriptions only (token-safe)
-  - `matimo.semanticSearchSkills(query, { limit, minScore })` → raw TF-IDF ranked results with per-skill scores printed
-  - `buildRelevantSkillPrompt(matimo, query, { topK, minScore })` → TF-IDF semantic search → load only relevant skill content
-  - Both helpers exported from `matimo` and documented in `docs/framework-integrations/LANGCHAIN.md`
-  - ⚠️ Still needed: `matimo.getSkillSections(name)`, `matimo.getSkillContent(name, { sections })`, `matimo.setSkillEmbeddingProvider(provider)` demo
-- [ ] **`langchain-skills-policy-agent.ts`** — Update system prompt to mention `matimo_search_skills` so agents can find skills by meaning, not just by exact name
+- ⚠️ **Caution**: `skillDemoex.ts` Phase 4 currently demonstrates non-MCP helpers:
+  - `getSkillsMetadata(matimo)` — metadata-only (Level 1)
+  - `semanticSearchSkills()` — raw API call
+  - `buildRelevantSkillPrompt()` — pre-built integration
+- [ ] **Needs update**: Show agent calling `matimo_search_skills` as a tool instead of SDK API
+- [ ] **Update**: `langchain-skills-policy-agent.ts` system prompt to mention new meta-tools
 
 ### Context Window Tooling
 
-- [ ] **Dynamic tool filtering** — When `autoDiscover` loads 128+ tools (at OpenAI's hard limit), provide a utility to select a subset by provider/tag before binding to LangChain — prevents silent tool drops at the API limit
+- [ ] **Dynamic tool filtering** — When `autoDiscover` loads 128+ tools (at model API limits):
+  - Provide utility: `selectToolsByProvider(tools, providers)` to filter by provider/tag
+  - Prevents silent tool drops at API limit
+  - Example: `selectToolsByProvider(allTools, ['slack', 'github'])` returns only those provider tools
 
+### Acceptance Criteria (alpha.15)
 
-### Acceptance Criteria
-
-- `matimo_search_skills`, `matimo_get_skill_sections`, `matimo_get_skill_content` registered as meta-tools in `packages/core/tools/`
-- Agent in `pnpm agent:skills` can call `matimo_search_skills` with a natural language query and get ranked results
-- `skills-demo.ts` Phase 4 executes without errors and prints TF-IDF scores
-- All new meta-tools have tests in `packages/core/test/unit/meta-tools/`
-- Docs updated: `META_TOOLS.md` reference entries for 3 new tools
+- [ ] `matimo_search_skills`, `matimo_get_skill_sections`, `matimo_get_skill_content` registered as meta-tools
+- [ ] All 3 meta-tools in `packages/core/tools/` with full YAML definitions
+- [ ] Agent in `pnpm agent:skills` can call `matimo_search_skills` with natural language query
+- [ ] `skills-demo.ts` Phase 5 shows agent calling meta-tools (not just SDK APIs)
+- [ ] All new meta-tools have unit + integration tests
+- [ ] `docs/api-reference/META_TOOLS.md` updated with all 3 new tools
 
 ---
 
 ## v0.1.0 Roadmap
 
-**Target**: March 2026
+**Target Target**: Q2 2026 — Production Ready
 
-
-### Vercel AI 
-- Convert tools to vercelAI tools
-- Implement Examples
-
-### Priority 1: More 3rd Party Tools
+### Phase 1: More 3rd Party Tools (Current)
 
 Expand provider ecosystem with real-world integrations:
 
