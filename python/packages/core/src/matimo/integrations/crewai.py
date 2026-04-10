@@ -59,7 +59,11 @@ def _make_crewai_tool(
     import pydantic
     from crewai.tools import BaseTool  # type: ignore[import]
 
-    from matimo.integrations._pydantic_utils import is_secret_parameter, parameter_to_pydantic_field
+    from matimo.integrations._pydantic_utils import (
+        is_secret_parameter,
+        parameter_to_pydantic_field,
+        sanitize_model_name,
+    )
 
     # Build Pydantic args schema (excluding secrets)
     fields: dict[str, Any] = {}
@@ -70,7 +74,7 @@ def _make_crewai_tool(
         fields[param_name] = (py_type, field_def)
 
     ArgsSchema: type[pydantic.BaseModel] = pydantic.create_model(  # noqa: N806
-        f"{tool_def.name}_args",
+        f"{sanitize_model_name(tool_def.name)}_args",
         **fields,
     )
 

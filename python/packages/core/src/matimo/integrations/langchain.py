@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from matimo.integrations._pydantic_utils import is_secret_parameter, parameter_to_pydantic_field
+from matimo.integrations._pydantic_utils import is_secret_parameter, parameter_to_pydantic_field, sanitize_model_name
 
 if TYPE_CHECKING:
     from matimo.core.models import ToolDefinition
@@ -75,8 +75,10 @@ def _make_langchain_tool(
         fields[param_name] = (py_type, field_def)
 
     # Dynamically create a Pydantic model class
+    # Sanitize tool name to ensure it's a valid Python identifier
+    safe_model_name = sanitize_model_name(tool.name)
     ArgsModel = pydantic.create_model(  # noqa: N806
-        f"{tool.name}_args",
+        f"{safe_model_name}_args",
         **fields,
     )
 

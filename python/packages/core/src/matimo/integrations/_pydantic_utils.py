@@ -11,15 +11,37 @@ if TYPE_CHECKING:
     from matimo.core.models import Parameter
 
 # Patterns that identify a parameter as a secret (should be hidden from LLM schema)
+# re.IGNORECASE ensures lowercase names like 'token', 'api_key', 'secret' are detected
 _SECRET_RE = re.compile(
     r"(?:^|_)(TOKEN|KEY|SECRET|PASSWORD)(?:_|$)|"
     r"[a-z](Token|Key|Secret|Password)",
+    re.IGNORECASE,
 )
 
 
 def is_secret_parameter(name: str) -> bool:
     """Return True if the parameter name looks like a credential."""
     return bool(_SECRET_RE.search(name))
+
+
+def sanitize_model_name(tool_name: str) -> str:
+    """
+    Convert a tool name into a valid Python identifier for Pydantic model names.
+    
+    Replaces hyphens, dots, and other non-alphanumeric characters with underscores.
+    Ensures the result is a valid Python identifier (starts with letter or underscore).
+    
+    Examples:
+        'github-create-issue' -> 'github_create_issue'
+        'my.tool' -> 'my_tool'
+        '2to3' -> '_2to3'
+    """
+    # Replace non-alphanumeric chars (except underscore) with underscore
+    sanitized = re.sub(r'[^a-zA-Z0-9_]', '_', tool_name)
+    # Ensure it doesn't start with a digit (prepend _ if it does)
+    if sanitized and sanitized[0].isdigit():
+        sanitized = '_' + sanitized
+    return sanitized or '_model'
 
 
 def parameter_to_pydantic_field(
