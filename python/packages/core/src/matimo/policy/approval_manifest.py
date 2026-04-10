@@ -15,6 +15,8 @@ from dataclasses import asdict, dataclass
 from datetime import UTC
 from pathlib import Path
 
+from matimo.errors import ErrorCode, MatimoError
+
 logger = logging.getLogger("matimo")
 
 _MANIFEST_FILENAME = ".matimo-approvals.json"
@@ -51,11 +53,28 @@ class ApprovalManifest:
         self._dir = Path(
             approval_dir or os.environ.get("MATIMO_APPROVAL_DIR", ".")
         )
-        raw_secret = (
-            approval_secret
-            or os.environ.get("MATIMO_APPROVAL_SECRET")
-            or self._generate_ephemeral_secret()
-        )
+        _provided = approval_secret or os.environ.get("MATIMO_APPROVAL_SECRET")
+        if _provided:
+            raw_secret = _provided
+        else:
+            _is_production = (
+                os.environ.get("MATIMO_ENV", "").lower() == "production"
+                or os.environ.get("NODE_ENV", "").lower() == "production"
+            )
+            if _is_production:
+                raise MatimoError(
+                    "MATIMO_APPROVAL_SECRET is required in production environments. "
+                    "Set it to a stable, securely generated value (e.g. from a secrets manager).",
+                    ErrorCode.AUTH_FAILED,
+                )
+            raw_secret = self._generate_ephemeral_secret()
+            _fingerprint = raw_secret[:4] + "****"
+            logger.warning(
+                "No MATIMO_APPROVAL_SECRET set. Using an ephemeral secret (%s). "
+                "Approvals will not persist across restarts. "
+                "Set MATIMO_APPROVAL_SECRET for stable approvals.",
+                _fingerprint,
+            )
         self._secret = raw_secret.encode("utf-8")
         fingerprint = raw_secret[:4] + "****"
         logger.debug("ApprovalManifest initialised (key fingerprint: %s)", fingerprint)

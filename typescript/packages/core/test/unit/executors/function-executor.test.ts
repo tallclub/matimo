@@ -598,33 +598,31 @@ describe('FunctionExecutor', () => {
       }
     });
 
-    it('should pass fs/path/axios to embedded functions', async () => {
-      // Enable embedded code only for this test
+    it('should only expose params — no fs/path/axios in embedded scope', async () => {
+      // Embedded code security: only params is in scope; dangerous globals are stripped.
       process.env.MATIMO_ALLOW_EMBEDDED_CODE = 'true';
 
       const tool: ToolDefinition = {
         name: 'with-modules',
         version: '1.0.0',
-        description: 'Uses fs and path',
+        description: 'Verifies dangerous globals are not accessible',
         parameters: {},
         execution: {
           type: 'function',
-          code: `async (params, config, fsModule, pathModule, axiosModule) => {
-            return { 
-              hasFs: typeof fsModule === 'object',
-              hasPath: typeof pathModule === 'object',
-              hasAxios: axiosModule !== null && axiosModule !== undefined
+          code: `async (params) => {
+            return {
+              hasParams: typeof params === 'object',
+              hasFs: typeof require !== 'undefined',
             };
           }`,
         },
       };
 
-      const result = (await executor.execute(tool, {})) as Record<string, boolean>;
+      const result = (await executor.execute(tool, { x: 1 })) as Record<string, boolean>;
 
-      expect(result.hasFs).toBe(true);
-      expect(result.hasPath).toBe(true);
-      // axios might not be an object in all contexts, just verify it's passed
-      expect(result.hasAxios).toBe(true);
+      expect(result.hasParams).toBe(true);
+      // require is not in scope in ESM — access returns false / undefined
+      expect(result.hasFs).toBe(false);
     });
 
     it('should handle non-Promise return from embedded code', async () => {

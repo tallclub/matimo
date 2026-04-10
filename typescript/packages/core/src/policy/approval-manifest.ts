@@ -8,6 +8,7 @@
 import { createHmac, randomUUID, createHash } from 'crypto';
 import fs from 'fs';
 import path from 'path';
+import { MatimoError, ErrorCode } from '../errors/matimo-error';
 import { getGlobalMatimoLogger } from '../logging';
 
 export interface ApprovalRecord {
@@ -43,6 +44,13 @@ export class ApprovalManifest {
     } else if (process.env.MATIMO_APPROVAL_SECRET) {
       this.secret = process.env.MATIMO_APPROVAL_SECRET;
     } else {
+      if (process.env.NODE_ENV === 'production' || process.env.MATIMO_ENV === 'production') {
+        throw new MatimoError(
+          'MATIMO_APPROVAL_SECRET is required in production environments. ' +
+            'Set it to a stable, securely generated value (e.g. from a secrets manager).',
+          ErrorCode.AUTH_FAILED
+        );
+      }
       this.secret = randomUUID();
       const logger = getGlobalMatimoLogger();
       // Create a non-sensitive fingerprint for debugging (first 4 chars only)

@@ -1,7 +1,5 @@
-import fs from 'fs';
 import path from 'path';
 import { pathToFileURL } from 'node:url';
-import axios from 'axios';
 import { ToolDefinition } from '../core/schema';
 import { MatimoError, ErrorCode } from '../errors/matimo-error';
 import { getGlobalMatimoLogger } from '../logging/logger';
@@ -165,48 +163,63 @@ export class FunctionExecutor {
             })
             .catch(handleError);
         } else {
-          // Execute embedded code (legacy) - create function from string
-          // SECURITY WARNING: Embedded code execution runs arbitrary JS with fs/path/axios access.
-          // This is a potential RCE vector if tool YAML files come from untrusted sources.
-          // Embedded code is DISABLED by default. Must explicitly opt-in via MATIMO_ALLOW_EMBEDDED_CODE=true
+          // ── Embedded code execution ──────────────────────────────────────
+          // Requires explicit admin opt-in: MATIMO_ALLOW_EMBEDDED_CODE=true
+          // Even when enabled, a static security scan runs before evaluation
+          // to block known exploit patterns. No dangerous globals are passed
+          // into the sandbox — only `params` is accessible.
 
-          const embeddedCodeDisabled = process.env.MATIMO_ALLOW_EMBEDDED_CODE !== 'true';
-          if (embeddedCodeDisabled) {
+          if (process.env.MATIMO_ALLOW_EMBEDDED_CODE !== 'true') {
             throw new MatimoError(
-              'Embedded code execution is disabled by default for security. Use external .ts/.js files instead.',
+              `Tool '${tool.name}': embedded code execution is disabled by default. ` +
+                'Set MATIMO_ALLOW_EMBEDDED_CODE=true to enable, or use a colocated .ts/.js file instead ' +
+                "(set execution.code to its relative path, e.g. './my-tool.ts').",
               ErrorCode.EXECUTION_FAILED,
               {
                 toolName: tool.name,
                 recommendation:
-                  'Create a separate .ts file in the tool directory instead of using embedded code',
-                enableFeatureFlag:
-                  'Set MATIMO_ALLOW_EMBEDDED_CODE=true to enable (not recommended)',
+                  'Create a separate .ts file in the tool directory and set execution.code to its relative path',
               }
             );
           }
 
-          // Log warning when embedded code is executed
+          // Static security scan — reject code containing dangerous constructs
+          // BEFORE new Function() is ever called.
+          const BLOCKED_PATTERNS: { re: RegExp; label: string }[] = [
+            { re: /\brequire\s*\(/u, label: 'require()' },
+            { re: /\bimport\s*\(/u, label: 'dynamic import()' },
+            { re: /\bprocess\b/u, label: 'process object' },
+            { re: /\b__dirname\b|\b__filename\b/u, label: '__dirname / __filename' },
+            { re: /\beval\s*\(/u, label: 'eval()' },
+            { re: /\bnew\s+Function\b/u, label: 'new Function()' },
+            { re: /\bglobalThis\b|\bglobal\b/u, label: 'global / globalThis' },
+          ];
+
+          for (const { re, label } of BLOCKED_PATTERNS) {
+            if (re.test(code)) {
+              throw new MatimoError(
+                `Embedded code in tool '${tool.name}' contains a blocked construct: '${label}'. ` +
+                  'Embedded code may only access the provided params argument.',
+                ErrorCode.EXECUTION_FAILED,
+                { toolName: tool.name, blockedConstruct: label }
+              );
+            }
+          }
+
           const logger = getGlobalMatimoLogger();
           logger.warn(
-            `⚠️  Warning: Executing embedded code from tool '${tool.name}'. This carries security risks if tool YAML is from untrusted sources.`,
+            `Executing embedded code for tool '${tool.name}'. Ensure this tool YAML is from a trusted source.`,
             { toolName: tool.name }
           );
 
-          // In ESM modules, require is not available by default
-          // We pass a safe require function that embedded code can use
-          const functionBody = `return (${code})`;
-          const fn = new Function(functionBody)() as (
-            input: Record<string, unknown>,
-            config: unknown,
-            fs: unknown,
-            pathModule: unknown,
-            axios: unknown,
-            require: NodeRequire | undefined
+          // Execute with strict mode and only params in scope.
+          // No fs, path, axios, or require are passed — embedded code is
+          // intentionally limited to pure data transformation of params.
+          const fn = new Function('params', '"use strict";\nreturn (' + code + ')(params);') as (
+            input: Record<string, unknown>
           ) => Promise<unknown>;
-          // Pass undefined for require in ESM - embedded code should use import syntax
-          const result = fn(params, {}, fs, path, axios, undefined);
 
-          // Handle both Promise and non-Promise returns
+          const result = fn(params);
           if (result instanceof Promise) {
             result.then(handleSuccess).catch(handleError);
           } else {

@@ -155,6 +155,8 @@ export class MCPServer {
   private activeToken: string | null = null;
   /** Registered skill resources, keyed by skill name, for lifecycle management */
   private registeredSkillResources = new Map<string, { remove(): void }>();
+  /** Resolved auth secrets held in memory — never written to process.env */
+  private resolvedSecrets: Record<string, string> = {};
 
   constructor(options: MCPServerOptions = {}) {
     this.options = {
@@ -330,23 +332,16 @@ export class MCPServer {
     // Resolve all at once (efficient for batch-capable resolvers)
     const resolved = await this.resolverChain.resolveAll([...allPlaceholders]);
 
-    // Seed into process.env (only if not already set)
-    let seeded = 0;
+    // Store resolved secrets in memory only — never write to process.env.
+    // Secrets are injected as per-call credentials to matimo.execute() instead,
+    // preventing accidental leakage into child processes spawned by other code.
     for (const [key, value] of Object.entries(resolved)) {
-      if (!process.env[key]) {
-        process.env[key] = value;
-        seeded++;
-      }
-      // Also set MATIMO_ prefixed if not present
-      if (!process.env[`MATIMO_${key}`]) {
-        process.env[`MATIMO_${key}`] = value;
-        seeded++;
-      }
+      this.resolvedSecrets[key] = value;
+      this.resolvedSecrets[`MATIMO_${key}`] = value;
     }
 
-    logger.debug('Auth secrets seeded into environment', {
+    logger.debug('Auth secrets resolved and stored in memory (not in process.env)', {
       resolved: Object.keys(resolved).length,
-      seeded,
     });
   }
 
@@ -464,6 +459,7 @@ export class MCPServer {
               const { _matimo_approved, ...cleanArgs } = args;
               const result = await matimo.execute(tool.name, cleanArgs, {
                 approved: _matimo_approved === true,
+                credentials: this.resolvedSecrets,
               });
 
               return {

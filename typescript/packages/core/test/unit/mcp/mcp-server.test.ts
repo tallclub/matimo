@@ -357,7 +357,11 @@ describe('MCPServer', () => {
       expect(result).toEqual({
         content: [{ type: 'text', text: JSON.stringify({ result: 'hello' }, null, 2) }],
       });
-      expect(mockExecute).toHaveBeenCalledWith('test_tool', { message: 'hi' }, { approved: false });
+      expect(mockExecute).toHaveBeenCalledWith(
+        'test_tool',
+        { message: 'hi' },
+        { approved: false, credentials: {} }
+      );
 
       await server.stop();
     });
@@ -461,7 +465,7 @@ describe('MCPServer', () => {
         {
           message: 'delete all',
         },
-        { approved: true }
+        { approved: true, credentials: {} }
       );
 
       await server.stop();

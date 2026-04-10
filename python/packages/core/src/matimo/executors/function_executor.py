@@ -131,12 +131,21 @@ class FunctionExecutor:
             else self._base_path
         )
 
-        # Handle relative and absolute paths
+        # SECURITY: reject path-traversal sequences in relative paths.
+        # Absolute paths are permitted (explicit admin intent);
+        # relative paths must not escape the tool directory via '..'.
         raw_path = Path(code_str)
-        if not raw_path.is_absolute():
-            resolved = (base / raw_path).resolve()
-        else:
+        if ".." in raw_path.parts:
+            raise MatimoError(
+                f"Tool '{tool.name}': execution.code must not contain path traversal "
+                f"sequences: '{code_str}'.",
+                ErrorCode.EXECUTION_FAILED,
+                {"tool_name": tool.name, "code": code_str},
+            )
+        if raw_path.is_absolute():
             resolved = raw_path.resolve()
+        else:
+            resolved = (base / raw_path).resolve()
 
         # If the path has a non-.py extension (e.g. .ts from a TypeScript tool definition)
         # and a sibling .py file exists, use it instead.

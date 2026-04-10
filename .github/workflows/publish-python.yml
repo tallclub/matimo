@@ -6,6 +6,9 @@ on:
       - "python/v*"   # e.g. python/v0.1.0  → publishes matimo core
       - "python/providers/*/v*"  # e.g. python/providers/slack/v0.1.0
 
+# Deny all permissions by default; each job declares only what it needs.
+permissions: {}
+
 jobs:
   # -------------------------------------------------------------------------
   # Test gate — must pass before any publish
@@ -50,7 +53,7 @@ jobs:
     environment: pypi
     permissions:
       id-token: write   # OIDC trusted publishing — no API token needed
-
+      contents: read    # checkout
     defaults:
       run:
         working-directory: python
@@ -85,6 +88,7 @@ jobs:
     environment: pypi
     permissions:
       id-token: write
+      contents: read    # checkout
 
     steps:
       - uses: actions/checkout@v4

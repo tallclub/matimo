@@ -54,8 +54,16 @@ class CommandExecutor:
                 {"tool_name": tool.name, "execution_type": exec_cfg.type},
             )
 
-        # Template command + args
-        command = self._template(exec_cfg.command, params)
+        # SECURITY: command must be a fixed executable — never a templated value.
+        # Only 'args' may contain {placeholder} tokens.
+        if _PLACEHOLDER_RE.search(exec_cfg.command):
+            raise MatimoError(
+                f"execution.command must not contain parameter placeholders — only 'args' may be "
+                f"templated. Found: '{exec_cfg.command}'. Move the dynamic part into 'args'.",
+                ErrorCode.EXECUTION_FAILED,
+                {"tool_name": tool.name},
+            )
+        command = exec_cfg.command  # Never template the executable
         args = [self._template(a, params) for a in (exec_cfg.args or [])]
 
         # Build child environment: process env + tool env + credentials (last wins)

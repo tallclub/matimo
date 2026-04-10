@@ -121,8 +121,6 @@ async function runMailchimpAIAgent() {
   for (const goal of goals) {
     console.info(`\n📋 ${goal.label}`);
     console.info('─'.repeat(60));
-    const userPrompt = goal.prompt.replace(`${serverPrefix}`, '<server-prefix>');
-    console.info(`👤 User: "${userPrompt}"\n`);
 
     try {
       const response = await agent.invoke({

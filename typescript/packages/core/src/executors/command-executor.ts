@@ -39,8 +39,17 @@ export class CommandExecutor {
     const { command, args = [], timeout = 30000 } = tool.execution;
     const startTime = Date.now();
 
-    // Implement parameter templating
-    const templatedCommand = this.templateString(command, params);
+    // SECURITY: command must be a fixed executable — never a templated value.
+    // Only 'args' may contain {placeholder} tokens.
+    if (/\{[^}]+\}/u.test(command)) {
+      throw new MatimoError(
+        `execution.command must not contain parameter placeholders — only 'args' may be templated. ` +
+          `Found: '${command}'. Move the dynamic part into 'args'.`,
+        ErrorCode.EXECUTION_FAILED,
+        { toolName: tool.name }
+      );
+    }
+    const templatedCommand = command; // Never template the executable
     const templatedArgs = args.map((arg) => this.templateString(arg, params));
 
     return new Promise((resolve) => {
