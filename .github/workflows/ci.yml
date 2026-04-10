@@ -87,7 +87,7 @@ jobs:
         working-directory: python
 
       - name: Lint
-        run: uv run -w . ruff check packages/
+        run: uv tool run ruff check packages/
         working-directory: python
 
       - name: Type check
