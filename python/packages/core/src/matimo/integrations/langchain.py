@@ -92,3 +92,99 @@ def _make_langchain_tool(
         args_schema=ArgsModel,
         coroutine=_invoke,
     )
+
+
+# ─── Skill injection helpers for non-MCP (direct) integrations ───────────────
+#
+# When Matimo is used directly (e.g., LangChain without an MCP server), skills
+# are not surfaced via MCP Resources. These helpers provide a spec-compliant
+# alternative that preserves the progressive disclosure model:
+#
+#   Level 1 — Discovery : get_skills_metadata()        → name + description only
+#   Level 2 — Activation: build_relevant_skill_prompt() → semantic search → load matched content
+#
+# Mirrors: packages/core/src/integrations/langchain.ts (getSkillsMetadata / buildRelevantSkillPrompt)
+
+
+def get_skills_metadata(matimo: Matimo) -> list[dict[str, str]]:
+    """Return Level-1 metadata (name + description) for all available skills.
+
+    Token-safe — only a few lines per skill. Include this in the system prompt
+    so the agent knows what skills exist and can request them by name.
+
+    Args:
+        matimo: Initialised Matimo instance.
+
+    Returns:
+        List of ``{"name": ..., "description": ...}`` dicts.
+
+    Example::
+
+        meta = get_skills_metadata(matimo)
+        # → [{"name": "code-review", "description": "Code review checklist"}, ...]
+    """
+    return [
+        {"name": s.name, "description": s.description or ""}
+        for s in matimo.list_skills()
+    ]
+
+
+async def build_relevant_skill_prompt(
+    matimo: Matimo,
+    query: str,
+    *,
+    top_k: int = 3,
+    min_score: float = 0.3,
+    header: str | None = None,
+) -> str:
+    """Build a per-request system-prompt snippet from semantically relevant skills.
+
+    Uses TF-IDF semantic search to rank all skills against the user's query
+    and loads full content only for the top matches. This preserves the
+    progressive disclosure model without MCP:
+
+      Level 1 at startup → Level 2 per-request (only relevant skills)
+
+    Args:
+        matimo:    Initialised Matimo instance.
+        query:     The user's current message/query; drives semantic ranking.
+        top_k:     Max skills to load (default 3); keeps token cost bounded.
+        min_score: Minimum cosine similarity to include (default 0.3).
+        header:    Custom header text (optional).
+
+    Returns:
+        Formatted string ready to inject as a context block, or empty string
+        when no skills score above ``min_score``.
+
+    Example::
+
+        skill_context = await build_relevant_skill_prompt(matimo, user_message, top_k=2)
+        messages = [
+            SystemMessage(base_system_prompt),
+            *([] if not skill_context else [SystemMessage(skill_context)]),
+            HumanMessage(user_message),
+        ]
+    """
+    search_results = await matimo.semantic_search_skills(
+        query, limit=top_k, min_score=min_score
+    )
+    if not search_results:
+        return ""
+
+    blocks: list[str] = []
+    for r in search_results:
+        content = matimo.get_skill_content(r.skill.name)
+        if content:
+            desc = f"_{r.skill.description}_\n\n" if r.skill.description else ""
+            blocks.append(
+                f"## Skill: {r.skill.name} (relevance: {r.score:.2f})\n{desc}{content}"
+            )
+
+    if not blocks:
+        return ""
+
+    prompt_header = (
+        header
+        or "The following skills are relevant to the current request — apply their guidelines:"
+    )
+    return "\n\n".join([prompt_header, *blocks])

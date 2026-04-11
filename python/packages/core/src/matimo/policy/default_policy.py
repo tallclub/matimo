@@ -5,6 +5,7 @@ Mirrors: packages/core/src/policy/default-policy.ts
 from __future__ import annotations
 
 import logging
+import re
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from matimo.core.models import PolicyContext, ToolDefinition
@@ -16,12 +17,108 @@ from matimo.policy.types import (
     PolicyDecision,
     PolicyDenied,
     PolicyPendingApproval,
+    PolicyTier,
 )
 
 if TYPE_CHECKING:
     pass
 
 logger = logging.getLogger("matimo")
+
+# ---------------------------------------------------------------------------
+# Tier classification (mirrors getTierForTool in default-policy.ts)
+# ---------------------------------------------------------------------------
+
+_DEFAULT_PROTECTED_NAMESPACES = ["matimo_"]
+_AUTH_KEYWORDS = ("token", "key", "secret", "password", "credential", "auth", "bearer", "api_key")
+_PLACEHOLDER_RE = re.compile(r"\{(\w+)\}")
+_PRIVATE_HOST_RE = re.compile(
+    r"^(localhost|127\.0\.0\.1|::1|169\.254\.|10\.|192\.168\.|"
+    r"172\.(1[6-9]|2[0-9]|3[01])\.)"
+)
+
+
+def get_tier_for_tool(
+    tool: ToolDefinition, config: PolicyConfig | None = None
+) -> PolicyTier:
+    """
+    Assign a policy tier to a tool definition.
+    Mirrors: getTierForTool() in packages/core/src/policy/default-policy.ts
+
+    Tiers:
+      blocked           — never execute (function/command, reserved namespace, SSRF)
+      approval-required — POST/PUT/PATCH/DELETE HTTP or has auth placeholders
+      auto              — low-risk read-only GET with no auth required
+    """
+    protected = (
+        config.protected_namespaces
+        if config is not None and config.protected_namespaces
+        else _DEFAULT_PROTECTED_NAMESPACES
+    )
+
+    # TIER 3 — BLOCKED
+    if any(tool.name.startswith(ns) for ns in protected):
+        return PolicyTier.BLOCKED
+    exec_type = tool.execution.type
+    if exec_type in ("function", "command"):
+        return PolicyTier.BLOCKED
+    if exec_type == "http":
+        url: str = getattr(tool.execution, "url", "") or ""
+        if _is_blocked_url(url):
+            return PolicyTier.BLOCKED
+
+    # TIER 2 — APPROVAL REQUIRED
+    if exec_type == "http":
+        method = (getattr(tool.execution, "method", None) or "GET").upper()
+        if method != "GET":
+            return PolicyTier.APPROVAL_REQUIRED
+        if _has_auth_placeholders(tool):
+            return PolicyTier.APPROVAL_REQUIRED
+
+    # TIER 1 — AUTO (low-risk read-only)
+    return PolicyTier.AUTO
+
+
+def _is_blocked_url(url: str) -> bool:
+    """Return True if the URL targets a private/localhost address (SSRF defence)."""
+    if not url:
+        return False
+    try:
+        from urllib.parse import urlparse
+
+        hostname = (urlparse(url).hostname or "").lower()
+        return bool(_PRIVATE_HOST_RE.match(hostname))
+    except Exception:
+        return False
+
+
+def _has_auth_placeholders(tool: ToolDefinition) -> bool:
+    """Return True when execution config contains auth-related {placeholder} names."""
+    parts: list[str] = []
+    exec_cfg = tool.execution
+    _collect_str(getattr(exec_cfg, "url", None), parts)
+    _collect_str(getattr(exec_cfg, "headers", None), parts)
+    _collect_str(getattr(exec_cfg, "body", None), parts)
+    _collect_str(getattr(exec_cfg, "query_params", None), parts)
+    for text in parts:
+        for m in _PLACEHOLDER_RE.finditer(text):
+            name = m.group(1).lower()
+            if any(kw in name for kw in _AUTH_KEYWORDS):
+                return True
+    return False
+
+
+def _collect_str(obj: object, out: list[str]) -> None:
+    if obj is None:
+        return
+    if isinstance(obj, str):
+        out.append(obj)
+    elif isinstance(obj, dict):
+        for v in obj.values():
+            _collect_str(v, out)
+    elif isinstance(obj, list):
+        for item in obj:
+            _collect_str(item, out)
 
 
 @runtime_checkable

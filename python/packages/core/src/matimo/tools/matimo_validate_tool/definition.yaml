@@ -1,0 +1,34 @@
+name: matimo_validate_tool
+version: '1.0.0'
+description: Validate a tool definition YAML string against the Matimo schema and policy rules. Returns schema errors, policy violations, and risk classification.
+requires_approval: false
+tags:
+  - matimo
+  - meta
+  - validation
+
+parameters:
+  yaml_content:
+    type: string
+    required: true
+    description: The YAML content of the tool definition to validate
+
+execution:
+  type: function
+  code: './matimo_validate_tool.py'
+
+output_schema:
+  type: object
+  properties:
+    valid:
+      type: boolean
+      description: Whether the tool definition is valid
+    schemaErrors:
+      type: array
+      description: Schema validation errors (if any)
+    policyViolations:
+      type: array
+      description: Policy violations found by content validator
+    riskLevel:
+      type: string
+      description: Risk classification (low, medium, high, critical)

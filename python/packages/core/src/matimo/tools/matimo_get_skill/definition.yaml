@@ -1,0 +1,60 @@
+name: matimo_get_skill
+version: '1.0.0'
+description: >-
+  Level 2 activation / Level 3 resource access — read a skill's SKILL.md
+  content and metadata, or read a specific bundled resource file (scripts,
+  references, assets). Returns frontmatter fields, markdown instructions, and
+  a listing of bundled resources per the Agent Skills specification.
+requires_approval: false
+tags:
+  - matimo
+  - meta
+  - skill
+parameters:
+  name:
+    type: string
+    required: true
+    description: Name of the skill to retrieve (must match the skill's directory name)
+  skills_dir:
+    type: string
+    required: false
+    description: Directory containing skills (default ./matimo-tools/skills)
+  file:
+    type: string
+    required: false
+    description: >-
+      Optional path to a bundled resource file within the skill directory
+      (e.g. "scripts/extract.py" or "references/FORMS.md"). If provided,
+      returns that file's content instead of SKILL.md (Level 3 access).
+
+execution:
+  type: function
+  code: './matimo_get_skill.py'
+
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+    name:
+      type: string
+    description:
+      type: string
+    content:
+      type: string
+      description: Full content of SKILL.md or the requested resource file
+    path:
+      type: string
+    license:
+      type: string
+    compatibility:
+      type: string
+    metadata:
+      type: object
+    resources:
+      type: object
+      description: >-
+        Bundled resources listing (scripts, references, assets, other) —
+        only included when reading SKILL.md, not when reading a specific file
+    message:
+      type: string

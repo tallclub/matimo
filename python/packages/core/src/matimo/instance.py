@@ -26,8 +26,16 @@ from typing import Any
 
 from matimo.auth.injection import inject_auth_parameters
 from matimo.core.loader import ToolLoader
-from matimo.core.models import PolicyContext, ToolDefinition
+from matimo.core.models import (
+    PolicyContext,
+    SkillContentOptions,
+    SkillDefinition,
+    SkillSummary,
+    ToolDefinition,
+)
 from matimo.core.registry import ToolRegistry
+from matimo.core.skill_loader import SkillLoader
+from matimo.core.skill_registry import SemanticSearchResult, SkillRegistry
 from matimo.errors import ErrorCode, MatimoError
 from matimo.executors.command_executor import CommandExecutor
 from matimo.executors.function_executor import FunctionExecutor
@@ -105,6 +113,7 @@ class Matimo:
         on_event: MatimoEventHandler | None,
         on_hitl: HITLCallback | None,
         matimo_logger: MatimoLogger,
+        skill_registry: SkillRegistry | None = None,
     ) -> None:
         self._registry = registry
         self._policy = policy_engine
@@ -113,6 +122,7 @@ class Matimo:
         self._on_event = on_event
         self._on_hitl = on_hitl
         self._logger = matimo_logger
+        self._skill_registry: SkillRegistry = skill_registry or SkillRegistry()
 
         self._http_executor = HttpExecutor()
         self._command_executor = CommandExecutor()
@@ -128,6 +138,7 @@ class Matimo:
         tool_paths: str | list[str] | None = None,
         *,
         auto_discover: bool = False,
+        skill_paths: list[str] | None = None,
         policy: PolicyEngine | None = None,
         policy_config: PolicyConfig | None = None,
         policy_file: str | None = None,
@@ -196,6 +207,14 @@ class Matimo:
             f"Matimo initialised — {registry.count()} tool(s) loaded from {len(paths)} path(s)"
         )
 
+        # Load skills (optional)
+        skill_reg = SkillRegistry()
+        if skill_paths:
+            skill_loader = SkillLoader()
+            for sp in skill_paths:
+                skills = skill_loader.load_skills_from_directory(sp)
+                skill_reg.register_all(skills)
+
         return cls(
             registry=registry,
             policy_engine=engine,
@@ -204,6 +223,7 @@ class Matimo:
             on_event=on_event,
             on_hitl=on_hitl,
             matimo_logger=matimo_logger,
+            skill_registry=skill_reg,
         )
 
     # ------------------------------------------------------------------
@@ -271,6 +291,30 @@ class Matimo:
                         {"tool_name": tool_name},
                     )
 
+        # Built-in interception: matimo_reload_tools must run on the instance
+        # itself because reload() clears/rebuilds the in-memory registry.
+        # The function executor has no reference to the Matimo instance, so we
+        # handle it directly here. Works identically for SDK, LangChain, and MCP.
+        if tool_name == "matimo_reload_tools":
+            reload_result = await self.reload()
+            self._logger.info(
+                "matimo_reload_tools: reload completed",
+                loaded=reload_result.loaded,
+                removed=reload_result.removed,
+                rejected=len(reload_result.rejected),
+            )
+            return {
+                "success": True,
+                "loaded": reload_result.loaded,
+                "removed": reload_result.removed,
+                "revalidated": reload_result.revalidated,
+                "rejected": reload_result.rejected,
+                "message": (
+                    f"Reload complete. {reload_result.loaded} tools loaded, "
+                    f"{reload_result.removed} removed, {len(reload_result.rejected)} rejected."
+                ),
+            }
+
         # Auth injection
         working_params = inject_auth_parameters(tool, params, credentials)
 
@@ -320,6 +364,40 @@ class Matimo:
     ) -> list[ToolDefinition]:
         """Return only the tools this agent context is permitted to use."""
         return self._policy.filter_for_agent(context, self._registry.get_all())
+
+    def has_policy(self) -> bool:
+        """Return True if a policy engine is configured (always True in Matimo)."""
+        return True
+
+    # ------------------------------------------------------------------
+    # Skills API
+    # ------------------------------------------------------------------
+
+    def list_skills(self) -> list[SkillSummary]:
+        """Return Level-1 metadata (name + description) for all loaded skills."""
+        return self._skill_registry.list()
+
+    def get_all_skills(self) -> list[SkillDefinition]:
+        """Return all loaded SkillDefinition objects."""
+        return self._skill_registry.get_all()
+
+    def get_skill(self, name: str) -> SkillDefinition | None:
+        """Return a skill by exact name, or None."""
+        return self._skill_registry.get(name)
+
+    def get_skill_content(self, name: str, options: SkillContentOptions | None = None) -> str | None:
+        """Return the full markdown content of a skill, or None if not found."""
+        return self._skill_registry.get_skill_content(name, options)
+
+    async def semantic_search_skills(
+        self,
+        query: str,
+        *,
+        limit: int = 10,
+        min_score: float = 0.1,
+    ) -> list[SemanticSearchResult]:
+        """Semantic (TF-IDF) search over loaded skills. Returns ranked results."""
+        return await self._skill_registry.semantic_search(query, limit=limit, min_score=min_score)
 
     # ------------------------------------------------------------------
     # Hot-reload

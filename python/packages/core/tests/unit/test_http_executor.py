@@ -440,3 +440,149 @@ class TestHttpExecutorEdgeCases:
         with pytest.raises(MatimoError) as exc_info:
             await executor.execute(tool, {"max_size": "5"})
         assert exc_info.value.code == ErrorCode.INVALID_PARAMETER
+
+
+class TestTemplateObjectTypeCoverage:
+    """Cover lines 218, 225-231, 233, 243, 245, 247-253 in _template_object."""
+
+    def _make_executor(self) -> HttpExecutor:
+        return HttpExecutor()
+
+    def _make_param_def(self, param_type: str) -> object:
+        return Parameter(type=ParameterType(param_type), required=False)
+
+    def test_template_object_none_returns_none(self) -> None:
+        """Line 218: None obj → None."""
+        ex = self._make_executor()
+        assert ex._template_object(None, {}, None, None) is None  # type: ignore[arg-type]
+
+    def test_template_object_embed_dict_param(self) -> None:
+        """Lines 217-219: single placeholder whose value is a dict → embedded directly."""
+        ex = self._make_executor()
+        payload = {"key": "val"}
+        result = ex._template_object("{data}", {"data": payload}, None, None)  # type: ignore[arg-type]
+        assert result is payload
+
+    def test_template_object_embed_list_param(self) -> None:
+        """Lines 217-219: single placeholder whose value is a list → embedded directly."""
+        ex = self._make_executor()
+        items = [1, 2, 3]
+        result = ex._template_object("{items}", {"items": items}, None, None)  # type: ignore[arg-type]
+        assert result is items
+
+    def test_template_object_number_coerce_int(self) -> None:
+        """Lines 225-231: number param with whole-number value → int."""
+        ex = self._make_executor()
+        param_defs = {"page_size": self._make_param_def("number")}
+        result = ex._template_object("{page_size}", {"page_size": "10"}, None, param_defs)  # type: ignore[arg-type]
+        assert result == 10
+        assert isinstance(result, int)
+
+    def test_template_object_number_coerce_float(self) -> None:
+        """Lines 225-231: number param with decimal value → float."""
+        ex = self._make_executor()
+        param_defs = {"ratio": self._make_param_def("number")}
+        result = ex._template_object("{ratio}", {"ratio": "3.14"}, None, param_defs)  # type: ignore[arg-type]
+        assert abs(result - 3.14) < 0.001
+        assert isinstance(result, float)
+
+    def test_template_object_number_coerce_invalid_falls_through(self) -> None:
+        """Lines 229-231: number param with non-numeric string → falls through to string template."""
+        ex = self._make_executor()
+        param_defs = {"count": self._make_param_def("number")}
+        result = ex._template_object("{count}", {"count": "abc"}, None, param_defs)  # type: ignore[arg-type]
+        assert result == "abc"  # no coercion, raw substitution
+
+    def test_template_object_boolean_coerce_true_string(self) -> None:
+        """Line 233: boolean param 'true' → True."""
+        ex = self._make_executor()
+        param_defs = {"active": self._make_param_def("boolean")}
+        result = ex._template_object("{active}", {"active": "true"}, None, param_defs)  # type: ignore[arg-type]
+        assert result is True
+
+    def test_template_object_boolean_coerce_false_string(self) -> None:
+        """Line 233: boolean param 'false' string → False."""
+        ex = self._make_executor()
+        param_defs = {"active": self._make_param_def("boolean")}
+        result = ex._template_object("{active}", {"active": "false"}, None, param_defs)  # type: ignore[arg-type]
+        assert result is False
+
+    def test_template_object_boolean_coerce_python_true(self) -> None:
+        """Line 233: boolean param Python True → True."""
+        ex = self._make_executor()
+        param_defs = {"flag": self._make_param_def("boolean")}
+        result = ex._template_object("{flag}", {"flag": True}, None, param_defs)  # type: ignore[arg-type]
+        assert result is True
+
+    def test_template_object_dict_skips_empty_nested(self) -> None:
+        """Lines 243, 245: empty nested dict is skipped; None nested value is skipped."""
+        ex = self._make_executor()
+        # Nested dict with a placeholder that resolves to None → skipped
+        obj = {"outer": {"inner": "{missing}"}}
+        result = ex._template_object(obj, {}, {}, None)  # type: ignore[arg-type]
+        # 'outer' key should be absent because inner resolved to empty dict
+        assert result == {}
+
+    def test_template_object_dict_skips_none_value(self) -> None:
+        """Line 245: dict value that templates to None is skipped."""
+        ex = self._make_executor()
+        # To hit the `templated is None` branch we pass a raw None as a non-string value.
+        result = ex._template_object({"key": None}, {}, {}, None)  # type: ignore[arg-type]
+        assert result == {}
+
+    def test_template_object_dict_optional_invalid_param_skipped(self) -> None:
+        """Lines 247-253: optional param in dict that raises INVALID_PARAMETER is skipped."""
+        from unittest.mock import patch
+
+        ex = self._make_executor()
+        param_defs = {"opt": Parameter(type=ParameterType.STRING, required=False)}
+        obj = {"opt": "{opt}"}
+
+        # Patch _template_object on a nested call to raise INVALID_PARAMETER
+        original = ex._template_object
+
+        call_count = 0
+
+        def patched(
+            v: object,  # noqa: ANN001
+            p: object,  # noqa: ANN001
+            c: object,  # noqa: ANN001
+            pd: object,  # noqa: ANN001
+        ) -> object:  # noqa: ANN202
+            nonlocal call_count
+            call_count += 1
+            if call_count > 1:  # inner recursive call → raise
+                raise MatimoError("missing", ErrorCode.INVALID_PARAMETER)
+            return original(v, p, c, pd)
+
+        with patch.object(ex, "_template_object", side_effect=patched):
+            result = ex._template_object(obj, {}, None, param_defs)  # type: ignore[arg-type]
+        assert result == {}  # optional key was skipped
+
+    def test_template_object_dict_required_invalid_param_raises(self) -> None:
+        """Lines 247-253: required param raising INVALID_PARAMETER is re-raised."""
+        from unittest.mock import patch
+
+        ex = self._make_executor()
+        param_defs = {"req": Parameter(type=ParameterType.STRING, required=True)}
+        obj = {"req": "{req}"}
+
+        original = ex._template_object
+        call_count = 0
+
+        def patched(
+            v: object,  # noqa: ANN001
+            p: object,  # noqa: ANN001
+            c: object,  # noqa: ANN001
+            pd: object,  # noqa: ANN001
+        ) -> object:  # noqa: ANN202
+            nonlocal call_count
+            call_count += 1
+            if call_count > 1:
+                raise MatimoError("missing", ErrorCode.INVALID_PARAMETER)
+            return original(v, p, c, pd)
+
+        with patch.object(ex, "_template_object", side_effect=patched):
+            with pytest.raises(MatimoError) as exc_info:
+                ex._template_object(obj, {}, None, param_defs)  # type: ignore[arg-type]
+        assert exc_info.value.code == ErrorCode.INVALID_PARAMETER

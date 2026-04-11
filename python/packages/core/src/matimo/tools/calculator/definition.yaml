@@ -1,0 +1,70 @@
+name: calculator
+version: '1.0.0'
+description: 'Perform basic arithmetic operations'
+
+parameters:
+  operation:
+    type: string
+    description: 'The operation to perform. Accepts: add (addition, sum, plus), subtract (subtraction, minus), multiply (multiplication, times, product), divide (division)'
+    required: true
+  a:
+    type: number
+    description: 'First operand'
+    required: true
+  b:
+    type: number
+    description: 'Second operand'
+    required: true
+
+execution:
+  type: function
+  code: './calculator.py'
+
+output_schema:
+  type: object
+  properties:
+    result:
+      type: number
+      description: 'Result of the operation'
+    operation:
+      type: string
+    operands:
+      type: object
+      properties:
+        a:
+          type: number
+        b:
+          type: number
+
+error_handling:
+  retry: 2
+  backoff_type: exponential
+  initial_delay_ms: 500
+
+examples:
+  - name: 'Simple addition'
+    description: 'Add 5 and 3'
+    params:
+      operation: 'add'
+      a: 5
+      b: 3
+  - name: 'Addition with variant'
+    description: "Add using 'addition' keyword"
+    params:
+      operation: 'addition'
+      a: 10
+      b: 20
+  - name: 'Subtraction'
+    description: 'Subtract 3 from 10'
+    params:
+      operation: 'subtract'
+      a: 10
+      b: 3
+  - name: 'Multiplication'
+    description: 'Multiply 4 and 7'
+    params:
+      operation: 'multiply'
+      a: 4
+      b: 7
+
+tags: [math, arithmetic, basic]

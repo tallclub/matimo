@@ -12,7 +12,7 @@ import httpx
 
 from matimo.errors import ErrorCode, MatimoError
 
-_NOTION_VERSION = "2025-09-03"
+_NOTION_VERSION = "2022-06-28"
 _NOTION_PAGES_URL = "https://api.notion.com/v1/pages"
 _NOTION_DATABASES_URL = "https://api.notion.com/v1/databases"
 

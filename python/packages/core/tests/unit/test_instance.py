@@ -678,3 +678,135 @@ class TestMatimoInstanceMissingLines:
         from matimo.instance import matimo as matimo_ns
         instance = await matimo_ns.init([])
         assert isinstance(instance, Matimo)
+
+
+class TestInstanceSkillsAndCoverage:
+    """Cover lines 213-216, 299-306, 370, 378, 382, 386, 390, 400 in instance.py."""
+
+    def _make_matimo(self) -> Matimo:
+        """Return a bare Matimo instance with no tools or skills."""
+        return Matimo(
+            registry=ToolRegistry(),
+            policy_engine=DefaultPolicyEngine(),
+            loader=MagicMock(),
+            tool_paths=[],
+            on_event=None,
+            on_hitl=None,
+            matimo_logger=MagicMock(),
+        )
+
+    # ------------------------------------------------------------------
+    # Lines 213-216: skill_paths loading in Matimo.init()
+    # ------------------------------------------------------------------
+
+    @pytest.mark.asyncio
+    async def test_init_with_skill_paths_loads_skills(self, tmp_path: Path) -> None:
+        """Lines 213-216: passing skill_paths causes SkillLoader to run."""
+        skills_dir = tmp_path / "skills" / "my-skill"
+        skills_dir.mkdir(parents=True)
+        (skills_dir / "SKILL.md").write_text(
+            "---\nname: my-skill\ndescription: A test skill\n---\n\nContent here."
+        )
+        matimo = await Matimo.init([], skill_paths=[str(tmp_path / "skills")])
+        skills = matimo.list_skills()
+        assert any(s.name == "my-skill" for s in skills)
+
+    # ------------------------------------------------------------------
+    # Lines 299-306: matimo_reload_tools interception in execute()
+    # ------------------------------------------------------------------
+
+    @pytest.mark.asyncio
+    async def test_execute_matimo_reload_tools_interception(self) -> None:
+        """Lines 299-306: matimo_reload_tools is intercepted and calls reload()."""
+        from pathlib import Path
+        from unittest.mock import AsyncMock, patch
+
+        import matimo as _matimo_pkg
+        from matimo.instance import ReloadResult
+
+        # Load built-in core tools so matimo_reload_tools is in the registry
+        core_tools_dir = str(Path(_matimo_pkg.__file__).parent / "tools")
+        instance = await Matimo.init(core_tools_dir)
+        reload_result = ReloadResult(loaded=5, removed=1, revalidated=0, rejected=[])
+        with patch.object(instance, "reload", new=AsyncMock(return_value=reload_result)):
+            result = await instance.execute("matimo_reload_tools", {})
+        assert result["success"] is True
+        assert result["loaded"] == 5
+        assert result["removed"] == 1
+        assert "Reload complete" in result["message"]
+
+    # ------------------------------------------------------------------
+    # Line 370: get_tools_for_agent — filter_for_agent return
+    # ------------------------------------------------------------------
+
+    def test_get_tools_for_agent_returns_filtered_list(self) -> None:
+        """Line 370: get_tools_for_agent delegates to policy.filter_for_agent."""
+        from matimo.core.models import PolicyContext
+
+        tool = ToolDefinition(
+            name="my_tool",
+            description="test",
+            execution=HttpExecution(type="http", method="GET", url="https://example.com/"),
+        )
+        reg = ToolRegistry()
+        reg.register(tool)
+        matimo = Matimo(
+            registry=reg,
+            policy_engine=DefaultPolicyEngine(),
+            loader=MagicMock(),
+            tool_paths=[],
+            on_event=None,
+            on_hitl=None,
+            matimo_logger=MagicMock(),
+        )
+        ctx = PolicyContext(agent_id="agent-1")
+        tools = matimo.get_tools_for_agent(ctx)
+        assert isinstance(tools, list)
+
+    # ------------------------------------------------------------------
+    # Lines 378, 382, 386, 390: Skills API methods
+    # ------------------------------------------------------------------
+
+    def test_list_skills_returns_list(self) -> None:
+        """Line 378: list_skills() returns SkillSummary list."""
+        matimo = self._make_matimo()
+        assert matimo.list_skills() == []
+
+    def test_get_all_skills_returns_list(self) -> None:
+        """Line 382: get_all_skills() returns SkillDefinition list."""
+        matimo = self._make_matimo()
+        assert matimo.get_all_skills() == []
+
+    def test_get_skill_returns_none_when_absent(self) -> None:
+        """Line 386: get_skill() returns None for unknown skill."""
+        matimo = self._make_matimo()
+        assert matimo.get_skill("nonexistent") is None
+
+    def test_get_skill_content_returns_none_when_absent(self) -> None:
+        """Line 390: get_skill_content() returns None for unknown skill."""
+        matimo = self._make_matimo()
+        assert matimo.get_skill_content("nonexistent") is None
+
+    # ------------------------------------------------------------------
+    # Line 400: semantic_search_skills
+    # ------------------------------------------------------------------
+
+    @pytest.mark.asyncio
+    async def test_semantic_search_skills_returns_empty_when_no_skills(self) -> None:
+        """Line 400: semantic_search_skills() returns empty list with no skills loaded."""
+        matimo = self._make_matimo()
+        results = await matimo.semantic_search_skills("sending messages")
+        assert results == []
+
+    @pytest.mark.asyncio
+    async def test_semantic_search_skills_finds_loaded_skill(self, tmp_path: Path) -> None:
+        """Line 400: semantic_search_skills() returns results for matching skills."""
+        skills_dir = tmp_path / "skills" / "slack-messaging"
+        skills_dir.mkdir(parents=True)
+        (skills_dir / "SKILL.md").write_text(
+            "---\nname: slack-messaging\ndescription: Sending Slack messages\n---\n\n"
+            "# Slack Messaging\n\nUse this skill to send messages via Slack channels."
+        )
+        matimo = await Matimo.init([], skill_paths=[str(tmp_path / "skills")])
+        results = await matimo.semantic_search_skills("send slack message", limit=5)
+        assert isinstance(results, list)

@@ -1,0 +1,42 @@
+name: matimo_get_tool_status
+version: '1.0.0'
+description: Get the current status, risk level, and approval state of a tool. Works for both pending (agent-created) and approved tools.
+requires_approval: true
+tags:
+  - matimo
+  - meta
+  - approval
+
+parameters:
+  name:
+    type: string
+    required: true
+    description: Name of the tool to check
+  tool_dir:
+    type: string
+    required: false
+    description: Directory containing the tool (default ./matimo-tools)
+
+execution:
+  type: function
+  code: './matimo_get_tool_status.py'
+
+output_schema:
+  type: object
+  properties:
+    found:
+      type: boolean
+    name:
+      type: string
+    status:
+      type: string
+    riskLevel:
+      type: string
+    approvalState:
+      type: string
+    approvedAt:
+      type: string
+    approvedBy:
+      type: string
+    message:
+      type: string

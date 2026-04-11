@@ -101,7 +101,7 @@ class HttpExecutor:
                 raise
 
         # 7. Template body
-        body = self._template_object(exec_cfg.body, working_params, creds)
+        body = self._template_object(exec_cfg.body, working_params, creds, tool.parameters)
 
         # 8. Determine Content-Type and prepare request body
         content_type = headers.get("Content-Type", headers.get("content-type", ""))
@@ -194,17 +194,66 @@ class HttpExecutor:
         obj: object,
         params: dict[str, Any],
         creds: dict[str, str],
+        param_definitions: dict[str, Any] | None = None,
     ) -> Any:  # noqa: ANN401
         # Returns the same JSON-like structure (str/dict/list/None) — Any is accurate.
-        """Recursively template strings within dicts/lists."""
+        """Recursively template strings within dicts/lists.
+
+        When a string value is exactly a single placeholder (e.g. ``"{page_size}"``)
+        and the corresponding parameter is typed ``number`` or ``boolean`` in the tool
+        schema, the substituted value is coerced to the correct Python type so that
+        JSON serialisation sends the right type (e.g. ``5`` not ``"5"``).
+        Also mirrors the TypeScript behaviour of embedding ``object``/``array``
+        parameters directly without stringification.
+        """
         if obj is None:
             return None
         if isinstance(obj, str):
-            return self._template(obj, params, creds)
+            single_match = re.fullmatch(r"\{([a-zA-Z_][a-zA-Z0-9_]*)\}", obj)
+            if single_match:
+                param_name = single_match.group(1)
+                param_value = params.get(param_name)
+                # Embed object/array parameters directly (no stringification)
+                if param_value is not None and isinstance(param_value, (dict, list)):
+                    return param_value
+                # Coerce to correct primitive type based on schema
+                if param_value is not None and param_definitions:
+                    param_def = param_definitions.get(param_name)
+                    if param_def is not None:
+                        param_type = getattr(param_def, "type", None)
+                        if param_type == "number":
+                            try:
+                                float_val = float(param_value)
+                                if int(float_val) == float_val:
+                                    return int(param_value)
+                                return float_val
+                            except (ValueError, TypeError):
+                                pass
+                        elif param_type == "boolean":
+                            return param_value in (True, "true", "1", "yes")
+            templated = self._template(obj, params, creds)
+            return templated
         if isinstance(obj, dict):
-            return {k: self._template_object(v, params, creds) for k, v in obj.items()}
+            result: dict[str, Any] = {}
+            for k, v in obj.items():
+                try:
+                    templated = self._template_object(v, params, creds, param_definitions)
+                    # Skip None and empty nested dicts (mirrors TS: "Only include nested object if it has content")
+                    if isinstance(templated, dict) and not templated:
+                        continue
+                    if templated is None:
+                        continue
+                    result[k] = templated
+                except MatimoError as exc:
+                    if exc.code == ErrorCode.INVALID_PARAMETER:
+                        param_def = (param_definitions or {}).get(k)
+                        is_optional = param_def is None or not getattr(param_def, "required", True)
+                        if is_optional:
+                            continue
+                    raise
+            return result
         if isinstance(obj, list):
-            return [self._template_object(item, params, creds) for item in obj]
+            return [self._template_object(item, params, creds, param_definitions) for item in obj]
         return obj
 
     # ------------------------------------------------------------------

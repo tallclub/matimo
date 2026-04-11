@@ -1,0 +1,108 @@
+name: edit
+version: '1.0.0'
+description: Edit file contents with precise line-based insertion, replacement, and deletion. Supports undo/backup creation.
+requires_approval: true
+
+parameters:
+  filePath:
+    type: string
+    description: Absolute or relative path to file to edit (supports ~ for home directory)
+    required: true
+    example: './src/config.ts'
+
+  operation:
+    type: string
+    description: 'Edit operation: insert, replace, delete, append'
+    required: true
+    example: 'replace'
+
+  content:
+    type: string
+    description: Content to insert or use for replacement (required for insert/replace/append, forbidden for delete)
+    required: false
+    example: 'const value = 42;'
+
+  startLine:
+    type: number
+    description: Starting line number (1-based). For insert, line to insert before. For replace/delete, starting line.
+    required: true
+    example: 10
+
+  endLine:
+    type: number
+    description: Ending line number (1-based, inclusive) for replace/delete operations. Not used for insert/append.
+    required: false
+    example: 15
+
+  backup:
+    type: boolean
+    description: Create backup file before editing (default true). Backup saved as {filename}.backup
+    required: false
+    default: true
+
+execution:
+  type: function
+  code: './edit.py'
+
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+      description: Whether edit operation succeeded
+    filePath:
+      type: string
+      description: Path to the edited file
+    operation:
+      type: string
+      description: Operation that was performed
+    linesAffected:
+      type: number
+      description: Number of lines modified
+    backupCreated:
+      type: boolean
+      description: Whether backup file was created
+    backupPath:
+      type: string
+      description: Path to backup file if created
+    previousContent:
+      type: string
+      description: Content before edit (for delete/replace operations)
+    newLineCount:
+      type: number
+      description: Total line count after edit
+    duration:
+      type: number
+      description: Edit operation duration in milliseconds
+  required: [success, filePath, operation, linesAffected]
+
+error_handling:
+  retry: 0
+  backoff_type: exponential
+  initial_delay_ms: 300
+
+examples:
+  - name: 'Replace lines'
+    description: 'Replace lines 10-12 with new content'
+    params:
+      filePath: './src/config.ts'
+      operation: 'replace'
+      startLine: 10
+      endLine: 12
+      content: 'const newValue = 99;'
+  - name: 'Insert content'
+    description: 'Insert new line before line 5'
+    params:
+      filePath: './src/app.ts'
+      operation: 'insert'
+      startLine: 5
+      content: '// New comment'
+  - name: 'Delete lines'
+    description: 'Delete lines 3 to 7'
+    params:
+      filePath: './src/app.ts'
+      operation: 'delete'
+      startLine: 3
+      endLine: 7
+
+tags: [filesystem, file, edit, write, io]

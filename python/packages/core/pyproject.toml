@@ -65,6 +65,9 @@ Documentation = "https://matimo.dev/docs"
 Repository = "https://github.com/tallclub/matimo"
 Issues = "https://github.com/tallclub/matimo/issues"
 
+[project.entry-points."matimo.providers"]
+core = "matimo:get_core_tools_path"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/matimo"]
 

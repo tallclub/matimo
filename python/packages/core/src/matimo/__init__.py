@@ -22,16 +22,14 @@ CrewAI integration:
 """
 from __future__ import annotations
 
+import importlib.resources
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from matimo.instance import Matimo
 
-__version__ = "0.1.0"
-
-# ---------------------------------------------------------------------------
 # Approval
-# ---------------------------------------------------------------------------
 from matimo.approval.handler import (
     ApprovalCallback,
     ApprovalHandler,
@@ -40,9 +38,7 @@ from matimo.approval.handler import (
     set_global_approval_handler,
 )
 
-# ---------------------------------------------------------------------------
 # Auth
-# ---------------------------------------------------------------------------
 from matimo.auth.injection import extract_parameter_placeholders, inject_auth_parameters
 from matimo.auth.oauth2_config import (
     AuthorizationOptions,
@@ -53,14 +49,10 @@ from matimo.auth.oauth2_config import (
 from matimo.auth.oauth2_handler import OAuth2Handler
 from matimo.auth.oauth2_provider_loader import OAuth2ProviderLoader
 
-# ---------------------------------------------------------------------------
 # Core loading + registry
-# ---------------------------------------------------------------------------
 from matimo.core.loader import ToolLoader
 
-# ---------------------------------------------------------------------------
 # Core models
-# ---------------------------------------------------------------------------
 from matimo.core.models import (
     AuthConfig,
     AuthType,
@@ -94,9 +86,7 @@ from matimo.core.models import (
 )
 from matimo.core.registry import ToolRegistry
 
-# ---------------------------------------------------------------------------
 # Skills
-# ---------------------------------------------------------------------------
 from matimo.core.skill_content_parser import (
     ParsedSkillContent,
     extract_skill_content,
@@ -111,17 +101,42 @@ from matimo.core.tfidf_embedding import (
     cosine_similarity,
 )
 
-# ---------------------------------------------------------------------------
+# Decorators
+from matimo.decorators import (
+    get_global_matimo_instance,
+    set_global_matimo_instance,
+    tool,
+)
+
 # Encodings
-# ---------------------------------------------------------------------------
 from matimo.encodings.parameter_encoding import apply_parameter_encodings
 
-# ---------------------------------------------------------------------------
+# Errors
+from matimo.errors import (
+    ErrorCode,
+    MatimoError,
+    create_execution_error,
+    create_validation_error,
+    from_http_error,
+)
+
 # Executors
-# ---------------------------------------------------------------------------
 from matimo.executors.command_executor import CommandExecutor
 from matimo.executors.function_executor import FunctionExecutor
 from matimo.executors.http_executor import HttpExecutor
+
+# Main entry point + sync API
+from matimo.instance import InitOptions, Matimo, ReloadResult, matimo
+
+# Logging
+from matimo.logging import (
+    MatimoLogger,
+    get_global_matimo_logger,
+    set_global_matimo_logger,
+    setup_logger,
+)
+
+# MCP
 from matimo.mcp.secrets import (
     AwsSecretsManagerResolver,
     DotenvSecretResolver,
@@ -130,19 +145,13 @@ from matimo.mcp.secrets import (
     VaultSecretResolver,
     create_resolver_chain,
 )
-
-# ---------------------------------------------------------------------------
-# MCP
-# ---------------------------------------------------------------------------
 from matimo.mcp.server import MCPServer, MCPServerOptions, create_mcp_server
 from matimo.mcp.tool_converter import convert_parameters_to_mcp_schema
 
-# ---------------------------------------------------------------------------
 # Policy
-# ---------------------------------------------------------------------------
 from matimo.policy.approval_manifest import ApprovalManifest, ApprovalRecord
 from matimo.policy.content_validator import ContentViolation, validate_tool_content
-from matimo.policy.default_policy import DefaultPolicyEngine, PolicyEngine
+from matimo.policy.default_policy import DefaultPolicyEngine, PolicyEngine, get_tier_for_tool
 from matimo.policy.integrity_tracker import IntegrityAction, ToolIntegrityTracker
 from matimo.policy.policy_loader import load_policy_from_file
 from matimo.policy.risk_classifier import classify_risk
@@ -159,6 +168,24 @@ from matimo.policy.types import (
     PolicyTier,
     RiskLevel,
 )
+from matimo.sync import MatimoSync
+
+__version__ = "0.1.0"
+
+
+def get_core_tools_path() -> str:
+    """Return the absolute path to the bundled core tool definitions.
+
+    Used as a ``matimo.providers`` entry point so that core meta-tools
+    (execute, read, edit, search, web, calculator, matimo_create_tool, …)
+    are auto-discovered by :meth:`matimo.Matimo.init` when
+    ``auto_discover=True``.
+    """
+    try:
+        ref = importlib.resources.files("matimo") / "tools"
+        return str(ref)
+    except Exception:
+        return str(Path(__file__).parent / "tools")
 
 # ---------------------------------------------------------------------------
 # Integrations (lazy — raise ImportError with hint on missing optional dep)
@@ -175,6 +202,25 @@ def convert_tools_to_langchain(
     return _inner(tools, matimo_instance, credentials)
 
 
+def get_skills_metadata(matimo_instance: Matimo) -> list[dict[str, str]]:
+    """Return Level-1 metadata (name + description) for all available skills."""
+    from matimo.integrations.langchain import get_skills_metadata as _inner
+    return _inner(matimo_instance)
+
+
+async def build_relevant_skill_prompt(
+    matimo_instance: Matimo,
+    query: str,
+    *,
+    top_k: int = 3,
+    min_score: float = 0.3,
+    header: str | None = None,
+) -> str:
+    """Build a per-request skill context prompt using TF-IDF semantic search."""
+    from matimo.integrations.langchain import build_relevant_skill_prompt as _inner
+    return await _inner(matimo_instance, query, top_k=top_k, min_score=min_score, header=header)
+
+
 def convert_tools_to_crewai(
     tools: list[Any],
     matimo_instance: Matimo,
@@ -188,42 +234,22 @@ def convert_tools_to_crewai(
 # ---------------------------------------------------------------------------
 # Decorators
 # ---------------------------------------------------------------------------
-from matimo.decorators import (  # noqa: E402
-    get_global_matimo_instance,
-    set_global_matimo_instance,
-    tool,
-)
 
 # ---------------------------------------------------------------------------
 # Errors
 # ---------------------------------------------------------------------------
-from matimo.errors import (  # noqa: E402
-    ErrorCode,
-    MatimoError,
-    create_execution_error,
-    create_validation_error,
-    from_http_error,
-)
 
 # ---------------------------------------------------------------------------
 # Main entry point
 # ---------------------------------------------------------------------------
-from matimo.instance import InitOptions, Matimo, ReloadResult, matimo  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Logging
 # ---------------------------------------------------------------------------
-from matimo.logging import (  # noqa: E402
-    MatimoLogger,
-    get_global_matimo_logger,
-    set_global_matimo_logger,
-    setup_logger,
-)
 
 # ---------------------------------------------------------------------------
 # Synchronous API
 # ---------------------------------------------------------------------------
-from matimo.sync import MatimoSync  # noqa: E402
 
 __all__ = [
     # Core models
@@ -262,7 +288,7 @@ __all__ = [
     "RiskLevel", "PolicyTier",
     "MatimoEvent", "MatimoEventHandler", "HITLCallback", "HITLRequest",
     "ContentViolation", "validate_tool_content",
-    "classify_risk",
+    "classify_risk", "get_tier_for_tool",
     "ToolIntegrityTracker", "IntegrityAction",
     "ApprovalManifest", "ApprovalRecord",
     "load_policy_from_file",
@@ -274,6 +300,8 @@ __all__ = [
     "SecretResolverChain", "create_resolver_chain",
     # Integrations
     "convert_tools_to_langchain",
+    "get_skills_metadata",
+    "build_relevant_skill_prompt",
     "convert_tools_to_crewai",
     # Decorators
     "tool", "set_global_matimo_instance", "get_global_matimo_instance",
@@ -285,4 +313,6 @@ __all__ = [
     "create_execution_error", "create_validation_error", "from_http_error",
     # Instance
     "Matimo", "MatimoSync", "matimo", "InitOptions", "ReloadResult",
+    # Core tools path (entry point)
+    "get_core_tools_path",
 ]
