@@ -43,10 +43,10 @@ jobs:
         run: uv run pytest packages/core/tests/ --cov=packages/core/src/matimo --cov-fail-under=95 -q --tb=no
 
   # -------------------------------------------------------------------------
-  # Publish core matimo package
+  # Publish core matimo package + all providers
   # -------------------------------------------------------------------------
   publish-core:
-    name: Publish matimo-core + matimo to PyPI
+    name: Publish matimo-core, matimo, and all providers to PyPI
     runs-on: ubuntu-latest
     needs: test
     if: startsWith(github.ref, 'refs/tags/python/v')
@@ -72,13 +72,26 @@ jobs:
       - name: Build matimo umbrella wheel + sdist
         run: uv build --package matimo
 
+      - name: Build all provider packages
+        run: |
+          # Discover and build all provider packages from workspace
+          cd packages
+          for provider_dir in */; do
+            provider_name="${provider_dir%/}"
+            # Skip non-provider packages
+            if [[ "$provider_name" != "core" && "$provider_name" != "cli" && "$provider_name" != "matimo" ]]; then
+              echo "Building matimo-$provider_name..."
+              uv build --package matimo-$provider_name
+            fi
+          done
+
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: python/dist/
 
   # -------------------------------------------------------------------------
-  # Publish provider packages
+  # Legacy provider tag support (optional — kept for backwards compatibility)
   # -------------------------------------------------------------------------
   publish-provider:
     name: Publish provider package to PyPI
@@ -114,3 +127,4 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: python/dist/
+
