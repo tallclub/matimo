@@ -34,7 +34,7 @@ jobs:
         run: uv python install
 
       - name: Install dependencies
-        run: uv sync --all-groups
+        run: uv sync --group dev
 
       - name: Run tests
         run: uv run pytest packages/core/tests/ --tb=short -q
