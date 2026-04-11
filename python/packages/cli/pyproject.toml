@@ -17,7 +17,7 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
 ]
 dependencies = [
-    "matimo-core>=0.1.0",
+    "matimo-core>=0.1.0a14,<0.2.0",
     "pyyaml>=6.0",
 ]
 

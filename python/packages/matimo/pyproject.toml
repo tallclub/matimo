@@ -23,7 +23,7 @@ classifiers = [
 # This is a meta-package: pip install matimo pulls in matimo-core which provides
 # the actual `matimo` Python namespace.
 dependencies = [
-    "matimo-core>=0.1.0",
+    "matimo-core>=0.1.0a14,<0.2.0",
 ]
 
 [project.optional-dependencies]

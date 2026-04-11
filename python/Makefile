@@ -23,6 +23,7 @@ UV_TOOL   := uv tool run
         test test-watch test-coverage test-unit test-integration \
         lint lint-fix format format-check \
         typecheck validate-tools \
+        policy-demo skills-demo meta-flow logger-example \
         dev
 
 # ── Help ─────────────────────────────────────────────────────────────────────
@@ -62,13 +63,19 @@ help:
 	@echo "  make validate-tools   Validate all YAML tool definitions"
 	@echo "  make dev              Run core SDK in dev mode"
 	@echo ""
+	@echo "  Native Examples (requires OPENAI_API_KEY for agent demos)"
+	@echo "  ──────────────────────────────────────────"
+	@echo "  make policy-demo      Run policy + HITL demo (LangChain agent)"
+	@echo "  make skills-demo      Run skills lifecycle demo (LangChain agent)"
+	@echo "  make meta-flow        Run meta-tools integration demo (LangChain agent)"
+	@echo "  make logger-example   Run structured logger example (no API key needed)"
+	@echo ""
 
-# ── Setup ────────────────────────────────────────────────────────────────────
+# ── Install ──────────────────────────────────────────────────────────────────
 install: sync
 
 sync:
 	$(UV) sync --all-extras --dev
-
 # ── Build ────────────────────────────────────────────────────────────────────
 build:
 	$(UV_RUN) python $(SCRIPTS)/build_providers.py
@@ -130,3 +137,17 @@ validate-tools:
 # ── Dev ───────────────────────────────────────────────────────────────────────
 dev:
 	$(UV_RUN) python -c "import matimo; print('matimo', matimo.__version__ if hasattr(matimo,'__version__') else 'loaded OK')"
+# ── Native Examples ───────────────────────────────────────────────────────────
+EXAMPLES := examples/native
+
+policy-demo:
+		cd $(EXAMPLES) && $(UV_RUN) -w ../.. python policy/policy_demo.py
+
+skills-demo:
+		cd $(EXAMPLES) && $(UV_RUN) -w ../.. python skills/skills_demo.py
+
+meta-flow:
+		cd $(EXAMPLES) && $(UV_RUN) -w ../.. python meta_flow/meta_tools_integration.py
+
+logger-example:
+		cd $(EXAMPLES) && $(UV_RUN) -w ../.. python logger_example.py

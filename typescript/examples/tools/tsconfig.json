@@ -15,6 +15,6 @@
     "sourceMap": true,
     "outDir": "./dist"
   },
-  "include": ["agents/**/*.ts", "gmail/**/*.ts", "slack/**/*.ts"],
+  "include": ["**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }
