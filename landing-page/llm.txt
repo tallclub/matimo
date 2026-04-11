@@ -165,8 +165,113 @@ See [Contributing Guide](https://github.com/tallclub/matimo/blob/main/CONTRIBUTI
 
 ## Version
 
-Alpha 13 (v0.1.0-alpha.13)
+Alpha 14 (v0.1.0-alpha.14) — **Python SDK Official Launch** (Released Apr 10, 2026)
+
+### Release Highlights
+
+**Python SDK (v0.1.0a14):**
+- ✅ Full feature parity with TypeScript SDK
+- ✅ Python 3.11 & 3.12 support with async/await
+- ✅ 657 tests, 97.38% coverage
+- ✅ LangChain & CrewAI integrations
+- ✅ MCP server support (stdio + HTTP)
+- ✅ All 10 provider packages available (Slack, GitHub, Gmail, Notion, HubSpot, Mailchimp, Postgres, Twilio)
+
+**Dual SDK Benefits:**
+- Identical YAML tool definitions work across TypeScript & Python
+- Same factory, decorator, framework, and MCP patterns
+- Unified credential management and security
+- Cross-language team collaboration
+
+**Security Hardening (6 critical patches):**
+- MCP server secret isolation (no process.env exposure)
+- Command injection prevention in validation layer
+- Production fail-fast for missing approvals
+- Case-insensitive secret detection
+- Tool name sanitization for Pydantic schemas
+- Comprehensive auth injection testing (19 new test cases)
+
+**Framework Integrations:**
+- LangChain: `convert_tools_to_langchain()` → StructuredTool
+- CrewAI: `convert_tools_to_crewai()` → BaseTool with async execution
+- MCP: Native server support with auto-discovery
+
+**CLI Support (Python):**
+- `matimo doctor` — Environment diagnostics
+- `matimo review list/approve/reject` — HITL approval workflows
+- `matimo mcp setup` — Claude Desktop integration
+
+### Installation
+
+```bash
+# Python
+pip install matimo-core matimo-slack matimo-github
+
+# With LangChain
+pip install matimo-core[langchain]
+
+# With CrewAI
+pip install matimo-core[crewai]
+
+# With everything
+pip install matimo-core[all]
+```
+
+### Quick Start (Python)
+
+```python
+from matimo import Matimo, convert_tools_to_langchain
+
+# Factory pattern
+matimo = await Matimo.init('./tools')
+result = await matimo.execute('slack_send_message', {'channel': '#general', 'text': 'Hello!'})
+
+# LangChain integration
+from langchain.agents import create_react_agent, AgentExecutor
+from langchain_openai import ChatOpenAI
+
+llm = ChatOpenAI(model='gpt-4')
+tools = convert_tools_to_langchain(matimo.list_tools(), matimo)
+agent = create_react_agent(llm, tools)
+executor = AgentExecutor.from_agent_and_tools(agent=agent, tools=tools, verbose=True)
+result = await executor.ainvoke({'input': 'Send a Slack message...'})
+
+# CrewAI integration
+from crewai import Agent, Crew, Task
+from matimo import convert_tools_to_crewai
+
+tools = convert_tools_to_crewai(matimo.list_tools(), matimo)
+agent = Agent(role='Developer', goal='Build systems', tools=tools, llm=llm)
+task = Task(description='Send Slack updates', agent=agent)
+crew = Crew(agents=[agent], tasks=[task])
+result = crew.kickoff()
+```
+
+### Key Metrics
+
+| Metric | Value |
+|--------|-------|
+| **Total Tests** | 2,541 (1,884 TS + 657 Python) |
+| **Coverage** | 97.38% (exceeds 95% target) |
+| **Providers** | 10 (Slack, GitHub, Gmail, Notion, HubSpot, Mailchimp, Postgres, Twilio, MCP, +custom) |
+| **Python Versions** | 3.11, 3.12 |
+| **Frameworks** | LangChain, CrewAI, MCP, native, decorator, factory |
+| **Security Patches** | 6 critical fixes applied |
+
+
+
+## Maintenance & Ownership
+
+Matimo is maintained by:
+- **[tallclub](https://github.com/tallclub)** — Creator and primary maintainer
+- **[Roaiq Technologies Private Limited](https://roaiq.com)** — Co-maintainer and strategic partner
+
+Open source contributions welcome! See [Contributing Guide](https://github.com/tallclub/matimo/blob/main/CONTRIBUTING.md).
 
 ## License
 
-MIT © 2026 Matimo Contributors
+MIT © 2026 Matimo Contributors. See [LICENSE](https://github.com/tallclub/matimo/blob/main/LICENSE) file for details.
+
+---
+**🚨 DISCLAIMER:** Matimo is in active development. While thoroughly tested (97.38% coverage, 2,541 tests), it may contain bugs or breaking changes. This is open source software maintained by [tallclub](https://github.com/tallclub) & [Roaiq Technologies Private Limited](https://roaiq.com). **Report issues:** [GitHub Issues](https://github.com/tallclub/matimo/issues) | [Discord](https://discord.gg/3JPt4mxWDV)
+**Security & Bug Reporting:** Found a vulnerability or bug? Report it at [GitHub Security](https://github.com/tallclub/matimo/security) or email security@roaiq.com. All issues are reviewed and addressed promptly.
