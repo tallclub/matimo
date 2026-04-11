@@ -307,10 +307,10 @@ matimo = await Matimo.init('./tools', log_level='info', log_format='json')
 
 # Access the logger
 logger = get_global_matimo_logger()
-logger.info('Processing request', {'user': 'u123'})
-logger.debug('Cache hit', {'key': 'tools_list'})
-logger.warn('Rate limit near', {'remaining': 5})
-logger.error('Tool failed', {'tool': 'slack_send'})
+logger.info('Processing request', user='u123')
+logger.debug('Cache hit', key='tools_list')
+logger.warn('Rate limit near', remaining=5)
+logger.error('Tool failed', tool='slack_send')
 ```
 
 ### Environment Variables
