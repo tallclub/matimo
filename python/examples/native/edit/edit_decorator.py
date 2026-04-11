@@ -103,7 +103,7 @@ async def main() -> None:
             tmp_path = tmp.name
             tmp.write("Original content\n")
 
-        print(f"Created temporary file for testing…\n")
+        print("Created temporary file for testing…\n")
 
         # Example 1: Write to existing file
         print("1. Writing new content to temporary file\n")
@@ -111,7 +111,7 @@ async def main() -> None:
         result1 = await editor.write_file(tmp_path, new_content)
         
         if result1.get("success"):
-            print(f"File written successfully")
+            print("File written successfully")
             with open(tmp_path, 'r') as f:
                 content = f.read()
             print(f"Verified content:\n{content}")
@@ -158,7 +158,7 @@ if __name__ == "__main__":
         
         result3 = await editor.update_python_file(new_py_file, updated_python)
         if result3.get("success"):
-            print(f"Python file updated successfully")
+            print("Python file updated successfully")
             with open(new_py_file, 'r') as f:
                 lines = f.readlines()
             print(f"File now has {len(lines)} lines")

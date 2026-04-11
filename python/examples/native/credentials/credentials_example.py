@@ -114,7 +114,7 @@ async def main() -> None:
 
             # Try to list channels for this tenant
             # Note: This uses placeholder tokens, so will fail with auth error
-            print(f"\n📲  Attempting to list Slack channels with tenant credentials…")
+            print("\n📲  Attempting to list Slack channels with tenant credentials…")
             
             # This would normally work with real credentials:
             # result = await matimo.execute(
@@ -124,18 +124,18 @@ async def main() -> None:
             # )
             
             # For this demo, we just show the pattern
-            print(f"  [Demonstration mode — real tokens would make this API call]")
-            print(f"  Would execute: matimo.execute(")
-            print(f"    'slack-list-channels',")
-            print(f"    {{'limit': 5}},")
-            print(f"    credentials={{")
+            print("  [Demonstration mode — real tokens would make this API call]")
+            print("  Would execute: matimo.execute(")
+            print("    'slack-list-channels',")
+            print("    {'limit': 5},")
+            print("    credentials={")
             print(f"      'SLACK_BOT_TOKEN': '{tenant_creds['SLACK_BOT_TOKEN'][:20]}...'")
-            print(f"    }}")
-            print(f"  )")
+            print("    }")
+            print("  )")
 
             # Show what happens with placeholder tokens
-            print(f"\n⚠️  Placeholder token would result in:")
-            print(f"    401 Unauthorized (invalid token format)")
+            print("\n⚠️  Placeholder token would result in:")
+            print("    401 Unauthorized (invalid token format)")
 
     except Exception as error:
         print(f"❌  Error: {error}\n")

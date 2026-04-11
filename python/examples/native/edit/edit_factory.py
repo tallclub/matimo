@@ -7,7 +7,6 @@ Demonstrates editing and modifying file contents with interactive approval
 """
 
 import asyncio
-import os
 import sys
 import tempfile
 from pathlib import Path

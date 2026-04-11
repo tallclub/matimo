@@ -121,9 +121,7 @@ agent-crewai:
 	$(PYTHON) crewai/agents/crewai_agent.py
 multi-agent-crewai:
 	$(PYTHON) crewai/agents/multi_agent_crew.py
-multi-agent-crewai:
-	$(PYTHON) crewai/agents/multi_agent_crew.py
-
+	
 # ── Slack ─────────────────────────────────────────────────────────────────────
 slack-factory:
 	$(PYTHON) native/slack/slack_factory.py

@@ -7,7 +7,6 @@ Demonstrates searching files for patterns and content with interactive approval
 """
 
 import asyncio
-import os
 import sys
 from pathlib import Path
 

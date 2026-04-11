@@ -126,7 +126,7 @@ async def run_mailchimp_factory_flow():
             update_data = update_result.get('data', update_result) if isinstance(update_result, dict) else update_result
 
             if update_data.get('id') or update_data.get('email_address'):
-                print(f'✅ Subscriber confirmed/updated:')
+                print('✅ Subscriber confirmed/updated:')
                 print(f'   Email:  {update_data.get("email_address")}')
                 print(f'   Status: {update_data.get("status")}\n')
             else:
@@ -134,7 +134,7 @@ async def run_mailchimp_factory_flow():
         except Exception as update_error:
             error_msg = str(update_error)
             print(f'⚠️  Update skipped: {error_msg}')
-            print(f'   (This contact may have merge field validation issues in Mailchimp.)\n')
+            print('   (This contact may have merge field validation issues in Mailchimp.)\n')
 
         # ── STEP 4: CREATE A CAMPAIGN ─────────────────────────────────────────
         print('─' * 60)
@@ -157,7 +157,7 @@ async def run_mailchimp_factory_flow():
         campaign_data = campaign_result.get('data', campaign_result) if isinstance(campaign_result, dict) else campaign_result
 
         if campaign_data.get('id'):
-            print(f'✅ Campaign created (not sent):')
+            print('✅ Campaign created (not sent):')
             print(f'   Campaign ID: {campaign_data.get("id")}')
             print(f'   Status:      {campaign_data.get("status")}')
             print(f'   Audience:    "{audience.get("name")}"\n')

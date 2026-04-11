@@ -119,7 +119,7 @@ async def main() -> None:
                     content_preview = content[:200]
                 else:
                     content_preview = str(content)[:200]
-                print(f"Content preview:")
+                print("Content preview:")
                 print(content_preview)
             else:
                 print(f"Request failed: {result2.get('error', 'Unknown error')}")
@@ -195,7 +195,7 @@ async def main() -> None:
             
             if result5.get("success", False):
                 print(f"Status Code: {result5.get('statusCode')}")
-                print(f"Endpoint is accessible")
+                print("Endpoint is accessible")
             else:
                 print(f"Request failed: {result5.get('error', 'Unknown error')}")
         except Exception as e:

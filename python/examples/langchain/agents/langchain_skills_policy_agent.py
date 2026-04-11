@@ -182,7 +182,7 @@ async def main(task: str = None) -> None:
                 # In real setup, this would prompt user
                 # For demo, we auto-approve
                 approvals += 1
-                print(f"    ✓ Auto-approved (demo mode)")
+                print("    ✓ Auto-approved (demo mode)")
             
             lc_tool = tool_map.get(tool_name)
             

@@ -27,19 +27,19 @@ load_dotenv(Path(__file__).parent.parent.parent / ".env")
 class NotionService:
     """Notion workspace operations via the @tool decorator pattern."""
 
-    @tool("notion-search")
+    @tool("notion_search")
     async def search(self, query: str):
         ...
 
-    @tool("notion-list-databases")
+    @tool("notion_list_databases")
     async def list_databases(self):
         ...
 
-    @tool("notion-create-page")
+    @tool("notion_create_page")
     async def create_page(self, parent_id: str, title: str, content: str = ""):
         ...
 
-    @tool("notion-get-page")
+    @tool("notion_get_page")
     async def get_page(self, page_id: str):
         ...
 
@@ -62,13 +62,13 @@ async def run() -> None:
 
     print("🔍  Searching for 'meeting'…")
     result = await svc.search(query="meeting")
-    data = (result or {}).get("data", result) or {}
+    data = result or {}
     for r in (data.get("results") or [])[:3]:
         print(f"   • [{r['object']}] {r.get('id', '?')}")
 
     print("\n🗄️   Listing databases…")
     result = await svc.list_databases()
-    data = (result or {}).get("data", result) or {}
+    data = result or {}
     for db in (data.get("results") or [])[:3]:
         title_arr = db.get("title", [])
         name = "".join(t.get("plain_text", "") for t in title_arr) if title_arr else db.get("id", "?")

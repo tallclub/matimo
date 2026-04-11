@@ -7,7 +7,6 @@ Demonstrates reading file contents with interactive approval handler
 """
 
 import asyncio
-import os
 import sys
 from pathlib import Path
 

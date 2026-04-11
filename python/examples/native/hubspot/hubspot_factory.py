@@ -115,7 +115,7 @@ async def run_factory_pattern_examples():
         })
         contact_id = None
         if isinstance(create_contact_result, dict):
-            contact_id = create_contact_result.get('data', {}).get('id')
+            contact_id = create_contact_result.get('id')
         print(f'   ✅ Contact created: {contact_id}\n')
 
         # Example 2: Get the contact
@@ -128,9 +128,9 @@ async def run_factory_pattern_examples():
             })
             contact_data = {}
             if isinstance(get_contact_result, dict):
-                contact_data = get_contact_result.get('data', {}).get('properties', {})
+                contact_data = get_contact_result.get('properties', {})
             contact_email = contact_data.get('email', '')
-            print(f'   ✅ Retrieved contact')
+            print('   ✅ Retrieved contact')
             print(f'      Email: {contact_data.get("email")}')
             print(f'      Name: {contact_data.get("firstname")} {contact_data.get("lastname")}')
             print(f'      Created: {contact_data.get("createdate")}\n')
@@ -144,7 +144,7 @@ async def run_factory_pattern_examples():
         })
         company_id = None
         if isinstance(create_company_result, dict):
-            company_id = create_company_result.get('data', {}).get('id')
+            company_id = create_company_result.get('id')
         print(f'   ✅ Company created: {company_id}\n')
 
         # Example 4: List contacts with pagination
@@ -155,7 +155,7 @@ async def run_factory_pattern_examples():
         })
         contacts_list = []
         if isinstance(list_contacts_result, dict):
-            contacts_list = list_contacts_result.get('data', {}).get('results', [])
+            contacts_list = list_contacts_result.get('results', [])
         print(f'   ✅ Found {len(contacts_list)} contacts\n')
 
         # Example 5: Create a product
@@ -168,7 +168,7 @@ async def run_factory_pattern_examples():
         })
         product_id = None
         if isinstance(create_product_result, dict):
-            product_id = create_product_result.get('data', {}).get('id')
+            product_id = create_product_result.get('id')
         print(f'   ✅ Product created: {product_id}\n')
 
         # Example 6: Create an invoice
@@ -178,7 +178,7 @@ async def run_factory_pattern_examples():
         })
         invoice_id = None
         if isinstance(create_invoice_result, dict):
-            invoice_id = create_invoice_result.get('data', {}).get('id')
+            invoice_id = create_invoice_result.get('id')
         print(f'   ✅ Invoice created: {invoice_id}\n')
 
         print('════════════════════════════════════════════════════════════')

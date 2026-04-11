@@ -72,11 +72,10 @@ import asyncio
 import os
 import sys
 from datetime import datetime
-from pathlib import Path
 
 from dotenv import load_dotenv
 
-from matimo import MatimoInstance
+from matimo import Matimo
 
 # Load environment variables from .env file
 load_dotenv()
@@ -113,7 +112,7 @@ async def run_factory_pattern_examples() -> None:
 
     # Initialize Matimo with auto-discovery to find all @matimo/* packages
     print("🚀 Initializing Matimo...")
-    matimo = await MatimoInstance.init(auto_discover=True)
+    matimo = await Matimo.init(auto_discover=True)
 
     all_tools = matimo.list_tools()
     print(f"✅ Loaded {len(all_tools)} tools\n")
@@ -245,5 +244,10 @@ async def run_factory_pattern_examples() -> None:
     print("════════════════════════════════════════════════════════════\n")
 
 
+async def main() -> None:
+    """Entry point for pyproject.toml console script."""
+    await run_factory_pattern_examples()
+
+
 if __name__ == "__main__":
-    asyncio.run(run_factory_pattern_examples())
+    asyncio.run(main())

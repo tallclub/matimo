@@ -62,7 +62,7 @@ import os
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Optional
 
 from dotenv import load_dotenv
 
@@ -112,7 +112,7 @@ async def run_twilio_factory_examples() -> None:
         print("   (In trial mode, must be a verified caller ID)")
         sys.exit(1)
 
-    print(f"🔑 Account SID: Configured.")
+    print("🔑 Account SID: Configured.")
     print(f"📤 From: {from_number}")
     print(f"📥 To:   {to_number}\n")
 

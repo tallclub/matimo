@@ -40,13 +40,7 @@ async def run_factory_pattern_examples():
     notion_tools = [t for t in all_tools if t.name.startswith("notion_")]
 
     print(f"✅ Found {len(notion_tools)} Notion tools\n")
-    print("DEBUG: Notion tools discovered:")
-    for tool in notion_tools:
-        print(f"  • {tool.name}")
-    print("DEBUG: All available tools:")
-    for tool in all_tools:
-        print(f"  • {tool.name}")
-    print("")
+
     print("════════════════════════════════════════════════════════════\n")
     print("REAL NOTION OPERATIONS:")
     print("════════════════════════════════════════════════════════════\n")
@@ -56,7 +50,7 @@ async def run_factory_pattern_examples():
         print("1️⃣  DISCOVERING YOUR WORKSPACE...\n")
         list_result = await matimo.execute("notion_list_databases", {"page_size": 10})
 
-        databases = list_result.get("data", {}).get("results", [])
+        databases = list_result.get("results", [])
         if not databases:
             print("   ℹ️  No databases found. Create and share one first.\n")
             return
@@ -75,15 +69,18 @@ async def run_factory_pattern_examples():
             {"database_id": found_database["id"], "page_size": 5},
         )
 
-        query_data = query_result.get("data", {})
+        query_data = query_result
         if query_data.get("results") and len(query_data["results"]) > 0:
             print(f"✅ Retrieved {len(query_data['results'])} page(s)\n")
             for idx, page in enumerate(query_data["results"][:3]):
                 props = page.get("properties", {})
-                first_key = list(props.keys())[0] if props else None
                 title = "Untitled"
-                if first_key and props[first_key]:
-                    title = props[first_key][0].get("plain_text", "Untitled")
+                for _key, prop_val in props.items():
+                    if isinstance(prop_val, dict):
+                        rich_texts = prop_val.get("title") or prop_val.get("rich_text") or []
+                        if rich_texts and isinstance(rich_texts, list):
+                            title = rich_texts[0].get("plain_text", "Untitled")
+                            break
                 url = page.get("url", "")
                 print(f"   {idx + 1}. {title}")
                 print(f"      🔗 {url}\n")
@@ -110,19 +107,11 @@ async def run_factory_pattern_examples():
             "icon": {"type": "emoji", "emoji": "✅"},
         }
 
-        print(
-            f"DEBUG: Using database id for creation: {resolved_database_id} (from {'query result' if page_parent_db_id else 'discovery'})"
-        )
-
-        print(f"DEBUG: Creating page with params: {json.dumps(create_params, indent=2)}")
         create_result = await matimo.execute("notion_create_page", create_params)
-        print(
-            f"DEBUG: Create result: {str(json.dumps(create_result))[:500]}"
-        )
 
         create_data = create_result.get("data") or create_result
         if create_data and create_data.get("id"):
-            print(f"✅ Page created!\n")
+            print("✅ Page created!\n")
             print(f"   📄 Title: \"{page_title}\"")
             print(f"   🔑 ID: {create_data['id']}")
             print(f"   🔗 URL: {create_data['url']}\n")
@@ -137,7 +126,7 @@ async def run_factory_pattern_examples():
                         "icon": {"type": "emoji", "emoji": "🚀"},
                     },
                 )
-                print(f"✅ Page updated with icon!\n")
+                print("✅ Page updated with icon!\n")
             except Exception as err:
                 print(f"   ⚠️  Could not update: {str(err)}\n")
 
@@ -159,11 +148,10 @@ async def run_factory_pattern_examples():
                     },
                 )
 
-                print(f"DEBUG: Comment result: {str(json.dumps(comment_result))[:500]}")
 
                 cr = comment_result.get("data") or comment_result
                 if cr and cr.get("id"):
-                    print(f"✅ Comment added!\n")
+                    print("✅ Comment added!\n")
                 elif comment_result and (
                     comment_result.get("success") is False
                     or comment_result.get("statusCode")
@@ -172,7 +160,7 @@ async def run_factory_pattern_examples():
                         f"   ⚠️  Comment failed: {str(json.dumps(comment_result))[:200]}\n"
                     )
                 else:
-                    print(f"✅ Comment added (no id returned)\n")
+                    print("✅ Comment added (no id returned)\n")
             except Exception as err:
                 try:
                     print(f"   ⚠️  Could not add comment. Error payload: {json.dumps(err)}")
@@ -248,5 +236,10 @@ async def run_factory_pattern_examples():
         exit(1)
 
 
+async def main() -> None:
+    """Entry point for pyproject.toml console script."""
+    await run_factory_pattern_examples()
+
+
 if __name__ == "__main__":
-    asyncio.run(run_factory_pattern_examples())
+    asyncio.run(main())
