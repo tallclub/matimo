@@ -10,16 +10,16 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     # Core SDK (installs as `matimo` Python module)
-    "matimo-core>=0.1.0",
+    "matimo-core>=0.1.0a14,<0.2.0",
     # Provider packages
-    "matimo-slack>=0.1.0",
-    "matimo-github>=0.1.0",
-    "matimo-gmail>=0.1.0",
-    "matimo-hubspot>=0.1.0",
-    "matimo-notion>=0.1.0",
-    "matimo-postgres>=0.1.0",
-    "matimo-mailchimp>=0.1.0",
-    "matimo-twilio>=0.1.0",
+    "matimo-slack>=0.1.0a14,<0.2.0",
+    "matimo-github>=0.1.0a14,<0.2.0",
+    "matimo-gmail>=0.1.0a14,<0.2.0",
+    "matimo-hubspot>=0.1.0a14,<0.2.0",
+    "matimo-notion>=0.1.0a14,<0.2.0",
+    "matimo-postgres>=0.1.0a14,<0.2.0",
+    "matimo-mailchimp>=0.1.0a14,<0.2.0",
+    "matimo-twilio>=0.1.0a14,<0.2.0",
     # LangChain integration
     "langchain-openai>=1.0",
     "langchain-core>=0.3",
