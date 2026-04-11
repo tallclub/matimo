@@ -1,10 +1,12 @@
 # Troubleshooting & FAQ
 
-Common issues and solutions for Matimo v0.1.0-alpha.11
+Common issues and solutions for Matimo v0.1.0-alpha.14 (TypeScript & Python)
 
 ## Installation & Setup
 
-### Q: Node.js version error
+### TypeScript Issues
+
+#### Q: Node.js version error
 
 **Error**: `Node version must be 18.0.0 or higher`
 
@@ -18,7 +20,7 @@ nvm install 18
 nvm use 18
 ```
 
-### Q: pnpm not found
+#### Q: pnpm not found
 
 **Error**: `pnpm: command not found`
 
@@ -29,7 +31,7 @@ npm install -g pnpm@8.15.0
 pnpm --version
 ```
 
-### Q: Build fails with TypeScript errors
+#### Q: Build fails with TypeScript errors
 
 **Error**: `Found X errors in src/**`
 
@@ -44,6 +46,107 @@ pnpm build
 # If still failing, check TypeScript version
 pnpm list typescript
 # Should be 5.9.3 or higher
+```
+
+### Python Issues
+
+#### Q: Python version too old
+
+**Error**: `ModuleNotFoundError: No module named 'matimo'` or `Python 3.10 or lower detected`
+
+**Solution**:
+
+```bash
+python --version
+# If < 3.11, upgrade:
+# macOS: brew install python@3.11
+# Linux: sudo apt install python3.11
+# Windows: https://www.python.org/downloads/
+
+# Verify:
+python3.11 --version
+
+# Create virtual environment
+python3.11 -m venv venv
+source venv/bin/activate  # or 'venv\Scripts\activate' on Windows
+```
+
+#### Q: `pip install matimo` fails
+
+**Error**: `ERROR: Could not find a version that satisfies the requirement`
+
+**Solution**:
+
+```bash
+# Make sure you're using Python 3.11+
+python --version
+
+# Try with uv (faster):
+uv add matimo  # Creates venv automatically
+
+# Or explicit pip:
+pip install --upgrade pip
+pip install matimo
+
+# For specific version:
+pip install matimo==0.1.0a14
+```
+
+#### Q: LangChain or CrewAI imports fail
+
+**Error**: `ModuleNotFoundError: No module named 'langchain'` / `ModuleNotFoundError: No module named 'crewai'`
+
+**Solution**:
+
+```bash
+# Install with extras:
+pip install "matimo-core[langchain]"
+#or
+pip install "matimo-core[crewai]"
+
+# With uv:
+uv add "matimo-core[langchain]"
+uv add "matimo-core[crewai]"
+
+# Verify:
+python -c "from matimo.integrations.langchain import convert_tools_to_langchain; print('✅ LangChain integration available')"
+```
+
+#### Q: Async/await RuntimeError in Jupyter
+
+**Error**: `RuntimeError: asyncio.run() cannot be called from a running event loop`
+
+**Solution**:
+
+```python
+# In Jupyter, install nest_asyncio
+pip install nest_asyncio
+
+# Then in your notebook:
+import nest_asyncio
+nest_asyncio.apply()
+
+# Now asyncio.run() works in Jupyter
+import asyncio
+from matimo import Matimo
+
+matimo = await Matimo.init()  # Works now!
+```
+
+#### Q: CrewAI tools not executing
+
+**Error**: `Tool execution timeout` or `Tool not callable`
+
+**Solution**:
+
+```python
+# Verify tools are created correctly
+tools = convert_tools_to_crewai(tool_definitions, matimo)
+print(f"✅ Created {len(tools)} tools")
+print([f"{t.name}: {t.description}" for t in tools])  # Verify names
+
+# Ensure matimo.execute() is still available to the tool
+# It's captured in the closure, so it should work
 ```
 
 ---

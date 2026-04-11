@@ -8,44 +8,77 @@
   <a href="https://discord.gg/3JPt4mxWDV"><img src="https://img.shields.io/badge/Discord-Join%20Chat-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord"></a>
 </p>
 
-**Matimo — Enable Agents To Extentend Itsel.**.
+**Matimo — Enable Agents To Extend Itself.**
 Most SDKs give agents tools. Matimo gives agents the ability to build new tools — validated, approved, and live — without restarting. The meta-tool layer is Matimo's core differentiator.
 
 > A framework-agnostic SDK with pre-built provider tools, a skills knowledge layer, MCP out of the box, and agents that autonomously build new capabilities — governed by a policy engine you control
 
-Complete documentation for Matimo.
+Complete documentation for Matimo **v0.1.0-alpha.14** (TypeScript & Python).
+
+---
+
+## 🚀 Choose Your SDK
+
+### 🟦 **TypeScript / Node.js**
+- Node.js 18+, npm/pnpm
+- ESM, full type support
+- 1,884 tests, 95%+ coverage
+- **[Start with TypeScript](#typescript-getting-started)**
+
+### 🐍 **Python** ⭐ *NEW in alpha.14*
+- Python 3.11+, pip/uv
+- Native asyncio, full type hints
+- 657 tests, 97.38% coverage
+- LangChain, CrewAI, MCP support
+- **[Start with Python](#python-getting-started)**
+
+---
 
 ## ⚡ Getting Started
 
-1. **[Quick Start](./getting-started/QUICK_START.md)** — 5-minute setup (npm install → first tool execution)
-2. **[Your First Tool](./getting-started/YOUR_FIRST_TOOL.md)** — Create and test a basic YAML tool
-3. **[API Reference](./api-reference/SDK.md)** — Understand the SDK fundamentals
+### TypeScript Getting Started
 
-Then explore [Three Integration Patterns](./architecture/OVERVIEW.md#three-integration-patterns) to see what's possible.
+1. **[Quick Start](./getting-started/QUICK_START.md#typescript)** — 5-minute setup 
+2. **[Your First Tool](./getting-started/YOUR_FIRST_TOOL.md)** — Create a basic YAML tool
+3. **[API Reference](./api-reference/SDK.md#typescript)** — SDK fundamentals
 
-### 📦 **Full Installation & Requirements**
+### Python Getting Started
 
-- **[Installation](./getting-started/installation.md)** — Detailed setup for Windows/macOS/Linux
-  - Node.js 18+ and npm/pnpm requirements
-  - From npm (recommended) or from source
-  - Troubleshooting common issues
-  - Environment setup (API keys, OAuth)
+1. **[Quick Start](./getting-started/QUICK_START.md#python)** — 5-minute setup with `pip install matimo`
+2. **[LangChain Integration](./framework-integrations/LANGCHAIN.md#python-langchain-integration)** — Build ReAct agents
+3. **[CrewAI Integration](./framework-integrations/CREWAI.md)** — Multi-agent orchestration
+4. **[API Reference](./api-reference/SDK.md#python)** — Python SDK documentation
 
-## Reference
+### 📦 **Installation & Requirements**
+
+- **[Installation](./getting-started/installation.md)** — Detailed setup for both SDKs
+  - TypeScript (Node.js 18+) and Python (3.11+) requirements
+  - From npm/pip (recommended) or from source
+  - Troubleshooting & environment setup
+  - Provider authentication via OAuth2
+
+---
+
+## 📚 Reference (By Topic)
 
 ### 🟢 **Core Concepts (Start Here)**
 
 - **[Architecture Overview](./architecture/OVERVIEW.md)** — Understand how Matimo works
   - High-level system design
-  - Three integration patterns explained
-  - Framework compatibility
-  - Data flow diagrams
+  - Three integration patterns (Factory, Decorator, Framework)
+  - Framework compatibility (LangChain, CrewAI, MCP, custom)
+  - Data flow and execution model
 
-- **[API Reference](./api-reference/SDK.md)** — TypeScript SDK documentation
-  - `MatimoInstance` class and methods
+- **[SDK Patterns](./user-guide/SDK_PATTERNS.md)** — TypeScript & Python examples
+  - Factory pattern (simplest)
+  - Decorator pattern (class-based)
+  - Framework integration patterns
+
+- **[API Reference](./api-reference/SDK.md)** — Complete SDK reference
+  - TypeScript `MatimoInstance` API
+  - Python `Matimo` API
   - `.execute()`, `.listTools()`, `.searchTools()`
-  - Decorator pattern (`@tool`)
-  - Error handling
+  - Error handling & logging
   - Complete type definitions
 
 - **[Error Reference](./api-reference/ERRORS.md)** — Troubleshooting guide
