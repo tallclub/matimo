@@ -843,13 +843,35 @@ if (result.valid) {
 
 ## Usage Across Interfaces
 
-All meta-tools work consistently across SDK, LangChain, and MCP:
+All meta-tools work consistently across SDK (TypeScript or Python), LangChain, and MCP:
 
-### SDK
+### TypeScript SDK
 
 ```typescript
 const result = await matimo.execute('matimo_validate_tool', { yaml_content: '...' });
 ```
+
+### Python SDK
+
+```python
+from matimo import Matimo
+
+matimo = await Matimo.init('./tools')
+
+# Validate a tool definition
+result = await matimo.execute('matimo_validate_tool', {'yaml_content': '...'})
+print(result['valid'], result['riskLevel'])
+
+# Full lifecycle from Python
+validate  = await matimo.execute('matimo_validate_tool',  {'yaml_content': yaml_str})
+create    = await matimo.execute('matimo_create_tool',    {'name': 'my_tool', 'yaml_content': yaml_str, 'target_dir': './agent-tools'})
+approve   = await matimo.execute('matimo_approve_tool',   {'name': 'my_tool', 'tool_dir': './agent-tools'})
+reload    = await matimo.execute('matimo_reload_tools',   {})
+status    = await matimo.execute('matimo_get_tool_status',{'name': 'my_tool', 'tool_dir': './agent-tools'})
+```
+
+> See [`python/examples/native/meta_flow/meta_tools_integration.py`](../../python/examples/native/meta_flow/meta_tools_integration.py) for a complete end-to-end Python demo covering all 10 meta-tools.
+> Run it with: `cd python && make meta-flow`
 
 ### LangChain
 

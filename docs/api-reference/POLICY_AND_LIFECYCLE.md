@@ -1628,3 +1628,127 @@ const server = new MCPServer({
 });
 await server.start();
 ```
+
+---
+
+## Python SDK — Policy & Lifecycle
+
+The Python SDK exposes the same policy engine, risk classifier, and lifecycle controls as TypeScript. The API mirrors the TypeScript version with Pythonic naming (snake_case).
+
+### Quick Start (Python)
+
+```python
+from matimo import Matimo, InitOptions
+
+# Load policy from file
+matimo = await Matimo.init('./tools', InitOptions(
+    policy_file='./policy.yaml',
+    untrusted_paths=['./agent-tools'],
+))
+
+# Inline policy config
+from matimo.policy.types import PolicyConfig
+
+matimo = await Matimo.init('./tools', InitOptions(
+    policy_config=PolicyConfig(
+        allowed_domains=['api.github.com', 'api.slack.com'],
+        allowed_http_methods=['GET', 'POST'],
+        allow_command_tools=False,
+        allow_function_tools=False,
+        protected_namespaces=['matimo_'],
+    ),
+))
+```
+
+### HITL (Human-in-the-Loop) Callback
+
+```python
+async def my_approval_callback(request):
+    print(f"Approve {request.tool_name}? (y/n)")
+    answer = input()
+    return {'approved': answer == 'y', 'reason': 'manual review'}
+
+matimo = await Matimo.init('./tools', InitOptions(
+    policy_file='./policy.yaml',
+    on_hitl=my_approval_callback,
+))
+```
+
+### Policy Events (Python)
+
+```python
+def on_event(event) -> None:
+    print(f"[{event.type}] {event.tool_name}")
+
+matimo = await Matimo.init('./tools', InitOptions(
+    policy_file='./policy.yaml',
+    on_event=on_event,
+))
+```
+
+### Risk Classification (Python)
+
+```python
+from matimo.policy.risk_classifier import classify_risk
+
+tool = matimo.get_tool('my_api_tool')
+risk = classify_risk(tool)
+print(risk)  # 'low' | 'medium' | 'high' | 'critical'
+```
+
+### Custom PolicyEngine (Python)
+
+```python
+from matimo.policy.default_policy import PolicyEngine
+from matimo.policy.types import PolicyDecision
+
+class MyPolicy(PolicyEngine):
+    def can_create(self, context, tool) -> PolicyDecision:
+        return PolicyDecision(allowed=True)
+
+    def can_execute(self, context, tool) -> PolicyDecision:
+        if tool.name.startswith('delete_'):
+            return PolicyDecision(allowed=False, reason='Delete ops require manual approval')
+        return PolicyDecision(allowed=True)
+
+    def filter_for_agent(self, tools, context):
+        return [t for t in tools if t.status == 'approved']
+
+matimo = await Matimo.init('./tools', InitOptions(policy=MyPolicy()))
+```
+
+### Tool Lifecycle (Python)
+
+```python
+# 1. Validate
+result = await matimo.execute('matimo_validate_tool', {'yaml_content': yaml_str})
+
+# 2. Create (triggers HITL if on_hitl is set)
+result = await matimo.execute('matimo_create_tool', {
+    'name': 'my_tool',
+    'yaml_content': yaml_str,
+    'target_dir': './agent-tools',
+    'proposed_by': 'agent',
+    'justification': 'User requested this capability',
+})
+
+# 3. Approve
+result = await matimo.execute('matimo_approve_tool', {'name': 'my_tool', 'tool_dir': './agent-tools'})
+
+# 4. Reload
+result = await matimo.execute('matimo_reload_tools', {})
+
+# 5. Use
+result = await matimo.execute('my_tool', {'query': 'hello'})
+```
+
+> See [`python/examples/native/policy/policy_demo.py`](../../python/examples/native/policy/policy_demo.py) for a complete 11-mission Python policy demo.
+> Run with: `cd python && make policy-demo`
+
+---
+
+## See Also
+
+- [Meta-Tools Reference](META_TOOLS.md) — Built-in tool lifecycle management tools
+- [Approval System](APPROVAL-SYSTEM.md) — Complete approval handler configuration
+- [SDK Reference](SDK.md) — `Matimo.init()` InitOptions (Python) and `MatimoInstance.init()` (TypeScript)

@@ -3,7 +3,6 @@
 > **Release**: Python SDK Official Launch — Full-featured Python support for LangChain, CrewAI, and MCP with comprehensive examples, 657+ tests, 97.38% coverage, and enterprise-grade security hardening
 
 **Released**: April 10, 2026  
-**Status**: ✅ Production-ready for Python environments (Python 3.11, 3.12)
 
 ---
 
@@ -158,29 +157,43 @@ await server.start()
 
 ## 📚 Python Examples (Production Patterns)
 
-### Native (Factory Pattern)
-- **`native/agents/factory_pattern_agent.py`** — LLM agent using factory pattern
-- **`native/read/read_factory.py`** — File read tool execution
-- **`native/web/web_factory.py`** — Web search tool execution
-- **Provider examples** — Mailchimp, Notion, Postgres factory patterns
+### Native — Advanced Agent Demos (fully tested, exit 0)
 
-### Native (Decorator Pattern)
-- **`native/agents/decorator_pattern_agent.py`** — LLM agent using decorators
-- **`native/read/read_decorator.py`** — File read with decorators
-- **`native/web/web_decorator.py`** — Web search with decorators
-- **Provider examples** — Gmail, Slack decorator patterns
+These walkthroughs use real LangChain ReAct loops and verify each step programmatically. No mocks.
 
-### LangChain Integration
-- **`langchain/agents/langchain_agent.py`** — ReAct agent with tool binding
-- **`langchain/agents/multi_agent_langchain.py`** — Multi-agent orchestration
-- **Provider examples** — Slack, GitHub, Gmail, Notion, HubSpot, Mailchimp, Postgres
+| File | Missions | What it demonstrates |
+|------|----------|---------------------|
+| **`native/policy/policy_demo.py`** | 11 | Full policy lifecycle: risk classification, draft/deprecated/blocked tools, content validation, HITL approval, hot-reload atomicity, approval state tracking |
+| **`native/skills/skills_demo.py`** | 6 + Phase 4 | Create/list/read/validate SKILL.md files via agent; `get_skills_metadata()` (L1), `semantic_search_skills()` (TF-IDF), `build_relevant_skill_prompt()` (L2) |
+| **`native/meta_flow/meta_tools_integration.py`** | 5 | Full meta-tool lifecycle: `matimo_create_tool` → `matimo_validate_tool` → `matimo_approve_tool` → `matimo_reload_tools` → execute; policy-blocked tools (shell/file-reader) |
+| **`native/logger_example.py`** | 6 sections | `setup_logger()`, JSON vs simple format, global singleton, SDK internal logger, level filtering, silent mode — **no API key needed** |
 
-### CrewAI Integration
-- **`crewai/agents/crewai_agent.py`** — Single CrewAI agent with tools
+Run them via:
+```bash
+cd python/
+make policy-demo     # OPENAI_API_KEY required
+make skills-demo     # OPENAI_API_KEY required
+make meta-flow       # OPENAI_API_KEY required
+make logger-example  # no key needed
+```
+
+### Native — Factory & Decorator (no LLM required)
+- **Provider factory/decorator examples** — `slack/`, `github/`, `gmail/`, `notion/`, `hubspot/`, `mailchimp/`, `postgres/`, `twilio/`
+- **Generic pattern agents** — `agents/factory_pattern_agent.py`, `agents/decorator_pattern_agent.py`
+- **Core tool examples** — `execute/`, `read/`, `edit/`, `search/`, `web/`, `credentials/`
+
+### LangChain Integration (17 files)
+- **`langchain/agents/langchain_agent.py`** — Generic multi-provider ReAct agent
+- **`langchain/agents/langchain_skills_policy_agent.py`** — Production-pattern agent: Level 1+2 skills injection + policy-aware tool creation in one ReAct loop
+- **Provider agents** — Slack, GitHub (`github_with_approval.py`), Gmail, Notion, HubSpot, Mailchimp, Postgres (`postgres_with_approval.py`), Twilio
+- **Core tool agents** — `read/`, `search/`, `execute/`, `edit/`, `web/`
+
+### CrewAI Integration (10 files)
+- **`crewai/agents/crewai_agent.py`** — Single CrewAI agent with Matimo tools
 - **`crewai/agents/multi_agent_crew.py`** — Multi-agent crew orchestration
-- **Provider examples** — Slack, GitHub, Gmail, Notion, HubSpot, Mailchimp, Postgres, Twilio
+- **Provider crews** — Slack, GitHub, Gmail, Notion, HubSpot, Mailchimp, Postgres, Twilio
 
-**All examples are fully executable and tested.**
+**Total Python examples: 58 files** across 3 patterns and 8+ providers. All lint-clean (ruff), all end-to-end tested.
 
 ---
 
@@ -359,13 +372,15 @@ print(f"Loaded {len(tools)} tools")
 | Metric | Value |
 |--------|-------|
 | **Total Tests** | 2,541 (1,884 TS + 657 Python) |
-| **Coverage** | 97.38% (exceeds 95% requirement) |
+| **Coverage** | 97.38% Python (exceeds 95% requirement) |
 | **Security Patches** | 6 (3 critical + 1 CodeQL + 2 optimization) |
 | **Python Modules** | 11 (core, 10 providers) |
-| **Examples** | 40+ (native, LangChain, CrewAI patterns) |
-| **Provider Tools** | 110+ across 8 providers |
+| **Python Examples** | 58 files (native, LangChain, CrewAI patterns) |
+| **TypeScript Examples** | 20+ (tools/, agents/, policy/, skills/) |
+| **Provider Tools** | 110+ across 8 providers (both SDKs) |
 | **Supported Python** | 3.11, 3.12 |
 | **Framework Support** | LangChain, CrewAI, MCP (native), Decorator, Factory |
+| **Advanced Demos** | 4 (policy, skills, meta-tools, logger — fully tested) |
 
 ---
 

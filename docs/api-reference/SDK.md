@@ -1,28 +1,40 @@
 # API Reference — Complete SDK
 
-Complete reference for the Matimo TypeScript SDK. For a simpler introduction, see [Quick Start](../getting-started/QUICK_START.md) or [SDK Patterns](../user-guide/SDK_PATTERNS.md).
+Complete reference for the Matimo SDK in **TypeScript** and **Python**. For a simpler introduction, see [Quick Start](../getting-started/QUICK_START.md) or [SDK Patterns](../user-guide/SDK_PATTERNS.md).
 
 ## Table of Contents
 
-- [MatimoInstance](#matimoinstance)
-  - [init()](#initoptions)
-  - [execute()](#executetoolname-params)
-  - [getRequiredCredentials()](#getrequiredcredentialstoolname)
-  - [listTools()](#listtools)
-  - [getTool()](#gettoolname)
-  - [searchTools()](#searchtoolsquery)
+### TypeScript SDK (`MatimoInstance`)
+- [init()](#initoptions)
+- [execute()](#executetoolname-params)
+- [getRequiredCredentials()](#getrequiredcredentialstoolname)
+- [listTools()](#listtools)
+- [getTool()](#gettoolname)
+- [searchTools()](#searchtoolsquery)
 - [Decorators](#decorators)
-  - [@tool()](#toolttoolname)
-  - [setGlobalMatimoInstance()](#setglobalmatimoinstanceinstance)
 - [LangChain Integration](#langchain-integration)
 - [Error Handling](#error-handling)
 - [Types](#types)
 
+### Python SDK (`Matimo`)
+- [Matimo.init()](#python-init)
+- [matimo.execute()](#python-execute)
+- [matimo.list_tools()](#python-list-tools)
+- [matimo.get_tool()](#python-get-tool)
+- [matimo.search_tools()](#python-search-tools)
+- [matimo.reload()](#python-reload)
+- [matimo.list_skills() / semantic_search_skills()](#python-list-skills)
+- [Decorator pattern](#python-decorators)
+- [LangChain integration](#python-langchain)
+- [CrewAI integration](#python-crewai)
+- [Logging](#python-logging)
+- [Error handling](#python-errors)
+
 ---
 
-## MatimoInstance
+## TypeScript SDK — `MatimoInstance`
 
-Main entry point for the Matimo SDK. Initialize once at startup, then execute tools as needed.
+Main entry point for the Matimo TypeScript SDK.
 
 ### `init(options?)`
 
@@ -696,6 +708,397 @@ interface AuthConfig {
   provider?: string; // For oauth2
 }
 ```
+
+---
+
+## Python SDK — `Matimo` API
+
+Complete Python SDK reference. Mirrors the TypeScript `MatimoInstance` API with Python conventions (`snake_case`, `asyncio`).
+
+### Table of Contents (Python)
+
+- [`Matimo.init()`](#python-init)
+- [`matimo.execute()`](#python-execute)
+- [`matimo.list_tools()`](#python-list-tools)
+- [`matimo.get_tool()`](#python-get-tool)
+- [`matimo.search_tools()`](#python-search-tools)
+- [`matimo.reload()`](#python-reload)
+- [`matimo.list_skills()`](#python-list-skills)
+- [`matimo.semantic_search_skills()`](#python-semantic-search-skills)
+- [Decorator pattern](#python-decorators)
+- [LangChain integration](#python-langchain)
+- [CrewAI integration](#python-crewai)
+- [Logging](#python-logging)
+- [Error handling](#python-errors)
+
+---
+
+### `Matimo.init()` {#python-init}
+
+```python
+@classmethod
+async def init(
+    cls,
+    tool_paths: list[str] | str | None = None,
+    options: InitOptions | None = None,
+    *,
+    auto_discover: bool = False,
+    untrusted_paths: list[str] | None = None,
+    policy_config: PolicyConfig | None = None,
+    policy_file: str | None = None,
+    skill_paths: list[str] | None = None,
+    log_level: str = 'info',
+    log_format: str = 'simple',
+    on_hitl: Callable | None = None,
+    on_event: Callable | None = None,
+) -> 'Matimo'
+```
+
+**Parameters:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `tool_paths` | `list[str] \| str` | `None` | Explicit tool directories to load |
+| `auto_discover` | `bool` | `False` | Load tools from installed `matimo-*` packages |
+| `untrusted_paths` | `list[str]` | `None` | Paths requiring stricter content validation |
+| `policy_config` | `PolicyConfig` | `None` | Policy engine configuration |
+| `policy_file` | `str` | `None` | Load policy from a YAML file path |
+| `skill_paths` | `list[str]` | `None` | Directories containing SKILL.md files |
+| `log_level` | `str` | `'info'` | `'debug' \| 'info' \| 'warn' \| 'error' \| 'silent'` |
+| `log_format` | `str` | `'simple'` | `'simple' \| 'json'` |
+| `on_hitl` | `async Callable` | `None` | Human-in-the-loop callback for approval requests |
+| `on_event` | `Callable` | `None` | Event callback for lifecycle events |
+
+**Examples:**
+
+```python
+import asyncio
+from matimo import Matimo
+from matimo.policy.types import PolicyConfig
+
+# Simplest — load from a directory
+matimo = await Matimo.init('./tools')
+
+# All installed provider packages
+matimo = await Matimo.init(auto_discover=True)
+
+# Custom tools + auto-discover + policy
+matimo = await Matimo.init(
+    tool_paths=['./tools'],
+    auto_discover=True,
+    untrusted_paths=['./tools'],
+    policy_config=PolicyConfig(
+        allowed_domains=['api.example.com'],
+        blocked_commands=['rm', 'curl'],
+    ),
+    log_level='debug',
+)
+
+# With HITL callback + skills
+async def my_approval_callback(request):
+    print(f"Approve {request.tool_name}? (y/n): ", end='', flush=True)
+    answer = input()
+    return {'approved': answer.lower() == 'y', 'reason': 'manual review'}
+
+matimo = await Matimo.init(
+    './tools',
+    auto_discover=True,
+    skill_paths=['./skills'],
+    on_hitl=my_approval_callback,
+)
+```
+
+---
+
+### `matimo.execute()` {#python-execute}
+
+```python
+async def execute(
+    self,
+    tool_name: str,
+    params: dict[str, object],
+    credentials: dict[str, str] | None = None,
+) -> object
+```
+
+Execute a tool by name. Raises `MatimoError` on failure.
+
+```python
+from matimo import Matimo, MatimoError
+
+matimo = await Matimo.init(auto_discover=True)
+
+# Basic call
+result = await matimo.execute('calculator', {'operation': 'add', 'a': 10, 'b': 5})
+print(result)  # {'result': 15.0}
+
+# Per-call credential override (multi-tenant)
+result = await matimo.execute(
+    'slack_send_channel_message',
+    {'channel': '#general', 'text': 'Hello'},
+    credentials={'SLACK_BOT_TOKEN': tenant_token},
+)
+
+# Error handling
+try:
+    result = await matimo.execute('unknown_tool', {})
+except MatimoError as e:
+    print(f"[{e.code}] {e.message}")
+    if e.details:
+        print("Details:", e.details)
+```
+
+---
+
+### `matimo.list_tools()` {#python-list-tools}
+
+```python
+def list_tools(self) -> list[ToolDefinition]
+```
+
+Return all currently registered tools as `ToolDefinition` objects.
+
+```python
+tools = matimo.list_tools()
+print(f"Loaded {len(tools)} tools")
+
+for tool in tools:
+    print(f"  {tool.name} v{tool.version} — {tool.description}")
+```
+
+---
+
+### `matimo.get_tool()` {#python-get-tool}
+
+```python
+def get_tool(self, name: str) -> ToolDefinition | None
+```
+
+```python
+tool_def = matimo.get_tool('slack_send_channel_message')
+if tool_def:
+    for param_name, param in (tool_def.parameters or {}).items():
+        print(f"  {param_name}: {param.type}{'*' if param.required else ''}")
+```
+
+---
+
+### `matimo.search_tools()` {#python-search-tools}
+
+```python
+def search_tools(self, query: str) -> list[ToolDefinition]
+```
+
+Case-insensitive substring search across tool `name` and `description`.
+
+```python
+slack_tools = matimo.search_tools('slack')
+email_tools = matimo.search_tools('email')
+```
+
+---
+
+### `matimo.reload()` {#python-reload}
+
+```python
+async def reload(self) -> ReloadResult
+```
+
+Hot-reload all tools from their source paths. Atomic — rolls back on error.
+
+```python
+result = await matimo.reload()
+print(f"Reloaded {result.reloaded_count} tools")
+if result.rolled_back:
+    print("Registry was rolled back due to an error")
+```
+
+---
+
+### `matimo.list_skills()` and `matimo.semantic_search_skills()` {#python-list-skills} {#python-semantic-search-skills}
+
+```python
+def list_skills(self) -> list[SkillDefinition]
+
+async def semantic_search_skills(
+    self,
+    query: str,
+    limit: int = 5,
+    min_score: float = 0.0,
+) -> list[SemanticSearchResult]
+```
+
+```python
+# List all skills
+skills = matimo.list_skills()
+for skill in skills:
+    print(f"  {skill.name}: {skill.description}")
+
+# Semantic search (TF-IDF)
+results = await matimo.semantic_search_skills('rate limiting and retries', limit=3)
+for r in results:
+    print(f"  {r.name} (score: {r.score:.3f})")
+```
+
+For higher-level helpers see [LangChain Skills Integration](../framework-integrations/LANGCHAIN.md#skills-integration-non-mcp).
+
+---
+
+### Python Decorators {#python-decorators}
+
+```python
+from matimo import tool, set_global_matimo_instance, Matimo
+
+matimo = await Matimo.init(auto_discover=True)
+set_global_matimo_instance(matimo)
+
+class MyAgent:
+    @tool('slack_send_channel_message')
+    async def send(self, channel: str, text: str) -> object:
+        ...  # body never runs; decorator calls matimo.execute()
+
+    @tool('calculator')
+    async def calc(self, operation: str, a: float, b: float) -> object:
+        ...
+
+agent = MyAgent()
+result = await agent.calc('add', 10, 5)  # → {'result': 15.0}
+```
+
+---
+
+### Python LangChain Integration {#python-langchain}
+
+```python
+from matimo import Matimo, convert_tools_to_langchain
+from langchain_openai import ChatOpenAI
+from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
+
+matimo = await Matimo.init(auto_discover=True)
+lc_tools = convert_tools_to_langchain(matimo.list_tools(), matimo)
+
+llm = ChatOpenAI(model='gpt-4o-mini', temperature=0).bind_tools(lc_tools)
+tool_map = {t.name: t for t in lc_tools}
+
+# ReAct loop
+messages = [HumanMessage(content='List Slack channels')]
+for _ in range(10):
+    response: AIMessage = await llm.ainvoke(messages)
+    messages.append(response)
+    if not response.tool_calls:
+        print(response.content)
+        break
+    for call in response.tool_calls:
+        tool_result = await tool_map[call['name']].ainvoke(call['args'])
+        messages.append(ToolMessage(tool_call_id=call['id'], content=str(tool_result)))
+```
+
+**OpenAI 128-tool hard limit:** When `auto_discover=True` loads 128+ tools, bind only the subset you need:
+
+```python
+# Keep matimo_* meta-tools + specific providers
+_LIMIT = 128
+
+def cap_tools(tools, priority_names=None):
+    if len(tools) <= _LIMIT:
+        return tools
+    pri = set(priority_names or [])
+    prioritized = [t for t in tools if t.name in pri]
+    rest = [t for t in tools if t.name not in pri]
+    return (prioritized + rest)[:_LIMIT]
+
+matimo_names = [t.name for t in lc_tools if t.name.startswith('matimo_')]
+lc_tools_capped = cap_tools(lc_tools, priority_names=matimo_names)
+llm = ChatOpenAI(model='gpt-4o-mini').bind_tools(lc_tools_capped)
+```
+
+See [LangChain Integration](../framework-integrations/LANGCHAIN.md) for the full guide.
+
+---
+
+### Python CrewAI Integration {#python-crewai}
+
+```python
+from crewai import Agent, Task, Crew
+from langchain_openai import ChatOpenAI
+from matimo import Matimo, convert_tools_to_crewai
+
+matimo = await Matimo.init(auto_discover=True)
+tools = convert_tools_to_crewai(matimo.list_tools(), matimo)
+
+llm = ChatOpenAI(model='gpt-4o-mini')
+agent = Agent(role='Slack Manager', goal='Send messages', tools=tools, llm=llm)
+task = Task(description='Send a hello message to #general', agent=agent)
+crew = Crew(agents=[agent], tasks=[task])
+
+result = crew.kickoff()
+```
+
+See [CrewAI Integration](../framework-integrations/CREWAI.md) for the full guide.
+
+---
+
+### Python Logging {#python-logging}
+
+```python
+from matimo.logging import setup_logger, get_global_matimo_logger, set_global_matimo_logger
+
+# Simple text format (development)
+logger = setup_logger(level='debug', log_format='simple')
+logger.info('Starting', component='my-agent')
+
+# JSON structured format (production)
+logger = setup_logger(level='info', log_format='json')
+logger.warn('High latency', latency_ms=1200, tool='slack_send_channel_message')
+
+# Global singleton
+global_logger = get_global_matimo_logger()
+global_logger.error('Failed', code='EXECUTION_FAILED')
+
+# SDK logger access (all SDK internal logs use this)
+matimo = await Matimo.init('./tools', log_level='debug', log_format='simple')
+matimo._logger.debug('Custom debug message')
+
+# Silent mode (useful for tests)
+setup_logger(level='silent')
+```
+
+Log levels: `debug | info | warn | error | silent`
+Formats: `simple` (human-readable) | `json` (structured, for log aggregators)
+
+---
+
+### Python Error Handling {#python-errors}
+
+```python
+from matimo import MatimoError
+from matimo.errors import ErrorCode
+
+try:
+    result = await matimo.execute('unknown_tool', {})
+except MatimoError as e:
+    print(f"[{e.code}] {e.message}")
+    # e.code is a string matching ErrorCode enum values
+    if e.code == ErrorCode.TOOL_NOT_FOUND:
+        available = [t.name for t in matimo.list_tools()]
+        print("Available:", available[:5])
+    elif e.code == ErrorCode.EXECUTION_FAILED:
+        print("Details:", e.details)
+```
+
+**Error codes (same in TypeScript and Python):**
+
+| Code | Description |
+|------|-------------|
+| `INVALID_SCHEMA` | Tool definition YAML failed Pydantic validation |
+| `TOOL_NOT_FOUND` | No tool with that name in the registry |
+| `PARAMETER_VALIDATION` | Provided params don't match the tool's schema |
+| `EXECUTION_FAILED` | Tool ran but returned an error or failed output validation |
+| `AUTH_FAILED` | Missing or invalid credentials |
+| `TIMEOUT` | Execution exceeded timeout (HTTP executor) |
+| `FILE_NOT_FOUND` | Tool definition file missing |
+| `POLICY_BLOCKED` | PolicyEngine rejected the tool (blocked/deprecated) |
+| `POLICY_PENDING` | Tool requires HITL approval before execution |
 
 ---
 

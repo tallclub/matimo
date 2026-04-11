@@ -1,12 +1,12 @@
-# Matimo Winston Logger Integration
+# Matimo Logger Integration (TypeScript & Python)
 
 ## Overview
 
-Matimo now includes **Winston logger** integration for **production and real-time usage**. The logger:
+Matimo provides a structured logging integration for **TypeScript** (backed by **Winston**) and **Python** (backed by stdlib `logging`). The logger:
 - ✅ Supports structured logging (JSON format for production)
 - ✅ Provides multiple log levels (silent, error, warn, info, debug)
-- ✅ Integrates seamlessly with `MatimoInstance`
-- ✅ Allows custom logger implementations
+- ✅ Integrates seamlessly with `MatimoInstance` (TypeScript) and `Matimo` (Python)
+- ✅ Allows custom logger implementations in both languages
 - ✅ Configurable via environment variables or programmatic options
 - ✅ Zero impact on existing code (backward compatible)
 
@@ -291,6 +291,110 @@ interface InitOptions extends LoggerConfig {
   // ... plus all LoggerConfig options
 }
 ```
+
+## Python SDK Logging
+
+The Python SDK mirrors the TypeScript logging API, backed by stdlib `logging` instead of Winston.
+
+### Basic Usage
+
+```python
+from matimo import Matimo
+from matimo.logging import setup_logger, get_global_matimo_logger
+
+# Configure and initialize
+matimo = await Matimo.init('./tools', log_level='info', log_format='json')
+
+# Access the logger
+logger = get_global_matimo_logger()
+logger.info('Processing request', {'user': 'u123'})
+logger.debug('Cache hit', {'key': 'tools_list'})
+logger.warn('Rate limit near', {'remaining': 5})
+logger.error('Tool failed', {'tool': 'slack_send'})
+```
+
+### Environment Variables
+
+The same env vars control the Python SDK:
+
+```bash
+export MATIMO_LOG_LEVEL=debug   # silent | error | warn | info | debug
+export MATIMO_LOG_FORMAT=json   # json | simple
+```
+
+### `setup_logger()` Options
+
+```python
+from matimo.logging import setup_logger
+
+logger = setup_logger(log_level='info', log_format='json')
+```
+
+### Custom Logger
+
+```python
+from matimo import Matimo
+from matimo.logging import MatimoLogger
+
+class MyLogger(MatimoLogger):
+    def info(self, message: str, meta: dict | None = None) -> None:
+        your_logger.info(message, extra=meta or {})
+    def warn(self, message: str, meta: dict | None = None) -> None:
+        your_logger.warning(message, extra=meta or {})
+    def error(self, message: str, meta: dict | None = None) -> None:
+        your_logger.error(message, extra=meta or {})
+    def debug(self, message: str, meta: dict | None = None) -> None:
+        your_logger.debug(message, extra=meta or {})
+
+matimo = await Matimo.init('./tools', logger=MyLogger())
+```
+
+### Global Logger Access
+
+```python
+from matimo.logging import get_global_matimo_logger, set_global_matimo_logger
+
+logger = get_global_matimo_logger()
+logger.info('Global log from anywhere')
+
+set_global_matimo_logger(my_custom_logger)
+```
+
+### Silent Mode (Testing)
+
+```python
+matimo = await Matimo.init('./tools', log_level='silent')
+# or use MATIMO_LOG_LEVEL=silent pytest ...
+```
+
+### MatimoLogger Interface (Python)
+
+```python
+from matimo.logging import MatimoLogger  # ABC
+
+class MatimoLogger:
+    def info(self, message: str, meta: dict | None = None) -> None: ...
+    def warn(self, message: str, meta: dict | None = None) -> None: ...
+    def error(self, message: str, meta: dict | None = None) -> None: ...
+    def debug(self, message: str, meta: dict | None = None) -> None: ...
+```
+
+### Log Output Formats
+
+**JSON** (same schema as TypeScript):
+```json
+{"timestamp": "2026-04-01 14:30:00", "level": "info", "message": "SDK initialized", "toolCount": 25}
+```
+
+**Simple**:
+```
+[2026-04-01 14:30:00] [INFO] SDK initialized
+```
+
+> See [`python/examples/native/logger_example.py`](../../python/examples/native/logger_example.py) for a full Python logging demo.
+> Run with: `cd python && make logger-example`
+
+---
 
 ## Next Steps
 

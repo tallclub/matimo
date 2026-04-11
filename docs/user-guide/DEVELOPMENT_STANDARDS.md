@@ -205,10 +205,11 @@ class TestToolLoader:
 ### Coverage Targets
 
 | Metric | Minimum |
-|--------|---------|
-| Statements | 85% |
-| Branches | 80% |
-| Functions | 90% |
+|--------|----------|
+| Statements | 95% |
+| Branches | 87% |
+| Functions | 97% |
+| Lines | 95% |
 
 ---
 
@@ -269,7 +270,7 @@ make test           # Tests
 - [ ] All tests passing (`make test`)
 - [ ] No mypy errors (`make typecheck`)
 - [ ] Ruff clean (`make lint && make format-check`)
-- [ ] Coverage ≥ 85% (`make test-coverage`)
+- [ ] Coverage ≥ 95% (`make test-coverage`)
 - [ ] Pydantic models validate all external inputs
 - [ ] No hardcoded secrets
 - [ ] `from __future__ import annotations` in every file
@@ -549,22 +550,22 @@ it('handles errors');
 
 ### Test Coverage
 
-**Minimum targets:**
+**Minimum targets (enforced by jest.config.cjs):**
 
-- Overall: **80%+**
-- Critical paths: **90%+**
-- Branch coverage: All if/else paths tested
-- Edge cases: Empty inputs, null values, max values
+- Statements: **95%+**
+- Branches: **87%+**
+- Functions: **97%+**
+- Lines: **95%+**
 
 ```bash
 # Check coverage
 pnpm test:coverage
 
 # Expected:
-# Statements   : 80%+
-# Branches     : 75%+
-# Functions    : 80%+
-# Lines        : 80%+
+# Statements   : 95%+
+# Branches     : 87%+
+# Functions    : 97%+
+# Lines        : 95%+
 ```
 
 ### Mocking & Fixtures
@@ -830,7 +831,7 @@ Requests/second: 1000+
 - Return types explicitly declared
 
 // ✅ Testing
-- 80%+ test coverage
+- 95%+ test coverage (TypeScript) / 95%+ (Python)
 - Unit tests for all modules
 - Integration tests for critical paths
 - Edge cases tested
@@ -877,7 +878,7 @@ pnpm test
 
 # Check coverage
 pnpm test:coverage
-# Expected: 80%+ coverage
+# Expected: 95%+ coverage
 ```
 
 ---
@@ -890,12 +891,12 @@ pnpm test:coverage
 2. **Check types:** `pnpm build`
 3. **Lint:** `pnpm lint`
 4. **Test:** `pnpm test`
-5. **Coverage:** `pnpm test:coverage` (verify 80%+)
+5. **Coverage:** `pnpm test:coverage` (verify 95%+)
 
 ### Pre-Merge Checklist
 
 - [ ] All tests passing
-- [ ] Coverage 80%+
+- [ ] Coverage 95%+
 - [ ] No TypeScript errors
 - [ ] No ESLint warnings
 - [ ] Code formatted with Prettier

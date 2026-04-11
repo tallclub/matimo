@@ -41,6 +41,18 @@ async def main():
 asyncio.run(main())
 ```
 
+> ⚠️ **OpenAI 128-tool limit**: `gpt-4o`, `gpt-4o-mini`, and most OpenAI models reject requests with more than 128 tools bound.
+> Filter to only the tools the agent needs for the current task:
+> ```python
+> # Only Slack tools
+> slack_tools_def = [t for t in matimo.list_tools() if t.name.startswith('slack_')]
+> lc_tools = convert_tools_to_langchain(slack_tools_def, matimo, credentials={...})
+>
+> # Or use search to find relevant tools
+> relevant = matimo.search_tools('send message')
+> lc_tools = convert_tools_to_langchain(relevant[:20], matimo, credentials={...})
+> ```
+
 ### Complete ReAct Agent Example
 
 ```python
@@ -349,6 +361,13 @@ const result = await agent.invoke({
 
 console.log('Agent response:', result.output);
 ```
+
+> ⚠️ **OpenAI 128-tool limit**: `gpt-4o`, `gpt-4o-mini`, and most OpenAI models reject requests with more than 128 tools bound.
+> Filter to only the tools the agent needs:
+> ```typescript
+> const slackTools = matimo.listTools().filter(t => t.name.startsWith('slack_'));
+> const langchainTools = convertToolsToLangChain(slackTools, matimo, credentials);
+> ```
 
 ### Complete LangChain Agent Example
 

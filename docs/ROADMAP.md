@@ -144,30 +144,25 @@ Expand provider ecosystem with real-world integrations:
 - Unit tests for parameter validation
 - Integration tests with mocked responses
 
-### Priority 1: Python SDK
-### Python SDK
-- Matimo python Version
-- CrewAI support
-- Implement Examples
+### Priority 1: Python SDK ✅ SHIPPED (v0.1.0-alpha.14)
 
-Full-featured Python implementation with feature parity:
+Full-featured Python implementation with feature parity — **delivered in v0.1.0-alpha.14**:
 
-- [ ] **Python Core SDK** — Same tool execution patterns
-- [ ] **YAML Tool Support** — Load same definitions as Node.js SDK
-- [ ] **LangChain Integration** — Works with Python LangChain agents
-- [ ] **Decorator Pattern** — @tool decorators for Python classes
-- [ ] **OAuth2 Handler** — Multi-provider authentication
-- [ ] **Provider Packages** — `@matimo/slack-py`, `@matimo/gmail-py`, etc.
-- [ ] **CLI Tool** — `matimo list`, `matimo search` in Python
-- [ ] **Type Hints** — Full type safety with mypy support
-
-**Acceptance Criteria**:
-
-- Package published on PyPI
-- Installation via `pip install matimo`
-- Works with Python 3.8+
-- 80%+ test coverage
-- Full documentation with examples
+- [x] **Python Core SDK** — asyncio-based, Pydantic v2 models (`matimo-core 0.1.0a14`)
+- [x] **YAML Tool Support** — Load same definitions as TypeScript SDK
+- [x] **LangChain Integration** — `convert_tools_to_langchain()` → `StructuredTool` list
+- [x] **CrewAI Integration** — `convert_tools_to_crewai()` → `BaseTool` list
+- [x] **Decorator Pattern** — `@tool('name')` decorators for Python classes
+- [x] **OAuth2 Handler** — Multi-provider authentication
+- [x] **Provider Packages** — `matimo-slack`, `matimo-github`, `matimo-gmail`, etc. (10 providers)
+- [x] **MCP Server** — `create_mcp_server()`, stdio + HTTP transport, Claude Desktop compatible
+- [x] **Skills System** — `get_skills_metadata()`, `semantic_search_skills()`, `build_relevant_skill_prompt()`
+- [x] **Policy Engine** — `DefaultPolicyEngine`, `classify_risk()`, `validate_tool_content()`, approval manifest
+- [x] **Meta-Tools** — 10 agent-callable tools (`matimo_create_tool`, `matimo_validate_tool`, etc.)
+- [x] **Advanced Examples** — 58 files: native (factory/decorator/advanced demos), LangChain, CrewAI
+- [x] **657 tests** — 97.38% coverage (exceeds 95% requirement)
+- [x] **Type hints throughout** — full mypy-compatible annotations
+- [x] **Published on PyPI** — `pip install matimo` or `uv add matimo`
 
 ### Priority 3: MCP (Model Context Protocol) Server ✅ SHIPPED (v0.1.0-alpha.12)
 
@@ -191,46 +186,25 @@ Enable Claude and other MCP clients to use Matimo tools:
 - Comprehensive MCP documentation
 - Security fixes (ReDoS, TLS bypass, HTTP shutdown, flag validation, Zod ordering)
 
-### Priority 4: Logging & Monitoring
+### Priority 4: Logging & Monitoring ✅ SHIPPED (v0.1.0-alpha.14)
 
-Production-ready observability:
+- [x] **Structured Logging** — `setup_logger()`, `MatimoLogger`, Winston (TS) / stdlib logging (Python)
+- [x] **Log Levels** — `debug | info | warn | error | silent` with env override (`MATIMO_LOG_LEVEL`)
+- [x] **Log Formats** — Simple (development) and JSON (production) — `MATIMO_LOG_FORMAT`
+- [x] **Global singleton** — `get_global_matimo_logger()` / `set_global_matimo_logger()` (both SDKs)
+- [x] **Secret redaction** — Credentials never appear in logs
 
-- [ ] **Structured Logging** — Log all tool executions with context
-- [ ] **Log Levels** — DEBUG, INFO, WARN, ERROR with filtering
-- [ ] **Log Outputs** — Console, file, and remote logging
-- [ ] **Metrics Collection** — Execution time, success rate, errors
-- [ ] **Performance Monitoring** — Track slow tool executions
-- [ ] **Error Tracking** — Detailed error logs with stack traces
-- [ ] **Health Checks** — Monitor API endpoint availability
-- [ ] **Audit Trail** — Log who ran what tool and when
+---
 
-**Acceptance Criteria**:
+### Priority 5: Skills System ✅ SHIPPED (v0.1.0-alpha.13)
 
-- Structured JSON logs for easy parsing
-- Integration with common logging services (DataDog, New Relic, etc.)
-- Configurable log levels
-- Performance metrics dashboard-ready format
-- Admin command for viewing logs
-
-### Priority 5: Skills (Native to Matimo)
-
-- [ ] **Skill Registry** — Store and reuse skills across projects
-- [ ] **Skill Examples** — Pre-built skills for common tasks
-- [ ] **Skill Versioning** — Multiple versions per skill
-
-**Example Skills**:
-
-- Process customer support tickets (GitHub → Slack → Email)
-- Sync data between systems (Stripe → Hubspot → Airtable)
-- Monitor and alert on metrics (AWS → Datadog → Slack)
-
-**Acceptance Criteria**:
-
-- Skill definition format (markdown)
-- Skill execution engine working correctly
-- Error recovery on tool failures
-- Documented skill specification
-- 10+ example skills included
+- [x] **Skill Registry** — SKILL.md-based skills loaded from `skill_paths`
+- [x] **Built-in SDK Skills** — 6 core skills shipped with `@matimo/core` / `matimo-core`
+- [x] **Provider skill bundles** — Each provider package ships a SKILL.md
+- [x] **TF-IDF semantic search** — `semanticSearchSkills()` / `semantic_search_skills()`
+- [x] **Progressive disclosure** — Level 1 (`getSkillsMetadata`) → Level 2 (`buildRelevantSkillPrompt`)
+- [x] **Agent meta-tools** — `matimo_list_skills`, `matimo_get_skill`, `matimo_create_skill`, `matimo_validate_skill`
+- [x] **MCP resource exposure** — Skills auto-registered as `skills://{name}` resources
 
 ---
 
