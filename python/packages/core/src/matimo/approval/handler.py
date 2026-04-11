@@ -9,6 +9,7 @@ import logging
 import os
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
+from typing import Any
 
 logger = logging.getLogger("matimo")
 
@@ -27,7 +28,7 @@ class ApprovalRequest:
 
     tool_name: str
     description: str | None
-    params: dict
+    params: dict[str, Any]
 
 
 ApprovalCallback = Callable[[ApprovalRequest], Awaitable[bool]]
@@ -97,7 +98,7 @@ class ApprovalHandler:
         )
         return False
 
-    def is_destructive(self, tool_name: str, params: dict) -> bool:
+    def is_destructive(self, tool_name: str, params: dict[str, Any]) -> bool:
         """
         Heuristically determine whether a tool invocation is destructive,
         based on keyword scanning of the tool name and string parameter values.
