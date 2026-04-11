@@ -41,13 +41,6 @@ matimo search email                       # text search over tool names + descri
 matimo search "send message"
 ```
 
-### `matimo validate` — Validate a tool definition
-
-```bash
-matimo validate ./tools/my_tool/definition.yaml
-matimo validate ./tools/                  # validate entire directory
-```
-
 ### `matimo mcp` — Start MCP server
 
 Serve all loaded tools over the [Model Context Protocol](https://matimo.dev/docs/MCP) so Claude Desktop, Cursor, or any MCP client can access them.
