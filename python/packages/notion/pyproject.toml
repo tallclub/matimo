@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "matimo-notion"
-version = "0.1.0a14"
+version = "0.1.0a14.post1"
 description = "Matimo provider — Notion tools (pages, databases, comments)"
 readme = "README.md"
 license = { text = "MIT" }
@@ -17,7 +17,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
 ]
 dependencies = [
-    "matimo-core>=0.1.0a14,<0.2.0",
+    "matimo-core>=0.1.0a14.post1,<0.2.0",
 ]
 
 [project.entry-points."matimo.providers"]

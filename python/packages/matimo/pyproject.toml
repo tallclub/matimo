@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "matimo"
-version = "0.1.0a14"
+version = "0.1.0a14.post1"
 description = "Matimo — framework-agnostic SDK: pre-built providers, skills layer, MCP out of the box, and autonomous agents governed by a policy engine you control"
 readme = "README.md"
 license = { text = "MIT" }
@@ -23,8 +23,8 @@ classifiers = [
 # This is a meta-package: pip install matimo pulls in matimo-core and matimo-cli
 # which provides the actual `matimo` Python namespace and CLI tools.
 dependencies = [
-    "matimo-core>=0.1.0a14,<0.2.0",
-    "matimo-cli>=0.1.0a14,<0.2.0",
+    "matimo-core>=0.1.0a14.post1,<0.2.0",
+    "matimo-cli>=0.1.0a14.post1,<0.2.0",
 ]
 
 [project.optional-dependencies]
