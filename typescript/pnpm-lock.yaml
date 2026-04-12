@@ -206,7 +206,7 @@ importers:
         version: 1.29.0(zod@4.3.6)
       axios:
         specifier: ^1.13.4
-        version: 1.13.5
+        version: 1.15.0
       dotenv:
         specifier: ^17.2.3
         version: 17.2.4
@@ -299,7 +299,7 @@ importers:
         version: link:../core
       axios:
         specifier: ^1.13.4
-        version: 1.13.5
+        version: 1.15.0
 
   packages/hubspot:
     dependencies:
@@ -335,7 +335,7 @@ importers:
         version: link:../core
       axios:
         specifier: ^1.13.4
-        version: 1.13.5
+        version: 1.15.0
 
   packages/postgres:
     dependencies:
@@ -361,7 +361,7 @@ importers:
         version: link:../core
       axios:
         specifier: ^1.13.4
-        version: 1.13.5
+        version: 1.15.0
 
   packages/twilio:
     dependencies:
@@ -3113,12 +3113,12 @@ packages:
     resolution: {integrity: sha512-lHe62zvbTB5eEABUVi/AwVh0ZKY9rMMDhmm+eeyuuUQbQ3+J+fONVQOZyj+DdrvD4BY33uYniyRJ4UJIaSKAfw==}
     dev: false
 
-  /axios@1.13.5:
-    resolution: {integrity: sha512-cz4ur7Vb0xS4/KUN0tPWe44eqxrIu31me+fbang3ijiNscE129POzipJJA6zniq2C/Z6sJCjMimjS8Lc/GAs8Q==}
+  /axios@1.15.0:
+    resolution: {integrity: sha512-wWyJDlAatxk30ZJer+GeCWS209sA42X+N5jU2jy6oHTp7ufw8uzUTVFBX9+wTfAlhiJXGS0Bq7X6efruWjuK9Q==}
     dependencies:
       follow-redirects: 1.15.11
       form-data: 4.0.5
-      proxy-from-env: 1.1.0
+      proxy-from-env: 2.1.0
     transitivePeerDependencies:
       - debug
 
@@ -5809,8 +5809,9 @@ packages:
       ipaddr.js: 1.9.1
     dev: false
 
-  /proxy-from-env@1.1.0:
-    resolution: {integrity: sha512-D+zkORCbA9f1tdWRK0RaCR3GPv50cMxcrz4X8k5LTSUD1Dkw47mKJEZQNunItRTkWwgtaUSo1RVFRIG9ZXiFYg==}
+  /proxy-from-env@2.1.0:
+    resolution: {integrity: sha512-cJ+oHTW1VAEa8cJslgmUZrc+sjRKgAKl3Zyse6+PV38hZe/V6Z14TbCuXcan9F9ghlz4QrFr2c92TNF82UkYHA==}
+    engines: {node: '>=10'}
 
   /psl@1.15.0:
     resolution: {integrity: sha512-JZd3gMVBAVQkSs6HdNZo9Sdo0LNcQeMNP3CozBJb3JYC/QUYZTnKxP+f8oWRX4rHP5EurWxqAHTSwUCjlNKa1w==}
