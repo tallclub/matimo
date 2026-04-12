@@ -20,10 +20,11 @@ classifiers = [
     "Topic :: Software Development :: Libraries",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
-# This is a meta-package: pip install matimo pulls in matimo-core which provides
-# the actual `matimo` Python namespace.
+# This is a meta-package: pip install matimo pulls in matimo-core and matimo-cli
+# which provides the actual `matimo` Python namespace and CLI tools.
 dependencies = [
     "matimo-core>=0.1.0a14,<0.2.0",
+    "matimo-cli>=0.1.0a14,<0.2.0",
 ]
 
 [project.optional-dependencies]
@@ -41,9 +42,10 @@ Documentation = "https://matimo.dev/docs"
 Repository = "https://github.com/tallclub/matimo"
 Issues = "https://github.com/tallclub/matimo/issues"
 
-# No Python source files — matimo-core owns the `matimo` namespace.
+# Matimo is a meta-package that pulls in matimo-core and optionally providers.
+# It includes a minimal __init__.py that re-exports matimo-core.
 [tool.hatch.build.targets.wheel]
-packages = []
+packages = ["src/matimo"]
 
 [tool.hatch.build.targets.sdist]
-include = ["README.md", "LICENSE"]
+include = ["src/", "README.md", "../../../LICENSE"]
