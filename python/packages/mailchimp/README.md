@@ -1,6 +1,6 @@
 # matimo-mailchimp
 
-> Mailchimp tools for the [Matimo](https://matimo.dev) AI tools SDK — manage campaigns, lists, and subscribers.
+> Mailchimp tools for [Matimo](https://matimo.dev) — manage campaigns, lists, and subscribers.
 
 [![PyPI](https://img.shields.io/pypi/v/matimo-mailchimp)](https://pypi.org/project/matimo-mailchimp/)
 [![Docs](https://img.shields.io/badge/docs-matimo.dev-blue)](https://matimo.dev/docs)

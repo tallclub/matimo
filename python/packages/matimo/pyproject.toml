@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "matimo"
 version = "0.1.0a14"
-description = "Configuration-driven AI tools SDK — write tools once in YAML, use them everywhere"
+description = "Matimo — framework-agnostic SDK: pre-built providers, skills layer, MCP out of the box, and autonomous agents governed by a policy engine you control"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.11"

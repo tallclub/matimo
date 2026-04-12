@@ -1,6 +1,6 @@
 # matimo-postgres
 
-> PostgreSQL tools for the [Matimo](https://matimo.dev) AI tools SDK — execute SQL queries safely with policy-gated approval.
+> PostgreSQL tools for [Matimo](https://matimo.dev) — execute SQL queries safely with policy-gated approval.
 
 [![PyPI](https://img.shields.io/pypi/v/matimo-postgres)](https://pypi.org/project/matimo-postgres/)
 [![Docs](https://img.shields.io/badge/docs-matimo.dev-blue)](https://matimo.dev/docs)

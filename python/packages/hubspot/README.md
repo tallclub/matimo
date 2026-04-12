@@ -1,6 +1,6 @@
 # matimo-hubspot
 
-> HubSpot CRM tools for the [Matimo](https://matimo.dev) AI tools SDK — manage contacts, companies, deals, tickets, and more.
+> HubSpot CRM tools for [Matimo](https://matimo.dev) — manage contacts, companies, deals, tickets, and more.
 
 [![PyPI](https://img.shields.io/pypi/v/matimo-hubspot)](https://pypi.org/project/matimo-hubspot/)
 [![Docs](https://img.shields.io/badge/docs-matimo.dev-blue)](https://matimo.dev/docs)

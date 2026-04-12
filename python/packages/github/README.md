@@ -1,6 +1,6 @@
 # matimo-github
 
-> GitHub tools for the [Matimo](https://matimo.dev) AI tools SDK — manage repositories, issues, pull requests, releases, and more.
+> GitHub tools for [Matimo](https://matimo.dev) — manage repositories, issues, pull requests, releases, and more.
 
 [![PyPI](https://img.shields.io/pypi/v/matimo-github)](https://pypi.org/project/matimo-github/)
 [![Docs](https://img.shields.io/badge/docs-matimo.dev-blue)](https://matimo.dev/docs)

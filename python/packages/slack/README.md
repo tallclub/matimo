@@ -1,6 +1,6 @@
 # matimo-slack
 
-> Slack tools for the [Matimo](https://matimo.dev) AI tools SDK — send messages, manage channels, upload files, and more.
+> Slack tools for [Matimo](https://matimo.dev) — send messages, manage channels, upload files, and more.
 
 [![PyPI](https://img.shields.io/pypi/v/matimo-slack)](https://pypi.org/project/matimo-slack/)
 [![Docs](https://img.shields.io/badge/docs-matimo.dev-blue)](https://matimo.dev/docs)

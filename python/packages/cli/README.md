@@ -1,6 +1,6 @@
 # matimo-cli
 
-> Command-line interface for the [Matimo](https://matimo.dev) AI tools SDK.
+> Command-line interface for [Matimo](https://matimo.dev) — tool package manager & MCP server launcher.
 
 [![PyPI](https://img.shields.io/pypi/v/matimo-cli)](https://pypi.org/project/matimo-cli/)
 [![Docs](https://img.shields.io/badge/docs-matimo.dev-blue)](https://matimo.dev/docs)

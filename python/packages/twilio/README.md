@@ -1,6 +1,6 @@
 # matimo-twilio
 
-> Twilio tools for the [Matimo](https://matimo.dev) AI tools SDK — send SMS, send MMS, and retrieve message history.
+> Twilio tools for [Matimo](https://matimo.dev) — send SMS, send MMS, and retrieve message history.
 
 [![PyPI](https://img.shields.io/pypi/v/matimo-twilio)](https://pypi.org/project/matimo-twilio/)
 [![Docs](https://img.shields.io/badge/docs-matimo.dev-blue)](https://matimo.dev/docs)

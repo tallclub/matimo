@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "matimo-core"
 version = "0.1.0a14"
-description = "Configuration-driven AI tools SDK — core module"
+description = "Matimo core — framework-agnostic SDK: pre-built providers, skills layer, MCP, and a policy engine you control"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.11"
@@ -72,7 +72,7 @@ core = "matimo:get_core_tools_path"
 packages = ["src/matimo"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src/", "README.md", "LICENSE"]
+include = ["src/", "README.md", "../../../LICENSE"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

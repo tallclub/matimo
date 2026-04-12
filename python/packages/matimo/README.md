@@ -1,27 +1,36 @@
 # matimo
 
-> Configuration-driven AI tools SDK — write tools once in YAML, use them everywhere.
+> A framework-agnostic SDK with pre-built providers, a skills knowledge layer, MCP out of the box, and agents that autonomously build new capabilities — governed by a policy engine you control.
 
 [![PyPI](https://img.shields.io/pypi/v/matimo)](https://pypi.org/project/matimo/)
 [![Python](https://img.shields.io/pypi/pyversions/matimo)](https://pypi.org/project/matimo/)
 [![Docs](https://img.shields.io/badge/docs-matimo.dev-blue)](https://matimo.dev/docs)
 
-`matimo` is the convenience meta-package that installs [`matimo-core`](https://pypi.org/project/matimo-core/) and re-exports its full public API. Everything you need is in one `pip install`.
+`matimo` is the convenience meta-package that installs [`matimo-core`](https://pypi.org/project/matimo-core/) and [`matimo-cli`](https://pypi.org/project/matimo-cli/). Provider packages (Slack, GitHub, Gmail, etc.) are installed separately.
 
 ---
 
 ## Installation
 
 ```bash
+# Core SDK + CLI
 pip install matimo
-# with LangChain support
-pip install "matimo[langchain]"
-# with CrewAI support
-pip install "matimo[crewai]"
-# with MCP server
-pip install "matimo[mcp]"
-# everything
-pip install "matimo[langchain,crewai,mcp]"
+
+# With optional framework integrations
+pip install "matimo[langchain]"   # LangChain support
+pip install "matimo[crewai]"      # CrewAI support
+pip install "matimo[mcp]"         # MCP server support
+
+# With secrets backends
+pip install "matimo[dotenv]"      # .env file support
+pip install "matimo[vault]"       # HashiCorp Vault
+pip install "matimo[aws]"         # AWS Secrets Manager
+
+# Everything (all optional integrations)
+pip install "matimo[all]"
+
+# With provider packages
+pip install matimo matimo-slack matimo-github matimo-gmail
 ```
 
 ---
@@ -52,10 +61,6 @@ print([t.name for t in matimo.list_tools()])
 ```
 
 ### With provider packages
-
-```bash
-pip install matimo matimo-slack matimo-github matimo-gmail
-```
 
 ```python
 from matimo import Matimo

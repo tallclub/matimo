@@ -1,6 +1,6 @@
 # matimo-gmail
 
-> Gmail tools for the [Matimo](https://matimo.dev) AI tools SDK — send, list, read, and delete emails.
+> Gmail tools for [Matimo](https://matimo.dev) — send, list, read, and delete emails.
 
 [![PyPI](https://img.shields.io/pypi/v/matimo-gmail)](https://pypi.org/project/matimo-gmail/)
 [![Docs](https://img.shields.io/badge/docs-matimo.dev-blue)](https://matimo.dev/docs)

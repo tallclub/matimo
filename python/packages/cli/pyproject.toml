@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "matimo-cli"
 version = "0.1.0a14"
-description = "Matimo CLI — Tool package manager & MCP server launcher"
+description = "Matimo CLI — tool package manager & MCP server launcher"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
@@ -17,8 +17,9 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
 ]
 dependencies = [
-    "matimo-core>=0.1.0a14,<0.2.0",
+    "matimo-core[mcp]>=0.1.0a14,<0.2.0",
     "pyyaml>=6.0",
+    "mcp>=1.0",
 ]
 
 [project.scripts]
