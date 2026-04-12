@@ -1,0 +1,152 @@
+name: slack_upload_file
+description: |-
+  Upload a file to Slack using the modern files API.
+
+  This tool provides a simplified interface to upload files to Slack.
+  It uses the latest Slack file upload API (files.getUploadURLExternal + files.completeUploadExternal)
+  introduced in 2024 as the recommended approach.
+
+  FEATURES:
+  ✅ Supports files up to 500MB
+  ✅ Share directly to channels during upload
+  ✅ Add file title and initial comment
+  ✅ Better error handling and retry logic
+  ✅ Modern, official Slack recommended API
+  ✅ Future-proof (won't be deprecated)
+
+  REQUIRED SCOPES:
+  • files:write - Required to upload files
+
+  API REFERENCE:
+  https://docs.slack.dev/reference/methods/files.getUploadURLExternal
+  https://docs.slack.dev/reference/methods/files.completeUploadExternal
+version: '1.0.0'
+parameters:
+  filename:
+    type: string
+    required: true
+    description: |-
+      Name of the file (e.g., "report.pdf", "data.json")
+      Used as the file name in Slack
+  file_size:
+    type: number
+    required: true
+    description: |-
+      Size of the file in bytes.
+      Maximum 500MB (524,288,000 bytes)
+      Must match actual file size for upload
+  channel_id:
+    type: string
+    required: true
+    description: |-
+      Channel ID to share file with.
+      Example: "C024BE91L"
+      Bot must be a member of the channel
+  title:
+    type: string
+    required: false
+    description: |-
+      Title for the file in Slack (separate from filename).
+      If not provided, filename is used as title.
+      Supports up to 255 characters
+  initial_comment:
+    type: string
+    required: false
+    description: |-
+      Message text to introduce the file in the channel.
+      Example: "Here's the quarterly report PDF"
+      Supports markdown formatting
+execution:
+  type: http
+  method: POST
+  url: 'https://slack.com/api/files.getUploadURLExternal'
+  headers:
+    Authorization: 'Bearer {SLACK_BOT_TOKEN}'
+    Content-Type: application/json
+  body:
+    filename: '{filename}'
+    length: '{file_size}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: Authorization
+output_schema:
+  type: object
+  properties:
+    ok:
+      type: boolean
+      description: Whether the request was successful
+    upload_url:
+      type: string
+      description: URL where to upload the file binary
+    file_id:
+      type: string
+      description: Unique identifier for the uploaded file
+    upload_url_expires:
+      type: number
+      description: Unix timestamp when the upload URL expires
+notes:
+  env: SLACK_BOT_TOKEN
+
+  api_version: |-
+    Modern API (Current - Recommended)
+    • Uses: files.getUploadURLExternal (get upload URL)
+    • Uses: files.completeUploadExternal (complete upload)
+    • Introduced: 2024
+    • Status: Official Slack recommendation
+    • Maintenance: Actively maintained
+
+  scopes_required: |-
+    • files:write - Required to upload files
+    • channels:read - Optional, to validate channel IDs
+
+  usage_pattern: |-
+    TWO-STEP PROCESS:
+
+    1. Get Upload URL (this tool):
+       Call with: filename, file_size, channel_id
+       Returns: upload_url, file_id, upload_url_expires
+
+    2. Upload File Binary (manual/SDK):
+       Method: HTTP PUT to upload_url
+       Headers: Content-Type: application/octet-stream
+       Body: Raw file binary content
+
+    3. Complete Upload (use slack_complete_file_upload):
+       Call with: file_id, channel_id, title, initial_comment
+       Returns: File object with sharing info
+
+  important: |-
+    • Bot requires files:write scope
+    • File size must match file_size parameter exactly
+    • Upload URL expires (check upload_url_expires)
+    • If URL expires, start over with fresh getUploadURLExternal call
+    • Channel ID must be one where bot is a member
+
+  best_practices: |-
+    DO:
+    ✅ Check upload_url_expires before uploading large files
+    ✅ Use Content-Type: application/octet-stream for PUT
+    ✅ Verify file_size matches actual file size
+    ✅ Include initial_comment for context when sharing
+    ✅ Validate channel_id exists before uploading
+
+    DON'T:
+    ❌ Use channels bot hasn't joined
+    ❌ Wait too long between getting URL and uploading (URLs expire ~2 hours)
+    ❌ Forget to call slack_complete_file_upload after upload
+    ❌ Include sensitive data in initial_comment
+
+  limitations: |-
+    • Maximum file size: 500MB
+    • Upload URL valid for approximately 2 hours
+    • Bot must be member of channel to share
+    • Response format follows Slack Web API standards
+
+  changelog: |-
+    Version 1.0.0 (Feb 2026):
+    • Updated to use modern files.getUploadURLExternal API
+    • Replaces deprecated files.upload (sunset Nov 12, 2025)
+    • Supports up to 500MB files
+    • Better error handling

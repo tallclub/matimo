@@ -1,0 +1,54 @@
+name: hubspot-update-company
+version: '1.0.0'
+description: Update an existing company in HubSpot CRM.
+
+parameters:
+  id:
+    type: string
+    required: true
+    description: The HubSpot company ID to update.
+  properties:
+    type: object
+    required: true
+    description: Object containing company properties to update.
+
+execution:
+  type: http
+  method: PATCH
+  url: 'https://api.hubapi.com/crm/v3/objects/companies/{id}'
+  headers:
+    Authorization: 'Bearer {MATIMO_HUBSPOT_API_KEY}'
+    Content-Type: application/json
+  body:
+    properties: '{properties}'
+  timeout: 30000
+
+authentication:
+  type: bearer
+  location: header
+  name: Authorization
+  notes:
+    env: MATIMO_HUBSPOT_API_KEY
+
+requires_approval: true
+
+output_schema:
+  type: object
+  properties:
+    id: { type: string }
+    properties: { type: object }
+    updatedAt: { type: string }
+  required: [id, properties]
+
+error_handling:
+  retry: 2
+  backoff_type: exponential
+  initial_delay_ms: 500
+
+examples:
+  - name: 'Update company name'
+    params:
+      id: '456'
+      properties:
+        name: 'Updated Company Name'
+    expected_result: 'Updated company with new name.'

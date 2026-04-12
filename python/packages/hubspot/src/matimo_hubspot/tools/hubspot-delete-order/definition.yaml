@@ -1,0 +1,38 @@
+name: hubspot-delete-order
+version: '1.0.0'
+description: Delete an order from HubSpot CRM.
+
+parameters:
+  id:
+    type: string
+    required: true
+    description: The HubSpot order ID.
+
+execution:
+  type: http
+  method: DELETE
+  url: 'https://api.hubapi.com/crm/v3/objects/orders/{id}'
+  headers:
+    Authorization: 'Bearer {MATIMO_HUBSPOT_API_KEY}'
+  timeout: 30000
+
+authentication:
+  type: bearer
+  location: header
+  name: Authorization
+
+output_schema:
+  type: object
+
+error_handling:
+  retry: 2
+  backoff_type: exponential
+  initial_delay_ms: 500
+
+requires_approval: true
+
+examples:
+  - name: Delete an order
+    params:
+      id: "12345"
+    expected_result: Order deleted

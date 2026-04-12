@@ -1,0 +1,38 @@
+name: hubspot-delete-line-item
+version: '1.0.0'
+description: Delete a line item from HubSpot CRM.
+
+parameters:
+  id:
+    type: string
+    required: true
+    description: The HubSpot line item ID.
+
+execution:
+  type: http
+  method: DELETE
+  url: 'https://api.hubapi.com/crm/v3/objects/line_items/{id}'
+  headers:
+    Authorization: 'Bearer {MATIMO_HUBSPOT_API_KEY}'
+  timeout: 30000
+
+authentication:
+  type: bearer
+  location: header
+  name: Authorization
+
+output_schema:
+  type: object
+
+error_handling:
+  retry: 2
+  backoff_type: exponential
+  initial_delay_ms: 500
+
+requires_approval: true
+
+examples:
+  - name: Delete a line item
+    params:
+      id: "12345"
+    expected_result: Line item deleted

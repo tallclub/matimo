@@ -1,0 +1,99 @@
+{
+  "name": "matimo",
+  "version": "0.1.0-alpha.14",
+  "description": "A framework-agnostic SDK with pre-built providers, a skills knowledge layer, MCP out of the box, and agents that autonomously build new capabilities — governed by a policy engine you control.",
+  "main": "packages/core/dist/index.js",
+  "types": "packages/core/dist/index.d.ts",
+  "bin": {
+    "matimo": "packages/cli/dist/bin.js"
+  },
+  "type": "module",
+  "packageManager": "pnpm@8.15.0",
+  "private": false,
+  "exports": {
+    ".": {
+      "types": "./packages/core/dist/index.d.ts",
+      "default": "./packages/core/dist/index.js"
+    }
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "scripts": {
+    "prepare": "husky install",
+    "build": "pnpm --filter='./packages/**' build",
+    "watch": "pnpm --filter='./packages/**' watch",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint packages --ext .ts",
+    "lint:fix": "eslint packages --ext .ts --fix",
+    "format": "prettier --write \"packages/*/src/**/*.ts\" \"packages/*/test/**/*.ts\" \"examples/**/*.ts\" \"*.json\" \"*.md\"",
+    "format:check": "prettier --check \"packages/*/src/**/*.ts\" \"packages/*/test/**/*.ts\" \"examples/**/*.ts\"",
+    "commitlint": "commitlint --from HEAD~1 --to HEAD",
+    "validate-tools": "tsx scripts/validate-tool.ts",
+    "test-tools": "jest packages/core/test/fixtures/tools",
+    "dev": "tsx packages/core/src/index.ts",
+    "clean": "rm -rf dist coverage && find packages -type f \\( -name '*.js' -o -name '*.d.ts' -o -name '*.js.map' -o -name '*.d.ts.map' \\) -not -path '*/dist/*' -not -path '*/node_modules/*' -delete"
+  },
+  "keywords": [
+    "ai",
+    "agent",
+    "tools",
+    "mcp",
+    "llm",
+    "claude",
+    "langchain",
+    "crewai",
+    "ai-agent",
+    "langchain-tools",
+    "claude-tools",
+    "framework-agnostic",
+    "yaml-tools",
+    "agent-toolkit",
+    "typescript-ai"
+  ],
+  "author": "Sajesh Nair <vsajeshnair@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tallclub/matimo.git"
+  },
+  "homepage": "https://github.com/tallclub/matimo#readme",
+  "bugs": {
+    "url": "https://github.com/tallclub/matimo/issues"
+  },
+  "files": [
+    "packages/core/dist",
+    "packages/cli/dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@matimo/cli": "workspace:*",
+    "@matimo/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^20.3.1",
+    "@commitlint/config-conventional": "^20.3.1",
+    "@langchain/core": "^1.1.19",
+    "@types/jest": "^30.0.0",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^25.1.0",
+    "@typescript-eslint/eslint-plugin": "^8.58.0",
+    "@typescript-eslint/parser": "^8.58.0",
+    "eslint": "^9.39.2",
+    "husky": "^9.1.7",
+    "jest": "^30.2.0",
+    "langchain": "^1.2.18",
+    "prettier": "^3.8.1",
+    "ts-jest": "^29.4.9",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}

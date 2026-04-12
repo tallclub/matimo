@@ -331,7 +331,7 @@ Before submitting PR, ensure tests pass:
 # Run tests
 pnpm test
 
-# Check coverage (target: 80%+)
+# Check coverage (target: 95%+)
 pnpm test:coverage
 
 # View coverage report
@@ -340,9 +340,9 @@ open coverage/lcov-report/index.html
 
 **For your tool, aim for:**
 
-- ✅ 80%+ line coverage
-- ✅ 80%+ branch coverage
-- ✅ 80%+ function coverage
+- ✅ 95%+ line coverage
+- ✅ 87%+ branch coverage
+- ✅ 97%+ function coverage
 - ✅ Happy path + error cases
 
 ---
@@ -367,10 +367,10 @@ Before submitting a pull request, verify:
 
 ### Testing
 
-- [ ] Unit tests written (80%+ coverage)
+- [ ] Unit tests written (95%+ coverage)
 - [ ] Test fixtures created
 - [ ] `pnpm test` passes (all 603+ tests)
-- [ ] `pnpm test:coverage` shows 80%+ for tool
+- [ ] `pnpm test:coverage` shows 95%+ for tool
 
 ### Documentation
 
@@ -437,7 +437,7 @@ What does this tool do? Why is it useful?
 ## Testing
 
 - [x] All tests pass (`pnpm test`)
-- [x] Coverage 80%+ (`pnpm test:coverage`)
+- [x] Coverage 95%+ (`pnpm test:coverage`)
 - [x] YAML validates (`pnpm validate-tools`)
 - [x] Lint passes (`pnpm lint`)
 
@@ -469,7 +469,7 @@ Closes #123
 1. **Automated checks run:**
    - Tests (must all pass)
    - Linting (auto-fixed if needed)
-   - Coverage (must be 80%+)
+   - Coverage (must be 95%+)
 
 2. **Maintainer review:**
    - Code quality feedback

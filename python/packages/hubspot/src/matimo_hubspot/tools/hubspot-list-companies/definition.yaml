@@ -1,0 +1,49 @@
+name: hubspot-list-companies
+version: '1.0.0'
+description: List all companies from HubSpot CRM with pagination.
+
+parameters:
+  limit:
+    type: number
+    required: false
+    description: Maximum number of companies to return (default 10, max 100).
+  after:
+    type: string
+    required: false
+    description: Pagination cursor to get next batch of companies.
+
+execution:
+  type: http
+  method: GET
+  url: 'https://api.hubapi.com/crm/v3/objects/companies'
+  query_params:
+    limit: '{limit}'
+    after: '{after}'
+  headers:
+    Authorization: 'Bearer {MATIMO_HUBSPOT_API_KEY}'
+  timeout: 30000
+
+authentication:
+  type: bearer
+  location: header
+  name: Authorization
+  notes:
+    env: MATIMO_HUBSPOT_API_KEY
+
+output_schema:
+  type: object
+  properties:
+    results: { type: array }
+    paging: { type: object }
+  required: [results]
+
+error_handling:
+  retry: 2
+  backoff_type: exponential
+  initial_delay_ms: 500
+
+examples:
+  - name: 'List first 10 companies'
+    params:
+      limit: 10
+    expected_result: 'Array of 10 companies.'

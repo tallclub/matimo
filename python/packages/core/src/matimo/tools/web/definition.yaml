@@ -1,0 +1,124 @@
+name: web
+version: '1.0.0'
+description: Fetch and parse web content from URLs. Supports redirects, headers, timeouts, and content extraction.
+
+parameters:
+  url:
+    type: string
+    description: URL to fetch (http or https)
+    required: true
+    example: 'https://api.github.com/users/octocat'
+
+  method:
+    type: string
+    description: 'HTTP method: GET, POST, PUT, PATCH, DELETE (default GET)'
+    required: false
+    default: 'GET'
+    example: 'GET'
+
+  headers:
+    type: object
+    description: Additional HTTP headers as key-value pairs (optional)
+    required: false
+    example: '{"Authorization": "Bearer token123", "Accept": "application/json"}'
+
+  body:
+    type: string
+    description: Request body for POST/PUT/PATCH (JSON string or plain text)
+    required: false
+    example: '{"key": "value"}'
+
+  timeout:
+    type: number
+    description: Request timeout in milliseconds (default 30000)
+    required: false
+    default: 30000
+    example: 60000
+
+  followRedirects:
+    type: boolean
+    description: Follow HTTP redirects (default true, max 5 redirects)
+    required: false
+    default: true
+
+  parseJson:
+    type: boolean
+    description: Automatically parse response as JSON if content-type is application/json (default true)
+    required: false
+    default: true
+
+  maxSize:
+    type: number
+    description: Maximum response size in bytes (default 10485760 = 10MB). Prevents memory exhaustion.
+    required: false
+    default: 10485760
+
+execution:
+  type: function
+  code: './web.py'
+
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+      description: Whether request succeeded
+    url:
+      type: string
+      description: URL that was fetched
+    statusCode:
+      type: number
+      description: HTTP status code (200, 404, 500, etc.)
+    statusText:
+      type: string
+      description: HTTP status text
+    contentType:
+      type: string
+      description: Content-Type header from response
+    content:
+      oneOf:
+        - type: object
+          description: Parsed JSON object (if parseJson=true and content-type is json)
+        - type: string
+          description: Response body as string
+    headers:
+      type: object
+      description: Response headers as key-value pairs
+    size:
+      type: number
+      description: Response body size in bytes
+    duration:
+      type: number
+      description: Request duration in milliseconds
+    redirects:
+      type: array
+      description: Array of redirect URLs if followed
+      items:
+        type: string
+  required: [success, url, statusCode, statusText, content, duration]
+
+error_handling:
+  retry: 2
+  backoff_type: exponential
+  initial_delay_ms: 1000
+
+examples:
+  - name: 'Fetch JSON API'
+    description: 'Get JSON data from REST API'
+    params:
+      url: 'https://api.github.com/users/octocat'
+      method: 'GET'
+  - name: 'Fetch HTML webpage'
+    description: 'Get HTML content from website'
+    params:
+      url: 'https://example.com'
+      method: 'GET'
+      parseJson: false
+  - name: 'POST with JSON body'
+    description: 'Send POST request with JSON payload'
+    params:
+      url: 'https://api.example.com/data'
+      method: 'POST'
+      body: '{"key": "value"}'
+
+tags: [web, http, fetch, api, network]

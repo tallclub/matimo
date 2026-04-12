@@ -1,0 +1,125 @@
+name: mailchimp-create-campaign
+version: '1.0.0'
+description: >
+  Create a new Mailchimp email campaign. Supports regular, plaintext, RSS,
+  and A/B test variate campaign types. After creating, configure the campaign
+  content and use mailchimp-send-campaign to send it.
+
+parameters:
+  server_prefix:
+    type: string
+    required: true
+    description: >
+      Your Mailchimp data center prefix (e.g. "us6"). Found at the end of your API key:
+      "abc123-us6" → server_prefix is "us6".
+  type:
+    type: string
+    required: true
+    description: >
+      Campaign type: "regular" (standard email), "plaintext" (text-only email),
+      "rss" (RSS-driven campaign), or "variate" (A/B test campaign)
+    enum:
+      - regular
+      - plaintext
+      - rss
+      - variate
+  list_id:
+    type: string
+    required: false
+    description: >
+      The unique ID of the Mailchimp audience/list to send this campaign to.
+      Required when type is "regular" or "plaintext".
+  subject_line:
+    type: string
+    required: false
+    description: The subject line for the campaign email
+  preview_text:
+    type: string
+    required: false
+    description: Preview text displayed after the subject line in email clients (max 150 chars)
+  title:
+    type: string
+    required: false
+    description: Internal title for the campaign (used to identify it in Mailchimp dashboard)
+  from_name:
+    type: string
+    required: false
+    description: The "From" name subscribers will see in their inbox
+  reply_to:
+    type: string
+    required: false
+    description: The reply-to email address for the campaign
+
+execution:
+  type: http
+  method: POST
+  url: 'https://{server_prefix}.api.mailchimp.com/3.0/campaigns'
+  headers:
+    Authorization: 'apikey {MAILCHIMP_API_KEY}'
+    Content-Type: application/json
+  body:
+    type: '{type}'
+    recipients:
+      list_id: '{list_id}'
+    settings:
+      subject_line: '{subject_line}'
+      preview_text: '{preview_text}'
+      title: '{title}'
+      from_name: '{from_name}'
+      reply_to: '{reply_to}'
+  timeout: 30000
+
+authentication:
+  type: api_key
+  location: header
+  name: Authorization
+  notes:
+    env: MAILCHIMP_API_KEY
+
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+    data:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique campaign ID (use this with mailchimp-send-campaign)
+        type:
+          type: string
+        status:
+          type: string
+          description: Campaign status (save, paused, schedule, sending, sent)
+        settings:
+          type: object
+        recipients:
+          type: object
+
+error_handling:
+  retry: 2
+  backoff_type: exponential
+  initial_delay_ms: 500
+
+examples:
+  - name: 'Create a regular campaign'
+    params:
+      server_prefix: us6
+      type: regular
+      list_id: abc123def4
+      subject_line: 'Welcome to our newsletter!'
+      preview_text: 'Check out what we have for you this month'
+      title: 'Monthly Newsletter - March 2026'
+      from_name: 'Acme Marketing'
+      reply_to: marketing@acme.com
+    expected_result: 'Returns campaign record with id for use in mailchimp-send-campaign'
+  - name: 'Create a plaintext campaign'
+    params:
+      server_prefix: us6
+      type: plaintext
+      list_id: abc123def4
+      subject_line: 'Quick update from us'
+      from_name: 'Acme Team'
+      reply_to: hello@acme.com
+    expected_result: 'Returns plaintext campaign record ready to add content and send'

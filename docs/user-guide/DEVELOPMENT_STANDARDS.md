@@ -1,9 +1,10 @@
 # Development Standards — Code Quality Rules
 
-Code quality standards and best practices for Matimo.
+Code quality standards and best practices for Matimo. Covers both **Python** and **TypeScript** SDKs.
 
 ## Table of Contents
 
+- [Python Standards](#python-standards)
 - [TypeScript Standards](#typescript-standards)
 - [Naming Conventions](#naming-conventions)
 - [Error Handling](#error-handling)
@@ -13,6 +14,266 @@ Code quality standards and best practices for Matimo.
 - [Logging Standards](#logging-standards)
 - [Performance Standards](#performance-standards)
 - [Quality Metrics](#quality-metrics)
+
+---
+
+## Python Standards
+
+### Strict Type Hints (Required)
+
+All Python code must use type hints throughout. Checked by `mypy` in strict mode.
+
+```python
+# pyproject.toml (mypy config)
+[tool.mypy]
+strict = true
+python_version = "3.11"
+```
+
+**DO:**
+
+```python
+from __future__ import annotations
+from typing import Any
+
+def load_tool(path: str) -> ToolDefinition:
+    ...
+
+async def execute(tool: ToolDefinition, params: dict[str, Any]) -> Any:
+    ...
+```
+
+**DON'T:**
+
+```python
+def load_tool(path):           # No type hints
+    ...
+
+def execute(tool, params):     # No types
+    ...
+```
+
+### Pydantic for Runtime Validation
+
+All tool definitions, configs, and external inputs must use Pydantic models.
+
+```python
+from pydantic import BaseModel, Field
+
+class Parameter(BaseModel):
+    type: str
+    required: bool = False
+    description: str | None = None
+
+# Pydantic validates on construction — never trust raw dicts
+tool = ToolDefinition.model_validate(raw_yaml)
+```
+
+### Code Style (Ruff + Mypy)
+
+```bash
+# From python/ workspace root:
+make lint          # ruff check
+make lint-fix      # ruff check --fix
+make format        # ruff format
+make typecheck     # mypy strict (via packages/core)
+
+# Or directly with uv:
+uv run ruff check packages/ scripts/
+uv run ruff format packages/ scripts/
+cd packages/core && uv run mypy src/
+```
+
+**Rules enforced:**
+- No `# type: ignore` without a comment explaining why
+- No `Any` without explicit justification
+- Snake_case for all functions, variables, modules
+- `from __future__ import annotations` at the top of every file
+
+### Async-First
+
+All I/O operations must be `async def`. Use `asyncio.run()` only at the top-level entry point.
+
+```python
+# ✅ DO: async methods
+async def execute(self, tool_name: str, params: dict[str, Any]) -> Any:
+    ...
+
+# ✅ DO: asyncio.run() only at entry
+if __name__ == '__main__':
+    asyncio.run(main())
+
+# ❌ DON'T: Synchronous I/O in the call stack
+def execute(self, tool_name: str, ...):  # DO NOT block the event loop
+    result = requests.get(url)           # Blocking!
+```
+
+---
+
+## Python Naming Conventions
+
+| Construct | Convention | Example |
+|-----------|-----------|---------|
+| Files | `snake_case.py` | `tool_loader.py` |
+| Classes | `PascalCase` | `ToolLoader`, `MatimoError` |
+| Functions/methods | `snake_case` | `load_tool_from_file()` |
+| Variables | `snake_case` | `tool_registry` |
+| Constants | `UPPER_SNAKE_CASE` | `MAX_RETRIES = 3` |
+| Private | `_leading_underscore` | `_resolve_path()` |
+
+---
+
+## Python Error Handling
+
+### Use Structured Errors
+
+```python
+from matimo.errors import MatimoError, ErrorCode
+
+# Throw with context
+raise MatimoError(
+    "Tool execution failed",
+    ErrorCode.EXECUTION_FAILED,
+    {"tool_name": tool.name, "reason": "timeout"},
+)
+```
+
+### Catching Pattern
+
+```python
+try:
+    result = await executor.execute(tool, params)
+    return result
+except MatimoError:
+    raise  # re-raise structured errors as-is
+except Exception as exc:
+    raise MatimoError(
+        f"Unexpected error executing '{tool.name}': {exc}",
+        ErrorCode.EXECUTION_FAILED,
+        {"tool_name": tool.name},
+    ) from exc
+```
+
+---
+
+## Python Testing Standards
+
+### Framework: pytest + pytest-asyncio
+
+```bash
+# From python/ workspace root (recommended):
+make test             # full suite
+make test-unit        # unit tests only
+make test-integration # integration tests only
+make test-coverage    # tests + HTML coverage report
+
+# Or with uv directly:
+uv run pytest packages/core/tests/ -v
+uv run pytest packages/core/tests/ --cov=packages/core/src/matimo --cov-report=term-missing
+```
+
+### Test Structure
+
+```python
+# packages/core/tests/unit/test_tool_loader.py
+import pytest
+from matimo.core.loader import ToolLoader
+
+class TestToolLoader:
+    def setup_method(self):
+        self.loader = ToolLoader()
+
+    @pytest.mark.asyncio
+    async def test_load_valid_yaml(self, tmp_path):
+        # Arrange
+        yaml_content = "name: calculator\n..."
+        path = tmp_path / "definition.yaml"
+        path.write_text(yaml_content)
+
+        # Act
+        tool = self.loader.load_tool_from_file(str(path))
+
+        # Assert
+        assert tool.name == "calculator"
+
+    def test_raises_on_missing_file(self):
+        with pytest.raises(MatimoError) as exc_info:
+            self.loader.load_tool_from_file("./nonexistent.yaml")
+        assert exc_info.value.code == ErrorCode.FILE_NOT_FOUND
+```
+
+### Coverage Targets
+
+| Metric | Minimum |
+|--------|----------|
+| Statements | 95% |
+| Branches | 87% |
+| Functions | 97% |
+| Lines | 95% |
+
+---
+
+## Python Development Workflow
+
+The `python/` workspace root has a **Makefile** that mirrors the TypeScript `package.json` scripts. Run all commands from `python/`.
+
+### Command Reference
+
+| Makefile | Equivalent to TS | What it does |
+|----------|-----------------|--------------|
+| `make install` | `pnpm install` | `uv sync --all-extras --dev` |
+| `make test` | `pnpm test` | Run full pytest suite |
+| `make test-unit` | — | Unit tests only |
+| `make test-integration` | — | Integration tests only |
+| `make test-coverage` | `pnpm test:coverage` | Tests + HTML coverage report |
+| `make lint` | `pnpm lint` | Ruff check (read-only) |
+| `make lint-fix` | `pnpm lint:fix` | Ruff check --fix |
+| `make format` | `pnpm format` | Ruff format (write) |
+| `make format-check` | — | Ruff format --check (CI) |
+| `make typecheck` | `pnpm build` | mypy strict on `packages/core/src` |
+| `make validate-tools` | `pnpm validate-tools` | Validate all YAML definitions |
+| `make build` | `pnpm build` | Build all provider packages |
+| `make clean` | `pnpm clean` | Remove `__pycache__`, dist, .coverage |
+
+```bash
+cd python
+
+make install        # first-time setup
+make test           # run all tests
+make lint-fix       # auto-fix lint issues
+make format         # auto-format code
+make typecheck      # strict mypy
+make validate-tools # validate all YAMLs
+```
+
+### Scripts directory
+
+Standard utility scripts live in `python/scripts/`:
+
+| Script | Purpose |
+|--------|---------|
+| `scripts/validate_tools.py` | YAML tool definition validator (invoked by `make validate-tools`) |
+| `scripts/build_providers.py` | Builds provider packages (invoked by `make build`) |
+
+### Before Committing
+
+```bash
+cd python
+make format         # Format
+make lint           # Lint
+make typecheck      # Type-check
+make test           # Tests
+```
+
+### Pre-Merge Checklist (Python)
+
+- [ ] All tests passing (`make test`)
+- [ ] No mypy errors (`make typecheck`)
+- [ ] Ruff clean (`make lint && make format-check`)
+- [ ] Coverage ≥ 95% (`make test-coverage`)
+- [ ] Pydantic models validate all external inputs
+- [ ] No hardcoded secrets
+- [ ] `from __future__ import annotations` in every file
 
 ---
 
@@ -289,22 +550,22 @@ it('handles errors');
 
 ### Test Coverage
 
-**Minimum targets:**
+**Minimum targets (enforced by jest.config.cjs):**
 
-- Overall: **80%+**
-- Critical paths: **90%+**
-- Branch coverage: All if/else paths tested
-- Edge cases: Empty inputs, null values, max values
+- Statements: **95%+**
+- Branches: **87%+**
+- Functions: **97%+**
+- Lines: **95%+**
 
 ```bash
 # Check coverage
 pnpm test:coverage
 
 # Expected:
-# Statements   : 80%+
-# Branches     : 75%+
-# Functions    : 80%+
-# Lines        : 80%+
+# Statements   : 95%+
+# Branches     : 87%+
+# Functions    : 97%+
+# Lines        : 95%+
 ```
 
 ### Mocking & Fixtures
@@ -570,7 +831,7 @@ Requests/second: 1000+
 - Return types explicitly declared
 
 // ✅ Testing
-- 80%+ test coverage
+- 95%+ test coverage (TypeScript) / 95%+ (Python)
 - Unit tests for all modules
 - Integration tests for critical paths
 - Edge cases tested
@@ -617,7 +878,7 @@ pnpm test
 
 # Check coverage
 pnpm test:coverage
-# Expected: 80%+ coverage
+# Expected: 95%+ coverage
 ```
 
 ---
@@ -630,12 +891,12 @@ pnpm test:coverage
 2. **Check types:** `pnpm build`
 3. **Lint:** `pnpm lint`
 4. **Test:** `pnpm test`
-5. **Coverage:** `pnpm test:coverage` (verify 80%+)
+5. **Coverage:** `pnpm test:coverage` (verify 95%+)
 
 ### Pre-Merge Checklist
 
 - [ ] All tests passing
-- [ ] Coverage 80%+
+- [ ] Coverage 95%+
 - [ ] No TypeScript errors
 - [ ] No ESLint warnings
 - [ ] Code formatted with Prettier

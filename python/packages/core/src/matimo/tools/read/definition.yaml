@@ -1,0 +1,101 @@
+name: read
+version: '1.0.0'
+description: Read file contents with support for line ranges, encoding detection, and large file handling.
+requires_approval: true
+
+parameters:
+  filePath:
+    type: string
+    description: Absolute or relative path to file to read (supports ~ for home directory)
+    required: true
+    example: './src/config.ts'
+
+  startLine:
+    type: number
+    description: Starting line number (1-based, inclusive). If not provided, reads from beginning.
+    required: false
+    example: 10
+
+  endLine:
+    type: number
+    description: Ending line number (1-based, inclusive). If not provided, reads to end of file.
+    required: false
+    example: 50
+
+  encoding:
+    type: string
+    description: File encoding (utf8, utf16, ascii, latin1). Defaults to utf8.
+    required: false
+    default: 'utf8'
+    example: 'utf8'
+
+  maxLines:
+    type: number
+    description: Maximum lines to read (default 10000, useful for large files). Returns error if exceeded.
+    required: false
+    example: 5000
+
+execution:
+  type: function
+  code: './read.py'
+
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+      description: Whether file read was successful
+    filePath:
+      type: string
+      description: Path to the file that was read
+    content:
+      type: string
+      description: File content (or file excerpt if line range specified)
+    encoding:
+      type: string
+      description: Encoding used for file read
+    lineCount:
+      type: number
+      description: Total number of lines in file (if known)
+    readLines:
+      type: number
+      description: Number of lines actually read
+    linesRequested:
+      type: object
+      properties:
+        start:
+          type: number
+        end:
+          type: number
+    size:
+      type: number
+      description: File size in bytes
+    mtime:
+      type: string
+      description: Last modified time (ISO format)
+  required: [success, filePath, content, encoding, readLines]
+
+error_handling:
+  retry: 1
+  backoff_type: exponential
+  initial_delay_ms: 300
+
+examples:
+  - name: 'Read entire file'
+    description: 'Read complete file contents'
+    params:
+      filePath: './config.json'
+  - name: 'Read specific line range'
+    description: 'Read lines 10-50 from file'
+    params:
+      filePath: './src/app.ts'
+      startLine: 10
+      endLine: 50
+  - name: 'Read single line'
+    description: 'Read exactly line 42'
+    params:
+      filePath: './package.json'
+      startLine: 42
+      endLine: 42
+
+tags: [filesystem, file, read, io]

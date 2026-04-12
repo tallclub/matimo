@@ -1,5 +1,314 @@
 # LangChain Integration
 
+Matimo integrates with LangChain for both **Python** and **TypeScript**. Both SDKs expose a single `convert_tools_to_langchain` / `convertToolsToLangChain` function that wraps any Matimo tool as a LangChain `StructuredTool`.
+
+- [Python LangChain Integration](#python-langchain-integration)
+- [TypeScript LangChain Integration](#typescript-langchain-integration)
+
+---
+
+## Python LangChain Integration
+
+### Installation
+
+```bash
+pip install "matimo[langchain]" langchain-openai langchain
+# or with uv
+uv add "matimo[langchain]" langchain-openai langchain
+```
+
+### Basic Setup
+
+```python
+import asyncio
+import os
+from matimo import Matimo
+from matimo.integrations.langchain import convert_tools_to_langchain
+
+async def main():
+    # 1. Load Matimo tools
+    matimo = await Matimo.init(auto_discover=True)
+
+    # 2. Convert to LangChain StructuredTools (one call)
+    lc_tools = convert_tools_to_langchain(
+        matimo.list_tools(),
+        matimo,
+        credentials={'SLACK_BOT_TOKEN': os.environ['SLACK_BOT_TOKEN']},
+    )
+
+    print(f"📦 {len(lc_tools)} LangChain tools ready")
+
+asyncio.run(main())
+```
+
+> ⚠️ **OpenAI 128-tool limit**: `gpt-4o`, `gpt-4o-mini`, and most OpenAI models reject requests with more than 128 tools bound.
+> Filter to only the tools the agent needs for the current task:
+> ```python
+> # Only Slack tools
+> slack_tools_def = [t for t in matimo.list_tools() if t.name.startswith('slack_')]
+> lc_tools = convert_tools_to_langchain(slack_tools_def, matimo, credentials={...})
+>
+> # Or use search to find relevant tools
+> relevant = matimo.search_tools('send message')
+> lc_tools = convert_tools_to_langchain(relevant[:20], matimo, credentials={...})
+> ```
+
+### Complete ReAct Agent Example
+
+```python
+import asyncio
+import os
+from matimo import Matimo
+from matimo.integrations.langchain import convert_tools_to_langchain
+from langchain_openai import ChatOpenAI
+from langchain.agents import AgentExecutor, create_tool_calling_agent
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.messages import HumanMessage, SystemMessage
+
+async def run_slack_agent():
+    # Initialise Matimo
+    matimo = await Matimo.init(auto_discover=True)
+
+    # Filter to Slack tools only
+    slack_tools_def = [t for t in matimo.list_tools() if t.name.startswith('slack_')]
+    print(f"📦 Loaded {len(slack_tools_def)} Slack tools")
+
+    # Convert to LangChain format
+    lc_tools = convert_tools_to_langchain(
+        slack_tools_def,
+        matimo,
+        credentials={'SLACK_BOT_TOKEN': os.environ['SLACK_BOT_TOKEN']},
+    )
+
+    # Build OpenAI tool-calling agent
+    llm = ChatOpenAI(model='gpt-4o-mini', temperature=0)
+    prompt = ChatPromptTemplate.from_messages([
+        ('system', 'You are a helpful Slack assistant.'),
+        ('human', '{input}'),
+        ('placeholder', '{agent_scratchpad}'),
+    ])
+    agent = create_tool_calling_agent(llm, lc_tools, prompt)
+    executor = AgentExecutor(agent=agent, tools=lc_tools, verbose=True)
+
+    # Test queries
+    queries = [
+        'List all channels',
+        'Get message history for #general',
+        'Send a test message to #general',
+    ]
+    for query in queries:
+        print(f"\n📝 User: \"{query}\"")
+        result = await executor.ainvoke({'input': query})
+        print(f"🤖 Agent: {result['output']}")
+
+asyncio.run(run_slack_agent())
+```
+
+### Manual ReAct Loop (No Agent Framework)
+
+For full control over the tool-call loop:
+
+```python
+import asyncio
+import json
+import os
+from matimo import Matimo
+from matimo.integrations.langchain import convert_tools_to_langchain
+from langchain_openai import ChatOpenAI
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
+
+async def run_manual_agent(mission: str) -> None:
+    matimo = await Matimo.init(auto_discover=True)
+    lc_tools = convert_tools_to_langchain(matimo.list_tools(), matimo)
+
+    llm = ChatOpenAI(model='gpt-4o-mini', temperature=0).bind_tools(lc_tools)
+    tool_map = {t.name: t for t in lc_tools}
+
+    messages = [HumanMessage(content=mission)]
+
+    for _ in range(10):  # max 10 agent steps
+        response: AIMessage = await llm.ainvoke(messages)
+        messages.append(response)
+
+        if not response.tool_calls:
+            print(f"Final answer: {response.content}")
+            break
+
+        for call in response.tool_calls:
+            tool = tool_map[call['name']]
+            tool_result = await tool.ainvoke(call['args'])
+            messages.append(ToolMessage(
+                tool_call_id=call['id'],
+                content=str(tool_result),
+            ))
+
+asyncio.run(run_manual_agent("List the Slack channels and send hello to #general"))
+```
+
+### API Reference: `convert_tools_to_langchain`
+
+```python
+from matimo.integrations.langchain import convert_tools_to_langchain
+
+def convert_tools_to_langchain(
+    tools: list[ToolDefinition],
+    matimo: Matimo,
+    credentials: dict[str, str] | None = None,
+) -> list[StructuredTool]:
+    ...
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `tools` | `list[ToolDefinition]` | Matimo tool definitions to convert |
+| `matimo` | `Matimo` | Instance used to execute tools |
+| `credentials` | `dict[str, str] \| None` | Per-call credential overrides |
+
+**Returns:** List of `langchain_core.tools.StructuredTool` objects.
+
+**Raises:** `ImportError` if `langchain-core` is not installed.
+
+### Secret Handling (Python)
+
+Secret parameters are **automatically excluded from the LangChain schema** so the LLM never sees them. A parameter is treated as a secret when its name contains `TOKEN`, `KEY`, `SECRET`, or `PASSWORD` (case-insensitive).
+
+```python
+# Tool parameters: SLACK_BOT_TOKEN, channel, text
+# convert_tools_to_langchain excludes SLACK_BOT_TOKEN from schema
+# and injects it at call time from credentials
+
+lc_tools = convert_tools_to_langchain(
+    [slack_tool],
+    matimo,
+    credentials={'SLACK_BOT_TOKEN': os.environ['SLACK_BOT_TOKEN']},
+)
+
+# LLM only provides: channel, text
+# SLACK_BOT_TOKEN injected automatically
+```
+
+### Skills Integration (Python, Non-MCP)
+
+When running LangChain without an MCP server, use the skills helpers to implement progressive skill disclosure:
+
+```python
+from matimo import Matimo
+from matimo.core.skill_registry import SkillRegistry
+from matimo.integrations.langchain import convert_tools_to_langchain
+from langchain_openai import ChatOpenAI
+from langchain_core.messages import SystemMessage, HumanMessage
+
+async def run_skills_agent():
+    matimo = await Matimo.init(auto_discover=True)
+    lc_tools = convert_tools_to_langchain(matimo.list_tools(), matimo)
+
+    # Level 1 — lightweight metadata for system prompt
+    skills_meta = [
+        {'name': s.name, 'description': s.description}
+        for s in matimo._registry.get_all()   # or use skill registry
+    ]
+    meta_block = '\n'.join(
+        f"- **{s['name']}**: {s['description']}" for s in skills_meta
+    )
+    system_prompt = (
+        f"You are a helpful agent.\n\n"
+        f"Available skills:\n{meta_block}"
+    )
+
+    llm = ChatOpenAI(model='gpt-4o-mini').bind_tools(lc_tools)
+    user_message = 'How do I handle Slack rate limits?'
+
+    messages = [
+        SystemMessage(content=system_prompt),
+        HumanMessage(content=user_message),
+    ]
+    response = await llm.ainvoke(messages)
+    print(response.content)
+```
+
+### Error Handling (Python)
+
+```python
+from matimo.errors import MatimoError, ErrorCode
+
+try:
+    result = await executor.ainvoke({'input': 'Send an email'})
+except MatimoError as e:
+    if e.code == ErrorCode.TOOL_NOT_FOUND:
+        print(f"Tool not available: {e.message}")
+    elif e.code == ErrorCode.VALIDATION_FAILED:
+        print(f"Invalid parameters: {e.context}")
+    elif e.code == ErrorCode.EXECUTION_FAILED:
+        print(f"Tool execution failed: {e.context}")
+    else:
+        raise
+```
+
+### OAuth2 with LangChain (Python)
+
+```python
+import os
+
+# Set tokens in environment before initialising Matimo
+os.environ['GMAIL_ACCESS_TOKEN'] = 'your-access-token'
+os.environ['GITHUB_TOKEN'] = 'your-github-token'
+
+matimo = await Matimo.init(auto_discover=True)
+# Tokens are injected automatically by the HTTP executor
+```
+
+### Working Examples
+
+See [python/examples/langchain/](../../python/examples/langchain/) for complete examples:
+
+| File | Description |
+|------|-------------|
+| `agents/langchain_agent.py` | Generic multi-provider ReAct agent |
+| `agents/langchain_skills_policy_agent.py` | Agent with skills + policy |
+| `slack/slack_langchain.py` | Slack-only agent |
+| `github/github_langchain.py` | GitHub tools agent |
+| `github/github_with_approval.py` | Agent with HITL approval flow |
+| `gmail/gmail_langchain.py` | Gmail tools agent |
+| `postgres/postgres_langchain.py` | PostgreSQL agent |
+| `postgres/postgres_with_approval.py` | PostgreSQL with approval |
+
+Run them:
+
+```bash
+cd python/examples
+cp .env.example .env   # fill in API keys
+uv run python langchain/agents/langchain_agent.py
+# with a custom mission:
+uv run python langchain/agents/langchain_agent.py "List all open GitHub issues"
+```
+
+### Troubleshooting (Python)
+
+**Tool not found:**
+
+```python
+tools = matimo.list_tools()
+print([t.name for t in tools])  # Check available tool names
+```
+
+**Missing langchain-core:**
+
+```bash
+pip install "matimo[langchain]"
+```
+
+**OAuth token missing:**
+
+```bash
+export SLACK_BOT_TOKEN=xoxb-...
+```
+
+---
+
+## TypeScript LangChain Integration
+
 ## Overview
 
 Matimo provides a simple, unified API (`convertToolsToLangChain`) to convert tool definitions to LangChain-compatible format. This eliminates boilerplate and scales to many tools seamlessly.
@@ -52,6 +361,13 @@ const result = await agent.invoke({
 
 console.log('Agent response:', result.output);
 ```
+
+> ⚠️ **OpenAI 128-tool limit**: `gpt-4o`, `gpt-4o-mini`, and most OpenAI models reject requests with more than 128 tools bound.
+> Filter to only the tools the agent needs:
+> ```typescript
+> const slackTools = matimo.listTools().filter(t => t.name.startsWith('slack_'));
+> const langchainTools = convertToolsToLangChain(slackTools, matimo, credentials);
+> ```
 
 ### Complete LangChain Agent Example
 

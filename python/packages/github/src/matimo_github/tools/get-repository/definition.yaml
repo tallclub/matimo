@@ -1,0 +1,83 @@
+name: github-get-repository
+description: Get detailed information about a repository
+version: '1.0.0'
+
+parameters:
+  owner:
+    type: string
+    required: true
+    description: Repository owner username or organization
+  repo:
+    type: string
+    required: true
+    description: Repository name
+
+execution:
+  type: http
+  method: GET
+  url: 'https://api.github.com/repos/{owner}/{repo}'
+  headers:
+    Accept: application/vnd.github+json
+    Authorization: 'Bearer {GITHUB_TOKEN}'
+    X-GitHub-Api-Version: '2022-11-28'
+  timeout: 10000
+
+authentication:
+  type: bearer
+  location: header
+  notes:
+    env: GITHUB_TOKEN
+    optional: Public repos don't require authentication
+
+output_schema:
+  type: object
+  properties:
+    id:
+      type: number
+    name:
+      type: string
+    full_name:
+      type: string
+    owner:
+      type: object
+    private:
+      type: boolean
+    description:
+      type: string
+    fork:
+      type: boolean
+    created_at:
+      type: string
+    updated_at:
+      type: string
+    pushed_at:
+      type: string
+    homepage:
+      type: string
+    language:
+      type: string
+    stargazers_count:
+      type: number
+    watchers_count:
+      type: number
+    forks_count:
+      type: number
+    open_issues_count:
+      type: number
+    topics:
+      type: array
+    archived:
+      type: boolean
+    disabled:
+      type: boolean
+
+error_handling:
+  retry: 2
+  backoff_type: exponential
+  initial_delay_ms: 500
+
+examples:
+  - name: Get repository info
+    params:
+      owner: kubernetes
+      repo: kubernetes

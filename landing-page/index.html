@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Matimo - The Agent That Builds Itself. Framework-agnostic SDK with pre-built providers, skills system, MCP, and agents that autonomously build new capabilities. Works with LangChain, OpenAI, Claude, CrewAI.">
-    <meta name="keywords" content="AI agents, agent SDK, tool creation, self-extending agents, YAML tools, LangChain integration, MCP server, agent skills, policy engine, framework-agnostic">
+    <meta name="description" content="Matimo - The Agent That Builds Itself. Framework-agnostic SDK by tallclub & Roaiq Technologies. Pre-built providers, skills system, MCP, and agents that autonomously build new capabilities. Works with TypeScript, Python, LangChain, CrewAI, Claude Desktop, and any AI framework. Open source under MIT.">
+    <meta name="keywords" content="AI agents, agent SDK, tool creation, self-extending agents, YAML tools, LangChain integration, MCP server, agent skills, policy engine, framework-agnostic, Roaiq Technologies, open source">
     <meta name="author" content="Matimo Contributors">
     <meta name="robots" content="index, follow">
     <link rel="canonical" href="https://matimo.dev/">
@@ -12,7 +12,7 @@
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://matimo.dev/">
     <meta property="og:title" content="Matimo - The Agent That Builds Itself">
-    <meta property="og:description" content="Define Tools. Teach Skills. Let Agents Do the Rest. Framework-agnostic SDK with agent self-extension, pre-built providers, MCP support, and policy-gated security.">
+    <meta property="og:description" content="Define tools once in YAML, deploy everywhere. Official Python & TypeScript SDKs maintained by tallclub & Roaiq Technologies. Works with LangChain, CrewAI, MCP, Claude, and any AI framework. Framework-agnostic SDK with agent self-extension. Open source under MIT.">
     <meta property="og:image" content="https://matimo.dev/docs/assets/logo.png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
@@ -22,7 +22,7 @@
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:url" content="https://matimo.dev/">
     <meta name="twitter:title" content="Matimo - The Agent That Builds Itself">
-    <meta name="twitter:description" content="Define Tools. Teach Skills. Let Agents Do the Rest. Framework-agnostic SDK with agent self-extension and policy-gated security.">
+    <meta name="twitter:description" content="Define Tools. Teach Skills. Let Agents Do the Rest. Framework-agnostic SDK by tallclub & Roaiq Technologies with agent self-extension and policy-gated security. Open source, MIT licensed.">
     <meta name="twitter:image" content="https://matimo.dev/docs/assets/logo.png">
     <meta name="twitter:creator" content="@tallclub">
     <title>Matimo - The Agent That Builds Itself</title>
@@ -282,6 +282,14 @@
         .code-tab-button.active { background:var(--primary); color:white; border-color:var(--primary); }
         .code-tab-content { display:block; }
         .code-tab-content.hidden { display:none; }
+        .code-tab-button-pattern { padding:0.4rem 0.75rem; border-radius:6px; border:1px solid var(--border); background:var(--light); cursor:pointer; font-weight:500; font-size:0.85rem; }
+        .code-tab-button-pattern.active { background:var(--primary); color:white; border-color:var(--primary); }
+        .code-tab-content-pattern { display:block; }
+        .code-tab-content-pattern.hidden { display:none; }
+        .code-snippet { display:block; }
+        .code-snippet.hidden { display:none; }
+        .lang-examples.hidden { display:none; }
+        .snippet-tabs { display:flex; gap:0.5rem; margin-bottom:1rem; flex-wrap:wrap; justify-content:center; }
 
         /* ============= FEATURES SECTION ============= */
         .features {
@@ -866,27 +874,37 @@
         "@context": "https://schema.org",
         "@type": "SoftwareApplication",
         "name": "Matimo",
-        "description": "The Agent That Builds Itself. Framework-agnostic SDK with pre-built providers, skills system, MCP support, and agents that autonomously build new capabilities.",
+        "description": "Framework-agnostic SDK for building AI agents that extend themselves. Define tools once in YAML, deploy everywhere. Official TypeScript and Python SDKs with LangChain, CrewAI, and MCP support.",
         "url": "https://matimo.dev",
         "image": "https://matimo.dev/docs/assets/logo.png",
-        "author": {
-            "@type": "Organization",
-            "name": "Matimo Contributors",
-            "url": "https://github.com/tallclub/matimo"
-        },
+        "author": [
+            {
+                "@type": "Organization",
+                "name": "tallclub",
+                "url": "https://github.com/tallclub"
+            },
+            {
+                "@type": "Organization",
+                "name": "Roaiq Technologies Private Limited",
+                "url": "https://roaiq.com"
+            }
+        ],
         "applicationCategory": ["DeveloperApplication", "BusinessApplication"],
-        "operatingSystem": "Any (JavaScript/Node.js)",
-        "programmingLanguage": "TypeScript",
+        "operatingSystem": ["Any (JavaScript/Node.js)", "Python 3.11+"],
+        "programmingLanguage": ["TypeScript", "Python"],
         "license": "https://opensource.org/licenses/MIT",
-        "softwareVersion": "0.1.0-alpha.13",
-        "releaseNotes": "Alpha 13 - Agent self-extension, pre-built providers, MCP support, policy engine",
+        "softwareVersion": "0.1.0-alpha.14",
+        "releaseNotes": "Alpha 14 - Python SDK official launch; 2,541 tests (97.38% coverage); 6 security patches; LangChain & CrewAI integrations.",
         "downloadUrl": "https://www.npmjs.com/package/matimo",
+        "downloadUrl": "https://pypi.org/project/matimo-core/",
         "offers": {
             "@type": "Offer",
             "price": "0",
             "priceCurrency": "USD",
             "url": "https://www.npmjs.com/package/matimo"
-        }
+        },
+        "keywords": "AI agents, agent SDK, tool creation, YAML tools, LangChain, CrewAI, MCP, policy engine, TypeScript, Python, self-extending agents, multi-tenant, framework-agnostic",
+        "featureList": ["Agent Self-Extension", "Skills System", "Policy Engine", "MCP Server", "Pre-Built Tools", "OAuth2 Support", "Type-Safe", "Framework Agnostic", "Hot-Reload", "Test Coverage 97.38%"]
     }
     </script>
     <script type="application/ld+json">
@@ -900,7 +918,8 @@
         "sameAs": [
             "https://github.com/tallclub/matimo",
             "https://discord.gg/3JPt4mxWDV",
-            "https://www.npmjs.com/package/matimo"
+            "https://www.npmjs.com/package/matimo",
+            "https://roaiq.com"
         ],
         "contactPoint": {
             "@type": "ContactPoint",
@@ -924,6 +943,7 @@
             </a>
             <nav>
                 <a href="#features">Features</a>
+                <a href="#why-matimo">Why Matimo?</a>
                 <a href="#patterns">Patterns</a>
                 <a href="#ecosystem">Ecosystem</a>
             </nav>
@@ -958,10 +978,17 @@
                 <a href="https://discord.gg/3JPt4mxWDV" title="Discord Community" target="_blank" rel="noopener noreferrer">
                     <img src="https://img.shields.io/badge/Discord-Join%20Chat-5865F2?style=flat-square&logo=discord&logoColor=white" alt="Discord">
                 </a>
+                <a href="https://pypi.org/project/matimo-core/" title="PyPI Package" target="_blank" rel="noopener noreferrer">
+                    <img src="https://img.shields.io/pypi/v/matimo-core.svg?style=flat-square" alt="PyPI version">
+                </a>
+                <a href="https://pypi.org/project/matimo-core/" title="Python 3.11+" target="_blank" rel="noopener noreferrer">
+                    <img src="https://img.shields.io/badge/Python-3.11%2B-blue?style=flat-square" alt="Python">
+                </a>
             </div>
             <h1>The Agent That Builds Itself</h1>
             <p>Define Tools. Teach Skills. Let Agents Do the Rest.</p>
             <p>A framework-agnostic SDK with pre-built providers, a skills knowledge layer, MCP out of the box, and agents that autonomously build new capabilities — governed by a policy engine you control.</p>
+            <div class="hero-date">Release: v0.1.0-alpha.14 — Python SDK Official Launch (Apr 10, 2026)</div>
             <div class="cta-buttons">
                 <a href="https://docs.matimo.dev/getting-started/QUICK_START" class="btn btn-primary">Get Started in 5 Minutes</a>
                 <a href="https://github.com/tallclub/matimo" class="btn btn-secondary">View on GitHub</a>
@@ -969,19 +996,28 @@
                         <div class="hero-image">
                                 <h2 style="text-align:center;margin-bottom:0.5rem">Agents That Extend Themselves</h2>
                                 <p style="text-align:center;color:var(--text-light);max-width:700px;margin:0.25rem auto 1rem;">Most SDKs give agents tools. Matimo gives agents the ability to build new tools — validated, approved, and live — without restarting. The meta-tool layer is Matimo's core differentiator.</p>
-                                <div class="code-tabs" style="margin-top:1rem;">
-                                        <button class="code-tab-button active" data-tab="tab-primary">Primary</button>
-                                        <button class="code-tab-button" data-tab="tab-create">Create a tool at runtime</button>
-                                        <button class="code-tab-button" data-tab="tab-hot">Hot-reload and use immediately</button>
+                                
+                                <!-- Language Toggle -->
+                                <div class="lang-selector" style="display:flex;gap:0;justify-content:center;margin:2rem auto 1.5rem;width:fit-content;background:var(--light);border:1px solid var(--border);border-radius:8px;padding:4px;">
+                                        <button class="lang-toggle active" data-lang="typescript" style="padding:0.625rem 1.5rem;font-weight:500;color:white;background:var(--primary);border:none;border-radius:6px;cursor:pointer;transition:all 0.2s;">TypeScript</button>
+                                        <button class="lang-toggle" data-lang="python" style="padding:0.625rem 1.5rem;font-weight:500;color:var(--text);background:transparent;border:none;cursor:pointer;transition:all 0.2s;">Python</button>
                                 </div>
-                                <pre id="tab-primary" class="code-block code-tab-content"><code class="language-javascript">import { MatimoInstance } from 'matimo';
+
+                                <!-- TypeScript Examples -->
+                                <div class="lang-examples" id="ts-examples">
+                                        <div class="snippet-tabs" style="display:flex;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap;justify-content:center;">
+                                                <button class="snippet-tab active" data-snippet="ts-primary" style="padding:0.5rem 1rem;border:1px solid var(--border);background:var(--light);border-radius:6px;cursor:pointer;font-weight:500;font-size:0.9rem;">Primary</button>
+                                                <button class="snippet-tab" data-snippet="ts-create" style="padding:0.5rem 1rem;border:1px solid var(--border);background:var(--light);border-radius:6px;cursor:pointer;font-weight:500;font-size:0.9rem;">Create Tool</button>
+                                                <button class="snippet-tab" data-snippet="ts-hot" style="padding:0.5rem 1rem;border:1px solid var(--border);background:var(--light);border-radius:6px;cursor:pointer;font-weight:500;font-size:0.9rem;">Hot-Reload</button>
+                                        </div>
+                                        <pre id="ts-primary" class="code-block code-snippet"><code class="language-javascript">import { MatimoInstance } from 'matimo';
 
 const matimo = await MatimoInstance.init();
-const result = await matimo.execute('slack-send-message', {
+const result = await matimo.execute('slack_send_channel_message', {
     channel: '#general',
     text: 'Hello Matimo!'
 });</code></pre>
-                                <pre id="tab-create" class="code-block code-tab-content hidden"><code class="language-javascript">const result = await matimo.execute('matimo_create_tool', {
+                                        <pre id="ts-create" class="code-block code-snippet hidden"><code class="language-javascript">const result = await matimo.execute('matimo_create_tool', {
     name: 'fetch-weather',
     yaml_content: `
 name: fetch-weather
@@ -998,12 +1034,175 @@ parameters:
         required: true
     `
 });</code></pre>
-                                <pre id="tab-hot" class="code-block code-tab-content hidden"><code class="language-javascript">await matimo.execute('matimo_approve_tool', {
+                                        <pre id="ts-hot" class="code-block code-snippet hidden"><code class="language-javascript">await matimo.execute('matimo_approve_tool', {
     name: 'fetch-weather'
 });
 await matimo.execute('matimo_reload_tools');
-const weather = await matimo.execute('fetch-weather', { city: 'Bangalore' });</code></pre>
+const weather = await matimo.execute('fetch-weather', 
+    { city: 'Bangalore' });</code></pre>
+                                </div>
+
+                                <!-- Python Examples -->
+                                <div class="lang-examples hidden" id="py-examples">
+                                        <div class="snippet-tabs" style="display:flex;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap;justify-content:center;">
+                                                <button class="snippet-tab active" data-snippet="py-primary" style="padding:0.5rem 1rem;border:1px solid var(--border);background:var(--light);border-radius:6px;cursor:pointer;font-weight:500;font-size:0.9rem;">Primary</button>
+                                                <button class="snippet-tab" data-snippet="py-create" style="padding:0.5rem 1rem;border:1px solid var(--border);background:var(--light);border-radius:6px;cursor:pointer;font-weight:500;font-size:0.9rem;">Create Tool</button>
+                                                <button class="snippet-tab" data-snippet="py-hot" style="padding:0.5rem 1rem;border:1px solid var(--border);background:var(--light);border-radius:6px;cursor:pointer;font-weight:500;font-size:0.9rem;">Hot-Reload</button>
+                                        </div>
+                                        <pre id="py-primary" class="code-block code-snippet"><code class="language-python">import asyncio
+from matimo import Matimo
+
+async def main():
+    matimo = await Matimo.init()
+    result = await matimo.execute('slack_send_channel_message', {
+        'channel': '#general',
+        'text': 'Hello Matimo!'
+    })
+    print(result)
+
+asyncio.run(main())</code></pre>
+                                        <pre id="py-create" class="code-block code-snippet hidden"><code class="language-python">result = await matimo.execute(
+    'matimo_create_tool', {
+    'name': 'fetch_weather',
+    'yaml_content': """
+name: fetch-weather
+version: "1.0.0"
+description: Get current weather for a city
+execution:
+    type: http
+    method: GET
+    url: https://wttr.in/{city}?format=j1
+parameters:
+    city:
+        type: string
+        required: true
+    """
+})</code></pre>
+                                        <pre id="py-hot" class="code-block code-snippet hidden"><code class="language-python">await matimo.execute('matimo_approve_tool', {
+    'name': 'fetch_weather'
+})
+await matimo.execute('matimo_reload_tools')
+weather = await matimo.execute(
+    'fetch_weather', {'city': 'Bangalore'})</code></pre>
+                                </div>
                         </div>
+        </div>
+    </section>
+
+    <!-- ============= WHY MATIMO ============= -->
+    <section class="why-matimo" id="why-matimo" style="background:#f8f9fa;padding:80px 20px;margin:60px 0;">
+        <div class="container" style="max-width:1000px;">
+            <h2 style="text-align:center;font-size:2.2rem;margin-bottom:1rem;">Why Matimo?</h2>
+            <p style="text-align:center;color:#666;margin-bottom:0.5rem;font-size:1rem;">Matimo doesn't compete—it complements. We work alongside your existing frameworks.</p>
+            <p style="text-align:center;color:#888;margin-bottom:3rem;font-size:0.95rem;max-width:700px;margin-left:auto;margin-right:auto;">Whether you're using <strong>LangChain</strong> for orchestration, <strong>CrewAI</strong> for multi-agent teams, or <strong>Claude</strong> for intelligence, Matimo adds a skills layer + policy engine that enhances what you already have. One definition in YAML. Deploy everywhere.</p>
+            
+            <div style="overflow-x:auto;">
+                <table style="width:100%;border-collapse:collapse;font-size:0.95rem;line-height:1.6;">
+                    <thead>
+                        <tr style="background:#2d2d2d;color:white;">
+                            <th style="padding:1rem;text-align:left;border:1px solid #ddd;">Feature</th>
+                            <th style="padding:1rem;text-align:center;border:1px solid #ddd;"><img src="assets/matimo-logo.png" alt="Matimo" style="width:48px;height:48px;object-fit:contain;border-radius:4px;"></th>
+                            <th style="padding:1rem;text-align:center;border:1px solid #ddd;"><img src="assets/docs-by-langchain-logo.png" alt="LangChain" style="width:48px;height:48px;object-fit:contain;"></th>
+                            <th style="padding:1rem;text-align:center;border:1px solid #ddd;"><img src="assets/crewai_logo.png" alt="CrewAI" style="width:48px;height:48px;object-fit:contain;"></th>
+                            <th style="padding:1rem;text-align:center;border:1px solid #ddd;"><img src="assets/Claude_AI_logo.svg" alt="Claude" style="width:48px;height:48px;object-fit:contain;"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="background:white;">
+                            <td style="padding:1rem;border:1px solid #ddd;font-weight:600;">Skills System (&gt; just tools)</td>
+                            <td style="padding:1rem;text-align:left;border:1px solid #ddd;color:#10b981;font-weight:600;">✅ Yes</td>
+                            <td style="padding:1rem;text-align:left;border:1px solid #ddd;">❌ No</td>
+                            <td style="padding:1rem;text-align:left;border:1px solid #ddd;">❌ No</td>
+                            <td style="padding:1rem;text-align:left;border:1px solid #ddd;">✅ Yes (closed)</td>
+                        </tr>
+                        <tr style="background:#fafafa;">
+                            <td style="padding:1rem;border:1px solid #ddd;font-weight:600;">Policy Engine (approval, risk gates)</td>
+                            <td style="padding:1rem;text-align:left;border:1px solid #ddd;color:#10b981;font-weight:600;">✅ Built-in</td>
+                            <td style="padding:1rem;text-align:left;border:1px solid #ddd;">❌ No</td>
+                            <td style="padding:1rem;text-align:left;border:1px solid #ddd;">❌ No</td>
+                            <td style="padding:1rem;text-align:left;border:1px solid #ddd;">❌ No</td>
+                        </tr>
+                        <tr style="background:white;">
+                            <td style="padding:1rem;border:1px solid #ddd;font-weight:600;">TypeScript SDK</td>
+                            <td style="padding:1rem;text-align:left;border:1px solid #ddd;color:#10b981;font-weight:600;">✅ Yes</td>
+                            <td style="padding:1rem;text-align:left;border:1px solid #ddd;">✅ Yes</td>
+                            <td style="padding:1rem;text-align:left;border:1px solid #ddd;">⚠️ Limited</td>
+                            <td style="padding:1rem;text-align:left;border:1px solid #ddd;">✅ Yes</td>
+                        </tr>
+                        <tr style="background:#fafafa;">
+                            <td style="padding:1rem;border:1px solid #ddd;font-weight:600;">Python SDK (LangChain, CrewAI compatible)</td>
+                            <td style="padding:1rem;text-align:left;border:1px solid #ddd;color:#10b981;font-weight:600;">✅ Yes</td>
+                            <td style="padding:1rem;text-align:left;border:1px solid #ddd;">✅ Yes</td>
+                            <td style="padding:1rem;text-align:left;border:1px solid #ddd;">✅ Yes</td>
+                            <td style="padding:1rem;text-align:left;border:1px solid #ddd;">❌ No</td>
+                        </tr>
+                        <tr style="background:white;">
+                            <td style="padding:1rem;border:1px solid #ddd;font-weight:600;">Works with ANY framework</td>
+                            <td style="padding:1rem;text-align:left;border:1px solid #ddd;color:#10b981;font-weight:600;">✅ Yes</td>
+                            <td style="padding:1rem;text-align:left;border:1px solid #ddd;">✅ Yes</td>
+                            <td style="padding:1rem;text-align:left;border:1px solid #ddd;">Purpose-built</td>
+                            <td style="padding:1rem;text-align:left;border:1px solid #ddd;">Claude only</td>
+                        </tr>
+                        <tr style="background:#fafafa;">
+                            <td style="padding:1rem;border:1px solid #ddd;font-weight:600;">MCP Server (Claude Desktop, Cursor)</td>
+                            <td style="padding:1rem;text-align:left;border:1px solid #ddd;color:#10b981;font-weight:600;">✅ Yes</td>
+                            <td style="padding:1rem;text-align:left;border:1px solid #ddd;">❌ No</td>
+                            <td style="padding:1rem;text-align:left;border:1px solid #ddd;">❌ No</td>
+                            <td style="padding:1rem;text-align:left;border:1px solid #ddd;">✅ (MCP protocol)</td>
+                        </tr>
+                        <tr style="background:white;">
+                            <td style="padding:1rem;border:1px solid #ddd;font-weight:600;">Agent Self-Extension (create tools at runtime)</td>
+                            <td style="padding:1rem;text-align:left;border:1px solid #ddd;color:#10b981;font-weight:600;">✅ Yes</td>
+                            <td style="padding:1rem;text-align:left;border:1px solid #ddd;">❌ No</td>
+                            <td style="padding:1rem;text-align:left;border:1px solid #ddd;">❌ No</td>
+                            <td style="padding:1rem;text-align:left;border:1px solid #ddd;">❌ No</td>
+                        </tr>
+                        <tr style="background:#fafafa;">
+                            <td style="padding:1rem;border:1px solid #ddd;font-weight:600;">YAML-first (single definition)</td>
+                            <td style="padding:1rem;text-align:left;border:1px solid #ddd;color:#10b981;font-weight:600;">✅ Yes</td>
+                            <td style="padding:1rem;text-align:left;border:1px solid #ddd;">JSON schema</td>
+                            <td style="padding:1rem;text-align:left;border:1px solid #ddd;">Python decorators</td>
+                            <td style="padding:1rem;text-align:left;border:1px solid #ddd;">Proprietary</td>
+                        </tr>
+                        <tr style="background:white;">
+                            <td style="padding:1rem;border:1px solid #ddd;font-weight:600;">Semantic Skill Search (TF-IDF)</td>
+                            <td style="padding:1rem;text-align:left;border:1px solid #ddd;color:#10b981;font-weight:600;">✅ Yes</td>
+                            <td style="padding:1rem;text-align:left;border:1px solid #ddd;">❌ No</td>
+                            <td style="padding:1rem;text-align:left;border:1px solid #ddd;">❌ No</td>
+                            <td style="padding:1rem;text-align:left;border:1px solid #ddd;">❌ (internal only)</td>
+                        </tr>
+                        <tr style="background:#fafafa;">
+                            <td style="padding:1rem;border:1px solid #ddd;font-weight:600;">Open Source</td>
+                            <td style="padding:1rem;text-align:left;border:1px solid #ddd;color:#10b981;font-weight:600;">✅ MIT</td>
+                            <td style="padding:1rem;text-align:left;border:1px solid #ddd;">✅ MIT</td>
+                            <td style="padding:1rem;text-align:left;border:1px solid #ddd;">✅ Apache 2.0</td>
+                            <td style="padding:1rem;text-align:left;border:1px solid #ddd;">❌ Proprietary</td>
+                        </tr>
+                        <tr style="background:white;">
+                            <td style="padding:1rem;border:1px solid #ddd;font-weight:600;">Pre-Built Tools (Slack, GitHub, Gmail, etc.)</td>
+                            <td style="padding:1rem;text-align:left;border:1px solid #ddd;color:#10b981;font-weight:600;">✅ Growing</td>
+                            <td style="padding:1rem;text-align:left;border:1px solid #ddd;">✅ Extensible</td>
+                            <td style="padding:1rem;text-align:left;border:1px solid #ddd;">✅ Extensible</td>
+                            <td style="padding:1rem;text-align:left;border:1px solid #ddd;">Proprietary</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div style="margin-top:3rem;display:grid;grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));gap:2rem;">
+                <div style="background:white;padding:2rem;border-radius:8px;border-left:4px solid #007AFF;">
+                    <h4 style="margin:0 0 0.5rem;color:#007AFF;font-size:1.05rem;">✅ Best for LangChain Users</h4>
+                    <p style="margin:0;color:#666;font-size:0.95rem;">Add a skills layer + policy engine to your existing LangChain agents. NO refactoring needed.</p>
+                </div>
+                <div style="background:white;padding:2rem;border-radius:8px;border-left:4px solid #10b981;">
+                    <h4 style="margin:0 0 0.5rem;color:#10b981;font-size:1.05rem;">✅ Best for CrewAI Teams</h4>
+                    <p style="margin:0;color:#666;font-size:0.95rem;">Agents that learn from past runs. Semantic skill discovery + policy-gated approval. Multi-crew orchestration.</p>
+                </div>
+                <div style="background:white;padding:2rem;border-radius:8px;border-left:4px solid #f59e0b;">
+                    <h4 style="margin:0 0 0.5rem;color:#f59e0b;font-size:1.05rem;">✅ Best for Custom Agents</h4>
+                    <p style="margin:0;color:#666;font-size:0.95rem;">Self-extending agents that build new tools at runtime. Policy engine keeps them safe + audited.</p>
+                </div>
+            </div>
         </div>
     </section>
 
@@ -1014,6 +1213,12 @@ const weather = await matimo.execute('fetch-weather', { city: 'Bangalore' });</c
             <p>Pre-built tools ready to use. More coming soon.</p>
             <div class="tools-grid">
                 <div class="tools-grid-wrapper">
+                    <!-- Python SDK -->
+                    <a href="https://pypi.org/project/matimo-core/" class="tool-badge" title="Python SDK" target="_blank" rel="noopener noreferrer">
+                        <img src="assets/Python-logo.png" alt="Python Logo">
+                        Python
+                    </a>
+
                     <!-- MCP -->
                     <a href="https://github.com/tallclub/matimo/blob/main/docs/MCP.md" class="tool-badge" title="MCP Support" target="_blank" rel="noopener noreferrer">
                         <img src="assets/mcp.svg" alt="MCP Logo">
@@ -1078,6 +1283,12 @@ const weather = await matimo.execute('fetch-weather', { city: 'Bangalore' });</c
                     </a>
 
                     <!-- Duplicate set for seamless looping -->
+                    <!-- Python SDK -->
+                    <a href="https://pypi.org/project/matimo-core/" class="tool-badge" title="Python SDK" target="_blank" rel="noopener noreferrer">
+                        <img src="assets/Python-logo.png" alt="Python Logo">
+                        Python
+                    </a>
+
                     <!-- MCP -->
                     <a href="https://github.com/tallclub/matimo/blob/main/docs/MCP.md" class="tool-badge" title="MCP Support" target="_blank" rel="noopener noreferrer">
                         <img src="assets/mcp.svg" alt="MCP Logo">
@@ -1145,12 +1356,79 @@ const weather = await matimo.execute('fetch-weather', { city: 'Bangalore' });</c
         </div>
     </section>
 
+    <!-- ============= FRAMEWORKS & PROTOCOLS ============= -->
+    <section class="features">
+        <div class="container">
+            <h2 class="section-title">Works Everywhere</h2>
+            <p class="section-subtitle">Deploy to any framework or agent runtime with zero code changes</p>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon" style="padding:0;background:none;">
+                        <img src="assets/docs-by-langchain-logo.png" alt="LangChain" style="width:50px;height:50px;object-fit:contain;">
+                    </div>
+                    <h3>LangChain</h3>
+                    <p>Convert tools to `StructuredTool` instantly. Works with ReAct, OpenAI Functions, and any LangChain agent executor.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon" style="padding:0;background:none;">
+                        <img src="assets/crewai_logo.png" alt="CrewAI" style="width:60px;height:60px;object-fit:contain;">
+                    </div>
+                    <h3>CrewAI</h3>
+                    <p>Seamless `BaseTool` conversion with async support. Multi-agent crews and hierarchical workflows out of the box.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon" style="padding:0;background:none;">
+                        <img src="assets/Claude_AI_logo.svg" alt="Claude Desktop & MCP" style="width:50px;height:50px;object-fit:contain;">
+                    </div>
+                    <h3>Claude Desktop & MCP</h3>
+                    <p>Run Matimo as an MCP server. Claude Desktop, Cursor, Windsurf instantly see all your tools. One command: `npx matimo mcp`.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon" style="padding:0;background:none;">
+                        <img src="assets/custom-agents.svg" alt="Custom Agents" style="width:50px;height:50px;object-fit:contain;">
+                    </div>
+                    <h3>Custom Agents</h3>
+                    <p>Native SDK for custom agent loops. Factory pattern, decorator pattern, or direct SDK access—build however you want.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon" style="padding:0;background:none;">
+                        <img src="assets/cli-http.svg" alt="CLI & HTTP" style="width:50px;height:50px;object-fit:contain;">
+                    </div>
+                    <h3>CLI & HTTP</h3>
+                    <p>Tools via command-line, HTTP middleware, or direct invocation. Integrate into any workflow or service.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon" style="padding:0;background:none;">
+                        <img src="assets/any-provider.svg" alt="Any AI Provider" style="width:50px;height:50px;object-fit:contain;">
+                    </div>
+                    <h3>Any AI Provider</h3>
+                    <p>OpenAI, Anthropic, Google, Ollama—Matimo is agnostic. Your tools work with any LLM or agent framework.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+                            <line x1="50" y1="43" x2="30" y2="43" stroke="#000" stroke-width="1.5"/>
+                            <line x1="50" y1="43" x2="70" y2="43" stroke="#000" stroke-width="1.5"/>
+                            <line x1="50" y1="59" x2="50" y2="73" stroke="#000" stroke-width="1.5"/>
+                        </svg>
+                    </div>
+                
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- ============= FEATURES ============= -->
     <section class="features" id="features">
         <div class="container">
             <h2 class="section-title">Powerful Features</h2>
             <p class="section-subtitle">Everything you need to build AI agents with confidence</p>
             <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🐍</div>
+                    <h3>Python & TypeScript</h3>
+                    <p>Official Python 3.11+ support with async/await. Identical APIs, full feature parity, 97.38% test coverage. Works with LangChain, CrewAI, MCP.</p>
+                </div>
                 <div class="feature-card">
                     <div class="feature-icon">⚙️</div>
                     <h3>Agent Self-Extension</h3>
@@ -1214,16 +1492,16 @@ const weather = await matimo.execute('fetch-weather', { city: 'Bangalore' });</c
             <div class="benefits-text">
                 <h2>Why Teams Choose Matimo</h2>
                 <ul class="benefit-list">
-                    <li><strong>No Tool Duplication</strong> — Define once, reuse everywhere</li>
-                    <li><strong>Framework Freedom</strong> — Migrate between AI frameworks without rewriting tools</li>
-                    <li><strong>Faster Development</strong> — Pre-built tools from day one</li>
-                    <li><strong>Type Safe</strong> — TypeScript + Zod validation catches errors early</li>
+                    <li><strong>Dual SDKs</strong> — Full TypeScript and Python support; identical APIs across languages</li>
+                    <li><strong>No Tool Duplication</strong> — Define once in YAML, deploy everywhere</li>
+                    <li><strong>Framework Freedom</strong> — LangChain, CrewAI, MCP, or custom agents—same tools, different frameworks</li>
+                    <li><strong>Faster Development</strong> — Pre-built tools from day one (Slack, GitHub, Gmail, Notion, etc.)</li>
+                    <li><strong>Type Safe</strong> — TypeScript + Python type hints + Zod/Pydantic validation</li>
                     <li><strong>Community Tools</strong> — Growing ecosystem of @matimo/* providers</li>
-                    <li><strong>Enterprise Ready</strong> — OAuth2, error handling, retry logic built-in</li>
-                    <li><strong>Open Source</strong> — MIT licensed, fully transparent</li>
-                    <li><strong>Agent Self-Extension</strong> — Agents build and deploy new tools at runtime</li>
-                    <li><strong>Multi-Tenant Credentials</strong> — Per-execution credential isolation via getRequiredCredentials()</li>
-                    <li><strong>Extensive Test Coverage</strong> — Dozens of test suites with high coverage on core modules</li>
+                    <li><strong>Enterprise Ready</strong> — OAuth2, error handling, retry logic, 97%+ test coverage</li>
+                    <li><strong>Agent Self-Extension</strong> — Agents build and deploy new tools at runtime, validated by policy</li>
+                    <li><strong>Multi-Tenant Safe</strong> — Per-execution credential isolation; credentials never in env vars</li>
+                    <li><strong>Open Source</strong> — MIT licensed, 2,541+ tests passing (1,884 TS + 657 Python)</li>
                 </ul>
             </div>
             <div class="benefits-visual">
@@ -1257,44 +1535,75 @@ execution:
         <section class="patterns" id="patterns">
                 <div class="container">
                         <h2 class="section-title">Four Integration Patterns</h2>
-                        <p class="section-subtitle">Choose what works best for your use case</p>
+                        <p class="section-subtitle">Choose what works best for your use case. Both TypeScript and Python SDKs support all patterns.</p>
                         <div class="patterns-grid">
                             <div class="pattern-card">
                                 <div class="pattern-number">1</div>
                                 <h3>Factory Pattern</h3>
                                 <p>Simple and direct. Load tools and execute by name. Perfect for CLI tools and quick prototypes.</p>
-                                <pre class="code-block"><code class="language-javascript">const matimo = await MatimoInstance.init();
+                                <div class="code-tabs" style="margin-top:0.5rem;">
+                                    <button class="code-tab-button-pattern active" data-tab-pattern="factory-ts">TypeScript</button>
+                                    <button class="code-tab-button-pattern" data-tab-pattern="factory-py">Python</button>
+                                </div>
+                                <pre id="factory-ts" class="code-block code-tab-content-pattern"><code class="language-javascript">const matimo = await MatimoInstance.init();
 await matimo.execute('tool-name', params);</code></pre>
+                                <pre id="factory-py" class="code-block code-tab-content-pattern hidden"><code class="language-python">matimo = await Matimo.init()
+result = await matimo.execute('tool-name', params)</code></pre>
                             </div>
 
                             <div class="pattern-card">
                                 <div class="pattern-number">2</div>
                                 <h3>Decorator Pattern</h3>
                                 <p>Class-based approach. Use @tool decorator for natural, object-oriented tool execution.</p>
-                                <pre class="code-block"><code class="language-javascript">@tool('tool-name')
+                                <div class="code-tabs" style="margin-top:0.5rem;">
+                                    <button class="code-tab-button-pattern active" data-tab-pattern="deco-ts">TypeScript</button>
+                                    <button class="code-tab-button-pattern" data-tab-pattern="deco-py">Python</button>
+                                </div>
+                                <pre id="deco-ts" class="code-block code-tab-content-pattern"><code class="language-javascript">@tool('tool-name')
 async myMethod(param) {
   // Auto-executed
 }</code></pre>
+                                <pre id="deco-py" class="code-block code-tab-content-pattern hidden"><code class="language-python">@tool('tool-name')
+async def my_method(self, param):
+    # Auto-executed
+    pass</code></pre>
                             </div>
 
                             <div class="pattern-card">
                                 <div class="pattern-number">3</div>
                                 <h3>Framework Integration</h3>
-                                <p>Full LangChain, OpenAI, or CrewAI integration. Convert tools to framework schemas automatically.</p>
-                                <pre class="code-block"><code class="language-javascript">const tools = matimo
+                                <p>Full LangChain, CrewAI integration. Convert tools to framework schemas automatically.</p>
+                                <div class="code-tabs" style="margin-top:0.5rem;">
+                                    <button class="code-tab-button-pattern active" data-tab-pattern="fw-ts">TypeScript</button>
+                                    <button class="code-tab-button-pattern" data-tab-pattern="fw-py">Python</button>
+                                </div>
+                                <pre id="fw-ts" class="code-block code-tab-content-pattern"><code class="language-javascript">const tools = matimo
   .listTools()
   .map(t => toLangChainSchema(t));</code></pre>
+                                <pre id="fw-py" class="code-block code-tab-content-pattern hidden"><code class="language-python">from matimo import convert_tools_to_langchain
+tools = convert_tools_to_langchain(
+    matimo.list_tools(), matimo
+)</code></pre>
                             </div>
 
                             <div class="pattern-card">
                                 <div class="pattern-number">4</div>
                                 <h3>MCP Server</h3>
                                 <p>Run Matimo as a standalone MCP server. Claude Desktop, Cursor, and any MCP client see all your tools instantly.</p>
-                                <pre class="code-block"><code class="language-shell"># stdio (Claude Desktop)
+                                <div class="code-tabs" style="margin-top:0.5rem;">
+                                    <button class="code-tab-button-pattern active" data-tab-pattern="mcp-ts">TypeScript</button>
+                                    <button class="code-tab-button-pattern" data-tab-pattern="mcp-py">Python</button>
+                                </div>
+                                <pre id="mcp-ts" class="code-block code-tab-content-pattern"><code class="language-javascript">// stdio (Claude Desktop)
 npx matimo mcp
 
+// HTTP (remote agents)
+npx matimo mcp --transport http</code></pre>
+                                <pre id="mcp-py" class="code-block code-tab-content-pattern hidden"><code class="language-bash"># stdio (Claude Desktop)
+python -m matimo.mcp
+
 # HTTP (remote agents)
-npx matimo mcp --transport http --port 3000</code></pre>
+python -m matimo.mcp --transport http</code></pre>
                             </div>
 
                         </div>
@@ -1305,22 +1614,102 @@ npx matimo mcp --transport http --port 3000</code></pre>
     <section class="features" id="cli">
         <div class="container">
             <h2 class="section-title">Developer CLI</h2>
-            <p class="section-subtitle">matimo ships with a first-class CLI for environment setup and approval workflows.</p>
+            <p class="section-subtitle">First-class CLI for environment setup, validation, and approval workflows. Works with both TypeScript and Python SDKs.</p>
             <div class="features-grid">
                 <div class="feature-card">
                     <div class="feature-icon">🧰</div>
-                    <h3><code>npx matimo doctor</code></h3>
-                    <p>Diagnoses your environment: Node version, @matimo/* packages, missing env variables, and YAML validation — all in one command.</p>
+                    <h3>Environment Diagnostics</h3>
+                    <p><strong>Node:</strong> <code>npx matimo doctor</code><br><strong>Python:</strong> <code>matimo doctor</code><br>Diagnoses your setup: versions, @matimo/* packages, missing env variables, and YAML validation.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">📝</div>
-                    <h3><code>npx matimo review list</code></h3>
-                    <p>Lists all tools pending human approval or in quarantine. Part of the HITL (human-in-the-loop) approval workflow.</p>
+                    <h3>Approval Workflows</h3>
+                    <p><strong>Node:</strong> <code>npx matimo review list</code><br><strong>Python:</strong> <code>matimo review list</code><br>Lists all tools pending approval or in quarantine. Essential for HITL (human-in-the-loop) governance.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">⚙️</div>
-                    <h3><code>npx matimo mcp setup</code></h3>
-                    <p>Auto-generates claude_desktop_config.json for Claude Desktop integration. Writes directly to ~/.config/Claude/</p>
+                    <h3>MCP Server Setup</h3>
+                    <p><strong>Node:</strong> <code>npx matimo mcp setup</code><br><strong>Python:</strong> <code>matimo mcp setup</code><br>Auto-generates and configures Claude Desktop integration. One command, instant setup.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============= PLATFORM MATURITY ============= -->
+    <section class="features">
+        <div class="container">
+            <h2 class="section-title">Quick Start Resources</h2>
+            <p class="section-subtitle">Everything you need to get up and running in minutes</p>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">📖</div>
+                    <h3><a href="https://docs.matimo.dev/getting-started/QUICK_START" style="text-decoration:none;color:inherit;">QUICK_START Guide</a></h3>
+                    <p>5-minute walkthrough. Set up your first tool in minutes with step-by-step instructions for both TypeScript and Python.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔨</div>
+                    <h3><a href="https://docs.matimo.dev/tool-development/ADDING_TOOLS" style="text-decoration:none;color:inherit;">Create Your First Tool</a></h3>
+                    <p>YAML-first design philosophy. Build HTTP, command, and function-based tools with built-in validation and error handling.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🧪</div>
+                    <h3><a href="https://github.com/tallclub/matimo/tree/main/examples" style="text-decoration:none;color:inherit;">Example Projects</a></h3>
+                    <p>40+ runnable examples. LangChain, CrewAI, MCP, native patterns—all tested and production-ready.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📚</div>
+                    <h3><a href="https://docs.matimo.dev/api-reference/SDK" style="text-decoration:none;color:inherit;">API Reference</a></h3>
+                    <p>Complete TypeScript and Python API docs. Every class, method, and parameter documented with examples.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🎓</div>
+                    <h3><a href="https://docs.matimo.dev/skills/SKILLS.md" style="text-decoration:none;color:inherit;">Skills System</a></h3>
+                    <p>Domain knowledge layer for agents. Learn how to build, discover, and leverage skills for context-aware execution.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">💬</div>
+                    <h3><a href="https://discord.gg/3JPt4mxWDV" style="text-decoration:none;color:inherit;">Discord Community</a></h3>
+                    <p>Get help from maintainers and community. Ask questions, share tools, and stay updated with the latest releases.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============= PLATFORM MATURITY ============= -->
+    <section style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); padding: 100px 20px;">
+        <div class="container">
+            <h2 class="section-title">Production Ready</h2>
+            <p class="section-subtitle">Enterprise-grade testing, security, and observability baked in</p>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">✅</div>
+                    <h3>Test Coverage: 97.38%</h3>
+                    <p>2,541 tests passing (TypeScript + Python). Comprehensive unit, integration, and security test suites. Industry-leading quality standards.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔐</div>
+                    <h3>Security Hardened</h3>
+                    <p>6 critical security patches. Secret isolation, command injection prevention, integrity tracking, and real-time threat detection via policy engine.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <h3>110+ Pre-Built Tools</h3>
+                    <p>10 provider packages with 110+ production-ready tools. Slack, GitHub, Gmail, Notion, HubSpot, Mailchimp, Postgres, Twilio, and growing.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🛠️</div>
+                    <h3>Policy Engine</h3>
+                    <p>YAML-driven governance with auto/approval-required/blocked tiers. HITL quarantine, approval manifests, and audit trails for compliance.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🚀</div>
+                    <h3>Performance Optimized</h3>
+                    <p>Shared executor pools, efficient TF-IDF embeddings, hot-reload atomicity. Built for production scale with CrewAI, LangChain, and beyond.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🌍</div>
+                    <h3>Dual SDK Support</h3>
+                    <p>Identical APIs across TypeScript and Python. Cross-language parity means teams can ship together. One YAML definition, infinite deployments.</p>
                 </div>
             </div>
         </div>
@@ -1382,7 +1771,16 @@ npx matimo mcp --transport http --port 3000</code></pre>
             </div>
         </div>
         <div class="footer-bottom">
-            <p>&copy; 2026 Matimo. Open source under MIT License.</p>
+            <div style="margin-bottom:1.5rem; padding:1rem; background:rgba(255,255,255,0.05); border-radius:8px; border-left:3px solid #0066cc;">
+                <p style="font-size:0.9rem; line-height:1.6; margin:0;">
+                    <strong>⚠️Disclaimer:</strong> Matimo is in active development. While we thoroughly tested (97.38% coverage), it may contain bugs or breaking changes. 
+                    <strong style="color:#fbbf24;">Report issues on <a href="https://github.com/tallclub/matimo/issues" style="color:#60a5fa; text-decoration:underline;">GitHub</a> or <a href="https://discord.gg/3JPt4mxWDV" style="color:#60a5fa; text-decoration:underline;">Discord</a>.</strong>
+                </p>
+            </div>
+            <p style="margin-bottom:0.5rem;"><strong>Maintained by:</strong> <a href="https://github.com/tallclub" style="color:#60a5fa; text-decoration:none;">tallclub</a> &amp; <a href="https://roaiq.com" style="color:#60a5fa; text-decoration:none;">Roaiq Technologies Private Limited</a>. 
+            <a href="https://github.com/tallclub/matimo/blob/main/CONTRIBUTING.md" style="color:#60a5fa; text-decoration:none;">Contribute</a> • 
+            <a href="https://github.com/tallclub/matimo/security/policy" style="color:#60a5fa; text-decoration:none;">Security</a></p>
+            <p>&copy; 2026 Matimo. <strong>Open Source</strong> under <a href="https://opensource.org/licenses/MIT" style="color:#60a5fa; text-decoration:none;">MIT License</a>. See full <a href="https://github.com/tallclub/matimo/blob/main/LICENSE" style="color:#60a5fa; text-decoration:none;">LICENSE</a>.</p>
         </div>
     </footer>
 
@@ -1443,7 +1841,92 @@ npx matimo mcp --transport http --port 3000</code></pre>
                 });
             }
 
+            // Pattern tab handlers
+            function initPatternTabs() {
+                document.querySelectorAll('.code-tab-button-pattern').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const tabId = this.getAttribute('data-tab-pattern');
+                        const group = this.parentElement;
+                        // Deactivate all buttons in this group
+                        group.querySelectorAll('.code-tab-button-pattern').forEach(b => b.classList.remove('active'));
+                        this.classList.add('active');
+                        // Hide all tabs in this card then show the selected one
+                        const card = group.closest('.pattern-card');
+                        card.querySelectorAll('.code-tab-content-pattern').forEach(el => el.classList.add('hidden'));
+                        card.querySelectorAll('#' + tabId).forEach(el => el.classList.remove('hidden'));
+                    });
+                });
+            }
+
+            // Language toggling
+            function initLanguageToggle() {
+                document.querySelectorAll('.lang-toggle').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const lang = this.getAttribute('data-lang');
+                        const container = this.closest('div').parentElement;
+                        
+                        // Update button states
+                        container.querySelectorAll('.lang-toggle').forEach(b => {
+                            b.classList.remove('active');
+                            b.style.background = 'transparent';
+                            b.style.color = 'var(--text)';
+                        });
+                        this.classList.add('active');
+                        this.style.background = 'var(--primary)';
+                        this.style.color = 'white';
+                        
+                        // Toggle example sections
+                        container.querySelectorAll('.lang-examples').forEach(ex => {
+                            ex.classList.add('hidden');
+                        });
+                        const targetId = lang === 'typescript' ? 'ts-examples' : 'py-examples';
+                        document.getElementById(targetId).classList.remove('hidden');
+                        
+                        // Re-highlight code
+                        if (window.hljs) {
+                            document.getElementById(targetId).querySelectorAll('pre code').forEach(block => {
+                                hljs.highlightElement(block);
+                            });
+                        }
+                    });
+                });
+            }
+
+            // Snippet tab switching within each language
+            function initSnippetTabs() {
+                document.querySelectorAll('.snippet-tab').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const snippetId = this.getAttribute('data-snippet');
+                        const container = this.closest('.lang-examples');
+                        
+                        // Update button states
+                        container.querySelectorAll('.snippet-tab').forEach(b => {
+                            b.style.background = 'var(--light)';
+                            b.style.color = 'var(--text)';
+                        });
+                        this.style.background = 'var(--primary)';
+                        this.style.color = 'white';
+                        
+                        // Toggle code snippets
+                        container.querySelectorAll('.code-snippet').forEach(snippet => {
+                            snippet.classList.add('hidden');
+                        });
+                        document.getElementById(snippetId).classList.remove('hidden');
+                        
+                        // Re-highlight
+                        if (window.hljs) {
+                            document.getElementById(snippetId).querySelectorAll('code').forEach(block => {
+                                hljs.highlightElement(block);
+                            });
+                        }
+                    });
+                });
+            }
+
+            initLanguageToggle();
+            initSnippetTabs();
             initCodeTabs();
+            initPatternTabs();
             // Run highlight.js on all code blocks
             if (window.hljs) {
                 hljs.highlightAll();

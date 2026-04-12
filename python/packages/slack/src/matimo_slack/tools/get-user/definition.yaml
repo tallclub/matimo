@@ -1,0 +1,31 @@
+name: slack-get-user
+description: |-
+  Retrieve detailed information about a Slack user.
+  Uses users.info API method.
+version: '1.0.0'
+parameters:
+  user:
+    type: string
+    description: |-
+      Slack user ID to lookup.
+      Format: U followed by alphanumeric string (e.g., U123456)
+    required: true
+execution:
+  type: http
+  method: GET
+  url: 'https://slack.com/api/users.info'
+  headers:
+    Authorization: 'Bearer {SLACK_BOT_TOKEN}'
+  query_params:
+    user: '{user}'
+  timeout: 10000
+authentication:
+  type: api_key
+  location: header
+  name: Authorization
+notes:
+  env: SLACK_BOT_TOKEN
+  scopes: users:read
+  important: |-
+    - Use user ID (U...), not username (deprecated in Slack)
+    - Returns profile info, presence, and user details

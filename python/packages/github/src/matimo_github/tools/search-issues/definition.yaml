@@ -1,0 +1,75 @@
+name: github-search-issues
+description: Search for issues and pull requests across GitHub
+version: '1.0.0'
+
+parameters:
+  query:
+    type: string
+    required: true
+    description: Search query with qualifiers (e.g., 'is:open type:issue repo:owner/repo')
+  sort:
+    type: string
+    required: false
+    description: Sort field - comments, reactions, created, or updated
+    default: created
+  order:
+    type: string
+    required: false
+    description: Sort order - asc or desc
+    default: desc
+  per_page:
+    type: number
+    required: false
+    description: Results per page (max 100)
+    default: 30
+  page:
+    type: number
+    required: false
+    description: Page number for pagination
+    default: 1
+
+execution:
+  type: http
+  method: GET
+  url: 'https://api.github.com/search/issues'
+  query_params:
+    q: '{query}'
+    sort: '{sort}'
+    order: '{order}'
+    per_page: '{per_page}'
+    page: '{page}'
+  headers:
+    Accept: application/vnd.github+json
+    Authorization: 'Bearer {GITHUB_TOKEN}'
+    X-GitHub-Api-Version: '2022-11-28'
+  timeout: 30000
+
+authentication:
+  type: bearer
+  location: header
+  notes:
+    env: GITHUB_TOKEN
+    rate_limit: 30 req/min authenticated
+    scope: Searches both issues and pull requests
+
+output_schema:
+  type: object
+  properties:
+    total_count:
+      type: number
+    items:
+      type: array
+      description: Array of issue/PR objects
+
+error_handling:
+  retry: 2
+  backoff_type: exponential
+  initial_delay_ms: 1000
+
+examples:
+  - name: Find open issues with bug label
+    params:
+      query: 'is:open label:bug type:issue'
+  - name: Find pull requests awaiting review
+    params:
+      query: 'is:open type:pr review:pending'

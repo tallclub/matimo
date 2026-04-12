@@ -1,0 +1,36 @@
+name: slack_get_reactions
+description: |-
+  Retrieve all emoji reactions on a message or file.
+  Uses reactions.get API method.
+version: '1.0.0'
+parameters:
+  channel:
+    type: string
+    required: true
+    description: Channel ID containing the message
+  timestamp:
+    type: string
+    required: true
+    description: |-
+      Message timestamp (ts value).
+      Format: Unix timestamp with decimal precision (e.g., 1503435956.000247)
+execution:
+  type: http
+  method: GET
+  url: 'https://slack.com/api/reactions.get'
+  headers:
+    Authorization: 'Bearer {SLACK_BOT_TOKEN}'
+  query_params:
+    channel: '{channel}'
+    timestamp: '{timestamp}'
+  timeout: 10000
+authentication:
+  type: api_key
+  location: header
+  name: Authorization
+notes:
+  env: SLACK_BOT_TOKEN
+  scopes: reactions:read
+  important: |-
+    - Returns all reactions and who added them
+    - Works for messages and file reactions

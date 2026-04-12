@@ -1,0 +1,59 @@
+name: mailchimp-send-campaign
+version: '1.0.0'
+description: >
+  Send a Mailchimp campaign. This triggers the campaign to be delivered
+  to all recipients in the audience. The campaign must have content set
+  and all required settings configured before sending.
+  ⚠️ This action requires approval as it triggers mass email delivery.
+
+requires_approval: true
+
+parameters:
+  server_prefix:
+    type: string
+    required: true
+    description: >
+      Your Mailchimp data center prefix (e.g. "us6"). Found at the end of your API key:
+      "abc123-us6" → server_prefix is "us6".
+  campaign_id:
+    type: string
+    required: true
+    description: >
+      The unique ID of the campaign to send. Obtained from mailchimp-create-campaign
+      response or from the Mailchimp dashboard.
+
+execution:
+  type: http
+  method: POST
+  url: 'https://{server_prefix}.api.mailchimp.com/3.0/campaigns/{campaign_id}/actions/send'
+  headers:
+    Authorization: 'apikey {MAILCHIMP_API_KEY}'
+    Content-Type: application/json
+  timeout: 30000
+
+authentication:
+  type: api_key
+  location: header
+  name: Authorization
+  notes:
+    env: MAILCHIMP_API_KEY
+
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+    statusCode:
+      type: number
+
+error_handling:
+  retry: 1
+  backoff_type: linear
+  initial_delay_ms: 2000
+
+examples:
+  - name: 'Send a prepared campaign'
+    params:
+      server_prefix: us6
+      campaign_id: a1b2c3d4e5
+    expected_result: 'Returns 204 No Content on success (success: true, statusCode: 204)'

@@ -1,0 +1,90 @@
+name: execute
+version: '1.0.0'
+description: Execute shell commands and capture output. Supports command execution with arguments and streaming output capture.
+requires_approval: true
+
+parameters:
+  command:
+    type: string
+    description: Shell command to execute (e.g., 'npm test', 'git status', 'ls -la')
+    required: true
+    example: 'npm test'
+
+  args:
+    type: array
+    description: Command arguments as array of strings (optional, can also embed in command)
+    required: false
+    example: ['--verbose', '--color']
+
+  cwd:
+    type: string
+    description: Working directory context for command execution (relative or absolute path)
+    required: false
+    example: '/project/src'
+
+  timeout:
+    type: number
+    description: Maximum execution time in milliseconds (default 30000)
+    required: false
+    example: 60000
+
+  shell:
+    type: string
+    description: Shell to use (e.g. '/bin/bash', '/bin/zsh'). Defaults to system shell.
+    required: false
+    example: '/bin/bash'
+
+execution:
+  type: function
+  code: './execute.py'
+
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+      description: Whether command executed successfully (exit code 0)
+    exitCode:
+      type: number
+      description: Command exit code
+    stdout:
+      type: string
+      description: Standard output from command execution
+    stderr:
+      type: string
+      description: Standard error from command execution
+    command:
+      type: string
+      description: Command that was executed
+    duration:
+      type: number
+      description: Execution duration in milliseconds
+  required: [success, exitCode, stdout, stderr, duration]
+
+error_handling:
+  retry: 1
+  backoff_type: exponential
+  initial_delay_ms: 500
+
+examples:
+  - name: 'Run npm test'
+    description: 'Execute npm test in current directory'
+    params:
+      command: 'npm test'
+  - name: 'List files with details'
+    description: 'List directory contents'
+    params:
+      command: 'ls'
+      args: ['-la', '/Users']
+  - name: 'Git status'
+    description: 'Check git repository status'
+    params:
+      command: 'git status'
+      cwd: '/project'
+  - name: 'Long running command with timeout'
+    description: 'Execute with custom timeout'
+    params:
+      command: 'sleep 5'
+      timeout: 10000
+
+tags: [shell, command, system, execution, process]

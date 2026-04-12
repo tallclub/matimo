@@ -1,0 +1,35 @@
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Global circle background -->
+  <circle cx="100" cy="100" r="85" fill="none" stroke="#0066cc" stroke-width="2" stroke-dasharray="5,3"/>
+  
+  <!-- Central cloud/hub -->
+  <ellipse cx="100" cy="75" rx="25" ry="20" fill="#0066cc" stroke="#0052a3" stroke-width="2"/>
+  <circle cx="100" cy="75" r="6" fill="white"/>
+  
+  <!-- Top provider node -->
+  <circle cx="100" cy="25" r="12" fill="#00a8ff" stroke="#0066cc" stroke-width="1.5"/>
+  <circle cx="100" cy="25" r="3" fill="white"/>
+  
+  <!-- Bottom-left provider node -->
+  <circle cx="50" cy="140" r="12" fill="#00a8ff" stroke="#0066cc" stroke-width="1.5"/>
+  <circle cx="50" cy="140" r="3" fill="white"/>
+  
+  <!-- Bottom-right provider node -->
+  <circle cx="150" cy="140" r="12" fill="#00a8ff" stroke="#0066cc" stroke-width="1.5"/>
+  <circle cx="150" cy="140" r="3" fill="white"/>
+  
+  <!-- Left provider node -->
+  <circle cx="25" cy="85" r="12" fill="#00a8ff" stroke="#0066cc" stroke-width="1.5"/>
+  <circle cx="25" cy="85" r="3" fill="white"/>
+  
+  <!-- Right provider node -->
+  <circle cx="175" cy="85" r="12" fill="#00a8ff" stroke="#0066cc" stroke-width="1.5"/>
+  <circle cx="175" cy="85" r="3" fill="white"/>
+  
+  <!-- Connection lines from center to all providers -->
+  <line x1="100" y1="95" x2="100" y2="37" stroke="#0066cc" stroke-width="1.5" stroke-dasharray="2,2"/>
+  <line x1="100" y1="95" x2="60" y2="130" stroke="#0066cc" stroke-width="1.5" stroke-dasharray="2,2"/>
+  <line x1="100" y1="95" x2="140" y2="130" stroke="#0066cc" stroke-width="1.5" stroke-dasharray="2,2"/>
+  <line x1="100" y1="75" x2="37" y2="85" stroke="#0066cc" stroke-width="1.5" stroke-dasharray="2,2"/>
+  <line x1="100" y1="75" x2="163" y2="85" stroke="#0066cc" stroke-width="1.5" stroke-dasharray="2,2"/>
+</svg>

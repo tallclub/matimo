@@ -1,0 +1,79 @@
+name: hubspot-create-contact
+version: '1.0.0'
+description: Create a new contact in HubSpot CRM.
+
+parameters:
+  email:
+    type: string
+    required: true
+    description: Email address of the contact
+  firstname:
+    type: string
+    required: false
+    description: First name of the contact
+  lastname:
+    type: string
+    required: false
+    description: Last name of the contact
+  phone:
+    type: string
+    required: false
+    description: Phone number of the contact
+  company:
+    type: string
+    required: false
+    description: Company name of the contact
+
+execution:
+  type: http
+  method: POST
+  url: 'https://api.hubapi.com/crm/v3/objects/contacts'
+  headers:
+    Authorization: 'Bearer {MATIMO_HUBSPOT_API_KEY}'
+    Content-Type: application/json
+  body:
+    properties:
+      email: '{email}'
+      firstname: '{firstname}'
+      lastname: '{lastname}'
+      phone: '{phone}'
+      company: '{company}'
+  timeout: 30000
+
+authentication:
+  type: bearer
+  location: header
+  name: Authorization
+  notes:
+    env: MATIMO_HUBSPOT_API_KEY
+
+output_schema:
+  type: object
+  properties:
+    id: { type: string }
+    properties: { type: object }
+    createdAt: { type: string }
+    updatedAt: { type: string }
+    archived: { type: boolean }
+  required: [id, properties, createdAt, updatedAt, archived]
+
+error_handling:
+  retry: 2
+  backoff_type: exponential
+  initial_delay_ms: 500
+
+examples:
+  - name: 'Create contact with email and name'
+    params:
+      email: 'test@example.com'
+      firstname: 'Test'
+      lastname: 'User'
+    expected_result: 'Contact created with id and properties.'
+  - name: 'Create contact with all fields'
+    params:
+      email: 'custom@example.com'
+      firstname: 'John'
+      lastname: 'Doe'
+      phone: '+1234567890'
+      company: 'Acme Corp'
+    expected_result: 'Contact created with all properties.'

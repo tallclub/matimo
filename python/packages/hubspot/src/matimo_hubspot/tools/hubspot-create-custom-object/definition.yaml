@@ -1,0 +1,57 @@
+name: hubspot-create-custom-object
+version: '1.0.0'
+description: Create a new custom object in HubSpot CRM.
+
+parameters:
+  object_type:
+    type: string
+    required: true
+    description: The custom object type ID (e.g., 'my_custom_object')
+  name:
+    type: string
+    required: false
+    description: Custom object name
+  description:
+    type: string
+    required: false
+    description: Custom object description
+
+execution:
+  type: http
+  method: POST
+  url: 'https://api.hubapi.com/crm/v3/objects/{object_type}'
+  headers:
+    Authorization: 'Bearer {MATIMO_HUBSPOT_API_KEY}'
+    Content-Type: application/json
+  body:
+    properties:
+      name: '{name}'
+      description: '{description}'
+  timeout: 30000
+
+authentication:
+  type: bearer
+  location: header
+  name: Authorization
+
+output_schema:
+  type: object
+  properties:
+    id:
+      type: string
+    properties:
+      type: object
+
+error_handling:
+  retry: 2
+  backoff_type: exponential
+  initial_delay_ms: 500
+
+requires_approval: false
+
+examples:
+  - name: Create a custom object
+    params:
+      object_type: my_custom_object
+      name: Custom Object 1
+    expected_result: Custom object created with id and properties.

@@ -1,0 +1,106 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "matimo-examples"
+version = "0.1.0a14"
+description = "Matimo Python SDK examples — Factory, Decorator, and LangChain patterns"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    # Core SDK (installs as `matimo` Python module)
+    "matimo-core>=0.1.0a14,<0.2.0",
+    # Provider packages
+    "matimo-slack>=0.1.0a14,<0.2.0",
+    "matimo-github>=0.1.0a14,<0.2.0",
+    "matimo-gmail>=0.1.0a14,<0.2.0",
+    "matimo-hubspot>=0.1.0a14,<0.2.0",
+    "matimo-notion>=0.1.0a14,<0.2.0",
+    "matimo-postgres>=0.1.0a14,<0.2.0",
+    "matimo-mailchimp>=0.1.0a14,<0.2.0",
+    "matimo-twilio>=0.1.0a14,<0.2.0",
+    # LangChain integration
+    "langchain-openai>=1.0",
+    "langchain-core>=0.3",
+    "langchain>=0.3",
+    # CrewAI integration
+    "crewai>=0.80",
+    # Utilities
+    "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+dev = ["rich>=13.0"]
+
+[tool.uv.sources]
+matimo-core      = { workspace = true }
+matimo-slack     = { workspace = true }
+matimo-github    = { workspace = true }
+matimo-gmail     = { workspace = true }
+matimo-hubspot   = { workspace = true }
+matimo-notion    = { workspace = true }
+matimo-postgres  = { workspace = true }
+matimo-mailchimp = { workspace = true }
+matimo-twilio    = { workspace = true }
+
+# Do not install examples/ itself as a wheel — it's a script-only project
+[tool.uv]
+package = false
+
+# ─── Entry points: run examples directly ───────────────────────────────────
+
+[project.scripts]
+# Agents (generic)
+matimo-agent-langchain  = "langchain.agents.langchain_agent:main"
+matimo-agent-crewai     = "crewai.agents.crewai_agent:main"
+
+# Slack
+matimo-slack-factory    = "native.slack.slack_factory:main"
+matimo-slack-decorator  = "native.slack.slack_decorator:main"
+matimo-slack-langchain  = "langchain.slack.slack_langchain:main"
+matimo-slack-crewai     = "crewai.slack.slack_crewai:main"
+
+# GitHub
+matimo-github-factory   = "native.github.github_factory:main"
+matimo-github-decorator = "native.github.github_decorator:main"
+matimo-github-langchain = "langchain.github.github_langchain:main"
+matimo-github-approval  = "langchain.github.github_with_approval:main"
+matimo-github-crewai    = "crewai.github.github_crewai:main"
+
+# Gmail
+matimo-gmail-factory    = "native.gmail.gmail_factory:main"
+matimo-gmail-decorator  = "native.gmail.gmail_decorator:main"
+matimo-gmail-langchain  = "langchain.gmail.gmail_langchain:main"
+matimo-gmail-crewai     = "crewai.gmail.gmail_crewai:main"
+
+# PostgreSQL
+matimo-postgres-factory   = "native.postgres.postgres_factory:main"
+matimo-postgres-decorator = "native.postgres.postgres_decorator:main"
+matimo-postgres-langchain = "langchain.postgres.postgres_langchain:main"
+matimo-postgres-approval  = "langchain.postgres.postgres_with_approval:main"
+matimo-postgres-crewai    = "crewai.postgres.postgres_crewai:main"
+
+# Notion
+matimo-notion-factory   = "native.notion.notion_factory:main"
+matimo-notion-decorator = "native.notion.notion_decorator:main"
+matimo-notion-langchain = "langchain.notion.notion_langchain:main"
+matimo-notion-crewai    = "crewai.notion.notion_crewai:main"
+
+# HubSpot
+matimo-hubspot-factory   = "native.hubspot.hubspot_factory:main"
+matimo-hubspot-decorator = "native.hubspot.hubspot_decorator:main"
+matimo-hubspot-langchain = "langchain.hubspot.hubspot_langchain:main"
+matimo-hubspot-crewai    = "crewai.hubspot.hubspot_crewai:main"
+
+# Mailchimp
+matimo-mailchimp-factory   = "native.mailchimp.mailchimp_factory:main"
+matimo-mailchimp-decorator = "native.mailchimp.mailchimp_decorator:main"
+matimo-mailchimp-langchain = "langchain.mailchimp.mailchimp_langchain:main"
+matimo-mailchimp-crewai    = "crewai.mailchimp.mailchimp_crewai:main"
+
+# Twilio
+matimo-twilio-factory   = "native.twilio.twilio_factory:main"
+matimo-twilio-decorator = "native.twilio.twilio_decorator:main"
+matimo-twilio-langchain = "langchain.twilio.twilio_langchain:main"
+matimo-twilio-crewai    = "crewai.twilio.twilio_crewai:main"

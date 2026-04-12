@@ -557,8 +557,77 @@ requires_approval: false  # Override keyword detection
 
 **Solution**: Remove `requires_approval` flag from tool YAML and let auto-detection handle it based on actual keywords.
 
+---
+
+## Python SDK — Approval System
+
+Approval configuration in Python uses `InitOptions` (snake_case) and the same underlying `ApprovalHandler`.
+
+### Auto-Approve
+
+```python
+import os
+from matimo import Matimo, InitOptions
+
+os.environ['MATIMO_AUTO_APPROVE'] = 'true'
+matimo = await Matimo.init('./tools')
+```
+
+### Interactive Approval (Terminal)
+
+```python
+from matimo import Matimo, InitOptions
+
+async def interactive_approval(request) -> dict:
+    print(f"\nApproval required for: {request.tool_name}")
+    print(f"Parameters: {request.params}")
+    answer = input("Approve? (y/n): ").strip().lower()
+    return {'approved': answer == 'y', 'reason': 'interactive review'}
+
+matimo = await Matimo.init('./tools', InitOptions(
+    on_hitl=interactive_approval,
+))
+```
+
+### Pre-Approve Patterns
+
+```python
+from matimo import Matimo, InitOptions
+
+matimo = await Matimo.init('./tools', InitOptions(
+    approval_patterns=['SELECT *', 'read_', 'list_'],
+))
+```
+
+### Session Whitelist (Python)
+
+```python
+approved_tools: set[str] = set()
+
+async def session_approval(request) -> dict:
+    if request.tool_name in approved_tools:
+        return {'approved': True, 'reason': 'session whitelist'}
+    answer = input(f"Approve {request.tool_name}? [y/n] ").strip()
+    if answer == 'y':
+        approved_tools.add(request.tool_name)
+    return {'approved': answer == 'y', 'reason': 'user decision'}
+
+matimo = await Matimo.init('./tools', InitOptions(on_hitl=session_approval))
+```
+
+### Environment Variables (same as TypeScript)
+
+| Variable | Values | Effect |
+|----------|--------|--------|
+| `MATIMO_AUTO_APPROVE` | `true` / `false` | Skip all approval prompts |
+| `MATIMO_NON_INTERACTIVE` | `true` | Reject all approvals (non-interactive env) |
+
+> See [`python/examples/native/policy/policy_demo.py`](../../python/examples/native/policy/policy_demo.py) for approval patterns used in a full Python lifecycle demo.
+
 ## See Also
 
 - [Tool Development Guide](../tool-development/)
 - [Architecture Overview](../architecture/OVERVIEW.md)
+- [Policy & Lifecycle Guide](POLICY_AND_LIFECYCLE.md) — Full policy engine documentation
 - Examples: `examples/tools/postgres/postgres-with-approval.ts`, `examples/tools/github/github-with-approval.ts`
+- Python: `python/examples/native/policy/policy_demo.py`

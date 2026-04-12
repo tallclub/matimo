@@ -1,0 +1,43 @@
+name: matimo_validate_skill
+version: '1.0.0'
+description: >-
+  Validate an existing skill against the Agent Skills specification
+  (https://agentskills.io/specification). Checks SKILL.md frontmatter, naming
+  rules, directory structure, and best practices.
+requires_approval: false
+tags:
+  - matimo
+  - meta
+  - skill
+  - validation
+
+parameters:
+  name:
+    type: string
+    required: true
+    description: Name of the skill directory to validate
+  skills_dir:
+    type: string
+    required: false
+    description: Directory containing skills (default ./matimo-tools/skills)
+
+execution:
+  type: function
+  code: './matimo_validate_skill.py'
+
+output_schema:
+  type: object
+  properties:
+    valid:
+      type: boolean
+      description: Whether the skill passes all validation checks
+    name:
+      type: string
+    issues:
+      type: array
+      description: List of validation issues (errors and warnings)
+    structure:
+      type: object
+      description: Skill directory structure analysis
+    message:
+      type: string

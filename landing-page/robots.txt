@@ -1,5 +1,19 @@
 User-agent: *
 Allow: /
+Disallow: /private/
+Disallow: *.json
+
+Sitemap: https://matimo.dev/sitemap.xml
+Sitemap: https://matimo.dev/sitemap-external.xml
+Sitemap: https://docs.matimo.dev/sitemap.xml
+
+# Crawl rate for major search engines
+User-agent: Googlebot
+Crawl-delay: 0
+
+User-agent: Bingbot
+Crawl-delay: 1
+
 Disallow: /node_modules/
 Disallow: /dist/
 Disallow: /.git/

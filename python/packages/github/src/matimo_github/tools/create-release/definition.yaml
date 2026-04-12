@@ -1,0 +1,103 @@
+name: github-create-release
+description: Create a new release in a repository
+version: '1.0.0'
+requires_approval: true
+
+parameters:
+  owner:
+    type: string
+    required: true
+    description: Repository owner username or organization
+  repo:
+    type: string
+    required: true
+    description: Repository name
+  tag_name:
+    type: string
+    required: true
+    description: Release tag name (e.g., v1.0.0)
+  name:
+    type: string
+    required: false
+    description: Release name
+  body:
+    type: string
+    required: false
+    description: Release notes/description
+  draft:
+    type: boolean
+    required: false
+    description: Create as draft release
+    default: false
+  prerelease:
+    type: boolean
+    required: false
+    description: Mark as prerelease
+    default: false
+  target_commitish:
+    type: string
+    required: false
+    description: Target branch or commit SHA
+
+execution:
+  type: http
+  method: POST
+  url: 'https://api.github.com/repos/{owner}/{repo}/releases'
+  headers:
+    Accept: application/vnd.github+json
+    Authorization: 'Bearer {GITHUB_TOKEN}'
+    X-GitHub-Api-Version: '2022-11-28'
+    Content-Type: application/json
+  body:
+    tag_name: '{tag_name}'
+    name: '{name}'
+    body: '{body}'
+    draft: '{draft}'
+    prerelease: '{prerelease}'
+    target_commitish: '{target_commitish}'
+  timeout: 15000
+
+authentication:
+  type: bearer
+  location: header
+  notes:
+    env: GITHUB_TOKEN
+    required: true
+    permission: Repository content write
+
+output_schema:
+  type: object
+  properties:
+    id:
+      type: number
+    tag_name:
+      type: string
+    name:
+      type: string
+    draft:
+      type: boolean
+    prerelease:
+      type: boolean
+    html_url:
+      type: string
+
+error_handling:
+  retry: 1
+  backoff_type: exponential
+  initial_delay_ms: 1000
+
+examples:
+  - name: Create release
+    params:
+      owner: myorg
+      repo: myrepo
+      tag_name: v1.0.0
+      name: Version 1.0.0
+      body: Initial release with core features
+  - name: Create prerelease
+    params:
+      owner: myorg
+      repo: myrepo
+      tag_name: v2.0.0-beta
+      prerelease: true
+      draft: true

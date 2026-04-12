@@ -1,0 +1,22 @@
+name: echo_tool
+version: "1.0.0"
+description: "Echo a message back"
+parameters:
+  message:
+    type: string
+    description: "Message to echo"
+    required: true
+execution:
+  type: http
+  method: GET
+  url: "https://httpbin.org/get?message={message}"
+  headers:
+    Accept: application/json
+output_schema:
+  type: object
+  properties:
+    args:
+      type: object
+tags:
+  - test
+  - utility

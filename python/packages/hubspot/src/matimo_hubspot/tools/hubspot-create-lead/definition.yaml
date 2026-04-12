@@ -1,0 +1,73 @@
+name: hubspot-create-lead
+version: '1.0.0'
+description: Create a new lead in HubSpot CRM.
+
+parameters:
+  email:
+    type: string
+    required: true
+    description: Email address of the lead
+  firstname:
+    type: string
+    required: false
+    description: First name of the lead
+  lastname:
+    type: string
+    required: false
+    description: Last name of the lead
+  phone:
+    type: string
+    required: false
+    description: Phone number of the lead
+  company:
+    type: string
+    required: false
+    description: Company name
+
+execution:
+  type: http
+  method: POST
+  url: 'https://api.hubapi.com/crm/v3/objects/leads'
+  headers:
+    Authorization: 'Bearer {MATIMO_HUBSPOT_API_KEY}'
+    Content-Type: application/json
+  body:
+    properties:
+      email: '{email}'
+      firstname: '{firstname}'
+      lastname: '{lastname}'
+      phone: '{phone}'
+      company: '{company}'
+  timeout: 30000
+
+authentication:
+  type: bearer
+  location: header
+  name: Authorization
+
+output_schema:
+  type: object
+  properties:
+    id:
+      type: string
+    properties:
+      type: object
+    created_at:
+      type: string
+  required:
+    - id
+
+error_handling:
+  retry: 2
+  backoff_type: exponential
+  initial_delay_ms: 500
+
+requires_approval: false
+
+examples:
+  - name: Create a lead
+    params:
+      email: john@example.com
+      firstname: John
+      lastname: Doe
+    expected_result: Lead created with id and properties.

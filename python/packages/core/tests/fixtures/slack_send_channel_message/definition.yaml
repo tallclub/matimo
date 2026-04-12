@@ -1,0 +1,42 @@
+name: slack_send_channel_message
+version: "1.0.0"
+description: "Post a message to a Slack channel"
+parameters:
+  channel:
+    type: string
+    description: "Channel ID or name"
+    required: true
+  text:
+    type: string
+    description: "Message text"
+    required: false
+  SLACK_BOT_TOKEN:
+    type: string
+    description: "Slack Bot OAuth token"
+    required: true
+execution:
+  type: http
+  method: POST
+  url: "https://slack.com/api/chat.postMessage"
+  headers:
+    Authorization: "Bearer {SLACK_BOT_TOKEN}"
+    Content-Type: application/json
+  body:
+    channel: "{channel}"
+    text: "{text}"
+authentication:
+  type: api_key
+  location: header
+  name: Authorization
+output_schema:
+  type: object
+  properties:
+    ok:
+      type: boolean
+    channel:
+      type: string
+    ts:
+      type: string
+tags:
+  - slack
+  - messaging

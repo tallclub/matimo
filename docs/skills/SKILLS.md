@@ -30,15 +30,17 @@
 - [Storage Paths](#storage-paths)
 - [Name Rules](#name-rules)
 - [Examples Demo](#examples-demo)
-- [Coming in Next Release (alpha.14)](#coming-in-next-release-alpha14)
+- [Coming in alpha.15 — Skills Meta-Tools](#coming-in-alpha15--skills-meta-tools)
 
 ---
 
-## Coming in Next Release (alpha.14)
+## Coming in alpha.15 — Skills Meta-Tools
 
 > **Theme: Skills SDK as Agent-Callable Tools** — Promote programmatic SDK APIs to first-class agent-callable meta-tools, closing the gap between what the SDK can do and what agents can call from their tool loop.
+>
+> **Status:** Planned for v0.1.0-alpha.15. See [ROADMAP.md](../ROADMAP.md) for details.
 
-### New Meta-Tools
+### Planned Meta-Tools (alpha.15)
 
 | Meta-Tool | Wraps SDK API | What agents gain |
 |-----------|--------------|-----------------|
@@ -46,36 +48,22 @@
 | `matimo_get_skill_sections` | `getSkillSections()` | Inventory a skill's sections and token costs before loading (progressive disclosure Level 2.5) |
 | `matimo_get_skill_content` | `getSkillContent()` | Load only specific sections of a skill — token-efficient context loading |
 
-**Why this matters:** Today `semanticSearchSkills`, `getSkillSections`, and `getSkillContent` are SDK-only. LangChain agents and MCP clients (Claude) cannot call them from their tool loop. alpha.14 wraps each as a registered meta-tool in `packages/core/tools/`, making them callable like any other Matimo tool.
+**Why this matters:** In alpha.14, `semanticSearchSkills`, `getSkillSections`, and `getSkillContent` are **SDK-only** APIs. LangChain agents and MCP clients (Claude) cannot call them from their tool loop. alpha.15 will wrap each as a registered meta-tool in `packages/core/tools/`, making them callable like any other Matimo tool.
 
-### Agent Workflow Upgrade (after alpha.14)
+### Current (alpha.14) vs Planned (alpha.15) Agent Workflow
 
 ```typescript
-// Current (alpha.13) — agents discover by exact name only
+// Current (alpha.14) — agents discover by exact name or description
 matimo_list_skills()              // → all skill names + descriptions
 matimo_get_skill('slack')         // → full content
 
-// alpha.14 — agents can search by meaning and load selectively
+// Planned (alpha.15) — agents can search by meaning and load selectively
 matimo_search_skills('rate limiting and retries')  // → ranked TF-IDF results with scores
 matimo_get_skill_sections('slack')                 // → section inventory with token estimates
 matimo_get_skill_content('slack', { sections: ['Messaging'] })  // → targeted section content
 ```
 
-### Example Coverage Additions
-
-- **`skills-demo.ts`** — add `getSkillSections()` demo, `getSkillContent(name, { sections })` demo, and `setSkillEmbeddingProvider(provider)` demo
-- **`langchain-skills-policy-agent.ts`** — update system prompt to mention `matimo_search_skills` so agents can discover skills by meaning from their tool loop
-
-### Context Window Tooling
-
-- **Dynamic tool filtering** — when `autoDiscover` loads 128+ tools (at OpenAI's hard limit), a utility to select a subset by provider/tag before binding to LangChain prevents silent tool drops at the API limit
-
-### Acceptance Criteria
-
-- `matimo_search_skills`, `matimo_get_skill_sections`, `matimo_get_skill_content` registered in `packages/core/tools/`
-- Agent in `pnpm agent:skills` can call `matimo_search_skills` with a natural language query and get ranked results
-- All 3 new meta-tools have tests in `packages/core/test/unit/meta-tools/`
-- `META_TOOLS.md` updated with reference entries for the 3 new tools
+**Today's workaround** for LangChain agents (non-MCP): use the SDK-level `buildRelevantSkillPrompt()` helper before starting the agent loop — it runs TF-IDF search and injects the top-K skill content into your system prompt. See [LangChain Agent with Skills](#langchain-agent-with-skills) for the full pattern.
 
 ---
 
@@ -389,7 +377,7 @@ const results = await matimo.semanticSearchSkills('rate limiting and retries', {
 
 Embeddings are cached per skill — the first search builds the index, subsequent searches are fast.
 
-> **Agent availability:** `semanticSearchSkills` is a **programmatic SDK API** — it is not yet exposed as an agent-callable meta-tool. Agents using LangChain or MCP cannot call TF-IDF search during their tool loop today. Use `buildRelevantSkillPrompt()` (non-MCP LangChain) or the [`matimo_list_skills` + `matimo_get_skill` meta-tools](#agent-skill-lifecycle) instead. A `matimo_search_skills` meta-tool that wraps this API is planned for alpha.14.
+> **Agent availability:** `semanticSearchSkills` is a **programmatic SDK API** — it is not yet exposed as an agent-callable meta-tool. Agents using LangChain or MCP cannot call TF-IDF search directly during their tool loop in alpha.14. Use `buildRelevantSkillPrompt()` (non-MCP LangChain helper) or the [`matimo_list_skills` + `matimo_get_skill` meta-tools](#agent-skill-lifecycle) instead. A `matimo_search_skills` meta-tool is planned for **alpha.15**.
 
 ### Custom Embedding Provider
 
@@ -677,16 +665,25 @@ Skill names follow the Agent Skills spec:
 
 ## Examples Demo
 
-Run the skills demo to see a real LangChain agent create, read, apply, and validate skills:
+Run the skills demo to see a real LangChain agent create, read, apply, and validate skills. Available in both TypeScript and Python:
 
+**TypeScript:**
 ```bash
-cd examples/tools
+cd typescript/examples/tools
 pnpm skills:demo
+```
+
+**Python:**
+```bash
+cd python/
+make skills-demo
+# or directly:
+cd python/examples/native && uv run -w ../.. python skills/skills_demo.py
 ```
 
 **What it demonstrates:**
 
-**Phase 2 — Agent missions (goal-driven, no tool names given):**
+**Phase 2 / Missions — Agent missions (goal-driven, no tool names given):**
 1. Agent creates a `code-review` skill (human approves)
 2. Agent lists available skills (Level 1 discovery)
 3. Agent reads `code-review` skill and applies its guidelines to review sample code
@@ -694,11 +691,13 @@ pnpm skills:demo
 5. Agent validates both skills against the Agent Skills spec
 6. Agent lists, reads, and applies *all* available skills in one pass
 
-**Phase 4 — Non-MCP progressive disclosure:**
-- `getSkillsMetadata()` — Level 1: names + descriptions only (no file I/O)
-- `semanticSearchSkills(query)` — raw TF-IDF ranked results with scores per skill
-- `buildRelevantSkillPrompt(query)` — Level 2: TF-IDF search loads only relevant skill content
+**Phase 4 — Non-MCP progressive disclosure (both SDKs):**
+- `getSkillsMetadata()` / `get_skills_metadata()` — Level 1: names + descriptions only (no file I/O)
+- `semanticSearchSkills(query)` / `semantic_search_skills(query)` — raw TF-IDF ranked results with scores per skill
+- `buildRelevantSkillPrompt(query)` / `build_relevant_skill_prompt(query)` — Level 2: TF-IDF search loads only relevant skill content
 
-> ⚠️ **Note:** `semanticSearchSkills` is a **programmatic SDK API only** — no agent-callable meta-tool wraps it yet. Agents (LangChain, MCP/Claude) cannot call TF-IDF search directly in their tool loop; they can only discover skills by level with `matimo_list_skills` and `matimo_get_skill`. A `matimo_search_skills` meta-tool is planned for alpha.14.
+> ⚠️ **Note:** `semanticSearchSkills` / `semantic_search_skills` is a **programmatic SDK API only** in alpha.14 — no agent-callable meta-tool wraps it yet. Agents (LangChain, MCP/Claude) cannot call TF-IDF search directly in their tool loop; they can only discover skills with `matimo_list_skills` and `matimo_get_skill`. A `matimo_search_skills` meta-tool is planned for **alpha.15**.
 
-**Docs:** See [`examples/tools/skills/README.md`](../../examples/tools/skills/README.md) for the full walkthrough.
+**Docs:**
+- TypeScript: [`typescript/examples/tools/skills/README.md`](../../typescript/examples/tools/skills/)
+- Python: [`python/examples/native/skills/skills_demo.py`](../../python/examples/native/skills/skills_demo.py)

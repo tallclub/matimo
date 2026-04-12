@@ -1,0 +1,62 @@
+name: pg_run_query
+description: >-
+  Execute a read-only SQL SELECT query on a PostgreSQL database via a configured
+  REST API. USE THIS TOOL when a DBA agent needs to inspect data, run
+  diagnostics, or query system catalogs.
+version: 1.0.0
+requires_approval: true
+parameters:
+  sql:
+    type: string
+    required: true
+    description: SQL SELECT statement to execute. Must be read-only. DML/DDL not permitted.
+  database:
+    type: string
+    required: false
+    description: >-
+      Target database name. Defaults to the primary database configured in
+      PG_API_URL.
+    default: default
+execution:
+  type: http
+  method: POST
+  url: '{PG_API_URL}/query'
+  headers:
+    Authorization: Bearer {PG_API_KEY}
+    Content-Type: application/json
+  body:
+    sql: '{sql}'
+    database: '{database}'
+authentication:
+  type: bearer
+output_schema:
+  type: object
+  properties:
+    rows:
+      type: array
+      description: Result rows from the query
+    rowCount:
+      type: number
+      description: Number of rows returned
+    fields:
+      type: array
+      description: Column field metadata
+  required:
+    - rows
+    - rowCount
+error_handling:
+  retry: 2
+  backoff_type: exponential
+  initial_delay_ms: 500
+  retry_on_status:
+    - 500
+    - 503
+examples:
+  - name: List public tables
+    params:
+      sql: SELECT tablename, schemaname FROM pg_tables WHERE schemaname = 'public'
+  - name: Row count check
+    params:
+      sql: SELECT COUNT(*) as total FROM users
+      database: myapp
+status: approved

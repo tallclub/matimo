@@ -8,44 +8,77 @@
   <a href="https://discord.gg/3JPt4mxWDV"><img src="https://img.shields.io/badge/Discord-Join%20Chat-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord"></a>
 </p>
 
-**Matimo — Enable Agents To Extentend Itsel.**.
+**Matimo — Enable Agents To Extend Itself.**
 Most SDKs give agents tools. Matimo gives agents the ability to build new tools — validated, approved, and live — without restarting. The meta-tool layer is Matimo's core differentiator.
 
 > A framework-agnostic SDK with pre-built provider tools, a skills knowledge layer, MCP out of the box, and agents that autonomously build new capabilities — governed by a policy engine you control
 
-Complete documentation for Matimo.
+Complete documentation for Matimo **v0.1.0-alpha.14** (TypeScript & Python).
+
+---
+
+## 🚀 Choose Your SDK
+
+### 🟦 **TypeScript / Node.js**
+- Node.js 18+, npm/pnpm
+- ESM, full type support
+- 1,884 tests, 95%+ coverage
+- **[Start with TypeScript](#typescript-getting-started)**
+
+### 🐍 **Python** ⭐ *NEW in alpha.14*
+- Python 3.11+, pip/uv
+- Native asyncio, full type hints
+- 657 tests, 97.38% coverage
+- LangChain, CrewAI, MCP support
+- **[Start with Python](#python-getting-started)**
+
+---
 
 ## ⚡ Getting Started
 
-1. **[Quick Start](./getting-started/QUICK_START.md)** — 5-minute setup (npm install → first tool execution)
-2. **[Your First Tool](./getting-started/YOUR_FIRST_TOOL.md)** — Create and test a basic YAML tool
-3. **[API Reference](./api-reference/SDK.md)** — Understand the SDK fundamentals
+### TypeScript Getting Started
 
-Then explore [Three Integration Patterns](./architecture/OVERVIEW.md#three-integration-patterns) to see what's possible.
+1. **[Quick Start](./getting-started/QUICK_START.md#typescript)** — 5-minute setup 
+2. **[Your First Tool](./getting-started/YOUR_FIRST_TOOL.md)** — Create a basic YAML tool
+3. **[API Reference](./api-reference/SDK.md#typescript)** — SDK fundamentals
 
-### 📦 **Full Installation & Requirements**
+### Python Getting Started
 
-- **[Installation](./getting-started/installation.md)** — Detailed setup for Windows/macOS/Linux
-  - Node.js 18+ and npm/pnpm requirements
-  - From npm (recommended) or from source
-  - Troubleshooting common issues
-  - Environment setup (API keys, OAuth)
+1. **[Quick Start](./getting-started/QUICK_START.md#python)** — 5-minute setup with `pip install matimo`
+2. **[LangChain Integration](./framework-integrations/LANGCHAIN.md#python-langchain-integration)** — Build ReAct agents
+3. **[CrewAI Integration](./framework-integrations/CREWAI.md)** — Multi-agent orchestration
+4. **[API Reference](./api-reference/SDK.md#python)** — Python SDK documentation
 
-## Reference
+### 📦 **Installation & Requirements**
+
+- **[Installation](./getting-started/installation.md)** — Detailed setup for both SDKs
+  - TypeScript (Node.js 18+) and Python (3.11+) requirements
+  - From npm/pip (recommended) or from source
+  - Troubleshooting & environment setup
+  - Provider authentication via OAuth2
+
+---
+
+## 📚 Reference (By Topic)
 
 ### 🟢 **Core Concepts (Start Here)**
 
 - **[Architecture Overview](./architecture/OVERVIEW.md)** — Understand how Matimo works
   - High-level system design
-  - Three integration patterns explained
-  - Framework compatibility
-  - Data flow diagrams
+  - Three integration patterns (Factory, Decorator, Framework)
+  - Framework compatibility (LangChain, CrewAI, MCP, custom)
+  - Data flow and execution model
 
-- **[API Reference](./api-reference/SDK.md)** — TypeScript SDK documentation
-  - `MatimoInstance` class and methods
+- **[SDK Patterns](./user-guide/SDK_PATTERNS.md)** — TypeScript & Python examples
+  - Factory pattern (simplest)
+  - Decorator pattern (class-based)
+  - Framework integration patterns
+
+- **[API Reference](./api-reference/SDK.md)** — Complete SDK reference
+  - TypeScript `MatimoInstance` API
+  - Python `Matimo` API
   - `.execute()`, `.listTools()`, `.searchTools()`
-  - Decorator pattern (`@tool`)
-  - Error handling
+  - Error handling & logging
   - Complete type definitions
 
 - **[Error Reference](./api-reference/ERRORS.md)** — Troubleshooting guide
@@ -72,9 +105,9 @@ Then explore [Three Integration Patterns](./architecture/OVERVIEW.md#three-integ
   - CLI tool management
 
 - **[Testing Tools](./tool-development/TESTING.md)** — Unit & integration testing
-  - Testing patterns with Jest
+  - Testing patterns with Jest / pytest
   - Mocking external services
-  - Coverage requirements (80%+)
+  - Coverage requirements (95%+)
   - Test fixtures
 
 - **[OAuth Setup](./architecture/OAUTH.md)** — OAuth2 authentication
@@ -160,13 +193,11 @@ Then explore [Three Integration Patterns](./architecture/OVERVIEW.md#three-integ
 
 3. **[Development Standards](./user-guide/DEVELOPMENT_STANDARDS.md)** — Code quality requirements
    - TypeScript strictness
-   - Testing coverage (80%+ minimum)
-   - ESLint and Prettier
+   - Testing coverage (95%+ — TypeScript and Python)
+   - ESLint / ruff and Prettier
    - JSDoc documentation
 
 ---
-
-## Development & Advanced Usage
 
 ## Development & Advanced Usage
 
@@ -225,8 +256,20 @@ Then explore [Three Integration Patterns](./architecture/OVERVIEW.md#three-integ
 1. [Policy & Lifecycle Guide](./api-reference/POLICY_AND_LIFECYCLE.md) — Full security setup
 2. [Meta-Tools Reference](./api-reference/META_TOOLS.md) — Built-in management tools
 3. [Approval System](./api-reference/APPROVAL-SYSTEM.md) — Approval handler config
-4. [Policy Demo](https://github.com/tallclub/matimo/tree/main/examples/tools/policy) — 11-mission autonomous agent demo
-5. [Skills Demo](https://github.com/tallclub/matimo/tree/main/examples/tools/skills) — 5-mission skills lifecycle demo
+4. [Policy Demo (Python)](https://github.com/tallclub/matimo/tree/main/python/examples/native/policy/) — 11-mission autonomous agent demo
+5. [Policy Demo (TypeScript)](https://github.com/tallclub/matimo/tree/main/typescript/examples/tools/policy/) — TypeScript equivalent
+6. [Skills Demo (Python)](https://github.com/tallclub/matimo/tree/main/python/examples/native/skills/) — 6-mission skills lifecycle demo
+
+### 🤖 For AI Agents (Quick Orientation)
+> If you are an AI agent (LangChain, CrewAI, MCP client) reading this to understand Matimo:
+
+1. **Read first**: [Meta-Tools Reference](./api-reference/META_TOOLS.md) — the 10 built-in tools you can call right now
+2. **Tool creation flow**: `matimo_validate_tool` → `matimo_create_tool` → `matimo_approve_tool` → `matimo_reload_tools`
+3. **Skills discovery**: `matimo_list_skills` → `matimo_get_skill` to load domain expertise on-demand
+4. **OpenAI 128-tool limit**: If using `auto_discover=True`, cap your bound tool list — prioritize `matimo_*` tools first
+5. **Policy rules**: Draft tools are blocked in `environment="prod"`. Command tools (`type: command`) require explicit approval. SSRF-blocked URL patterns are rejected by the content validator.
+6. **Errors**: All errors are `MatimoError` with typed `ErrorCode`. Check `error.code` for programmatic handling.
+7. **Examples to study**: [`python/examples/native/meta_flow/meta_tools_integration.py`](https://github.com/tallclub/matimo/tree/main/python/examples/native/meta_flow/meta_tools_integration.py) is the canonical end-to-end reference.
 
 ### 👨‍💻 Contributing Code
 1. **Start here:** [Contributing Guidelines](https://github.com/tallclub/matimo/blob/main/CONTRIBUTING.md)
@@ -243,85 +286,68 @@ Then explore [Three Integration Patterns](./architecture/OVERVIEW.md#three-integ
 
 ---
 
-### 🟢 For First-Time Users
-
-1. Start with [Quick Start](./getting-started/QUICK_START.md) for setup
-2. Try [Your First Tool](./getting-started/YOUR_FIRST_TOOL.md) to create a tool
-3. Check [API Reference](./api-reference/SDK.md) for SDK usage
-4. See [Tool Specification](./tool-development/TOOL_SPECIFICATION.md) to write tools
-5. Review [Architecture Overview](./architecture/OVERVIEW.md) to understand design
-
-### For Tool Writers
-
-1. Read [Tool Specification](./tool-development/TOOL_SPECIFICATION.md) for YAML tools
-2. See [Adding Tools to Matimo](./tool-development/ADDING_TOOLS.md) to publish packages
-3. Follow [Development Standards](./user-guide/DEVELOPMENT_STANDARDS.md) for code quality
-
-### For Framework Integration
-
-1. Check [Framework Integrations](./framework-integrations/LANGCHAIN.md) for LangChain/CrewAI
-2. See [Architecture Overview](./architecture/OVERVIEW.md) for integration patterns
-3. Review examples in `examples/` directory
-
-### For Contributors
-
-1. Check [Contributing Guidelines](https://github.com/tallclub/matimo/blob/main/CONTRIBUTING.md) for contribution guidelines
-2. Follow [Development Standards](./user-guide/DEVELOPMENT_STANDARDS.md) for code quality
-3. Use [Commit Guidelines](./community/COMMIT_GUIDELINES.md) for proper commit format
-
-### For Maintainers
-
-1. Review [Development Standards](./user-guide/DEVELOPMENT_STANDARDS.md) for quality metrics
-2. Check [Commit Guidelines](./community/COMMIT_GUIDELINES.md) for PR commit validation
-3. See [Contributing Guidelines](https://github.com/tallclub/matimo/blob/main/CONTRIBUTING.md) for overall workflow
-
----
-
 ## Documentation Structure
 
 ```
 docs/
-├── index.md                      # This file - documentation index
+├── index.md                      # This file — documentation index
 ├── RELEASES.md                   # Release notes and changelog
 ├── ROADMAP.md                    # Project roadmap
+├── MCP.md                        # MCP server setup and Claude Desktop
 ├── getting-started/
-│   ├── QUICK_START.md            # 5-minute setup guide
-│   ├── installation.md           # Detailed installation instructions
+│   ├── QUICK_START.md            # 5-minute setup (TypeScript + Python)
+│   ├── installation.md           # Detailed installation
 │   └── YOUR_FIRST_TOOL.md        # Create your first tool
 ├── api-reference/
-│   ├── SDK.md                    # Complete SDK API
+│   ├── SDK.md                    # Complete SDK API (TypeScript + Python)
 │   ├── ERRORS.md                 # Error handling and error codes
 │   ├── TYPES.md                  # TypeScript type definitions
-│   ├── META_TOOLS.md             # Built-in meta-tools reference
+│   ├── META_TOOLS.md             # Built-in meta-tools reference (10 tools)
 │   ├── POLICY_AND_LIFECYCLE.md   # Policy engine and tool lifecycle
 │   ├── APPROVAL-SYSTEM.md        # Approval handler configuration
-│   └── LOGGING.md                # Winston logger integration
+│   └── LOGGING.md                # Logger API and formats
 ├── tool-development/
-│   ├── TOOL_SPECIFICATION.md     # YAML tool schema
+│   ├── TOOL_SPECIFICATION.md     # YAML tool schema reference
 │   ├── YAML_TOOLS.md             # YAML tool writing guide
-│   ├── ADDING_TOOLS.md           # Creating tool packages
+│   ├── ADDING_TOOLS.md           # Creating tool provider packages
 │   ├── DECORATOR_GUIDE.md        # TypeScript decorators
 │   ├── TESTING.md                # Testing tools
+│   ├── HTTP_PARAMETER_EMBEDDING.md # HTTP parameter encoding
 │   └── PROVIDER_CONFIGURATION.md # Multi-provider setup
 ├── framework-integrations/
-│   └── LANGCHAIN.md              # LangChain & framework patterns
+│   ├── LANGCHAIN.md              # LangChain (Python + TypeScript)
+│   ├── CREWAI.md                 # CrewAI multi-agent (Python)
+│   └── VERCEL_AI.md              # Vercel AI SDK (TypeScript)
+├── skills/
+│   ├── SKILLS.md                 # Skills system guide
+│   └── TFIDF_SEMANTIC_SEARCH.md  # TF-IDF implementation details
 ├── architecture/
 │   ├── OVERVIEW.md               # System design and patterns
 │   └── OAUTH.md                  # OAuth2 implementation
 ├── user-guide/
-│   ├── SDK_PATTERNS.md           # SDK usage patterns
-│   ├── TOOL_DISCOVERY.md         # Discovering tools
-│   ├── AUTHENTICATION.md         # Authentication setup
+│   ├── SDK_PATTERNS.md           # Factory, decorator, framework patterns
+│   ├── TOOL_DISCOVERY.md         # Auto-discovery and search
+│   ├── AUTHENTICATION.md         # API keys, OAuth2, token management
 │   └── DEVELOPMENT_STANDARDS.md  # Code quality rules
 ├── community/
 │   └── COMMIT_GUIDELINES.md      # Conventional commits
 └── troubleshooting/
     └── FAQ.md                    # Common questions & solutions
 
-Root-level files:
-├── [CONTRIBUTING.md](https://github.com/tallclub/matimo/blob/main/CONTRIBUTING.md) — Contribution guidelines
-├── [SECURITY.md](https://github.com/tallclub/matimo/blob/main/SECURITY.md) — Security policy
-└── [README.md](https://github.com/tallclub/matimo/blob/main/README.md) — Project overview
+Python examples (python/examples/):
+├── native/                       # Factory, decorator + advanced agent demos
+│   ├── policy/policy_demo.py     # 11-mission policy + HITL lifecycle
+│   ├── skills/skills_demo.py     # 6-mission skills lifecycle
+│   ├── meta_flow/meta_tools_integration.py  # 5-mission meta-tools lifecycle
+│   └── logger_example.py         # Logging demo (no API key needed)
+├── langchain/                    # LangChain ReAct examples (17 files)
+└── crewai/                       # CrewAI examples (10 files)
+
+TypeScript examples (typescript/examples/tools/):
+├── policy/policy-demo.ts         # 11-mission policy lifecycle
+├── skills/skills-demo.ts         # Skills lifecycle + TF-IDF
+├── meta-flow/meta-tools-integration.ts  # Meta-tools lifecycle
+└── agents/langchain-skills-policy-agent.ts  # Production agent pattern
 ```
 
 ---
@@ -378,7 +404,7 @@ See [Quick Start](./getting-started/QUICK_START.md) for setup.
 ### Code Quality
 
 - **TypeScript**: Strict mode enforced (no `any`)
-- **Testing**: 80%+ coverage, TDD approach
+- **Testing**: 95%+ coverage (TypeScript + Python), TDD approach
 - **Linting**: ESLint with automatic formatting
 - **Documentation**: JSDoc comments for all public APIs
 
@@ -396,7 +422,7 @@ See [Commit Guidelines](./community/COMMIT_GUIDELINES.md).
 
 - Follow TDD approach (test first, implement after)
 - Keep PRs focused (one feature/fix per PR)
-- Ensure tests pass and coverage maintained (80%+)
+- Ensure tests pass and coverage maintained (95%+)
 - Follow code standards and get code review
 
 See [Contributing Guidelines](https://github.com/tallclub/matimo/blob/main/CONTRIBUTING.md).

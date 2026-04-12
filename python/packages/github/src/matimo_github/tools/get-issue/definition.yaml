@@ -1,0 +1,70 @@
+name: github-get-issue
+description: Get details of a specific issue
+version: '1.0.0'
+
+parameters:
+  owner:
+    type: string
+    required: true
+    description: Repository owner username or organization
+  repo:
+    type: string
+    required: true
+    description: Repository name
+  issue_number:
+    type: number
+    required: true
+    description: Issue number
+
+execution:
+  type: http
+  method: GET
+  url: 'https://api.github.com/repos/{owner}/{repo}/issues/{issue_number}'
+  headers:
+    Accept: application/vnd.github+json
+    Authorization: 'Bearer {GITHUB_TOKEN}'
+    X-GitHub-Api-Version: '2022-11-28'
+  timeout: 10000
+
+authentication:
+  type: bearer
+  location: header
+  notes:
+    env: GITHUB_TOKEN
+    optional: Public repos don't require authentication
+
+output_schema:
+  type: object
+  properties:
+    id:
+      type: number
+    number:
+      type: number
+    title:
+      type: string
+    body:
+      type: string
+    state:
+      type: string
+    assignees:
+      type: array
+    labels:
+      type: array
+    created_at:
+      type: string
+    updated_at:
+      type: string
+    html_url:
+      type: string
+
+error_handling:
+  retry: 2
+  backoff_type: exponential
+  initial_delay_ms: 500
+
+examples:
+  - name: Get issue details
+    params:
+      owner: kubernetes
+      repo: kubernetes
+      issue_number: 12345

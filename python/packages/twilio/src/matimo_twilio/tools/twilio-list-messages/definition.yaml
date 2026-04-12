@@ -1,0 +1,133 @@
+name: twilio-list-messages
+version: '1.0.0'
+description: >
+  Read multiple Message resources from the Twilio Programmable Messaging API.
+  Returns a paginated list of messages in your account, sorted by DateSent
+  with the most recent messages appearing first. Supports filtering by
+  recipient (To), sender (From), and sent date.
+  See: https://www.twilio.com/docs/messaging/api/message-resource#read-multiple-message-resources
+
+parameters:
+  account_sid:
+    type: string
+    required: true
+    description: >
+      The SID of the Account associated with the Message resources.
+      Found on the Twilio Console dashboard: https://console.twilio.com
+      Pattern: ^AC[0-9a-fA-F]{32}$
+  to:
+    type: string
+    required: false
+    description: >
+      Filter by recipient phone number.
+      E.g. "+15558881111" to retrieve messages sent to that number.
+      Must be in E.164 format.
+  from:
+    type: string
+    required: false
+    description: >
+      Filter by sender phone number.
+      E.g. "+15552229999" to retrieve messages sent from that number.
+      Must be in E.164 format.
+  date_sent:
+    type: string
+    required: false
+    description: >
+      Filter by the sent date (GMT). Accepts dates in formats:
+      YYYY-MM-DD — messages with this specific sent date
+      <=YYYY-MM-DD — messages with sent_date on or before this date
+      >=YYYY-MM-DD — messages with sent_date on or after this date
+  page_size:
+    type: number
+    required: false
+    description: >
+      How many Message resources to return per page.
+      Default is 50. Maximum is 1000. Minimum is 1.
+    default: 50
+    min: 1
+    max: 1000
+
+execution:
+  type: http
+  method: GET
+  url: 'https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Messages.json'
+  query_params:
+    To: '{to}'
+    From: '{from}'
+    DateSent: '{date_sent}'
+    PageSize: '{page_size}'
+  timeout: 30000
+
+authentication:
+  type: basic
+  username_env: TWILIO_ACCOUNT_SID
+  password_env: TWILIO_AUTH_TOKEN
+
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request was successful (2xx status)
+    data:
+      type: object
+      description: The paginated list of Message resources
+      properties:
+        messages:
+          type: array
+          description: Array of Message resource objects
+        end:
+          type: number
+          description: Index of the last record in the current page (0-based)
+        first_page_uri:
+          type: string
+          description: URI of the first page of results
+        next_page_uri:
+          type: string
+          description: URI of the next page of results (null if no more pages)
+        previous_page_uri:
+          type: string
+          description: URI of the previous page of results (null on first page)
+        page:
+          type: number
+          description: The current page index (0-based)
+        page_size:
+          type: number
+          description: The number of records per page
+        start:
+          type: number
+          description: Index of the first record in the current page (0-based)
+        uri:
+          type: string
+          description: URI of the current page of results
+    statusCode:
+      type: number
+      description: HTTP status code of the response
+
+error_handling:
+  retry: 2
+  backoff_type: exponential
+  initial_delay_ms: 500
+  retry_on_status:
+    - 429
+    - 500
+    - 503
+
+examples:
+  - name: 'List recent messages (default page size 50)'
+    params:
+      account_sid: ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+    expected_result: 'Returns up to 50 most recent messages with pagination metadata'
+  - name: 'List messages sent to a specific number'
+    params:
+      account_sid: ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+      to: '+15558675310'
+      page_size: 20
+    expected_result: 'Returns messages filtered by recipient with pagination'
+  - name: 'List messages from a specific sender on a date'
+    params:
+      account_sid: ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+      from: '+15557122661'
+      date_sent: '2024-01-15'
+      page_size: 10
+    expected_result: 'Returns messages sent from that number on the specified date'

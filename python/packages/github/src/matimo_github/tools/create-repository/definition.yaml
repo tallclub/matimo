@@ -1,0 +1,112 @@
+name: github-create-repository
+description: Create a new repository in an organization or user account
+version: '1.0.0'
+requires_approval: true
+
+parameters:
+  org:
+    type: string
+    required: false
+    description: Organization name (omit for personal repos)
+  name:
+    type: string
+    required: true
+    description: Repository name
+  description:
+    type: string
+    required: false
+    description: Repository description
+  private:
+    type: boolean
+    required: false
+    description: Whether repo is private
+    default: false
+  has_issues:
+    type: boolean
+    required: false
+    description: Enable issues feature
+    default: true
+  has_wiki:
+    type: boolean
+    required: false
+    description: Enable wiki feature
+    default: true
+  has_downloads:
+    type: boolean
+    required: false
+    description: Enable downloads feature
+    default: true
+  auto_init:
+    type: boolean
+    required: false
+    description: Initialize with README, .gitignore, license
+    default: false
+  license_template:
+    type: string
+    required: false
+    description: License template (mit, apache-2.0, etc.)
+  gitignore_template:
+    type: string
+    required: false
+    description: Gitignore template (Node, Python, etc.)
+
+execution:
+  type: http
+  method: POST
+  url: 'https://api.github.com/orgs/{org}/repos'
+  headers:
+    Accept: application/vnd.github+json
+    Authorization: 'Bearer {GITHUB_TOKEN}'
+    X-GitHub-Api-Version: '2022-11-28'
+    Content-Type: application/json
+  body:
+    name: '{name}'
+    description: '{description}'
+    private: '{private}'
+    has_issues: '{has_issues}'
+    has_wiki: '{has_wiki}'
+    auto_init: '{auto_init}'
+    license_template: '{license_template}'
+    gitignore_template: '{gitignore_template}'
+  timeout: 15000
+
+authentication:
+  type: bearer
+  location: header
+  notes:
+    env: GITHUB_TOKEN
+    required: true
+    permission: Repo write
+
+output_schema:
+  type: object
+  properties:
+    id:
+      type: number
+    name:
+      type: string
+    full_name:
+      type: string
+    private:
+      type: boolean
+    html_url:
+      type: string
+
+error_handling:
+  retry: 1
+  backoff_type: exponential
+  initial_delay_ms: 1000
+
+examples:
+  - name: Create public repository
+    params:
+      org: myorg
+      name: new-project
+      description: My new project
+  - name: Create private repo with license
+    params:
+      org: myorg
+      name: private-tools
+      private: true
+      license_template: mit
+      auto_init: true

@@ -1,0 +1,37 @@
+name: calculator
+version: "1.0.0"
+description: "Perform basic arithmetic operations"
+parameters:
+  operation:
+    type: string
+    description: "Arithmetic operation to perform"
+    required: true
+    enum: [add, subtract, multiply, divide]
+  a:
+    type: number
+    description: "First operand"
+    required: true
+  b:
+    type: number
+    description: "Second operand"
+    required: true
+execution:
+  type: command
+  command: python
+  args: ["-c", "import sys; a={a}; b={b}; print({a}+{b} if '{operation}'=='add' else {a}-{b})"]
+  timeout: 5000
+output_schema:
+  type: object
+  properties:
+    result:
+      type: number
+error_handling:
+  retry: 2
+  backoff_type: exponential
+  initial_delay_ms: 100
+examples:
+  - name: Addition
+    params:
+      operation: add
+      a: 5
+      b: 3

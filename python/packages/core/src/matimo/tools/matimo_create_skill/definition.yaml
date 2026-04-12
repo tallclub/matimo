@@ -1,0 +1,46 @@
+name: matimo_create_skill
+version: '1.0.0'
+description: >-
+  Create a new skill following the Agent Skills specification
+  (https://agentskills.io/specification). Validates name (lowercase, hyphens,
+  max 64 chars), YAML frontmatter (name, description required), and enforces
+  that the frontmatter name matches the directory name.
+requires_approval: true
+tags:
+  - matimo
+  - meta
+  - skill
+
+parameters:
+  name:
+    type: string
+    required: true
+    description: >-
+      Skill directory name. Must be lowercase letters, numbers, and hyphens
+      only. Max 64 characters. Must not start/end with a hyphen or contain
+      consecutive hyphens. Must match the name field in the YAML frontmatter.
+  content:
+    type: string
+    required: true
+    description: >-
+      The full SKILL.md content including YAML frontmatter (--- delimited) and
+      markdown body. Required frontmatter fields: name, description. Optional:
+      license, compatibility, metadata, allowed-tools.
+  target_dir:
+    type: string
+    required: false
+    description: Directory to create the skill in (default ./matimo-tools/skills)
+
+execution:
+  type: function
+  code: './matimo_create_skill.py'
+
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+    path:
+      type: string
+    message:
+      type: string

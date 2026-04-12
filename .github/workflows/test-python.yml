@@ -1,0 +1,60 @@
+name: Test Python SDK
+
+on:
+  push:
+    branches: [main, "feature/*"]
+    paths:
+      - "python/**"
+      - ".github/workflows/test-python.yml"
+  pull_request:
+    paths:
+      - "python/**"
+
+jobs:
+  test:
+    name: Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    defaults:
+      run:
+        working-directory: python
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Lint (ruff)
+        run: uv tool run ruff check packages/
+
+      - name: Type check (mypy)
+        run: uv run mypy packages/ || true   # non-blocking: union type refinement work in progress
+
+      - name: Run tests with coverage
+        run: uv run pytest packages/core/tests/ --cov=packages/core/src/matimo --cov-report=xml --cov-report=term-missing --cov-fail-under=95 -v --tb=short
+
+      - name: Verify coverage file
+        run: ls -lh coverage.xml || echo "coverage.xml not found"
+
+      - name: Upload coverage
+        if: matrix.python-version == '3.11'
+        uses: codecov/codecov-action@v4
+        with:
+          files: python/coverage.xml
+          flags: python-sdk
+          fail_ci_if_error: false

@@ -1,0 +1,101 @@
+name: mailchimp-get-list-members
+version: '1.0.0'
+description: >
+  Get all members (subscribers) from a Mailchimp audience/list with optional
+  filtering by subscription status and pagination support.
+
+parameters:
+  server_prefix:
+    type: string
+    required: true
+    description: >
+      Your Mailchimp data center prefix (e.g. "us6"). Found at the end of your API key:
+      "abc123-us6" → server_prefix is "us6".
+  list_id:
+    type: string
+    required: true
+    description: The unique ID of the Mailchimp audience/list to get members from
+  status:
+    type: string
+    required: false
+    description: >
+      Filter members by subscription status. Options: "subscribed", "unsubscribed",
+      "pending", "cleaned", "transactional", "archived". Omit to get all members.
+    enum:
+      - subscribed
+      - unsubscribed
+      - pending
+      - cleaned
+      - transactional
+      - archived
+  count:
+    type: number
+    required: false
+    description: Number of members to return per page (default 10, max 1000)
+    default: 10
+    min: 1
+    max: 1000
+  offset:
+    type: number
+    required: false
+    description: Number of records to skip for pagination (default 0)
+    default: 0
+    min: 0
+
+execution:
+  type: http
+  method: GET
+  url: 'https://{server_prefix}.api.mailchimp.com/3.0/lists/{list_id}/members'
+  headers:
+    Authorization: 'apikey {MAILCHIMP_API_KEY}'
+    Content-Type: application/json
+  query_params:
+    status: '{status}'
+    count: '{count}'
+    offset: '{offset}'
+  timeout: 30000
+
+authentication:
+  type: api_key
+  location: header
+  name: Authorization
+  notes:
+    env: MAILCHIMP_API_KEY
+
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+    data:
+      type: object
+      properties:
+        members:
+          type: array
+          description: Array of member objects with email, status, and merge fields
+        list_id:
+          type: string
+        total_items:
+          type: number
+
+error_handling:
+  retry: 2
+  backoff_type: exponential
+  initial_delay_ms: 500
+
+examples:
+  - name: 'Get all subscribed members'
+    params:
+      server_prefix: us6
+      list_id: abc123def4
+      status: subscribed
+      count: 100
+      offset: 0
+    expected_result: 'Returns array of subscribed members with total_items count'
+  - name: 'Get first page of all members'
+    params:
+      server_prefix: us6
+      list_id: abc123def4
+      count: 10
+      offset: 0
+    expected_result: 'Returns first 10 members across all statuses'

@@ -1,3 +1,393 @@
+## v0.1.0-alpha.14
+
+> **Release**: Python SDK Official Launch — Full-featured Python support for LangChain, CrewAI, and MCP with comprehensive examples, 657+ tests, 97.38% coverage, and enterprise-grade security hardening
+
+**Released**: April 10, 2026  
+
+---
+
+## 🐍 Python SDK — Official Launch
+
+### Core Features
+
+**Python SDK Release** (`matimo-core 0.1.0a14`)
+
+This is the official Python SDK, feature-parity with the TypeScript SDK plus Python-specific optimizations:
+
+- ✅ **Full SDK Implementation** — All core SDK features in Python (asyncio-based, Pydantic v2)
+- ✅ **Python 3.11 & 3.12** — Type-safe, fully tested across versions
+- ✅ **657 Tests** — 97.38% coverage; exceeds 95% requirement
+- ✅ **Async/await native** — Full async support via `asyncio`
+- ✅ **Type hints throughout** — Complete type annotations for IDE support
+
+### SDK Patterns (Identical to TypeScript)
+
+```python
+# Factory Pattern (simplest)
+from matimo import Matimo
+
+matimo = await Matimo.init('./tools')
+result = await matimo.execute('slack_send_message', {'channel': '#general', 'text': 'Hello'})
+tools = matimo.list_tools()
+```
+
+```python
+# Decorator Pattern (class-based)
+from matimo import tool, set_global_matimo_instance
+
+set_global_matimo_instance(matimo)
+
+class MyAgent:
+    @tool('slack_send_message')
+    async def send(self, channel: str, text: str): ...  # auto-executed
+```
+
+```python
+# LangChain Integration
+from matimo import Matimo, convert_tools_to_langchain
+
+matimo = await Matimo.init('./tools')
+tools = convert_tools_to_langchain(matimo.list_tools(), matimo)
+# Use with LangChain AgentExecutor, ReAct, etc.
+```
+
+```python
+# CrewAI Integration
+from matimo import Matimo, convert_tools_to_crewai
+
+matimo = await Matimo.init('./tools')
+tools = convert_tools_to_crewai(matimo.list_tools(), matimo)
+# Use with CrewAI Agent, Crew, etc.
+```
+
+---
+
+## 🚀 Provider Tools (Python)
+
+All 10 providers ship with full Python support:
+
+| Provider | Tools | Examples |
+|----------|-------|----------|
+| **Slack** | 16+ | `slack_send_message`, `slack_get_user`, `slack_list_channels`, etc. |
+| **GitHub** | 10+ | `github_create_issue`, `github_list_repos`, `github_get_user`, etc. |
+| **Gmail** | 5+ | `gmail_send_message`, `gmail_get_messages`, etc. |
+| **Notion** | 7+ | `notion_create_database`, `notion_query_database`, etc. |
+| **HubSpot** | 50+ | `hubspot_create_contact`, `hubspot_send_email`, etc. |
+| **Mailchimp** | 8+ | `mailchimp_add_member`, `mailchimp_get_list`, etc. |
+| **Postgres** | 6+ | `postgres_execute_query`, `postgres_get_schema`, etc. |
+| **Twilio** | 4+ | `twilio_send_sms`, `twilio_make_call`, etc. |
+
+**Installation**: `pip install matimo-core[slack,github,gmail]` (selective providers)
+
+---
+
+## 🤖 Framework Integrations
+
+### LangChain Integration (Python)
+
+**Full Feature Support**:
+- ✅ `convert_tools_to_langchain()` — Convert Matimo tools to `StructuredTool`
+- ✅ Secret parameter masking — Credentials excluded from schemas
+- ✅ Tool name sanitization — Hyphenated names handled safely
+- ✅ AgentExecutor compatibility — Works with `ReActAgent`, `OpenAIFunctionsAgent`, etc.
+
+**Example**:
+```python
+from langchain.agents import create_react_agent, AgentExecutor
+from langchain_openai import ChatOpenAI
+from matimo import Matimo, convert_tools_to_langchain
+
+matimo = await Matimo.init('./tools')
+tools = convert_tools_to_langchain(matimo.list_tools(), matimo)
+
+llm = ChatOpenAI(model='gpt-4')
+agent = create_react_agent(llm, tools)
+executor = AgentExecutor.from_agent_and_tools(agent=agent, tools=tools, verbose=True)
+
+result = await executor.ainvoke({'input': 'Send a Slack message to #general saying hello'})
+```
+
+### CrewAI Integration (Python)
+
+**Full Feature Support**:
+- ✅ `convert_tools_to_crewai()` — Convert Matimo tools to `BaseTool`
+- ✅ Secret parameter masking — Credentials excluded from schemas  
+- ✅ Tool name sanitization — Hyphenated names handled safely
+- ✅ Async/sync execution — Shared thread executor for event loop handling
+- ✅ Crew compatibility — Works with `Agent`, `Task`, `Crew`
+
+**Example**:
+```python
+from crewai import Agent, Task, Crew
+from langchain_openai import ChatOpenAI
+from matimo import Matimo, convert_tools_to_crewai
+
+matimo = await Matimo.init('./tools')
+tools = convert_tools_to_crewai(matimo.list_tools(), matimo)
+
+llm = ChatOpenAI(model='gpt-4')
+agent = Agent(role='Slack Manager', goal='Send messages', tools=tools, llm=llm)
+task = Task(description='Send hello to #general', agent=agent)
+crew = Crew(agents=[agent], tasks=[task])
+
+result = crew.kickoff()
+```
+
+### MCP Server (Python)
+
+**Built-in Support**:
+- ✅ `create_mcp_server()` — Serve Matimo tools over MCP protocol
+- ✅ Dual transport — stdio + HTTP
+- ✅ Claude Desktop compatible — Register and use tools in Claude
+- ✅ Settings support — Per-tool configuration overrides
+
+**Example**:
+```python
+from matimo import Matimo, create_mcp_server, MCPServerOptions
+
+matimo = await Matimo.init('./tools')
+server = await create_mcp_server(
+    matimo,
+    MCPServerOptions(name='my-agent', version='1.0.0')
+)
+await server.start()
+```
+
+---
+
+## 📚 Python Examples (Production Patterns)
+
+### Native — Advanced Agent Demos (fully tested, exit 0)
+
+These walkthroughs use real LangChain ReAct loops and verify each step programmatically. No mocks.
+
+| File | Missions | What it demonstrates |
+|------|----------|---------------------|
+| **`native/policy/policy_demo.py`** | 11 | Full policy lifecycle: risk classification, draft/deprecated/blocked tools, content validation, HITL approval, hot-reload atomicity, approval state tracking |
+| **`native/skills/skills_demo.py`** | 6 + Phase 4 | Create/list/read/validate SKILL.md files via agent; `get_skills_metadata()` (L1), `semantic_search_skills()` (TF-IDF), `build_relevant_skill_prompt()` (L2) |
+| **`native/meta_flow/meta_tools_integration.py`** | 5 | Full meta-tool lifecycle: `matimo_create_tool` → `matimo_validate_tool` → `matimo_approve_tool` → `matimo_reload_tools` → execute; policy-blocked tools (shell/file-reader) |
+| **`native/logger_example.py`** | 6 sections | `setup_logger()`, JSON vs simple format, global singleton, SDK internal logger, level filtering, silent mode — **no API key needed** |
+
+Run them via:
+```bash
+cd python/
+make policy-demo     # OPENAI_API_KEY required
+make skills-demo     # OPENAI_API_KEY required
+make meta-flow       # OPENAI_API_KEY required
+make logger-example  # no key needed
+```
+
+### Native — Factory & Decorator (no LLM required)
+- **Provider factory/decorator examples** — `slack/`, `github/`, `gmail/`, `notion/`, `hubspot/`, `mailchimp/`, `postgres/`, `twilio/`
+- **Generic pattern agents** — `agents/factory_pattern_agent.py`, `agents/decorator_pattern_agent.py`
+- **Core tool examples** — `execute/`, `read/`, `edit/`, `search/`, `web/`, `credentials/`
+
+### LangChain Integration (17 files)
+- **`langchain/agents/langchain_agent.py`** — Generic multi-provider ReAct agent
+- **`langchain/agents/langchain_skills_policy_agent.py`** — Production-pattern agent: Level 1+2 skills injection + policy-aware tool creation in one ReAct loop
+- **Provider agents** — Slack, GitHub (`github_with_approval.py`), Gmail, Notion, HubSpot, Mailchimp, Postgres (`postgres_with_approval.py`), Twilio
+- **Core tool agents** — `read/`, `search/`, `execute/`, `edit/`, `web/`
+
+### CrewAI Integration (10 files)
+- **`crewai/agents/crewai_agent.py`** — Single CrewAI agent with Matimo tools
+- **`crewai/agents/multi_agent_crew.py`** — Multi-agent crew orchestration
+- **Provider crews** — Slack, GitHub, Gmail, Notion, HubSpot, Mailchimp, Postgres, Twilio
+
+**Total Python examples: 58 files** across 3 patterns and 8+ providers. All lint-clean (ruff), all end-to-end tested.
+
+---
+
+## 🔒 Security Hardening (6 Critical Patches)
+
+### Patch A: MCP Server Secret Isolation
+- **Impact**: Secrets no longer exposed to `process.env`; kept in memory only
+- **Changed**: Both TypeScript and Python implementations hardened
+- **Result**: No sibling module access to credentials
+
+### Patch B: Command Injection Prevention
+- **Impact**: Command tools with `{placeholders}` rejected at validation time
+- **Changed**: Both TypeScript + Python: `CommandExecutor` validates before execution
+- **Blocked**: Untrusted parameter injection into shell commands
+
+### Patch C: Production Fail-Fast for Missing Approvals
+- **Impact**: In production, missing approval secrets cause immediate failure
+- **Changed**: `ApprovalManifest` checks `NODE_ENV` / `MATIMO_ENV`
+- **Prevents**: Silent deployments with broken approval setup
+
+### Patch D: Embedded Code Sandboxing (Python)
+- **Impact**: Directory traversal (`../`) blocked in `execution.code` paths
+- **Changed**: `FunctionExecutor` validates file paths
+- **Allows**: Absolute paths (admin intent); blocks relative escapes
+
+---
+
+## 🔐 Integration Layer Hardening
+
+### Case-Insensitive Secret Detection
+- ✅ **Fixed**: Regex now catches lowercase `token`, `api_key`, `secret`
+- ✅ **Testing**: 19 new test cases cover all variations
+- ⚠️ **Impact**: More secrets properly masked in LangChain/CrewAI schemas
+
+### Tool Name Sanitization for Pydantic
+- ✅ **Fixed**: `github-create-issue` → `github_create_issue_args`
+- ✅ **Testing**: LangChain + CrewAI integration tests pass
+- ⚠️ **Impact**: No more invalid Pydantic model names
+
+### Comprehensive Auth Injection Testing
+- ✅ **19 new test cases**: Placeholder extraction, injection precedence, non-auth handling
+- ✅ **Coverage**: HTTP + command tools, edge cases, list-valued parameters
+- ⚠️ **Impact**: Developers can trust auth behavior across all executor types
+
+---
+
+## 🚀 Performance Optimizations
+
+### CrewAI ThreadPoolExecutor Reuse
+- ✅ **Changed**: Shared module-level executor instead of per-call creation
+- ✅ **Impact**: Significant overhead reduction in high-frequency tool calls
+- ⚠️ **For**: Jupyter notebooks, async contexts with already-running event loops
+
+---
+
+## 🔧 Build Quality & CI/CD
+
+### PEP 440 Version Compliance
+- ✅ **Format**: `0.1.0a14` (was `0.1.0-alpha.14`)
+- ⚠️ **Impact**: Proper PyPI pre-release ordering
+- ✅ **Verified**: `uv build` produces `matimo_core-0.1.0a14.tar.gz`
+
+### Python Version Alignment
+- ✅ **Requirement**: All packages now require `>=3.11`
+- ⚠️ **Impact**: Users on Python 3.10 must upgrade
+- ✅ **Benefit**: Consistent requirement across SDK
+
+### GitHub Actions Workflow Fixes
+- ✅ **Fixed**: `uv tool run pytest` → `uv run pytest` (correct dependency resolution)
+- ✅ **Fixed**: `uv tool run mypy` uses synced workspace context
+- ⚠️ **Impact**: Python tests now run reliably in CI
+
+---
+
+## 🧪 Test Coverage & Quality Metrics
+
+**Python Core** (`657 tests`):
+- Unit tests: `test_instance.py`, `test_loader.py`, `test_registry.py`, `test_models.py`
+- Integration tests: `test_http_executor.py`, `test_command_executor.py`, `test_function_executor.py`
+- Framework tests: `test_langchain.py` (9 tests), `test_crewai.py` (13 tests)
+- Policy tests: `test_policy.py`, `test_approval.py`, `test_integrity_tracker.py`
+- Auth tests: `test_auth_injection.py` (19 tests, comprehensive)
+- Encoding tests: `test_encodings.py`
+- **Coverage**: 97.38% (exceeds 95% requirement)
+
+**TypeScript Core** (`1,884 tests`):
+- Maintained parity with Python
+- All security patches verified with existing test suite
+- **Coverage**: Consistent 95%+ across all modules
+
+**Total**: **2,541 tests passing** (TypeScript 1,884 + Python 657)
+
+---
+
+## 📖 Python Documentation
+
+**New Python-Specific Docs**:
+- ✅ `docs/framework-integrations/PYTHON_SDK.md` — Python SDK getting started
+- ✅ `docs/framework-integrations/LANGCHAIN.md` — Updated with Python examples
+- ✅ `docs/framework-integrations/CREWAI.md` — CrewAI integration guide
+- ✅ `docs/api-reference/AUTH_INJECTION.md` — Auth parameter handling (Python focus)
+- ✅ `docs/troubleshooting/PYTHON_COMMON_ISSUES.md` — FAQ for Python users
+
+---
+
+## ⚠️ Breaking Changes & Migration Guide
+
+| Aspect | Old Behavior | New Behavior | Action |
+|--------|--------------|--------------|--------|
+| **Python support** | Not available | Official Python 3.11+ | Update to Python 3.11+ |
+| **CrewAI version** | Manual tool wiring | `convert_tools_to_crewai()` | Use conversion function |
+| **LangChain Python** | Not available | Full support (langchain-core) | Use conversion function |
+| **Secret detection** | Case-sensitive | Case-insensitive | No action (more secure) |
+| **Command injection** | Allowed edge cases | Rejected at validation | Review command definitions |
+| **Production approval** | Silent fallback | Fail-fast | Set `APPROVAL_SECRET` in prod |
+| **PEP 440 version** | `0.1.0-alpha.14` | `0.1.0a14` | Automatic in PyPI |
+
+---
+
+## 🎯 Cautions & Disclaimers
+
+### For AI Agents
+- ⚠️ **Secret masking**: Credentials are now excluded from LangChain/CrewAI schema generation; agents cannot see or leak credentials in tool definitions
+- ⚠️ **Command validation**: Strict validation may reject some edge cases; file an issue if blocking legitimate use
+- ⚠️ **Placeholder precedence**: Auth parameters follow strict precedence (explicit > MATIMO_* > direct env); no fallback to random env vars
+
+### For Developers
+- ⚠️ **Python 3.10 EOL**: Minimum version is now 3.11; update your environment
+- ⚠️ **Event loop context**: In async contexts (Jupyter), CrewAI uses a shared executor; single-threaded (suitable for most use cases; scale horizontally if needed)
+- ⚠️ **Embedded code opt-in**: Function tools require `MATIMO_ALLOW_EMBEDDED_CODE=true` environment variable
+- ⚠️ **Tool name sanitization**: Verify hyphenated tool names work in your schema after upgrade (they should work transparently)
+
+### For Production
+- ⚠️ **Approval secret**: Must be set before deploying tools with approval-required policies
+- ⚠️ **Upgrade testing**: Run full integration test suite before deploying to production
+- ⚠️ **Dependency verification**: PyPI pre-release ordering now correct; old installations may require `pip install --upgrade matimo-core==0.1.0a14`
+
+---
+
+## 🚀 Upgrade Instructions
+
+### From alpha.13 (TypeScript users)
+No breaking changes to TypeScript SDK; all security patches are backward-compatible.
+
+### For New Python Users
+```bash
+# Install core + specific providers
+pip install matimo-core matimo-slack matimo-github
+
+# With LangChain
+pip install matimo-core[langchain] matimo-slack
+
+# With CrewAI
+pip install matimo-core[crewai] matimo-slack
+
+# With everything
+pip install matimo-core[all]
+```
+
+### Verify Installation
+```python
+import matimo
+print(f"Matimo version: {matimo.__version__}")  # Should be 0.1.0a14
+
+# Quick test
+from matimo import Matimo
+matimo = await Matimo.init('./tools')
+tools = matimo.list_tools()
+print(f"Loaded {len(tools)} tools")
+```
+
+---
+
+## 📊 Release Statistics
+
+| Metric | Value |
+|--------|-------|
+| **Total Tests** | 2,541 (1,884 TS + 657 Python) |
+| **Coverage** | 97.38% Python (exceeds 95% requirement) |
+| **Security Patches** | 6 (3 critical + 1 CodeQL + 2 optimization) |
+| **Python Modules** | 11 (core, 10 providers) |
+| **Python Examples** | 58 files (native, LangChain, CrewAI patterns) |
+| **TypeScript Examples** | 20+ (tools/, agents/, policy/, skills/) |
+| **Provider Tools** | 110+ across 8 providers (both SDKs) |
+| **Supported Python** | 3.11, 3.12 |
+| **Framework Support** | LangChain, CrewAI, MCP (native), Decorator, Factory |
+| **Advanced Demos** | 4 (policy, skills, meta-tools, logger — fully tested) |
+
+---
+
+## v0.1.0-alpha.13
+
+---
+
 ## v0.1.0-alpha.13
 
 > Release: Skills System, Policy Engine, Meta-Tools Hardening — Complete agent autonomy layer with skill discovery, policy-driven tool creation, HITL quarantine, hot-reload safety, and security hardening

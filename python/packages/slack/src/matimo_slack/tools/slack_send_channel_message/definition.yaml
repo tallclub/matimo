@@ -1,0 +1,34 @@
+name: slack_send_channel_message
+description: Post a message (text, markdown, blocks) to a public/private Slack channel.
+version: '1.0.0'
+parameters:
+  channel:
+    type: string
+    required: true
+    description: Channel ID or name to post the message to
+  text:
+    type: string
+    required: false
+    description: Plain-text message (optional if blocks provided, recommended as fallback for accessibility)
+  blocks:
+    type: array
+    required: false
+    description: Slack Block Kit JSON blocks (optional, used instead of text for rich formatting)
+execution:
+  type: http
+  method: POST
+  url: 'https://slack.com/api/chat.postMessage'
+  headers:
+    Authorization: 'Bearer {SLACK_BOT_TOKEN}'
+    Content-Type: application/json
+  body:
+    channel: '{channel}'
+    text: '{text}'
+  timeout: 15000
+authentication:
+  type: api_key
+  location: header
+  name: Authorization
+notes:
+  env: SLACK_BOT_TOKEN
+  caution: Ensure `chat:write` scope and bot membership in private channels. Either text or blocks is recommended (not both required). Unresolved placeholders (e.g., {blocks} when not provided) will be sent as literal strings per Slack API contract.
