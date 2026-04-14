@@ -1,6 +1,6 @@
 # matimo-core
 
-> Configuration-driven AI tools SDK — core module.
+> Matimo core — framework-agnostic SDK with pre-built providers, skills layer, MCP, and a policy engine you control.
 
 [![PyPI](https://img.shields.io/pypi/v/matimo-core)](https://pypi.org/project/matimo-core/)
 [![Python](https://img.shields.io/pypi/pyversions/matimo-core)](https://pypi.org/project/matimo-core/)

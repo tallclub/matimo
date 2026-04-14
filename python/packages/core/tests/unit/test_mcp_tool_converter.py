@@ -1,11 +1,73 @@
 """Unit tests for mcp/tool_converter.py."""
 from __future__ import annotations
 
-from matimo.core.models import Parameter, ParameterType
+import pytest
+
+from matimo.core.models import HttpExecution, Parameter, ParameterType, ToolDefinition
 from matimo.mcp.tool_converter import (
+    _AUTH_PATTERNS,
+    _is_auth_parameter,
     _parameter_to_json_schema,
     convert_parameters_to_mcp_schema,
+    tool_to_mcp_registration,
 )
+
+# ---------------------------------------------------------------------------
+# _is_auth_parameter
+# ---------------------------------------------------------------------------
+
+
+class TestIsAuthParameter:
+    @pytest.mark.parametrize(
+        "name",
+        [
+            "token",
+            "api_token",
+            "apiToken",
+            "bot_token",
+            "SLACK_BOT_TOKEN",
+            "key",
+            "api_key",
+            "apiKey",
+            "secret",
+            "client_secret",
+            "clientSecret",
+            "password",
+            "user_password",
+            "credential",
+            "auth",
+            "auth_header",
+            "bearer",
+            "bearer_token",
+            "access_token",
+            "ACCESS_TOKEN",
+        ],
+    )
+    def test_auth_parameter_detected(self, name: str) -> None:
+        assert _is_auth_parameter(name) is True
+
+    @pytest.mark.parametrize(
+        "name",
+        [
+            "channel",
+            "message",
+            "user",
+            "repo",
+            "monkey",   # contains "key" as substring but NOT a full segment
+            "author",   # contains "auth" as substring but NOT a full segment
+            "count",
+            "limit",
+            "offset",
+            "enabled",
+        ],
+    )
+    def test_non_auth_parameter_not_detected(self, name: str) -> None:
+        assert _is_auth_parameter(name) is False
+
+    def test_auth_patterns_constant_is_frozenset(self) -> None:
+        assert isinstance(_AUTH_PATTERNS, frozenset)
+        assert "token" in _AUTH_PATTERNS
+        assert "key" in _AUTH_PATTERNS
 
 
 class TestConvertParametersToMcpSchema:
@@ -56,6 +118,98 @@ class TestConvertParametersToMcpSchema:
         schema = convert_parameters_to_mcp_schema(params)
         assert set(schema["properties"].keys()) == {"a", "b", "c"}
         assert set(schema["required"]) == {"a", "b"}
+
+    def test_auth_parameters_excluded(self) -> None:
+        """Auth/secret params must be stripped so clients never see them."""
+        params = {
+            "channel": Parameter(type=ParameterType.STRING, required=True),
+            "bot_token": Parameter(type=ParameterType.STRING, required=True),
+            "api_key": Parameter(type=ParameterType.STRING, required=True),
+            "message": Parameter(type=ParameterType.STRING, required=False),
+        }
+        schema = convert_parameters_to_mcp_schema(params)
+        assert "channel" in schema["properties"]
+        assert "message" in schema["properties"]
+        assert "bot_token" not in schema["properties"]
+        assert "api_key" not in schema["properties"]
+        # Auth params must not appear in required either
+        assert "bot_token" not in schema.get("required", [])
+        assert "api_key" not in schema.get("required", [])
+
+    def test_only_auth_parameters_returns_empty_properties(self) -> None:
+        params = {
+            "SLACK_BOT_TOKEN": Parameter(type=ParameterType.STRING, required=True),
+            "api_key": Parameter(type=ParameterType.STRING, required=True),
+        }
+        schema = convert_parameters_to_mcp_schema(params)
+        assert schema["properties"] == {}
+        assert "required" not in schema
+
+
+# ---------------------------------------------------------------------------
+# tool_to_mcp_registration
+# ---------------------------------------------------------------------------
+
+
+def _make_tool_def(
+    name: str = "my_tool",
+    requires_approval: bool = False,
+    params: dict[str, Parameter] | None = None,
+) -> ToolDefinition:
+    return ToolDefinition(
+        name=name,
+        description="A test tool",
+        parameters=params or {
+            "channel": Parameter(type=ParameterType.STRING, required=True),
+        },
+        execution=HttpExecution(type="http", method="GET", url="https://api.example.com/"),
+        requires_approval=requires_approval,
+    )
+
+
+class TestToolToMcpRegistration:
+    def test_returns_title_description_inputschema(self) -> None:
+        tool = _make_tool_def()
+        reg = tool_to_mcp_registration(tool)
+        assert reg["title"] == "my_tool"
+        assert reg["description"] == "A test tool"
+        assert "inputSchema" in reg
+
+    def test_description_falls_back_to_name_when_empty(self) -> None:
+        tool = ToolDefinition(
+            name="no_desc",
+            description="",
+            parameters={},
+            execution=HttpExecution(type="http", method="GET", url="https://api.example.com/"),
+        )
+        reg = tool_to_mcp_registration(tool)
+        assert reg["description"] == "no_desc"
+
+    def test_no_matimo_approved_for_non_approval_tool(self) -> None:
+        tool = _make_tool_def(requires_approval=False)
+        reg = tool_to_mcp_registration(tool)
+        props = reg["inputSchema"].get("properties", {})
+        assert "_matimo_approved" not in props
+
+    def test_matimo_approved_added_for_approval_tool(self) -> None:
+        tool = _make_tool_def(requires_approval=True)
+        reg = tool_to_mcp_registration(tool)
+        props = reg["inputSchema"]["properties"]
+        assert "_matimo_approved" in props
+        assert props["_matimo_approved"]["type"] == "boolean"
+        assert "description" in props["_matimo_approved"]
+
+    def test_auth_params_excluded_in_registration(self) -> None:
+        tool = _make_tool_def(
+            params={
+                "channel": Parameter(type=ParameterType.STRING, required=True),
+                "bot_token": Parameter(type=ParameterType.STRING, required=True),
+            }
+        )
+        reg = tool_to_mcp_registration(tool)
+        props = reg["inputSchema"]["properties"]
+        assert "channel" in props
+        assert "bot_token" not in props
 
 
 class TestParameterToJsonSchema:

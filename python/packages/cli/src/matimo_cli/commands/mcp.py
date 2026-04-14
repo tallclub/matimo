@@ -97,23 +97,37 @@ def _parse_args(params: list[str]) -> McpArgs:
     return args
 
 
-def _build_resolver_config(args: McpArgs) -> dict:
+def _build_resolver_config(args: McpArgs) -> object:
+    """Build a SecretResolverChain from CLI args."""
+    from matimo.mcp.secrets import (
+        EnvSecretResolver,
+        DotenvSecretResolver,
+        VaultSecretResolver,
+        AwsSecretsManagerResolver,
+        SecretResolverChain,
+    )
+    
     secret_types = args.secrets or ["env", "dotenv"]
-    resolvers = []
+    resolvers: list[object] = []
+    
     for t in secret_types:
         match t:
             case "env":
-                resolvers.append({"type": "env"})
+                resolvers.append(EnvSecretResolver())
             case "dotenv":
-                resolvers.append({"type": "dotenv", "path": args.env_file})
+                resolvers.append(DotenvSecretResolver(path=args.env_file or ".env"))
             case "vault":
-                resolvers.append({"type": "vault", "secret_path": args.vault_path})
+                if args.vault_path:
+                    resolvers.append(VaultSecretResolver(secret_path=args.vault_path))
             case "aws":
-                resolvers.append({"type": "aws", "secret_id": args.aws_secret_id})
+                if args.aws_secret_id:
+                    resolvers.append(AwsSecretsManagerResolver(secret_id=args.aws_secret_id))
             case _:
                 print(f"❌ Unknown secret resolver: {t}. Use: env, dotenv, vault, aws", file=sys.stderr)
                 sys.exit(1)
-    return {"resolvers": resolvers}
+    
+    # Return None if no resolvers (let MCP server handle it) or a chain if we have resolvers
+    return SecretResolverChain(resolvers) if resolvers else None
 
 
 def mcp_command(params: list[str]) -> None:
@@ -123,40 +137,72 @@ def mcp_command(params: list[str]) -> None:
         mcp_setup_command()
         return
 
+    import asyncio
+    asyncio.run(_mcp_command_async(params))
+
+
+async def _mcp_command_async(params: list[str]) -> None:
+    """Async implementation of the MCP server command."""
+    import os
+    import sysconfig
+    
     args = _parse_args(params)
 
     try:
-        from matimo.mcp import MCPServer  # type: ignore[import-not-found]
-    except ImportError:
+        from matimo import Matimo
+        from matimo.mcp import MCPServer, MCPServerOptions  # type: ignore[import-not-found]
+    except ImportError as e:
         print("❌ matimo MCP server module not available.", file=sys.stderr)
         print("   Make sure matimo is installed: pip install matimo", file=sys.stderr)
+        print(f"   Import error: {e}", file=sys.stderr)
         sys.exit(1)
 
-    server = MCPServer(
+    # Discover all matimo_* packages if no tool paths provided
+    tool_paths = args.tool_paths or []
+    if not tool_paths:
+        site_packages = sysconfig.get_path("purelib")
+        if site_packages and os.path.exists(site_packages):
+            for entry in os.listdir(site_packages):
+                if entry.startswith("matimo_") and not entry.endswith(".dist-info"):
+                    pkg_tools = os.path.join(site_packages, entry, "tools")
+                    if os.path.exists(pkg_tools):
+                        tool_paths.append(pkg_tools)
+
+    # Initialize Matimo with the given tool paths
+    matimo = await Matimo.init(
+        tool_paths=tool_paths if tool_paths else None,
+        skill_paths=args.skill_paths,
+        auto_discover=True,
+    )
+
+    # Create MCP server options
+    options = MCPServerOptions(
         transport=args.transport,
         port=args.port,
         tools=args.tools,
         exclude_tools=args.exclude_tools,
         secret_resolver=_build_resolver_config(args),
         mcp_token=args.token,
-        tool_paths=args.tool_paths,
+        tool_paths=tool_paths if tool_paths else None,
         skill_paths=args.skill_paths,
         auto_discover=True,
     )
+
+    # Create MCP server
+    server = MCPServer(matimo, options)
 
     def _shutdown(signum: int, frame: object) -> None:
         if args.transport == "stdio":
             sys.stderr.write("\nShutting down Matimo MCP server…\n")
         else:
             print("\nShutting down Matimo MCP server…")
-        server.stop()
         sys.exit(0)
 
     signal.signal(signal.SIGINT, _shutdown)
     signal.signal(signal.SIGTERM, _shutdown)
 
     try:
-        server.start()
+        await server.start()
 
         if args.transport == "http":
             protocol = "https" if args.https else "http"
