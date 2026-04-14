@@ -280,6 +280,231 @@ class TestDefaultPolicyEngine:
 
 
 # ---------------------------------------------------------------------------
+# get_tier_for_tool helper function tests
+# ---------------------------------------------------------------------------
+
+
+class TestGetTierForTool:
+    """Cover get_tier_for_tool() and related helper functions."""
+
+    def test_protected_namespace_tool_is_blocked(self) -> None:
+        """matimo_* namespace → BLOCKED tier."""
+        from matimo.policy.default_policy import get_tier_for_tool
+        from matimo.policy.types import PolicyTier
+
+        tool = ToolDefinition(
+            name="matimo_internal",
+            description="internal",
+            parameters={},
+            execution=HttpExecution(type="http", method="GET", url="https://api.com"),
+        )
+        assert get_tier_for_tool(tool) == PolicyTier.BLOCKED
+
+    def test_function_tool_is_blocked(self) -> None:
+        """Function execution type → BLOCKED tier."""
+        from matimo.core.models import FunctionExecution
+        from matimo.policy.default_policy import get_tier_for_tool
+        from matimo.policy.types import PolicyTier
+
+        tool = ToolDefinition(
+            name="my_function",
+            description="f",
+            parameters={},
+            execution=FunctionExecution(
+                type="function",
+                code="def my_func(): pass",
+            ),
+        )
+        assert get_tier_for_tool(tool) == PolicyTier.BLOCKED
+
+    def test_command_tool_is_blocked(self) -> None:
+        """Command execution type → BLOCKED tier."""
+        from matimo.core.models import CommandExecution
+        from matimo.policy.default_policy import get_tier_for_tool
+        from matimo.policy.types import PolicyTier
+
+        tool = ToolDefinition(
+            name="my_shell_command",
+            description="cmd",
+            parameters={},
+            execution=CommandExecution(type="command", command="ls -la"),
+        )
+        assert get_tier_for_tool(tool) == PolicyTier.BLOCKED
+
+    def test_ssrf_localhost_is_blocked(self) -> None:
+        """Localhost URLs → BLOCKED tier."""
+        from matimo.policy.default_policy import get_tier_for_tool
+        from matimo.policy.types import PolicyTier
+
+        tool = ToolDefinition(
+            name="local_api_call",
+            description="local",
+            parameters={},
+            execution=HttpExecution(
+                type="http",
+                method="GET",
+                url="http://localhost:8080/api",
+            ),
+        )
+        assert get_tier_for_tool(tool) == PolicyTier.BLOCKED
+
+    def test_ssrf_127_is_blocked(self) -> None:
+        """127.0.0.1 URLs → BLOCKED tier."""
+        from matimo.policy.default_policy import get_tier_for_tool
+        from matimo.policy.types import PolicyTier
+
+        tool = ToolDefinition(
+            name="loopback_call",
+            description="loop",
+            parameters={},
+            execution=HttpExecution(
+                type="http",
+                method="GET",
+                url="http://127.0.0.1:3000/internal",
+            ),
+        )
+        assert get_tier_for_tool(tool) == PolicyTier.BLOCKED
+
+    def test_ssrf_private_ip_is_blocked(self) -> None:
+        """10.0.0.0/8 (private) URLs → BLOCKED tier."""
+        from matimo.policy.default_policy import get_tier_for_tool
+        from matimo.policy.types import PolicyTier
+
+        tool = ToolDefinition(
+            name="internal_ip_call",
+            description="internal",
+            parameters={},
+            execution=HttpExecution(
+                type="http",
+                method="GET",
+                url="http://10.0.0.1/admin",
+            ),
+        )
+        assert get_tier_for_tool(tool) == PolicyTier.BLOCKED
+
+    def test_post_method_requires_approval(self) -> None:
+        """POST method → APPROVAL_REQUIRED tier."""
+        from matimo.policy.default_policy import get_tier_for_tool
+        from matimo.policy.types import PolicyTier
+
+        tool = ToolDefinition(
+            name="create_resource",
+            description="create",
+            parameters={},
+            execution=HttpExecution(
+                type="http",
+                method="POST",
+                url="https://api.example.com/resource",
+            ),
+        )
+        assert get_tier_for_tool(tool) == PolicyTier.APPROVAL_REQUIRED
+
+    def test_put_method_requires_approval(self) -> None:
+        """PUT method → APPROVAL_REQUIRED tier."""
+        from matimo.policy.default_policy import get_tier_for_tool
+        from matimo.policy.types import PolicyTier
+
+        tool = ToolDefinition(
+            name="update_resource",
+            description="update",
+            parameters={},
+            execution=HttpExecution(
+                type="http",
+                method="PUT",
+                url="https://api.example.com/resource/1",
+            ),
+        )
+        assert get_tier_for_tool(tool) == PolicyTier.APPROVAL_REQUIRED
+
+    def test_delete_method_requires_approval(self) -> None:
+        """DELETE method → APPROVAL_REQUIRED tier."""
+        from matimo.policy.default_policy import get_tier_for_tool
+        from matimo.policy.types import PolicyTier
+
+        tool = ToolDefinition(
+            name="delete_resource",
+            description="delete",
+            parameters={},
+            execution=HttpExecution(
+                type="http",
+                method="DELETE",
+                url="https://api.example.com/resource/1",
+            ),
+        )
+        assert get_tier_for_tool(tool) == PolicyTier.APPROVAL_REQUIRED
+
+    def test_patch_method_requires_approval(self) -> None:
+        """PATCH method → APPROVAL_REQUIRED tier."""
+        from matimo.policy.default_policy import get_tier_for_tool
+        from matimo.policy.types import PolicyTier
+
+        tool = ToolDefinition(
+            name="patch_resource",
+            description="patch",
+            parameters={},
+            execution=HttpExecution(
+                type="http",
+                method="PATCH",
+                url="https://api.example.com/resource/1",
+            ),
+        )
+        assert get_tier_for_tool(tool) == PolicyTier.APPROVAL_REQUIRED
+
+    def test_get_with_auth_placeholder_requires_approval(self) -> None:
+        """GET with auth placeholder → APPROVAL_REQUIRED tier."""
+        from matimo.policy.default_policy import get_tier_for_tool
+        from matimo.policy.types import PolicyTier
+
+        tool = ToolDefinition(
+            name="authenticated_read",
+            description="auth",
+            parameters={},
+            execution=HttpExecution(
+                type="http",
+                method="GET",
+                url="https://api.example.com/data",
+                headers={"Authorization": "Bearer {API_TOKEN}"},
+            ),
+        )
+        assert get_tier_for_tool(tool) == PolicyTier.APPROVAL_REQUIRED
+
+    def test_simple_get_is_auto(self) -> None:
+        """Simple GET no auth → AUTO tier."""
+        from matimo.policy.default_policy import get_tier_for_tool
+        from matimo.policy.types import PolicyTier
+
+        tool = ToolDefinition(
+            name="public_api",
+            description="public",
+            parameters={},
+            execution=HttpExecution(
+                type="http",
+                method="GET",
+                url="https://api.example.com/public",
+            ),
+        )
+        assert get_tier_for_tool(tool) == PolicyTier.AUTO
+
+    def test_tier_with_custom_protected_namespaces(self) -> None:
+        """Custom protected_namespaces respected in tier calculation."""
+        from matimo.policy.default_policy import get_tier_for_tool
+        from matimo.policy.types import PolicyConfig, PolicyTier
+
+        tool = ToolDefinition(
+            name="admin_tool",
+            description="admin",
+            parameters={},
+            execution=HttpExecution(
+                type="http",
+                method="GET",
+                url="https://api.example.com/data",
+            ),
+        )
+        config = PolicyConfig(protected_namespaces=["admin_"])
+        assert get_tier_for_tool(tool, config) == PolicyTier.BLOCKED
+
+
+# ---------------------------------------------------------------------------
 # Content validator — extended coverage
 # ---------------------------------------------------------------------------
 

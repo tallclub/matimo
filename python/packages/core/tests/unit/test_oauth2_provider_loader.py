@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from urllib.parse import urlparse
 
 from matimo.auth.oauth2_provider_loader import OAuth2ProviderLoader
 
@@ -31,7 +32,7 @@ class TestOAuth2ProviderLoader:
         loader = OAuth2ProviderLoader(str(tmp_path))
         providers = await loader.load_providers()
         assert "github" in providers
-        assert "github.example.com" in providers["github"].authorization_url
+        assert urlparse(providers["github"].authorization_url).hostname == "github.example.com"
 
     async def test_load_multiple_providers(self, tmp_path: Path) -> None:
         for name in ["slack", "github", "google"]:
@@ -47,7 +48,7 @@ class TestOAuth2ProviderLoader:
         await loader.load_providers()
         endpoints = loader.get_provider("slack")
         assert endpoints is not None
-        assert "slack.example.com" in endpoints.authorization_url
+        assert urlparse(endpoints.authorization_url).hostname == "slack.example.com"
 
     async def test_get_provider_missing_returns_none(self, tmp_path: Path) -> None:
         loader = OAuth2ProviderLoader(str(tmp_path))

@@ -68,16 +68,13 @@ class ApprovalManifest:
                     ErrorCode.AUTH_FAILED,
                 )
             raw_secret = self._generate_ephemeral_secret()
-            _fingerprint = raw_secret[:4] + "****"
             logger.warning(
-                "No MATIMO_APPROVAL_SECRET set. Using an ephemeral secret (%s). "
+                "No MATIMO_APPROVAL_SECRET set. Using an ephemeral secret. "
                 "Approvals will not persist across restarts. "
                 "Set MATIMO_APPROVAL_SECRET for stable approvals.",
-                _fingerprint,
             )
         self._secret = raw_secret.encode("utf-8")
-        fingerprint = raw_secret[:4] + "****"
-        logger.debug("ApprovalManifest initialised (key fingerprint: %s)", fingerprint)
+        logger.debug("ApprovalManifest initialised")
 
         self._manifest_path = self._dir / _MANIFEST_FILENAME
         self._records: dict[str, ApprovalRecord] = {}

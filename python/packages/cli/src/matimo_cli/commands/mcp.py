@@ -123,7 +123,7 @@ def _build_resolver_config(args: McpArgs) -> object:
                 if args.aws_secret_id:
                     resolvers.append(AwsSecretsManagerResolver(secret_id=args.aws_secret_id))
             case _:
-                print(f"❌ Unknown secret resolver: {t}. Use: env, dotenv, vault, aws", file=sys.stderr)
+                print("❌ Unknown secret resolver type. Use: env, dotenv, vault, aws", file=sys.stderr)
                 sys.exit(1)
     
     # Return None if no resolvers (let MCP server handle it) or a chain if we have resolvers
