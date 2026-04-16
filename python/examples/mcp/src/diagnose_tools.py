@@ -16,11 +16,21 @@ async def main() -> None:
     import site
     from matimo import Matimo
     
-    # ── Exact same paths as server_stdio.py ───────────────────────────────────
-    workspace_root = "/Users/sajesh/My Work Directory/matimo"
-    ts_tools = os.path.join(workspace_root, "typescript/examples/mcp/matimo-tools")
-    
+    # ── Tool discovery paths (site-packages + optional extra tools) ──────────
+    # Prefer an explicit environment variable to avoid hardcoded repo paths.
+    env_ts_tools = os.environ.get("MATIMO_EXTRA_TOOLS_PATH")
     site_packages_list = site.getsitepackages()
+
+    if env_ts_tools:
+        ts_tools = env_ts_tools
+    else:
+        # Try a sensible repo-relative default (may not exist when installed).
+        try:
+            repo_root = Path(__file__).resolve().parents[4]
+            candidate = repo_root / "typescript" / "examples" / "mcp" / "matimo-tools"
+            ts_tools = str(candidate)
+        except Exception:
+            ts_tools = ""
     
     print("\n" + "="*80)
     print("DIAGNOSTIC: Tool Discovery")
@@ -31,8 +41,8 @@ async def main() -> None:
         print(f"   {sp}")
         
     print(f"\n📁 ts_tools path:")
-    print(f"   {ts_tools}")
-    print(f"   exists: {os.path.exists(ts_tools)}")
+    print(f"   {ts_tools or '<not configured>'}")
+    print(f"   exists: {os.path.exists(ts_tools) if ts_tools else False}")
     
     if os.path.exists(ts_tools):
         tools_in_dir = os.listdir(ts_tools)
@@ -54,11 +64,15 @@ async def main() -> None:
     
     # ── Now try initializing exactly like server_stdio.py ────────────────────
     print(f"\n⚡ Initialising Matimo...")
-    print(f"   tool_paths = site_packages + ['{ts_tools}']")
+    tool_paths = list(site_packages_list)
+    if ts_tools and os.path.exists(ts_tools):
+        tool_paths.append(ts_tools)
+
+    print(f"   tool_paths = {tool_paths}")
     print(f"   auto_discover = True")
-    
+
     matimo = await Matimo.init(
-        tool_paths=site_packages_list + [ts_tools],
+        tool_paths=tool_paths,
         auto_discover=True,
     )
     

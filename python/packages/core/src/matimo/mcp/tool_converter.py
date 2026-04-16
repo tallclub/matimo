@@ -97,8 +97,12 @@ def _parameter_to_json_schema(param: Parameter) -> dict[str, Any]:
     if param.default is not None:
         schema["default"] = param.default
 
-    if param.type.value == "array" and param.items:
-        schema["items"] = _parameter_to_json_schema(param.items)
+    if param.type.value == "array":
+        if param.items:
+            schema["items"] = _parameter_to_json_schema(param.items)
+        else:
+            # Fallback: MCP clients require `items` for array types.
+            schema["items"] = {"type": "string"}
 
     if param.type.value == "object" and param.properties:
         nested_props: dict[str, Any] = {}

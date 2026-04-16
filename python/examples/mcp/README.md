@@ -32,10 +32,6 @@ src/                           # All agents and servers
 ├── server_http.py             # MCP server over HTTP/SSE
 └── diagnose_tools.py          # Tool discovery troubleshooting
 
-tests/                         # Test suite
-├── test_stdio_protocol.py
-├── test_mcp_tools.py
-└── test_derivation.py
 ```
 
 ---
@@ -597,10 +593,18 @@ pip install langchain-mcp-adapters langchain-openai langgraph
 ### "Address already in use :3555" with HTTP server
 
 ```bash
-# Kill any process on port 3555
-lsof -t -i :3555 | xargs kill -9
+# If port 3555 is in use, inspect the process using the port and stop it safely.
+# Example (lists processes using the port):
+lsof -i :3555
+# When you have identified the PID, terminate it gracefully:
+#   kill <PID>       # SIGTERM (preferred)
+# If you must force-kill, prefer 'kill -9 <PID>' only after careful consideration.
 
-# Or use a different port (modify src/server_http.py)
+# Alternatively, run the server on a different port without killing processes:
+export MATIMO_SERVER_PORT=3556
+# Or set the MATIMO_EXTRA_TOOLS_PATH environment variable to point to additional tool directories:
+#   export MATIMO_EXTRA_TOOLS_PATH="/full/path/to/matimo-tools"
+# The example server will read `MATIMO_SERVER_PORT` and `MATIMO_EXTRA_TOOLS_PATH` when starting.
 ```
 
 ---

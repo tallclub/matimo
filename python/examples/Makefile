@@ -278,11 +278,11 @@ mcp-agent-http-mode:
 mcp-agent-multi:
 	$(PYTHON) mcp/src/agent.py -- --multi
 
-# MCP Diagnostics & Testing
-mcp-diagnose:
-	$(PYTHON) mcp/src/diagnose_tools.py
-mcp-test:
-	cd mcp && $(PYTHON) -m pytest tests/ -v
+# # MCP Diagnostics & Testing
+# mcp-diagnose:
+# 	$(PYTHON) mcp/src/diagnose_tools.py
+# mcp-test:
+# 	cd mcp && $(PYTHON) -m pytest tests/ -v
 
 # ── Advanced Features ─────────────────────────────────────────────────────────
 credentials:
