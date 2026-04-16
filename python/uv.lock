@@ -1813,7 +1813,7 @@ requires-dist = [
 
 [[package]]
 name = "matimo-core"
-version = "0.1.0a14.post1"
+version = "0.1.0a14.post2"
 source = { editable = "packages/core" }
 dependencies = [
     { name = "anyio" },
@@ -2021,7 +2021,7 @@ requires-dist = [
 
 [[package]]
 name = "matimo-py-mcp"
-version = "0.1.0a14.post1"
+version = "0.1.0a14.post2"
 source = { virtual = "examples/mcp" }
 dependencies = [
     { name = "matimo-core" },

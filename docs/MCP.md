@@ -566,23 +566,28 @@ await server.start();
 #### Python Example
 
 ```python
+import asyncio
 from matimo import Matimo
 from matimo.mcp.server import MCPServer, MCPServerOptions
 
-# Auto-discover all installed matimo-* packages
-matimo = await Matimo.init(
-    auto_discover=True,
-    # Optional: add custom tool directories
-    tool_paths=['./my-tools', '/path/to/other-tools'],
-)
+async def main():
+    # Auto-discover all installed matimo-* packages
+    matimo = await Matimo.init(
+        auto_discover=True,
+        # Optional: add custom tool directories
+        tool_paths=['./my-tools', '/path/to/other-tools'],
+    )
 
-# Print what was discovered
-tools = matimo.list_tools()
-print(f'✓ Discovered {len(tools)} tools')
+    # Print what was discovered
+    tools = matimo.list_tools()
+    print(f'✓ Discovered {len(tools)} tools')
 
-# Start the MCP server
-server = MCPServer(matimo, MCPServerOptions(transport='stdio'))
-await server.start()
+    # Start the MCP server
+    server = MCPServer(matimo, MCPServerOptions(transport='stdio'))
+    await server.start()
+
+if __name__ == "__main__":
+    asyncio.run(main())
 ```
 
 #### Feature Parity Verification (v0.1.0-alpha.14)

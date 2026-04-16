@@ -427,7 +427,7 @@ class MCPServerOptions:
     transport: str = "stdio"              # "stdio" or "http"
     port: int = 3100                      # HTTP port (ignored in stdio)
     
-    # Tool filtering
+    # Tool filtering (supports Unix shell-style wildcard patterns)
     tools: list[str] | None = None        # Allowlist (None = all)
     exclude_tools: list[str] | None = None  # Denylist
     
@@ -446,6 +446,35 @@ class MCPServerOptions:
     approval_secret: str | None = None
     approval_dir: str | None = None
 ```
+
+#### Tool Filtering with Wildcard Patterns
+
+The `tools` and `exclude_tools` options support **Unix shell-style wildcard patterns**:
+
+```python
+# Match patterns
+tools = [
+    "slack_*",                    # All Slack tools
+    "github_create_*",            # All GitHub create_* tools
+    "notion_database_*",          # All Notion database tools
+    "gmail_send",                 # Exact match (no wildcards)
+]
+
+# Exclude patterns
+exclude_tools = [
+    "*_deprecated",               # Any tool ending with _deprecated
+    "test_*",                     # Any test tools
+    "internal_*",                 # Any internal tools
+]
+```
+
+**Pattern syntax:**
+- `*` — matches any sequence of characters
+- `?` — matches any single character
+- `[seq]` — matches any character in `seq`
+- `[!seq]` — matches any character not in `seq`
+
+If a tool name matches both `tools` (allowlist) and `exclude_tools` (denylist), it is **excluded** (denylist takes precedence).
 
 ---
 

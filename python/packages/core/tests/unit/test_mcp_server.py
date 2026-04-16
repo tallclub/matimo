@@ -94,6 +94,97 @@ class TestMCPServerFilterTools:
         result = server._filter_tools([])
         assert result == []
 
+    def test_allowlist_with_wildcard_patterns(self) -> None:
+        matimo = _make_matimo_mock()
+        server = MCPServer(matimo, MCPServerOptions(tools=["slack_*", "github_create_*"]))
+        tools = [
+            _make_tool("slack_send_message"),
+            _make_tool("slack_post_reaction"),
+            _make_tool("github_create_issue"),
+            _make_tool("github_list_issues"),
+            _make_tool("notion_create_page"),
+        ]
+        result = server._filter_tools(tools)
+        assert {t.name for t in result} == {
+            "slack_send_message",
+            "slack_post_reaction",
+            "github_create_issue",
+        }
+
+    def test_denylist_with_wildcard_patterns(self) -> None:
+        matimo = _make_matimo_mock()
+        server = MCPServer(matimo, MCPServerOptions(exclude_tools=["*_deprecated", "test_*"]))
+        tools = [
+            _make_tool("slack_send_message"),
+            _make_tool("slack_deprecated"),
+            _make_tool("test_tool"),
+            _make_tool("github_create_issue"),
+        ]
+        result = server._filter_tools(tools)
+        assert {t.name for t in result} == {"slack_send_message", "github_create_issue"}
+
+    def test_wildcard_pattern_asterisk(self) -> None:
+        matimo = _make_matimo_mock()
+        server = MCPServer(matimo, MCPServerOptions(tools=["*_send*"]))
+        tools = [
+            _make_tool("slack_send_message"),
+            _make_tool("slack_send_dm"),
+            _make_tool("github_send_pr_comment"),
+            _make_tool("slack_post_message"),
+        ]
+        result = server._filter_tools(tools)
+        assert {t.name for t in result} == {
+            "slack_send_message",
+            "slack_send_dm",
+            "github_send_pr_comment",
+        }
+
+    def test_wildcard_pattern_question_mark(self) -> None:
+        matimo = _make_matimo_mock()
+        server = MCPServer(matimo, MCPServerOptions(tools=["slack_?end_*"]))
+        tools = [
+            _make_tool("slack_send_message"),
+            _make_tool("slack_fend_message"),
+            _make_tool("slack_send"),
+            _make_tool("slack_message"),
+        ]
+        result = server._filter_tools(tools)
+        assert {t.name for t in result} == {
+            "slack_send_message",
+            "slack_fend_message",
+        }
+
+    def test_denylist_takes_precedence_over_allowlist(self) -> None:
+        matimo = _make_matimo_mock()
+        server = MCPServer(matimo, MCPServerOptions(
+            tools=["slack_*"],
+            exclude_tools=["*_deprecated"]
+        ))
+        tools = [
+            _make_tool("slack_send_message"),
+            _make_tool("slack_deprecated"),
+            _make_tool("github_create_issue"),
+        ]
+        result = server._filter_tools(tools)
+        # slack_send_message matches allowlist, slack_deprecated matches denylist (excluded)
+        assert {t.name for t in result} == {"slack_send_message"}
+
+    def test_exact_match_still_works(self) -> None:
+        """Verify exact matching still works alongside wildcard patterns."""
+        matimo = _make_matimo_mock()
+        server = MCPServer(matimo, MCPServerOptions(tools=["slack_send_message", "github_*"]))
+        tools = [
+            _make_tool("slack_send_message"),
+            _make_tool("slack_post_reaction"),
+            _make_tool("github_create_issue"),
+            _make_tool("notion_create_page"),
+        ]
+        result = server._filter_tools(tools)
+        assert {t.name for t in result} == {
+            "slack_send_message",
+            "github_create_issue",
+        }
+
 
 # ---------------------------------------------------------------------------
 # MCPServer._get_mcp_tools

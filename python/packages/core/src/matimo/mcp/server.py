@@ -9,6 +9,7 @@ Dependencies: mcp>=1.0  (install with: pip install matimo[mcp])
 """
 from __future__ import annotations
 
+import fnmatch
 import json as _json
 import logging
 from dataclasses import dataclass
@@ -392,11 +393,42 @@ class MCPServer:
             return content or f'Skill "{skill_name}" content unavailable'
 
     def _filter_tools(self, tools: list[Any]) -> list[Any]:
+        """
+        Filter tools by allowlist and denylist, supporting Unix shell-style wildcard patterns.
+        
+        Patterns:
+        - '*' matches any sequence of characters (e.g., 'slack_*' matches all slack tools)
+        - '?' matches any single character
+        - '[seq]' matches any character in seq
+        - '[!seq]' matches any character not in seq
+        
+        Examples:
+            tools=['slack_*', 'github_create_issue']  # exact names + patterns
+            exclude_tools=['*_deprecated', 'test_*']
+        """
         opts = self._options
+        
         if opts.tools:
-            tools = [t for t in tools if t.name in opts.tools]
+            filtered = []
+            for t in tools:
+                for pattern in opts.tools:
+                    if fnmatch.fnmatch(t.name, pattern):
+                        filtered.append(t)
+                        break
+            tools = filtered
+        
         if opts.exclude_tools:
-            tools = [t for t in tools if t.name not in opts.exclude_tools]
+            filtered = []
+            for t in tools:
+                excluded = False
+                for pattern in opts.exclude_tools:
+                    if fnmatch.fnmatch(t.name, pattern):
+                        excluded = True
+                        break
+                if not excluded:
+                    filtered.append(t)
+            tools = filtered
+        
         return tools
 
 
