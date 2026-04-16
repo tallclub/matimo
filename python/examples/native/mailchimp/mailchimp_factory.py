@@ -50,7 +50,7 @@ async def run_mailchimp_factory_flow():
 
     # Server prefix is the last segment of the API key (e.g. "us6" from "abc123-us6")
     server_prefix = api_key.split('-')[-1]
-    print(f'🔑 API Key: is configured... 📍 Server: {server_prefix}\n')
+    print('🔑 API Key: configured\n')
 
     print('🚀 Initializing Matimo...')
     matimo = await Matimo.init(auto_discover=True)

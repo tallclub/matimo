@@ -74,8 +74,8 @@ def mcp_setup_command() -> None:
                 print(f"  {status} {v}")
             print()
 
-        # Generate configs
-        env_block = {v: os.environ.get(v) or os.environ.get(f"MATIMO_{v}") or "<your-token>" for v in sorted(auth_vars)}
+        # Generate configs — always use placeholders to prevent secret leakage
+        env_block = {v: "<your-token>" for v in sorted(auth_vars)}
 
         claude_config = {
             "mcpServers": {

@@ -656,8 +656,12 @@ async def main() -> None:
         )
 
         # Write YAMLs to temp files (Python tracker hashes files, not strings)
-        yaml_tmp = Path(tempfile.mktemp(suffix=".yaml"))
-        tampered_tmp = Path(tempfile.mktemp(suffix=".yaml"))
+        yaml_fd, yaml_tmp_str = tempfile.mkstemp(suffix=".yaml")
+        os.close(yaml_fd)
+        tampered_fd, tampered_tmp_str = tempfile.mkstemp(suffix=".yaml")
+        os.close(tampered_fd)
+        yaml_tmp = Path(yaml_tmp_str)
+        tampered_tmp = Path(tampered_tmp_str)
         yaml_tmp.write_text(original_yaml, encoding="utf-8")
         tampered_tmp.write_text(tampered_yaml, encoding="utf-8")
 

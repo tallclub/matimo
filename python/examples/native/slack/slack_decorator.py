@@ -91,7 +91,7 @@ async def run() -> None:
         print("❌  SLACK_BOT_TOKEN not set in .env")
         sys.exit(1)
 
-    print(f"🤖  Bot token: {bot_token[:10]}…\n")
+    print("🤖  Bot token: configured\n")
 
     # ── Initialise Matimo and register globally for the decorator ────────────
     print("🚀  Initialising Matimo…")

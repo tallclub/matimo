@@ -150,3 +150,200 @@ class TestMatimoInitLangChainWrapper:
 
         tools = convert_tools_to_langchain([_make_tool()], matimo_mock)
         assert len(tools) == 1
+
+
+# ---------------------------------------------------------------------------
+# Skills Metadata and Semantic Search Tests
+# ---------------------------------------------------------------------------
+
+
+class TestGetSkillsMetadata:
+    """Cover get_skills_metadata() function — lines 112-128."""
+
+    def test_returns_empty_when_no_skills(self) -> None:
+        """No skills → empty list."""
+        matimo_mock = MagicMock()
+        matimo_mock.list_skills.return_value = []
+
+        from matimo.integrations.langchain import get_skills_metadata
+
+        result = get_skills_metadata(matimo_mock)
+        assert result == []
+
+    def test_returns_name_and_description_for_each_skill(self) -> None:
+        """Each skill returns {name, description}."""
+        from matimo.core.models import SkillSummary
+
+        matimo_mock = MagicMock()
+        matimo_mock.list_skills.return_value = [
+            SkillSummary(
+                name="code-review",
+                description="Code review guidelines",
+                version="1.0.0",
+            ),
+            SkillSummary(
+                name="debugging",
+                description="Debugging tips",
+                version="1.0.0",
+            ),
+        ]
+
+        from matimo.integrations.langchain import get_skills_metadata
+
+        result = get_skills_metadata(matimo_mock)
+        assert len(result) == 2
+        assert result[0] == {"name": "code-review", "description": "Code review guidelines"}
+        assert result[1] == {"name": "debugging", "description": "Debugging tips"}
+
+    def test_handles_skills_without_description(self) -> None:
+        """Skill with no description returns empty string."""
+        from matimo.core.models import SkillSummary
+
+        matimo_mock = MagicMock()
+        matimo_mock.list_skills.return_value = [
+            SkillSummary(
+                name="skill-a",
+                description="",
+                version="1.0.0",
+            ),
+        ]
+
+        from matimo.integrations.langchain import get_skills_metadata
+
+        result = get_skills_metadata(matimo_mock)
+        assert result[0]["description"] == ""
+
+
+class TestBuildRelevantSkillPrompt:
+    """Cover build_relevant_skill_prompt() function — lines 131-194."""
+
+    @pytest.mark.asyncio
+    async def test_returns_empty_string_when_no_search_results(self) -> None:
+        """No skills match → empty string."""
+        matimo_mock = AsyncMock()
+        matimo_mock.semantic_search_skills = AsyncMock(return_value=[])
+
+        from matimo.integrations.langchain import build_relevant_skill_prompt
+
+        result = await build_relevant_skill_prompt(matimo_mock, "test query")
+        assert result == ""
+
+    @pytest.mark.asyncio
+    async def test_returns_formatted_skill_content_with_default_header(self) -> None:
+        """Matching skill → formatted output with default header."""
+        from types import SimpleNamespace
+
+        from matimo.core.models import SkillSummary
+
+        skill_summary = SkillSummary(
+            name="code-review",
+            description="Code review guidelines",
+            version="1.0.0",
+        )
+        search_result = SimpleNamespace(skill=skill_summary, score=0.85)
+
+        matimo_mock = AsyncMock()
+        matimo_mock.semantic_search_skills = AsyncMock(return_value=[search_result])
+        matimo_mock.get_skill_content = MagicMock(return_value="# Code Review Checklist\n- Test coverage")
+
+        from matimo.integrations.langchain import build_relevant_skill_prompt
+
+        result = await build_relevant_skill_prompt(matimo_mock, "code review")
+        assert "The following skills are relevant" in result
+        assert "Code Review Checklist" in result
+        assert "0.85" in result
+
+    @pytest.mark.asyncio
+    async def test_uses_custom_header_when_provided(self) -> None:
+        """Custom header overrides default."""
+        from types import SimpleNamespace
+
+        from matimo.core.models import SkillSummary
+
+        skill_summary = SkillSummary(
+            name="skill", description="desc", version="1.0.0"
+        )
+        search_result = SimpleNamespace(skill=skill_summary, score=0.8)
+
+        matimo_mock = AsyncMock()
+        matimo_mock.semantic_search_skills = AsyncMock(return_value=[search_result])
+        matimo_mock.get_skill_content = MagicMock(return_value="content")
+
+        from matimo.integrations.langchain import build_relevant_skill_prompt
+
+        result = await build_relevant_skill_prompt(
+            matimo_mock,
+            "query",
+            header="Custom header",
+        )
+        assert "Custom header" in result
+        assert "The following skills are relevant" not in result
+
+    @pytest.mark.asyncio
+    async def test_respects_top_k_limit(self) -> None:
+        """top_k parameter passed to semantic_search_skills."""
+        matimo_mock = AsyncMock()
+        matimo_mock.semantic_search_skills = AsyncMock(return_value=[])
+
+        from matimo.integrations.langchain import build_relevant_skill_prompt
+
+        await build_relevant_skill_prompt(matimo_mock, "query", top_k=5)
+        matimo_mock.semantic_search_skills.assert_called_once_with(
+            "query", limit=5, min_score=0.3
+        )
+
+    @pytest.mark.asyncio
+    async def test_respects_min_score(self) -> None:
+        """min_score parameter passed to semantic_search_skills."""
+        matimo_mock = AsyncMock()
+        matimo_mock.semantic_search_skills = AsyncMock(return_value=[])
+
+        from matimo.integrations.langchain import build_relevant_skill_prompt
+
+        await build_relevant_skill_prompt(matimo_mock, "query", min_score=0.5)
+        matimo_mock.semantic_search_skills.assert_called_once_with(
+            "query", limit=3, min_score=0.5
+        )
+
+    @pytest.mark.asyncio
+    async def test_handles_skill_without_description(self) -> None:
+        """Skill with no description still renders correctly."""
+        from types import SimpleNamespace
+
+        from matimo.core.models import SkillSummary
+
+        skill_summary = SkillSummary(
+            name="skill", description="", version="1.0.0"
+        )
+        search_result = SimpleNamespace(skill=skill_summary, score=0.7)
+
+        matimo_mock = AsyncMock()
+        matimo_mock.semantic_search_skills = AsyncMock(return_value=[search_result])
+        matimo_mock.get_skill_content = MagicMock(return_value="content\nblock")
+
+        from matimo.integrations.langchain import build_relevant_skill_prompt
+
+        result = await build_relevant_skill_prompt(matimo_mock, "query")
+        assert "skill" in result
+        assert "0.70" in result
+
+    @pytest.mark.asyncio
+    async def test_returns_empty_string_when_no_skill_content(self) -> None:
+        """Matching skill but get_skill_content returns None → empty string."""
+        from types import SimpleNamespace
+
+        from matimo.core.models import SkillSummary
+
+        skill_summary = SkillSummary(
+            name="skill", description="desc", version="1.0.0"
+        )
+        search_result = SimpleNamespace(skill=skill_summary, score=0.8)
+
+        matimo_mock = AsyncMock()
+        matimo_mock.semantic_search_skills = AsyncMock(return_value=[search_result])
+        matimo_mock.get_skill_content = MagicMock(return_value=None)
+
+        from matimo.integrations.langchain import build_relevant_skill_prompt
+
+        result = await build_relevant_skill_prompt(matimo_mock, "query")
+        assert result == ""

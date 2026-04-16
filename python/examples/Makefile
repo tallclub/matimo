@@ -13,6 +13,8 @@
   web-factory web-decorator web-langchain \
   edit-factory edit-decorator edit-langchain \
   credentials policy skills meta-flow \
+  mcp-server-stdio mcp-server-http \
+  mcp-agent-stdio mcp-agent-http mcp-agent mcp-agent-http-mode mcp-agent-multi mcp-diagnose mcp-test \
   agent-langchain agent-crewai multi-agent-crewai agent-langchain-skills-policy
 
 # ── Detect the right Python runner ──────────────────────────────────────────
@@ -107,6 +109,17 @@ help:
 	@echo "  make skills               Skills knowledge layer demo"
 	@echo "  make meta-flow            Meta-tools integration"
 	@echo ""
+	@echo "  ─ MCP ──────────────────────────────────────"
+	@echo "  make mcp-server-stdio     Start MCP server (stdio transport)"
+	@echo "  make mcp-server-http      Start MCP server (HTTP transport)"
+	@echo "  make mcp-agent-stdio      LangChain agent via MCP (stdio only)"
+	@echo "  make mcp-agent-http       LangChain agent via MCP (HTTP only)"
+	@echo "  make mcp-agent            Unified agent (stdio mode, default)"
+	@echo "  make mcp-agent-http-mode  Unified agent (HTTP mode)"
+	@echo "  make mcp-agent-multi      Unified agent (stdio + HTTP combined)"
+	@echo "  make mcp-diagnose         Diagnose and inspect available tools"
+	@echo "  make mcp-test             Run MCP tests"
+	@echo ""
 	@echo "  ─ Advanced Agents ─────────────────────────"
 	@echo "  make agent-langchain-skills-policy"
 
@@ -121,7 +134,7 @@ agent-crewai:
 	$(PYTHON) crewai/agents/crewai_agent.py
 multi-agent-crewai:
 	$(PYTHON) crewai/agents/multi_agent_crew.py
-	
+
 # ── Slack ─────────────────────────────────────────────────────────────────────
 slack-factory:
 	$(PYTHON) native/slack/slack_factory.py
@@ -245,6 +258,31 @@ edit-decorator:
 	$(PYTHON) native/edit/edit_decorator.py
 edit-langchain:
 	$(PYTHON) langchain/edit/edit_langchain.py
+
+# ── MCP ───────────────────────────────────────────────────────────────────────
+# MCP Servers
+mcp-server-stdio:
+	$(PYTHON) mcp/src/server_stdio.py
+mcp-server-http:
+	$(PYTHON) mcp/src/server_http.py
+
+# MCP Agents (now in organized src/ directory)
+mcp-agent-stdio:
+	$(PYTHON) mcp/src/agent_stdio.py
+mcp-agent-http:
+	$(PYTHON) mcp/src/agent_http.py
+mcp-agent:
+	$(PYTHON) mcp/src/agent.py -- --stdio
+mcp-agent-http-mode:
+	$(PYTHON) mcp/src/agent.py -- --http
+mcp-agent-multi:
+	$(PYTHON) mcp/src/agent.py -- --multi
+
+# # MCP Diagnostics & Testing
+# mcp-diagnose:
+# 	$(PYTHON) mcp/src/diagnose_tools.py
+# mcp-test:
+# 	cd mcp && $(PYTHON) -m pytest tests/ -v
 
 # ── Advanced Features ─────────────────────────────────────────────────────────
 credentials:
