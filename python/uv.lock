@@ -19,6 +19,7 @@ members = [
     "matimo-mailchimp",
     "matimo-notion",
     "matimo-postgres",
+    "matimo-py-mcp",
     "matimo-slack",
     "matimo-twilio",
     "matimo-workspace",
@@ -1485,6 +1486,20 @@ wheels = [
 ]
 
 [[package]]
+name = "langchain-mcp-adapters"
+version = "0.2.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "langchain-core" },
+    { name = "mcp" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/0e/66/1cc7039e2daaddcdea9d8887851fe6eb67401925999b2aa394aa855c7132/langchain_mcp_adapters-0.2.2.tar.gz", hash = "sha256:12d39e91ae4389c54b61b221094e53850b6e152934d8bc10c80665d600e76530", size = 37942, upload-time = "2026-03-16T17:13:30.35Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7d/2f/15d5e6c1765d8404a9cce38d8c81d7b33fb3392f9db5b992c000dddbd2a3/langchain_mcp_adapters-0.2.2-py3-none-any.whl", hash = "sha256:d08e64954e86281002653071b7430e0377c9a577cb4ac3143abfeb3e24ef8797", size = 23288, upload-time = "2026-03-16T17:13:29.073Z" },
+]
+
+[[package]]
 name = "langchain-openai"
 version = "1.1.12"
 source = { registry = "https://pypi.org/simple" }
@@ -1798,7 +1813,7 @@ requires-dist = [
 
 [[package]]
 name = "matimo-core"
-version = "0.1.0a14.post1"
+version = "0.1.0a14.post2"
 source = { editable = "packages/core" }
 dependencies = [
     { name = "anyio" },
@@ -1886,13 +1901,15 @@ provides-extras = ["langchain", "crewai", "mcp", "vault", "aws", "dotenv", "all"
 
 [[package]]
 name = "matimo-examples"
-version = "0.1.0a14"
+version = "0.1.0a14.post1"
 source = { virtual = "examples" }
 dependencies = [
     { name = "crewai" },
     { name = "langchain" },
     { name = "langchain-core" },
+    { name = "langchain-mcp-adapters" },
     { name = "langchain-openai" },
+    { name = "langgraph" },
     { name = "matimo-core" },
     { name = "matimo-github" },
     { name = "matimo-gmail" },
@@ -1915,7 +1932,9 @@ requires-dist = [
     { name = "crewai", specifier = ">=0.80" },
     { name = "langchain", specifier = ">=0.3" },
     { name = "langchain-core", specifier = ">=0.3" },
+    { name = "langchain-mcp-adapters", specifier = ">=0.1" },
     { name = "langchain-openai", specifier = ">=1.0" },
+    { name = "langgraph", specifier = ">=0.2" },
     { name = "matimo-core", editable = "packages/core" },
     { name = "matimo-github", editable = "packages/github" },
     { name = "matimo-gmail", editable = "packages/gmail" },
@@ -2001,6 +2020,78 @@ requires-dist = [
 ]
 
 [[package]]
+name = "matimo-py-mcp"
+version = "0.1.0a14.post2"
+source = { virtual = "examples/mcp" }
+dependencies = [
+    { name = "matimo-core" },
+    { name = "mcp" },
+    { name = "python-dotenv" },
+]
+
+[package.optional-dependencies]
+all = [
+    { name = "matimo-github" },
+    { name = "matimo-gmail" },
+    { name = "matimo-hubspot" },
+    { name = "matimo-mailchimp" },
+    { name = "matimo-notion" },
+    { name = "matimo-postgres" },
+    { name = "matimo-slack" },
+    { name = "matimo-twilio" },
+    { name = "sse-starlette" },
+    { name = "starlette" },
+    { name = "uvicorn" },
+]
+dev = [
+    { name = "langchain-mcp-adapters" },
+    { name = "langchain-openai" },
+    { name = "langgraph" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+]
+http = [
+    { name = "sse-starlette" },
+    { name = "starlette" },
+    { name = "uvicorn" },
+]
+slack = [
+    { name = "matimo-slack" },
+    { name = "starlette" },
+    { name = "uvicorn" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "langchain-mcp-adapters", marker = "extra == 'dev'", specifier = ">=0.1.0" },
+    { name = "langchain-openai", marker = "extra == 'dev'", specifier = ">=0.1.2" },
+    { name = "langgraph", marker = "extra == 'dev'", specifier = ">=0.1.0" },
+    { name = "matimo-core", editable = "packages/core" },
+    { name = "matimo-github", marker = "extra == 'all'", editable = "packages/github" },
+    { name = "matimo-gmail", marker = "extra == 'all'", editable = "packages/gmail" },
+    { name = "matimo-hubspot", marker = "extra == 'all'", editable = "packages/hubspot" },
+    { name = "matimo-mailchimp", marker = "extra == 'all'", editable = "packages/mailchimp" },
+    { name = "matimo-notion", marker = "extra == 'all'", editable = "packages/notion" },
+    { name = "matimo-postgres", marker = "extra == 'all'", editable = "packages/postgres" },
+    { name = "matimo-slack", marker = "extra == 'all'", editable = "packages/slack" },
+    { name = "matimo-slack", marker = "extra == 'slack'", editable = "packages/slack" },
+    { name = "matimo-twilio", marker = "extra == 'all'", editable = "packages/twilio" },
+    { name = "mcp", specifier = ">=1.27.0" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.24" },
+    { name = "python-dotenv", specifier = ">=1.2.2" },
+    { name = "sse-starlette", marker = "extra == 'all'", specifier = ">=3.3.4" },
+    { name = "sse-starlette", marker = "extra == 'http'", specifier = ">=3.3.4" },
+    { name = "starlette", marker = "extra == 'all'", specifier = ">=1.0.0" },
+    { name = "starlette", marker = "extra == 'http'", specifier = ">=1.0.0" },
+    { name = "starlette", marker = "extra == 'slack'", specifier = ">=1.0.0" },
+    { name = "uvicorn", marker = "extra == 'all'", specifier = ">=0.44.0" },
+    { name = "uvicorn", marker = "extra == 'http'", specifier = ">=0.44.0" },
+    { name = "uvicorn", marker = "extra == 'slack'", specifier = ">=0.44.0" },
+]
+provides-extras = ["slack", "http", "all", "dev"]
+
+[[package]]
 name = "matimo-slack"
 version = "0.1.0a14.post1"
 source = { editable = "packages/slack" }
@@ -2081,7 +2172,7 @@ dev = [
 
 [[package]]
 name = "mcp"
-version = "1.26.0"
+version = "1.27.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -2099,9 +2190,9 @@ dependencies = [
     { name = "typing-inspection" },
     { name = "uvicorn", marker = "sys_platform != 'emscripten'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/fc/6d/62e76bbb8144d6ed86e202b5edd8a4cb631e7c8130f3f4893c3f90262b10/mcp-1.26.0.tar.gz", hash = "sha256:db6e2ef491eecc1a0d93711a76f28dec2e05999f93afd48795da1c1137142c66", size = 608005, upload-time = "2026-01-24T19:40:32.468Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/8b/eb/c0cfc62075dc6e1ec1c64d352ae09ac051d9334311ed226f1f425312848a/mcp-1.27.0.tar.gz", hash = "sha256:d3dc35a7eec0d458c1da4976a48f982097ddaab87e278c5511d5a4a56e852b83", size = 607509, upload-time = "2026-04-02T14:48:08.88Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/fd/d9/eaa1f80170d2b7c5ba23f3b59f766f3a0bb41155fbc32a69adfa1adaaef9/mcp-1.26.0-py3-none-any.whl", hash = "sha256:904a21c33c25aa98ddbeb47273033c435e595bbacfdb177f4bd87f6dceebe1ca", size = 233615, upload-time = "2026-01-24T19:40:30.652Z" },
+    { url = "https://files.pythonhosted.org/packages/9c/46/f6b4ad632c67ef35209a66127e4bddc95759649dd595f71f13fba11bdf9a/mcp-1.27.0-py3-none-any.whl", hash = "sha256:5ce1fa81614958e267b21fb2aa34e0aea8e2c6ede60d52aba45fd47246b4d741", size = 215967, upload-time = "2026-04-02T14:48:07.24Z" },
 ]
 
 [[package]]
@@ -3450,11 +3541,11 @@ wheels = [
 
 [[package]]
 name = "python-dotenv"
-version = "1.1.1"
+version = "1.2.2"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/f6/b0/4bc07ccd3572a2f9df7e6782f52b0c6c90dcbb803ac4a167702d7d0dfe1e/python_dotenv-1.1.1.tar.gz", hash = "sha256:a8a6399716257f45be6a007360200409fce5cda2661e3dec71d23dc15f6189ab", size = 41978, upload-time = "2025-06-24T04:21:07.341Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/82/ed/0301aeeac3e5353ef3d94b6ec08bbcabd04a72018415dcb29e588514bba8/python_dotenv-1.2.2.tar.gz", hash = "sha256:2c371a91fbd7ba082c2c1dc1f8bf89ca22564a087c2c287cd9b662adde799cf3", size = 50135, upload-time = "2026-03-01T16:00:26.196Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/5f/ed/539768cf28c661b5b068d66d96a2f155c4971a5d55684a514c1a0e0dec2f/python_dotenv-1.1.1-py3-none-any.whl", hash = "sha256:31f23644fe2602f88ff55e1f5c79ba497e01224ee7737937930c448e4d0e24dc", size = 20556, upload-time = "2025-06-24T04:21:06.073Z" },
+    { url = "https://files.pythonhosted.org/packages/0b/d7/1959b9648791274998a9c3526f6d0ec8fd2233e4d4acce81bbae76b44b2a/python_dotenv-1.2.2-py3-none-any.whl", hash = "sha256:1d8214789a24de455a8b8bd8ae6fe3c6b69a5e3d64aa8a8e5d68e694bbcb285a", size = 22101, upload-time = "2026-03-01T16:00:25.09Z" },
 ]
 
 [[package]]

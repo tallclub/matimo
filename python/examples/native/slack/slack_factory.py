@@ -107,7 +107,7 @@ async def run_factory_pattern_examples() -> None:
         print("   Get one from: https://api.slack.com/apps")
         sys.exit(1)
 
-    print(f"🤖 Bot Token: {bot_token[:10]}...")
+    print("🤖 Bot Token: configured")
     print(f"📍 Target Channel: {channel_id}\n")
 
     # Initialize Matimo with auto-discovery to find all @matimo/* packages

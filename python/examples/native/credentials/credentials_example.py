@@ -110,7 +110,7 @@ async def main() -> None:
             # Get tenant's credentials
             tenant_creds = get_tenant_credentials(tenant_id)
             print(f"🔐  Credentials loaded for {tenant_id}")
-            print(f"    Bot token: {tenant_creds['SLACK_BOT_TOKEN'][:15]}…")
+            print("    Bot token: [REDACTED]")
 
             # Try to list channels for this tenant
             # Note: This uses placeholder tokens, so will fail with auth error
@@ -129,7 +129,7 @@ async def main() -> None:
             print("    'slack-list-channels',")
             print("    {'limit': 5},")
             print("    credentials={")
-            print(f"      'SLACK_BOT_TOKEN': '{tenant_creds['SLACK_BOT_TOKEN'][:20]}...'")
+            print("      'SLACK_BOT_TOKEN': '[REDACTED]'")
             print("    }")
             print("  )")
 

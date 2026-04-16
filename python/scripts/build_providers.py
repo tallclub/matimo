@@ -1,5 +1,4 @@
 """Build all 8 provider packages for the Matimo Python SDK."""
-import os
 import shutil
 from pathlib import Path
 

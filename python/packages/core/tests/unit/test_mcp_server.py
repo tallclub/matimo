@@ -15,6 +15,7 @@ def _make_matimo_mock(tools: list[ToolDefinition] | None = None) -> MagicMock:
     """Create a mock Matimo instance."""
     mock = MagicMock()
     mock.list_tools.return_value = tools or []
+    mock.list_skills.return_value = []
     mock.get_tool.return_value = None
     mock.execute = AsyncMock(return_value={"ok": True})
     return mock
@@ -93,6 +94,97 @@ class TestMCPServerFilterTools:
         result = server._filter_tools([])
         assert result == []
 
+    def test_allowlist_with_wildcard_patterns(self) -> None:
+        matimo = _make_matimo_mock()
+        server = MCPServer(matimo, MCPServerOptions(tools=["slack_*", "github_create_*"]))
+        tools = [
+            _make_tool("slack_send_message"),
+            _make_tool("slack_post_reaction"),
+            _make_tool("github_create_issue"),
+            _make_tool("github_list_issues"),
+            _make_tool("notion_create_page"),
+        ]
+        result = server._filter_tools(tools)
+        assert {t.name for t in result} == {
+            "slack_send_message",
+            "slack_post_reaction",
+            "github_create_issue",
+        }
+
+    def test_denylist_with_wildcard_patterns(self) -> None:
+        matimo = _make_matimo_mock()
+        server = MCPServer(matimo, MCPServerOptions(exclude_tools=["*_deprecated", "test_*"]))
+        tools = [
+            _make_tool("slack_send_message"),
+            _make_tool("slack_deprecated"),
+            _make_tool("test_tool"),
+            _make_tool("github_create_issue"),
+        ]
+        result = server._filter_tools(tools)
+        assert {t.name for t in result} == {"slack_send_message", "github_create_issue"}
+
+    def test_wildcard_pattern_asterisk(self) -> None:
+        matimo = _make_matimo_mock()
+        server = MCPServer(matimo, MCPServerOptions(tools=["*_send*"]))
+        tools = [
+            _make_tool("slack_send_message"),
+            _make_tool("slack_send_dm"),
+            _make_tool("github_send_pr_comment"),
+            _make_tool("slack_post_message"),
+        ]
+        result = server._filter_tools(tools)
+        assert {t.name for t in result} == {
+            "slack_send_message",
+            "slack_send_dm",
+            "github_send_pr_comment",
+        }
+
+    def test_wildcard_pattern_question_mark(self) -> None:
+        matimo = _make_matimo_mock()
+        server = MCPServer(matimo, MCPServerOptions(tools=["slack_?end_*"]))
+        tools = [
+            _make_tool("slack_send_message"),
+            _make_tool("slack_fend_message"),
+            _make_tool("slack_send"),
+            _make_tool("slack_message"),
+        ]
+        result = server._filter_tools(tools)
+        assert {t.name for t in result} == {
+            "slack_send_message",
+            "slack_fend_message",
+        }
+
+    def test_denylist_takes_precedence_over_allowlist(self) -> None:
+        matimo = _make_matimo_mock()
+        server = MCPServer(matimo, MCPServerOptions(
+            tools=["slack_*"],
+            exclude_tools=["*_deprecated"]
+        ))
+        tools = [
+            _make_tool("slack_send_message"),
+            _make_tool("slack_deprecated"),
+            _make_tool("github_create_issue"),
+        ]
+        result = server._filter_tools(tools)
+        # slack_send_message matches allowlist, slack_deprecated matches denylist (excluded)
+        assert {t.name for t in result} == {"slack_send_message"}
+
+    def test_exact_match_still_works(self) -> None:
+        """Verify exact matching still works alongside wildcard patterns."""
+        matimo = _make_matimo_mock()
+        server = MCPServer(matimo, MCPServerOptions(tools=["slack_send_message", "github_*"]))
+        tools = [
+            _make_tool("slack_send_message"),
+            _make_tool("slack_post_reaction"),
+            _make_tool("github_create_issue"),
+            _make_tool("notion_create_page"),
+        ]
+        result = server._filter_tools(tools)
+        assert {t.name for t in result} == {
+            "slack_send_message",
+            "github_create_issue",
+        }
+
 
 # ---------------------------------------------------------------------------
 # MCPServer._get_mcp_tools
@@ -165,6 +257,7 @@ class TestMCPServerCallTool:
         assert len(result) == 1
 
     async def test_call_tool_resolves_secrets(self) -> None:
+        """When _resolved_secrets is empty, fall back to per-call resolution."""
         from matimo.core.models import HttpExecution, ToolDefinition
 
         mock_mcp_types = MagicMock()
@@ -189,11 +282,149 @@ class TestMCPServerCallTool:
         matimo.get_tool.return_value = tool
         matimo.execute = AsyncMock(return_value={"ok": True})
 
+        # _resolved_secrets is empty (start() not called) → fallback to per-call resolution
         server = MCPServer(matimo, MCPServerOptions(secret_resolver=mock_resolver))
 
         with patch.dict("sys.modules", {"mcp": MagicMock(), "mcp.types": mock_mcp_types}):
             await server._call_tool("tool_with_secret", {})
         mock_resolver.resolve_all.assert_called_once()
+
+    async def test_call_tool_uses_preresolved_secrets(self) -> None:
+        """When _resolved_secrets is populated, skip per-call resolution."""
+        mock_mcp_types = MagicMock()
+        mock_mcp_types.TextContent.return_value = MagicMock()
+
+        mock_resolver = AsyncMock()
+        mock_resolver.resolve_all = AsyncMock(return_value={})
+
+        matimo = _make_matimo_mock()
+        matimo.execute = AsyncMock(return_value={"ok": True})
+
+        server = MCPServer(matimo, MCPServerOptions(secret_resolver=mock_resolver))
+        # Simulate pre-resolved secrets as if start() was called
+        server._resolved_secrets = {"SLACK_BOT_TOKEN": "xoxb-pre-resolved"}
+
+        with patch.dict("sys.modules", {"mcp": MagicMock(), "mcp.types": mock_mcp_types}):
+            await server._call_tool("any_tool", {})
+
+        # resolve_all must NOT be called — secrets were pre-resolved
+        mock_resolver.resolve_all.assert_not_called()
+        # execute must be called with the pre-resolved credentials
+        matimo.execute.assert_awaited_once()
+        _, kwargs = matimo.execute.await_args
+        assert kwargs.get("credentials") == {"SLACK_BOT_TOKEN": "xoxb-pre-resolved"}
+
+    async def test_call_tool_approval_required_without_flag(self) -> None:
+        """Tools with requires_approval=True must reject calls without _matimo_approved."""
+        mock_mcp_types = MagicMock()
+        text_content = MagicMock()
+        mock_mcp_types.TextContent.return_value = text_content
+
+        tool = _make_tool("dangerous_tool")
+        object.__setattr__(tool, "requires_approval", True)
+
+        matimo = _make_matimo_mock()
+        matimo.get_tool.return_value = tool
+        server = MCPServer(matimo, MCPServerOptions())
+
+        with patch.dict("sys.modules", {"mcp": MagicMock(), "mcp.types": mock_mcp_types}):
+            result = await server._call_tool("dangerous_tool", {})
+
+        assert len(result) == 1
+        # execute must NOT have been called
+        matimo.execute.assert_not_awaited()
+
+    async def test_call_tool_approval_required_with_flag(self) -> None:
+        """Tools with requires_approval=True execute when _matimo_approved=True."""
+        mock_mcp_types = MagicMock()
+        mock_mcp_types.TextContent.return_value = MagicMock()
+
+        tool = _make_tool("dangerous_tool")
+        object.__setattr__(tool, "requires_approval", True)
+
+        matimo = _make_matimo_mock()
+        matimo.get_tool.return_value = tool
+        matimo.execute = AsyncMock(return_value={"ok": True})
+        server = MCPServer(matimo, MCPServerOptions())
+
+        with patch.dict("sys.modules", {"mcp": MagicMock(), "mcp.types": mock_mcp_types}):
+            result = await server._call_tool("dangerous_tool", {"_matimo_approved": True})
+
+        assert len(result) == 1
+        matimo.execute.assert_awaited_once()
+        _, kwargs = matimo.execute.await_args
+        assert kwargs.get("approved") is True
+
+    async def test_call_tool_strips_matimo_approved_from_args(self) -> None:
+        """_matimo_approved must be stripped before passing args to execute."""
+        mock_mcp_types = MagicMock()
+        mock_mcp_types.TextContent.return_value = MagicMock()
+
+        matimo = _make_matimo_mock()
+        matimo.execute = AsyncMock(return_value={"ok": True})
+        server = MCPServer(matimo, MCPServerOptions())
+
+        with patch.dict("sys.modules", {"mcp": MagicMock(), "mcp.types": mock_mcp_types}):
+            await server._call_tool("test_tool", {"channel": "#general", "_matimo_approved": True})
+
+        call_args = matimo.execute.await_args
+        passed_params = call_args[0][1]  # positional arg 1 = params dict
+        assert "_matimo_approved" not in passed_params
+        assert passed_params == {"channel": "#general"}
+
+
+# ---------------------------------------------------------------------------
+# MCPServer._seed_environment_secrets
+# ---------------------------------------------------------------------------
+
+
+class TestSeedEnvironmentSecrets:
+    async def test_no_op_when_no_resolver(self) -> None:
+        matimo = _make_matimo_mock()
+        server = MCPServer(matimo, MCPServerOptions())
+        tool = _make_tool("t")
+        await server._seed_environment_secrets([tool])
+        assert server._resolved_secrets == {}
+
+    async def test_populates_resolved_secrets_from_resolver(self) -> None:
+        from matimo.core.models import HttpExecution, ToolDefinition
+
+        tool = ToolDefinition(
+            name="slack_post",
+            description="Post a message",
+            parameters={},
+            execution=HttpExecution(
+                type="http",
+                method="POST",
+                url="https://slack.com/api/chat.postMessage",
+                headers={"Authorization": "Bearer {SLACK_BOT_TOKEN}"},
+            ),
+        )
+
+        mock_resolver = AsyncMock()
+        mock_resolver.resolve_all = AsyncMock(
+            return_value={"SLACK_BOT_TOKEN": "xoxb-real-token"}
+        )
+
+        matimo = _make_matimo_mock(tools=[tool])
+        server = MCPServer(matimo, MCPServerOptions(secret_resolver=mock_resolver))
+        await server._seed_environment_secrets([tool])
+
+        assert server._resolved_secrets["SLACK_BOT_TOKEN"] == "xoxb-real-token"
+        # Also stored with MATIMO_ prefix
+        assert server._resolved_secrets["MATIMO_SLACK_BOT_TOKEN"] == "xoxb-real-token"
+
+    async def test_no_op_when_no_placeholders(self) -> None:
+        tool = _make_tool("no_auth_tool")  # plain tool, no auth in execution
+        mock_resolver = AsyncMock()
+        mock_resolver.resolve_all = AsyncMock(return_value={})
+
+        matimo = _make_matimo_mock(tools=[tool])
+        server = MCPServer(matimo, MCPServerOptions(secret_resolver=mock_resolver))
+        await server._seed_environment_secrets([tool])
+
+        # resolve_all should not be called for tools with no placeholders
+        mock_resolver.resolve_all.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
@@ -211,25 +442,23 @@ class TestMCPServerStart:
                 await server.start()
         assert exc_info.value.code == ErrorCode.EXECUTION_FAILED
 
-    async def test_run_http_raises_not_implemented(self) -> None:
+    async def test_run_http_starts_server(self) -> None:
+        """Test that HTTP transport starts uvicorn."""
         matimo = _make_matimo_mock()
         server = MCPServer(matimo, MCPServerOptions(transport="http"))
-        with pytest.raises(MatimoError) as exc_info:
-            await server._run_http(MagicMock())
-        assert exc_info.value.code == ErrorCode.EXECUTION_FAILED
+        
+        with patch("uvicorn.Server.serve", new_callable=AsyncMock) as mock_serve:
+            await server.start()
+            mock_serve.assert_called_once()
 
     async def test_start_http_transport_calls_run_http(self) -> None:
         """Cover start() body (lines 90-108) by reaching _run_http via transport='http'."""
-        mock_server_instance = MagicMock()
-        mock_server_class = MagicMock(return_value=mock_server_instance)
-
         matimo_inst = _make_matimo_mock()
         server = MCPServer(matimo_inst, MCPServerOptions(transport="http"))
 
-        with patch("mcp.server.Server", mock_server_class):
-            with pytest.raises(MatimoError) as exc_info:
-                await server.start()
-        assert exc_info.value.code == ErrorCode.EXECUTION_FAILED
+        with patch("uvicorn.Server.serve", new_callable=AsyncMock) as mock_serve:
+            await server.start()
+            mock_serve.assert_called_once()
 
     async def test_start_stdio_covers_handler_callbacks(self) -> None:
         """Cover lines 96, 103 (registered callbacks) and 106 (stdio dispatch)."""
