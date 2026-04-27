@@ -2,7 +2,7 @@
 
 Python examples for running Matimo tools via the **Model Context Protocol (MCP)**, mirroring the [`typescript/examples/mcp/`](../../typescript/examples/mcp/) counterpart.
 
-> **Transport support:** The Python SDK supports **stdio** (for Claude Desktop), **HTTP/SSE** (for web agents), and **multi-server** (advanced scenarios).
+> **Transport support:** The Python SDK supports **stdio** (for Claude Desktop), **HTTP** (Streamable HTTP, for web agents and VS Code), and **multi-server** (advanced scenarios).
 
 ---
 
@@ -80,6 +80,29 @@ This installs `matimo-core` (minimal setup) and development dependencies needed 
 ```bash
 uv sync --all-extras
 ```
+
+## ✨ What's New (v0.1.0a14+)
+
+### Skills Auto-Discovery
+Skills are now **automatically discovered** from `matimo-tools/skills` directories when using `auto_discover=True`:
+
+```python
+# Skills are now auto-discovered - no need to specify skill_paths!
+matimo = await Matimo.init(auto_discover=True)
+skills = matimo.list_skills()  # Returns 6+ skills
+```
+
+### Tool Execution API
+New `execute_tool()` method for simpler tool invocation:
+
+```python
+# Simple tool execution
+result = await matimo.execute_tool("web", {"url": "https://example.com"})
+
+# Equivalent to: await matimo.execute("web", {"url": "..."})
+```
+
+---
 
 ### 2. Create your `.env`
 
@@ -348,11 +371,14 @@ make mcp-server-http
 uv run python src/server_http.py
 ```
 
-Listens on: `http://localhost:3555` (configurable)
+Listens on: `http://localhost:3101` (configurable via `MATIMO_SERVER_PORT`)
 
 Endpoints:
-- **SSE**: `http://localhost:3555/mcp/sse` — tool calls streamed to client
-- **Messages**: `http://localhost:3555/mcp/messages` — client sends tool requests
+- **MCP**: `http://localhost:3101/mcp` — MCP Streamable HTTP endpoint (tools, calls, streaming)
+- **Health**: `http://localhost:3101/health` — readiness check (`{"status":"ok","tools":N}`)
+
+> **Protocol:** Uses MCP Streamable HTTP transport (not legacy SSE). VS Code Copilot, Claude,
+> and any Streamable HTTP-compatible client can connect to `/mcp`.
 
 Usage with agent:
 ```bash
@@ -360,8 +386,56 @@ Usage with agent:
 uv run python src/server_http.py
 
 # Terminal 2: Connect agent
-uv run python src/agent.py -- --http --url http://localhost:3555/mcp
+uv run python src/agent.py -- --http --url http://localhost:3101/mcp
 ```
+
+---
+
+## 🖥️ VS Code Integration
+
+Use the Python HTTP server with **VS Code Copilot Chat** (or any MCP client).
+
+### Step 1 — Start the HTTP server
+```bash
+cd python/examples/mcp && uv run python src/server_http.py
+# Server starts on http://localhost:3101
+```
+
+### Step 2 — Configure VS Code
+
+Create (or update) `.vscode/mcp.json` in your workspace root — **not** `settings.json`:
+
+```json
+{
+  "servers": {
+    "matimo": {
+      "type": "http",
+      "url": "http://localhost:3101/mcp"
+    }
+  }
+}
+```
+
+> The Matimo monorepo already ships this file at `.vscode/mcp.json`.
+
+**No pre-start needed?** Use stdio transport instead:
+```json
+{
+  "servers": {
+    "matimo": {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["run", "python", "src/server_stdio.py"],
+      "cwd": "${workspaceFolder}/python/examples/mcp"
+    }
+  }
+}
+```
+
+### Step 3 — Reload
+Command Palette (Cmd+Shift+P) → `MCP: Restart Server`
+
+All Matimo tools then appear in VS Code Copilot Chat as `@tools` under **matimo**.
 
 ---
 

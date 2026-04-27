@@ -5,6 +5,16 @@ description = "Matimo MCP Examples - Unified Agent with Multi-Transport Support 
 requires-python = ">=3.11"
 dependencies = [
     "matimo-core>=0.1.0a14",
+    "matimo-cli>=0.1.0a14",
+    "matimo-slack>=0.1.0a14",
+    "matimo-github>=0.1.0a14",
+    "matimo-gmail>=0.1.0a14",
+    "matimo-notion>=0.1.0a14",
+    "matimo-postgres>=0.1.0a14",
+    "matimo-twilio>=0.1.0a14",
+    "matimo-hubspot>=0.1.0a14",
+    "matimo-mailchimp>=0.1.0a14",
+    "matimo-bruno>=0.1.0a14",
     "python-dotenv>=1.2.2",
     "mcp>=1.27.0",
 ]
@@ -50,7 +60,9 @@ dev = [
 
 [tool.uv.sources]
 matimo-core = { path = "../../packages/core", editable = true }
+matimo-cli = { path = "../../packages/cli", editable = true }
 matimo-slack = { path = "../../packages/slack", editable = true }
+matimo-bruno = { path = "../../packages/bruno", editable = true }
 matimo-github = { path = "../../packages/github", editable = true }
 matimo-mailchimp = { path = "../../packages/mailchimp", editable = true }
 matimo-notion = { path = "../../packages/notion", editable = true }

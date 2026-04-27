@@ -97,6 +97,10 @@ class MCPServer:
                 ErrorCode.EXECUTION_FAILED,
             ) from exc
 
+        # Register the Matimo instance as global so meta-tools can access it
+        from matimo.decorators import set_global_matimo_instance
+        set_global_matimo_instance(self._matimo)
+
         server = Server("matimo")
         self._server = server
 
@@ -225,19 +229,41 @@ class MCPServer:
 
             # Health check endpoint
             if path == "/health":
-                body = _json.dumps({"ok": True, "transport": "http"}).encode()
+                tool_count = len(self._get_mcp_tools())
+                body = _json.dumps({"status": "ok", "tools": tool_count, "transport": "http"}).encode()
                 await send({
                     "type": "http.response.start",
                     "status": 200,
                     "headers": [
                         (b"content-type", b"application/json"),
+                        (b"content-length", str(len(body)).encode()),
                         (b"access-control-allow-origin", b"*"),
                     ],
                 })
                 await send({"type": "http.response.body", "body": body, "more_body": False})
                 return
 
-            # All other requests — forward to MCP session manager
+            # MCP protocol endpoint — only /mcp and / are valid MCP paths.
+            # All other paths get a 404 with a helpful message so that
+            # misconfigured clients fail fast rather than silently timing out.
+            if path not in ("/mcp", "/"):
+                body = _json.dumps({
+                    "error": "Not found",
+                    "hint": "MCP protocol endpoint is at /mcp",
+                }).encode()
+                await send({
+                    "type": "http.response.start",
+                    "status": 404,
+                    "headers": [
+                        (b"content-type", b"application/json"),
+                        (b"content-length", str(len(body)).encode()),
+                        (b"access-control-allow-origin", b"*"),
+                    ],
+                })
+                await send({"type": "http.response.body", "body": body, "more_body": False})
+                return
+
+            # Forward to MCP Streamable HTTP session manager
             await session_manager.handle_request(scope, receive, send)
 
         config = uvicorn.Config(
