@@ -100,9 +100,11 @@ def _parameter_to_json_schema(param: Parameter) -> dict[str, Any]:
     if param.type.value == "array":
         if param.items:
             schema["items"] = _parameter_to_json_schema(param.items)
-        # If no `items` are provided, do not inject a default `items` key.
-        # The MCP schema should omit `items` when the tool definition doesn't
-        # specify the element type.
+        else:
+            # Some MCP clients/extensions require `items` to be present
+            # for array-typed parameters. When the tool doesn't specify an
+            # element type, provide an empty schema so validators accept it.
+            schema["items"] = {}
 
     if param.type.value == "object" and param.properties:
         nested_props: dict[str, Any] = {}

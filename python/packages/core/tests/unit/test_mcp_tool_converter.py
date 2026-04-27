@@ -266,11 +266,15 @@ class TestParameterToJsonSchema:
         assert "items" in schema
         assert schema["items"]["type"] == "string"
 
-    def test_array_type_without_items_no_items_key(self) -> None:
+    def test_array_type_without_items_has_empty_items_schema(self) -> None:
+        # When no element type is specified, the converter adds items: {} so that
+        # MCP clients that require the items key (e.g. some VS Code extensions) still
+        # accept the schema. An empty schema means "items can be anything".
         param = Parameter(type=ParameterType.ARRAY)
         schema = _parameter_to_json_schema(param)
         assert schema["type"] == "array"
-        assert "items" not in schema
+        assert "items" in schema
+        assert schema["items"] == {}
 
     def test_object_type_with_properties(self) -> None:
         nested = Parameter(type=ParameterType.STRING, required=True)
