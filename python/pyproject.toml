@@ -32,6 +32,7 @@ members = [
     "packages/core",
     "packages/cli",
     "packages/matimo",
+    "packages/bruno",
     "packages/github",
     "packages/gmail",
     "packages/hubspot",
@@ -48,6 +49,7 @@ members = [
 matimo-core = { workspace = true }
 matimo = { workspace = true }
 matimo-cli = { workspace = true }
+matimo-bruno = { workspace = true }
 matimo-github = { workspace = true }
 matimo-gmail = { workspace = true }
 matimo-hubspot = { workspace = true }
