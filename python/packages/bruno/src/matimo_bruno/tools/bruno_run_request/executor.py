@@ -1,3 +1,4 @@
+import shutil
 import subprocess
 import logging
 from pathlib import Path
@@ -6,11 +7,23 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
+def _check_bru_installed() -> None:
+    """Raise a clear error if the Bruno CLI is not available in PATH."""
+    if shutil.which("bru") is None:
+        raise RuntimeError(
+            "Bruno CLI ('bru') is not installed or not in PATH. "
+            "Install it with: npm install -g @usebruno/cli  "
+            "or via Homebrew: brew install bruno"
+        )
+
+
 def execute(params: dict[str, Any]) -> dict[str, Any]:
     """Execute a single Bruno request using 'bru run'."""
+    _check_bru_installed()
+
     collection_path = params.get("collection_path")
     request_name = params.get("request_name")
-    
+
     if not collection_path or not request_name:
         raise ValueError("collection_path and request_name parameters are required")
 

@@ -8,6 +8,9 @@
     "README.md",
     "definition.yaml"
   ],
+  "dependencies": {
+    "@usebruno/cli": ">=3.3.0"
+  },
   "peerDependencies": {
     "matimo": "workspace:*"
   },
