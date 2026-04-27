@@ -209,11 +209,19 @@ class Matimo:
 
         # Load skills (optional)
         skill_reg = SkillRegistry()
-        if skill_paths:
+        
+        # Auto-discover skill paths if auto_discover=True
+        skill_discovery_paths = list(skill_paths) if skill_paths else []
+        # Note: auto_discover is for tools only, not skills. Skills must be passed via skill_paths.
+        
+        if skill_discovery_paths:
             skill_loader = SkillLoader()
-            for sp in skill_paths:
+            for sp in skill_discovery_paths:
                 skills = skill_loader.load_skills_from_directory(sp)
                 skill_reg.register_all(skills)
+        
+        if skill_reg.count() > 0:
+            matimo_logger.info(f"{skill_reg.count()} skill(s) loaded")
 
         return cls(
             registry=registry,
@@ -226,7 +234,8 @@ class Matimo:
             skill_registry=skill_reg,
         )
 
-    # ------------------------------------------------------------------
+
+        # ------------------------------------------------------------------
     # Execute
     # ------------------------------------------------------------------
 
@@ -388,6 +397,37 @@ class Matimo:
     def get_skill_content(self, name: str, options: SkillContentOptions | None = None) -> str | None:
         """Return the full markdown content of a skill, or None if not found."""
         return self._skill_registry.get_skill_content(name, options)
+
+    async def execute_tool(
+        self,
+        tool_name: str,
+        params: dict[str, Any] | None = None,
+        *,
+        credentials: dict[str, str] | None = None,
+        context: PolicyContext | None = None,
+        approved: bool = False,
+    ) -> Any:  # noqa: ANN401
+        """
+        Execute a tool (alias for execute() with simpler params).
+        
+        Args:
+            tool_name: Name of the tool to execute
+            params: Tool parameters (defaults to empty dict)
+            credentials: Per-call credential overrides
+            context: Policy context
+            approved: Whether tool is pre-approved
+            
+        Returns:
+            Tool execution result
+        """
+        return await self.execute(
+            tool_name,
+            params or {},
+            credentials=credentials,
+            context=context,
+            approved=approved,
+        )
+
 
     async def semantic_search_skills(
         self,
