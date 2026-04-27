@@ -1,0 +1,16 @@
+meta {
+  name: list-todos
+  type: http
+  seq: 1
+}
+
+get {
+  url: https://jsonplaceholder.typicode.com/todos?_limit=3
+  body: none
+  auth: inherit
+}
+
+headers {
+  Accept: application/json
+}
+

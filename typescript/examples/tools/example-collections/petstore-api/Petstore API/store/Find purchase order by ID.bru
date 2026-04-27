@@ -1,0 +1,18 @@
+meta {
+  name: Find purchase order by ID
+  type: http
+  seq: 3
+  tags: [
+    store
+  ]
+}
+
+get {
+  url: {{baseUrl}}/store/order/:orderId
+  body: none
+  auth: inherit
+}
+
+params:path {
+  orderId: 
+}

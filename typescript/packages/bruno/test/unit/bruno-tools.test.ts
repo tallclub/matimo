@@ -62,9 +62,7 @@ describe('bruno tools', () => {
           return;
         }
 
-        expect(['api_key', 'bearer', 'basic', 'oauth2']).toContain(
-          auth.type
-        );
+        expect(['api_key', 'bearer', 'basic', 'oauth2']).toContain(auth.type);
       });
 
       it('should have at least one example', () => {

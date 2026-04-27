@@ -1,0 +1,19 @@
+meta {
+  name: Logs user into the system
+  type: http
+  seq: 6
+  tags: [
+    user
+  ]
+}
+
+get {
+  url: {{baseUrl}}/user/login
+  body: none
+  auth: inherit
+}
+
+params:query {
+  username: 
+  password: 
+}

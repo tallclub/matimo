@@ -1,0 +1,14 @@
+meta {
+  name: Add a new pet to the store
+  type: http
+  seq: 2
+  tags: [
+    pet
+  ]
+}
+
+post {
+  url: {{baseUrl}}/pet
+  body: none
+  auth: inherit
+}
