@@ -1,0 +1,53 @@
+name: bruno_create_collection
+description: Create a new empty Bruno collection scaffold with directory structure and configuration. Enables agents to initialize new collections for API testing projects.
+version: '1.0.0'
+status: stable
+
+parameters:
+  collection_path:
+    type: string
+    required: true
+    description: Path where new collection directory will be created
+
+  collection_name:
+    type: string
+    required: true
+    description: Name for the new collection
+
+execution:
+  type: function
+  code: executor.py
+
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+    collection_path:
+      type: string
+    message:
+      type: string
+    errors:
+      type: array
+      items:
+        type: string
+
+authentication:
+  type: api_key
+  location: header
+  name: Authorization
+
+error_handling:
+  retry: 0
+
+
+examples:
+  - name: "Create new collection for microservice testing"
+    params:
+      collection_path: "./collections/user-service"
+      collection_name: "User Service API Tests"
+
+  - name: "Bootstrap collection for integration tests"
+    params:
+      collection_path: "./collections/e2e-workflows"
+      collection_name: "End-to-End Workflows"

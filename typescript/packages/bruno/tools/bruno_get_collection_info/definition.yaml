@@ -1,0 +1,75 @@
+name: bruno_get_collection_info
+description: Introspect a Bruno collection to get its structure, requests, environments, and configuration. Returns complete collection metadata for pre-flight validation before execution.
+version: '1.0.0'
+status: approved
+
+parameters:
+  collection_path:
+    type: string
+    required: true
+    description: Path to Bruno collection file or directory
+
+execution:
+  type: function
+  code: index.ts
+  timeout: 10000
+
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+    collection:
+      type: object
+      properties:
+        name:
+          type: string
+        path:
+          type: string
+        requests:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              method:
+                type: string
+              url:
+                type: string
+              tags:
+                type: array
+                items:
+                  type: string
+              has_tests:
+                type: boolean
+        environments:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              variables:
+                type: array
+                items:
+                  type: string
+        variables:
+          type: object
+        authentication:
+          type: object
+
+authentication:
+  type: api_key
+  location: header
+  name: Authorization
+
+
+examples:
+  - name: "Inspect collection structure"
+    params:
+      collection_path: "./collections/payment-api"
+
+  - name: "Get full metadata before running"
+    params:
+      collection_path: "./collections/auth-flow.bru"

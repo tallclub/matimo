@@ -1,0 +1,33 @@
+# Bruno CLI Provider Definition
+#
+# This file defines the configuration for Bruno CLI tools.
+# All Bruno tools reference this provider definition.
+
+name: bruno-provider
+type: provider
+version: '1.0.0'
+
+description: |
+  Bruno CLI Provider Configuration
+
+  All Bruno tools use the locally-installed Bruno CLI.
+
+  Setup:
+  1. Install Bruno CLI:
+     npm install -g @usebruno/cli
+     or
+     brew install bruno
+
+  2. Bruno CLI v3+ provides:
+     - Collection management (create, list, import)
+     - Request execution (run single or full suite)
+     - OpenAPI spec import and generation
+     - Test result reporting
+
+  Authentication:
+  Bruno CLI tools run locally and don't require credentials.
+  API keys for tested endpoints should be provided in environment variables.
+
+  Documentation:
+  - Bruno Docs: https://www.usebruno.com/
+  - CLI Reference: https://www.usebruno.com/docs/cli/cli-overview
