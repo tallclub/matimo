@@ -130,6 +130,9 @@ importers:
       '@langchain/openai':
         specifier: ^1.2.4
         version: 1.2.5(@langchain/core@1.1.19)
+      '@matimo/bruno':
+        specifier: link:../../packages/bruno
+        version: link:../../packages/bruno
       '@matimo/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -182,6 +185,16 @@ importers:
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
+
+  packages/bruno:
+    dependencies:
+      matimo:
+        specifier: workspace:*
+        version: link:../..
+    devDependencies:
+      '@matimo/core':
+        specifier: workspace:*
+        version: link:../core
 
   packages/cli:
     dependencies:
