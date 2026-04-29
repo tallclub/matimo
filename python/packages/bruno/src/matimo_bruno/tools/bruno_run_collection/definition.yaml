@@ -1,7 +1,7 @@
 name: bruno_run_collection
 description: Execute a Bruno API collection with configurable environment, data files, and reporting options. Returns structured JSON results with test assertions, metrics, and failure details.
 version: '1.0.0'
-status: stable
+status: approved
 
 parameters:
   collection_path:
@@ -109,14 +109,6 @@ output_schema:
         type: string
     report_path:
       type: string
-
-authentication:
-  type: api_key
-  location: header
-  name: Authorization
-
-error_handling:
-  retry: 0
 
 
 examples:

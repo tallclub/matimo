@@ -1,7 +1,7 @@
 name: bruno_run_request
 description: Execute a single request from a Bruno collection for targeted debugging and validation. Returns detailed request/response data and assertion results.
 version: '1.0.0'
-status: stable
+status: approved
 
 parameters:
   collection_path:
@@ -69,14 +69,6 @@ output_schema:
       type: array
       items:
         type: string
-
-authentication:
-  type: api_key
-  location: header
-  name: Authorization
-
-error_handling:
-  retry: 0
 
 
 examples:

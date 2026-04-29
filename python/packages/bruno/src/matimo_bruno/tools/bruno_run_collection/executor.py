@@ -1,30 +1,21 @@
-import shutil
 import subprocess
 import logging
 from pathlib import Path
 from typing import Any
 
+from matimo_bruno._bru_utils import check_bru_version
+
 logger = logging.getLogger(__name__)
-
-
-def _check_bru_installed() -> None:
-    """Raise a clear error if the Bruno CLI is not available in PATH."""
-    if shutil.which("bru") is None:
-        raise RuntimeError(
-            "Bruno CLI ('bru') is not installed or not in PATH. "
-            "Install it with: npm install -g @usebruno/cli  "
-            "or via Homebrew: brew install bruno"
-        )
 
 
 def execute(params: dict[str, Any]) -> dict[str, Any]:
     """Execute a Bruno collection using 'bru run'."""
-    _check_bru_installed()
-
     collection_path = params.get("collection_path")
 
     if not collection_path:
         raise ValueError("collection_path parameter is required")
+
+    check_bru_version()
 
     try:
         logger.info(f"Running Bruno collection: {collection_path}")

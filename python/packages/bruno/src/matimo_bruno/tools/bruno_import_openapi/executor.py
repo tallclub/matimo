@@ -2,6 +2,8 @@ import subprocess
 import logging
 from typing import Any
 
+from matimo_bruno._bru_utils import check_bru_version
+
 logger = logging.getLogger(__name__)
 
 
@@ -12,6 +14,8 @@ def execute(params: dict[str, Any]) -> dict[str, Any]:
     
     if not spec_source or not output_directory:
         raise ValueError("spec_source and output_directory parameters are required")
+
+    check_bru_version()
 
     try:
         logger.info(f"Importing OpenAPI from: {spec_source} to {output_directory}")

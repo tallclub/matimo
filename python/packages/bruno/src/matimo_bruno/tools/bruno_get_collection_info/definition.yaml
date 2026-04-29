@@ -1,7 +1,7 @@
 name: bruno_get_collection_info
 description: Introspect a Bruno collection to get its structure, requests, environments, and configuration. Returns complete collection metadata for pre-flight validation before execution.
 version: '1.0.0'
-status: stable
+status: approved
 
 parameters:
   collection_path:
@@ -57,14 +57,6 @@ output_schema:
           type: object
         authentication:
           type: object
-
-authentication:
-  type: api_key
-  location: header
-  name: Authorization
-
-error_handling:
-  retry: 0
 
 
 examples:
