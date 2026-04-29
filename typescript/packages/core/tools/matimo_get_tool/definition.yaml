@@ -1,0 +1,36 @@
+name: matimo_get_tool
+version: '1.0.0'
+description: Retrieve the full definition of a tool — raw YAML content and parsed fields. Use before editing or cloning a tool.
+requires_approval: false
+tags:
+  - matimo
+  - meta
+  - discovery
+
+parameters:
+  name:
+    type: string
+    required: true
+    description: Name of the tool to retrieve
+  tool_dir:
+    type: string
+    required: false
+    description: Directory containing the tool (default ./matimo-tools)
+
+execution:
+  type: function
+  code: './matimo_get_tool.ts'
+
+output_schema:
+  type: object
+  properties:
+    found:
+      type: boolean
+    name:
+      type: string
+    yaml_content:
+      type: string
+    definition:
+      type: object
+    message:
+      type: string
