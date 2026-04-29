@@ -143,7 +143,8 @@ export class CommandExecutor {
     let result = str;
     for (const [key, value] of Object.entries(params)) {
       const placeholder = `{${key}}`;
-      result = result.replace(new RegExp(placeholder, 'g'), String(value));
+      const replacement = String(value);
+      result = result.replace(new RegExp(placeholder, 'g'), () => replacement);
     }
     return result;
   }

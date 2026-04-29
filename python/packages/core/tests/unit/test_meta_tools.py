@@ -179,6 +179,19 @@ class TestMatimoValidateTool:
         assert "riskLevel" in result
         assert result["riskLevel"] in ("low", "medium", "high", "critical")
 
+    @pytest.mark.asyncio
+    async def test_classify_risk_failure_uses_medium(self) -> None:
+        """If classify_risk raises inside validate_tool, riskLevel falls back to 'medium'."""
+        from matimo.tools.matimo_validate_tool.matimo_validate_tool import run
+
+        with patch(
+            "matimo.policy.risk_classifier.classify_risk",
+            side_effect=Exception("broken"),
+        ):
+            result = await run({"yaml_content": _VALID_HTTP_TOOL_YAML})
+
+        assert result["riskLevel"] == "medium"
+
 
 # ===========================================================================
 # matimo_create_tool
@@ -1331,3 +1344,294 @@ class TestMatimoValidateSkill:
         result = await run({"name": "unclosed", "skills_dir": str(tmp_path)})
 
         assert result["valid"] is False
+
+
+# ===========================================================================
+# Additional branch coverage — matimo_list_user_tools
+# ===========================================================================
+
+class TestMatimoListUserToolsBranchCoverage:
+    """Extra tests targeting uncovered branches in matimo_list_user_tools."""
+
+    @pytest.mark.asyncio
+    async def test_skips_files_in_tool_dir(self, tmp_path: Path) -> None:
+        """Files (not dirs) in tool_dir are skipped without error (line 26 branch)."""
+        from matimo.tools.matimo_list_user_tools.matimo_list_user_tools import run
+
+        # Write a plain file directly in the tool dir (not in a subdirectory)
+        (tmp_path / "stray_file.yaml").write_text("not a dir")
+        _write_tool(tmp_path, "real_tool")
+
+        result = await run({"tool_dir": str(tmp_path)})
+
+        assert result["total"] == 1
+
+    @pytest.mark.asyncio
+    async def test_classify_risk_failure_uses_medium(self, tmp_path: Path) -> None:
+        """If classify_risk raises, risk_level falls back to 'medium' (lines 38-39)."""
+        from matimo.tools.matimo_list_user_tools.matimo_list_user_tools import run
+
+        _write_tool(tmp_path, "any_tool")
+
+        with patch(
+            "matimo.policy.risk_classifier.classify_risk",
+            side_effect=Exception("broken"),
+        ):
+            result = await run({"tool_dir": str(tmp_path)})
+
+        assert result["total"] == 1
+        assert result["tools"][0]["riskLevel"] == "medium"
+
+    @pytest.mark.asyncio
+    async def test_filters_draft_tools_when_include_drafts_false(self, tmp_path: Path) -> None:
+        """Draft tools are excluded when include_drafts=False."""
+        from matimo.tools.matimo_list_user_tools.matimo_list_user_tools import run
+
+        _write_tool(tmp_path, "draft_tool", _VALID_DRAFT_TOOL_YAML)
+        _write_tool(tmp_path, "stable_tool")
+
+        result = await run({"tool_dir": str(tmp_path), "include_drafts": False})
+
+        names = [t["name"] for t in result["tools"]]
+        assert "my_api_tool" not in names or len(result["tools"]) == 1
+
+
+# ===========================================================================
+# Additional branch coverage — matimo_get_tool_status
+# ===========================================================================
+
+class TestMatimoGetToolStatusBranchCoverage:
+    """Extra tests targeting uncovered branches in matimo_get_tool_status."""
+
+    @pytest.mark.asyncio
+    async def test_classify_risk_failure_uses_medium(self, tmp_path: Path) -> None:
+        """If classify_risk raises, risk_level falls back to 'medium' (lines 36-37)."""
+        from matimo.tools.matimo_get_tool_status.matimo_get_tool_status import run
+
+        _write_tool(tmp_path, "my_api_tool")
+
+        with patch(
+            "matimo.policy.risk_classifier.classify_risk",
+            side_effect=Exception("broken"),
+        ):
+            result = await run({"name": "my_api_tool", "tool_dir": str(tmp_path)})
+
+        assert result["riskLevel"] == "medium"
+
+    @pytest.mark.asyncio
+    async def test_deprecated_tool_shows_rejected_state(self, tmp_path: Path) -> None:
+        """A deprecated tool has approval_state 'rejected' (line 48)."""
+        from matimo.tools.matimo_get_tool_status.matimo_get_tool_status import run
+
+        deprecated_yaml = textwrap.dedent("""\
+            name: my_api_tool
+            version: '1.0.0'
+            description: Fetch data from an API
+            status: deprecated
+            parameters:
+              query:
+                type: string
+                required: true
+                description: Search query
+            execution:
+              type: http
+              method: GET
+              url: 'https://api.example.com/search?q={query}'
+        """)
+        _write_tool(tmp_path, "my_api_tool", deprecated_yaml)
+
+        result = await run({"name": "my_api_tool", "tool_dir": str(tmp_path)})
+
+        assert result["approvalState"] == "rejected"
+
+    @pytest.mark.asyncio
+    async def test_low_risk_stable_tool_auto_approved(self, tmp_path: Path) -> None:
+        """A stable low-risk tool at AUTO tier gets approval_state 'auto-approved' (line 54)."""
+        from matimo.policy.types import PolicyTier
+        from matimo.tools.matimo_get_tool_status.matimo_get_tool_status import run
+
+        _write_tool(tmp_path, "my_api_tool")
+
+        with patch(
+            "matimo.policy.default_policy.get_tier_for_tool",
+            return_value=PolicyTier.AUTO,
+        ):
+            result = await run({"name": "my_api_tool", "tool_dir": str(tmp_path)})
+
+        assert result["approvalState"] == "auto-approved"
+
+
+# ===========================================================================
+# Additional branch coverage — matimo_approve_tool
+# ===========================================================================
+
+class TestMatimoApproveToolBranchCoverage:
+    """Extra tests targeting uncovered branches in matimo_approve_tool."""
+
+    @pytest.mark.asyncio
+    async def test_blocks_approval_on_critical_policy_violations(self, tmp_path: Path) -> None:
+        """Tools with critical policy violations are blocked (lines 38-43)."""
+        from matimo.tools.matimo_approve_tool.matimo_approve_tool import run
+
+        _write_tool(tmp_path, "my_api_tool", _VALID_DRAFT_TOOL_YAML)
+
+        mock_violation = MagicMock()
+        mock_violation.severity = "critical"
+        mock_violation.message = "Dangerous pattern detected"
+
+        with patch(
+            "matimo.policy.content_validator.validate_tool_content",
+            return_value=[mock_violation],
+        ):
+            result = await run({"name": "my_api_tool", "tool_dir": str(tmp_path)})
+
+        assert result["success"] is False
+        assert "policy violations" in result["message"]
+
+
+# ===========================================================================
+# Additional branch coverage — matimo_get_skill helper functions
+# ===========================================================================
+
+class TestMatimoGetSkillBranchCoverage:
+    """Extra tests targeting uncovered branches in matimo_get_skill."""
+
+    @pytest.mark.asyncio
+    async def test_skill_without_frontmatter_is_returned(self, tmp_path: Path) -> None:
+        """Skill SKILL.md without --- frontmatter triggers line 17 early return."""
+        from matimo.tools.matimo_get_skill.matimo_get_skill import run
+
+        skill_dir = tmp_path / "plain-skill"
+        skill_dir.mkdir()
+        (skill_dir / "SKILL.md").write_text("# Plain Skill\n\nNo frontmatter here.")
+
+        result = await run({"name": "plain-skill", "skills_dir": str(tmp_path)})
+
+        assert result["success"] is True
+        assert result["name"] == "plain-skill"
+
+    @pytest.mark.asyncio
+    async def test_skill_with_unclosed_frontmatter(self, tmp_path: Path) -> None:
+        """Unclosed --- frontmatter (line 20 early return) still loads skill."""
+        from matimo.tools.matimo_get_skill.matimo_get_skill import run
+
+        skill_dir = tmp_path / "unclosed-skill"
+        skill_dir.mkdir()
+        (skill_dir / "SKILL.md").write_text("---\nname: unclosed-skill\ndescription: test\n")
+
+        result = await run({"name": "unclosed-skill", "skills_dir": str(tmp_path)})
+
+        assert result["success"] is True
+
+    @pytest.mark.asyncio
+    async def test_skill_with_invalid_frontmatter_yaml(self, tmp_path: Path) -> None:
+        """Invalid YAML in frontmatter triggers lines 23-24 exception handler."""
+        from matimo.tools.matimo_get_skill.matimo_get_skill import run
+
+        skill_dir = tmp_path / "bad-fm-skill"
+        skill_dir.mkdir()
+        # Deliberate YAML error: unindented block scalar
+        (skill_dir / "SKILL.md").write_text("---\n: invalid: yaml: ::\n---\n# Content")
+
+        result = await run({"name": "bad-fm-skill", "skills_dir": str(tmp_path)})
+
+        # Should succeed even with malformed frontmatter
+        assert result["success"] is True
+
+    @pytest.mark.asyncio
+    async def test_extra_file_in_skill_dir_goes_to_other(self, tmp_path: Path) -> None:
+        """Extra non-SKILL.md files in skill dir are placed in resources.other (line 35)."""
+        from matimo.tools.matimo_get_skill.matimo_get_skill import run
+
+        skill_dir = tmp_path / "rich-skill"
+        skill_dir.mkdir()
+        (skill_dir / "SKILL.md").write_text(_VALID_SKILL_CONTENT)
+        (skill_dir / "EXTRA.md").write_text("extra content")
+
+        result = await run({"name": "rich-skill", "skills_dir": str(tmp_path)})
+
+        assert result["success"] is True
+        assert "EXTRA.md" in result["resources"]["other"]
+
+    @pytest.mark.asyncio
+    async def test_find_skill_via_global_instance_with_path(self, tmp_path: Path) -> None:
+        """Finding a skill via global instance with _path attribute (lines 58-60)."""
+        from matimo.tools.matimo_get_skill.matimo_get_skill import run
+
+        skill_dir = tmp_path / "sdk-skill"
+        skill_dir.mkdir()
+        (skill_dir / "SKILL.md").write_text(_VALID_SKILL_CONTENT)
+
+        mock_skill = MagicMock()
+        mock_skill.name = "sdk-skill"
+        mock_skill._path = str(skill_dir)
+
+        mock_instance = MagicMock()
+        mock_instance.list_skills.return_value = [mock_skill]
+
+        with patch("matimo.decorators.get_global_matimo_instance", return_value=mock_instance):
+            result = await run({"name": "sdk-skill"})
+
+        assert result["success"] is True
+
+
+# ===========================================================================
+# Additional branch coverage — matimo_list_skills helper functions
+# ===========================================================================
+
+class TestMatimoListSkillsBranchCoverage:
+    """Extra tests targeting uncovered branches in matimo_list_skills."""
+
+    @pytest.mark.asyncio
+    async def test_skill_file_read_error_is_skipped(self, tmp_path: Path) -> None:
+        """If SKILL.md read fails, the skill is skipped gracefully (lines 47-48)."""
+        from matimo.tools.matimo_list_skills.matimo_list_skills import run
+
+        skill_dir = tmp_path / "bad-skill"
+        skill_dir.mkdir()
+        skill_file = skill_dir / "SKILL.md"
+        skill_file.write_text("# ok")
+
+        original_read = Path.read_text
+
+        def patched_read(self: Path, **kwargs: object) -> str:
+            if self == skill_file:
+                raise OSError("permission denied")
+            return original_read(self, **kwargs)  # type: ignore[call-arg]
+
+        with (
+            patch("matimo.decorators.get_global_matimo_instance", return_value=None),
+            patch.object(Path, "read_text", patched_read),
+        ):
+            result = await run({"skills_dir": str(tmp_path)})
+
+        # The bad skill is silently dropped
+        assert result["total"] == 0
+
+    @pytest.mark.asyncio
+    async def test_skill_with_no_frontmatter_uses_dir_name(self, tmp_path: Path) -> None:
+        """Skill files without --- frontmatter use dirname as name (line 15 branch)."""
+        from matimo.tools.matimo_list_skills.matimo_list_skills import run
+
+        skill_dir = tmp_path / "no-fm-skill"
+        skill_dir.mkdir()
+        (skill_dir / "SKILL.md").write_text("# No Frontmatter\nJust content.")
+
+        with patch("matimo.decorators.get_global_matimo_instance", return_value=None):
+            result = await run({"skills_dir": str(tmp_path)})
+
+        assert result["total"] == 1
+        assert result["skills"][0]["name"] == "no-fm-skill"
+
+    @pytest.mark.asyncio
+    async def test_skips_files_not_dirs_in_skill_path(self, tmp_path: Path) -> None:
+        """Non-directory entries in skill_path are skipped (line 32 branch)."""
+        from matimo.tools.matimo_list_skills.matimo_list_skills import run
+
+        (tmp_path / "stray_file.md").write_text("not a dir")
+        _write_skill(tmp_path, "real-skill")
+
+        with patch("matimo.decorators.get_global_matimo_instance", return_value=None):
+            result = await run({"skills_dir": str(tmp_path)})
+
+        assert result["total"] == 1

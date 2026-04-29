@@ -49,10 +49,12 @@ class ApprovalManifest:
         self,
         approval_dir: str | None = None,
         approval_secret: str | None = None,
+        ttl_seconds: int | None = None,
     ) -> None:
         self._dir = Path(
             approval_dir or os.environ.get("MATIMO_APPROVAL_DIR", ".")
         )
+        self._ttl_seconds = ttl_seconds
         _provided = approval_secret or os.environ.get("MATIMO_APPROVAL_SECRET")
         if _provided:
             raw_secret = _provided
@@ -86,11 +88,19 @@ class ApprovalManifest:
 
     def is_approved(self, tool_name: str, content_hash: str) -> bool:
         """Return True if tool_name has a valid approval for content_hash."""
+        from datetime import datetime
+
         record = self._records.get(tool_name)
         if record is None:
             return False
         if record.hash != content_hash:
             return False
+        # TTL check — if configured, reject approvals older than ttl_seconds
+        if self._ttl_seconds is not None:
+            approved_at = datetime.fromisoformat(record.approved_at)
+            age_s = (datetime.now(UTC) - approved_at).total_seconds()
+            if age_s > self._ttl_seconds:
+                return False
         return self._verify_signature(record)
 
     def approve(

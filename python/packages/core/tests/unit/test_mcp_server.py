@@ -534,3 +534,339 @@ class TestCreateMcpServer:
     async def test_create_mcp_server_with_none_paths(self) -> None:
         server = await create_mcp_server(tool_paths=[])
         assert isinstance(server, MCPServer)
+
+
+# ---------------------------------------------------------------------------
+# MCPServer._run_http — ASGI handler branches
+# ---------------------------------------------------------------------------
+
+
+async def _make_asgi_app(mcp_token: str | None = None) -> tuple[Any, MagicMock]:
+    """Helper: build an MCPServer and capture the `asgi_app` passed to uvicorn.Config."""
+    matimo = _make_matimo_mock(tools=[_make_tool("t")])
+    server = MCPServer(matimo, MCPServerOptions(transport="http", mcp_token=mcp_token))
+
+    captured: dict[str, Any] = {}
+
+    mock_ctx = MagicMock()
+    mock_ctx.__aenter__ = AsyncMock(return_value=None)
+    mock_ctx.__aexit__ = AsyncMock(return_value=None)
+
+    mock_sm = MagicMock()
+    mock_sm.run.return_value = mock_ctx
+    mock_sm.handle_request = AsyncMock()
+
+    with (
+        patch("uvicorn.Config", side_effect=lambda app, **kw: captured.update({"app": app}) or MagicMock()),
+        patch("uvicorn.Server", return_value=MagicMock(serve=AsyncMock())),
+        patch(
+            "mcp.server.streamable_http_manager.StreamableHTTPSessionManager",
+            return_value=mock_sm,
+        ),
+    ):
+        await server._run_http(MagicMock())
+
+    return captured["app"], mock_sm
+
+
+class TestRunHttpAsgiHandler:
+    """Tests for the asgi_app inner function in _run_http (lines 175-267)."""
+
+    @staticmethod
+    def _make_send_receive(receive_msg: dict | None = None) -> tuple[list, Any]:
+        sends: list[dict] = []
+
+        async def send(msg: dict) -> None:
+            sends.append(msg)
+
+        async def receive() -> dict:
+            return receive_msg or {}
+
+        return sends, receive
+
+    async def test_non_http_scope_is_ignored(self) -> None:
+        app, _ = await _make_asgi_app()
+        sends, receive = self._make_send_receive()
+
+        async def noop_send(_: dict) -> None:
+            pass
+
+        scope: dict = {"type": "websocket"}
+        await app(scope, receive, noop_send)
+        assert sends == []
+
+    async def test_options_request_returns_cors_204(self) -> None:
+        app, _ = await _make_asgi_app()
+        actual_sends: list[dict] = []
+
+        async def send(m: dict) -> None:
+            actual_sends.append(m)
+
+        scope: dict = {"type": "http", "method": "OPTIONS", "path": "/", "headers": []}
+        await app(scope, AsyncMock(return_value={}), send)
+        response_start = next(m for m in actual_sends if m["type"] == "http.response.start")
+        assert response_start["status"] == 204
+
+    async def test_health_endpoint_returns_200(self) -> None:
+        app, _ = await _make_asgi_app()
+        sends: list[dict] = []
+
+        async def send(m: dict) -> None:
+            sends.append(m)
+
+        scope: dict = {"type": "http", "method": "GET", "path": "/health", "headers": []}
+        await app(scope, AsyncMock(return_value={}), send)
+        response_start = next(m for m in sends if m["type"] == "http.response.start")
+        assert response_start["status"] == 200
+
+    async def test_unknown_path_returns_404(self) -> None:
+        app, _ = await _make_asgi_app()
+        sends: list[dict] = []
+
+        async def send(m: dict) -> None:
+            sends.append(m)
+
+        scope: dict = {"type": "http", "method": "GET", "path": "/unknown", "headers": []}
+        await app(scope, AsyncMock(return_value={}), send)
+        response_start = next(m for m in sends if m["type"] == "http.response.start")
+        assert response_start["status"] == 404
+
+    async def test_mcp_path_forwarded_to_session_manager(self) -> None:
+        app, mock_sm = await _make_asgi_app()
+        sends: list[dict] = []
+
+        async def send(m: dict) -> None:
+            sends.append(m)
+
+        scope: dict = {"type": "http", "method": "POST", "path": "/mcp", "headers": []}
+        await app(scope, AsyncMock(return_value={}), send)
+        mock_sm.handle_request.assert_awaited_once()
+
+    async def test_root_path_forwarded_to_session_manager(self) -> None:
+        app, mock_sm = await _make_asgi_app()
+        sends: list[dict] = []
+
+        async def send(m: dict) -> None:
+            sends.append(m)
+
+        scope: dict = {"type": "http", "method": "POST", "path": "/", "headers": []}
+        await app(scope, AsyncMock(return_value={}), send)
+        mock_sm.handle_request.assert_awaited()
+
+    async def test_bearer_token_missing_returns_401(self) -> None:
+        app, _ = await _make_asgi_app(mcp_token="secret-token")
+        sends: list[dict] = []
+
+        async def send(m: dict) -> None:
+            sends.append(m)
+
+        scope: dict = {"type": "http", "method": "GET", "path": "/mcp", "headers": []}
+        await app(scope, AsyncMock(return_value={}), send)
+        response_start = next(m for m in sends if m["type"] == "http.response.start")
+        assert response_start["status"] == 401
+
+    async def test_bearer_token_wrong_returns_401(self) -> None:
+        app, _ = await _make_asgi_app(mcp_token="secret-token")
+        sends: list[dict] = []
+
+        async def send(m: dict) -> None:
+            sends.append(m)
+
+        scope: dict = {
+            "type": "http",
+            "method": "GET",
+            "path": "/mcp",
+            "headers": [(b"authorization", b"Bearer wrong-token")],
+        }
+        await app(scope, AsyncMock(return_value={}), send)
+        response_start = next(m for m in sends if m["type"] == "http.response.start")
+        assert response_start["status"] == 401
+
+    async def test_bearer_token_correct_passes(self) -> None:
+        app, mock_sm = await _make_asgi_app(mcp_token="secret-token")
+        sends: list[dict] = []
+
+        async def send(m: dict) -> None:
+            sends.append(m)
+
+        scope: dict = {
+            "type": "http",
+            "method": "POST",
+            "path": "/mcp",
+            "headers": [(b"authorization", b"Bearer secret-token")],
+        }
+        await app(scope, AsyncMock(return_value={}), send)
+        mock_sm.handle_request.assert_awaited()
+
+    async def test_health_endpoint_exempt_from_auth(self) -> None:
+        """Health endpoint should NOT require bearer token."""
+        app, _ = await _make_asgi_app(mcp_token="secret-token")
+        sends: list[dict] = []
+
+        async def send(m: dict) -> None:
+            sends.append(m)
+
+        scope: dict = {
+            "type": "http",
+            "method": "GET",
+            "path": "/health",
+            "headers": [],  # no auth header
+        }
+        await app(scope, AsyncMock(return_value={}), send)
+        response_start = next(m for m in sends if m["type"] == "http.response.start")
+        assert response_start["status"] == 200
+
+    async def test_lifespan_startup_shutdown(self) -> None:
+        app, _ = await _make_asgi_app()
+
+        events = [
+            {"type": "lifespan.startup"},
+            {"type": "lifespan.shutdown"},
+        ]
+        event_iter = iter(events)
+
+        async def receive() -> dict:
+            return next(event_iter)
+
+        sends: list[dict] = []
+
+        async def send(m: dict) -> None:
+            sends.append(m)
+
+        scope: dict = {"type": "lifespan"}
+        await app(scope, receive, send)
+        types = [s["type"] for s in sends]
+        assert "lifespan.startup.complete" in types
+        assert "lifespan.shutdown.complete" in types
+
+    async def test_lifespan_non_startup_msg_is_ignored(self) -> None:
+        app, _ = await _make_asgi_app()
+        events = iter([{"type": "lifespan.other"}])
+
+        async def receive() -> dict:
+            return next(events)
+
+        sends: list[dict] = []
+
+        async def send(m: dict) -> None:
+            sends.append(m)
+
+        scope: dict = {"type": "lifespan"}
+        await app(scope, receive, send)
+        assert sends == []
+
+
+# ---------------------------------------------------------------------------
+# MCPServer._register_skill_resources
+# ---------------------------------------------------------------------------
+
+
+class TestRegisterSkillResources:
+    def test_early_return_when_no_skills(self) -> None:
+        matimo = _make_matimo_mock()
+        matimo.list_skills.return_value = []
+        server = MCPServer(matimo, MCPServerOptions())
+        mock_server_obj = MagicMock()
+        server._register_skill_resources(mock_server_obj)
+        mock_server_obj.list_resources.assert_not_called()
+        mock_server_obj.read_resource.assert_not_called()
+
+    def test_early_return_when_mcp_not_installed(self) -> None:
+        matimo = _make_matimo_mock()
+        skill = MagicMock()
+        skill.name = "my-skill"
+        matimo.list_skills.return_value = [skill]
+        server = MCPServer(matimo, MCPServerOptions())
+        mock_server_obj = MagicMock()
+
+        with patch.dict("sys.modules", {"mcp": None, "mcp.types": None}):
+            server._register_skill_resources(mock_server_obj)
+
+        mock_server_obj.list_resources.assert_not_called()
+
+    async def test_registers_handlers_and_invokes_them(self) -> None:
+        skill = MagicMock()
+        skill.name = "my-skill"
+        skill.description = "A test skill"
+
+        matimo = _make_matimo_mock()
+        matimo.list_skills.return_value = [skill]
+        matimo.get_skill_content.return_value = "# Skill Content"
+
+        server = MCPServer(matimo, MCPServerOptions())
+
+        registered_handlers: dict[str, Any] = {}
+        mock_server_obj = MagicMock()
+
+        def capture_list_resources() -> Any:
+            def decorator(fn: Any) -> Any:
+                registered_handlers["list_resources"] = fn
+                return fn
+            return decorator
+
+        def capture_read_resource() -> Any:
+            def decorator(fn: Any) -> Any:
+                registered_handlers["read_resource"] = fn
+                return fn
+            return decorator
+
+        mock_server_obj.list_resources.side_effect = capture_list_resources
+        mock_server_obj.read_resource.side_effect = capture_read_resource
+
+        mock_mcp_types = MagicMock()
+        mock_mcp_types.Resource.side_effect = lambda **kw: MagicMock(**kw)
+
+        with patch.dict("sys.modules", {"mcp.types": mock_mcp_types}):
+            server._register_skill_resources(mock_server_obj)
+
+        assert "list_resources" in registered_handlers
+        assert "read_resource" in registered_handlers
+
+        # Invoke list_resources — pydantic.AnyUrl is available in the test env
+        resources = await registered_handlers["list_resources"]()
+        assert isinstance(resources, list)
+
+        # Invoke read_resource — returns skill content
+        uri_mock = MagicMock()
+        uri_mock.__str__ = MagicMock(return_value="skills://my-skill")
+        result = await registered_handlers["read_resource"](uri_mock)
+        assert result == "# Skill Content"
+
+    async def test_read_resource_returns_unavailable_when_content_none(self) -> None:
+        skill = MagicMock()
+        skill.name = "empty-skill"
+        skill.description = None
+
+        matimo = _make_matimo_mock()
+        matimo.list_skills.return_value = [skill]
+        matimo.get_skill_content.return_value = None  # skill has no content
+
+        server = MCPServer(matimo, MCPServerOptions())
+
+        registered_handlers: dict[str, Any] = {}
+        mock_server_obj = MagicMock()
+
+        def capture_read_resource() -> Any:
+            def decorator(fn: Any) -> Any:
+                registered_handlers["read_resource"] = fn
+                return fn
+            return decorator
+
+        def capture_list_resources() -> Any:
+            def decorator(fn: Any) -> Any:
+                return fn
+            return decorator
+
+        mock_server_obj.list_resources.side_effect = capture_list_resources
+        mock_server_obj.read_resource.side_effect = capture_read_resource
+
+        mock_mcp_types = MagicMock()
+
+        with patch.dict("sys.modules", {"mcp.types": mock_mcp_types}):
+            server._register_skill_resources(mock_server_obj)
+
+        uri_mock = MagicMock()
+        uri_mock.__str__ = MagicMock(return_value="skills://empty-skill")
+        result = await registered_handlers["read_resource"](uri_mock)
+        assert "unavailable" in result
+

@@ -129,7 +129,7 @@ class VaultSecretResolver:
             self._cache = {k: str(v) for k, v in data.items()}
             self._cache_ts = now
         except Exception as exc:
-            logger.error("VaultSecretResolver failed: %s", exc)
+            logger.warning("VaultSecretResolver unreachable — falling back to next resolver: %s", exc)
         return self._cache
 
 
@@ -188,7 +188,7 @@ class AwsSecretsManagerResolver:
             self._cache = {k: str(v) for k, v in data.items()}
             self._cache_ts = now
         except Exception as exc:
-            logger.error("AwsSecretsManagerResolver failed: %s", exc)
+            logger.warning("AwsSecretsManagerResolver unreachable — falling back to next resolver: %s", exc)
         return self._cache
 
 
@@ -213,9 +213,13 @@ class SecretResolverChain:
 
     async def resolve(self, key: str) -> str | None:
         for r in self._resolvers:
-            val = await r.resolve(key)
-            if val is not None:
-                return val
+            try:
+                val = await r.resolve(key)
+                if val is not None:
+                    return val
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("Secret resolver '%s' failed for key '%s': %s", r.name, key, exc)
+                # Continue to next resolver
         return None
 
     async def resolve_all(self, keys: list[str]) -> dict[str, str]:
@@ -224,9 +228,13 @@ class SecretResolverChain:
         for r in self._resolvers:
             if not remaining:
                 break
-            found = await r.resolve_all(remaining)
-            result.update(found)
-            remaining = [k for k in remaining if k not in result]
+            try:
+                found = await r.resolve_all(remaining)
+                result.update(found)
+                remaining = [k for k in remaining if k not in result]
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("Secret resolver '%s' failed for resolve_all: %s", r.name, exc)
+                # Continue to next resolver
         return result
 
     async def dispose(self) -> None:

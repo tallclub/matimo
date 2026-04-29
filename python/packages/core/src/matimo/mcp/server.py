@@ -209,7 +209,7 @@ class MCPServer:
             # Bearer token auth (health endpoint is exempt)
             if path != "/health" and mcp_token:
                 headers = {
-                    k.lower(): v.decode("latin-1")
+                    k.decode("latin-1").lower(): v.decode("latin-1")
                     for k, v in scope.get("headers", [])
                 }
                 auth = headers.get("authorization", "")
