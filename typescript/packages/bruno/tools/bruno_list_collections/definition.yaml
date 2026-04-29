@@ -44,11 +44,6 @@ output_schema:
             items:
               type: string
 
-authentication:
-  type: api_key
-  location: header
-  name: Authorization
-
 
 examples:
   - name: "List all collections in workspace"

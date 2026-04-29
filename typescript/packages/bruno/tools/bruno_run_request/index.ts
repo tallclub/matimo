@@ -1,6 +1,7 @@
 import { getGlobalMatimoLogger } from '@matimo/core';
 import { execFileSync } from 'child_process';
 import * as path from 'path';
+import { checkBruVersion } from '../bru-utils';
 
 const logger = getGlobalMatimoLogger();
 
@@ -17,6 +18,8 @@ export default async function execute(params: Record<string, unknown>): Promise<
       errors: ['collection_path and request_name parameters are required'],
     };
   }
+
+  checkBruVersion();
 
   const absolutePath = path.resolve(collectionPath);
   const bruFilename = `${requestName.toLowerCase().replace(/\s+/g, '-')}.bru`;

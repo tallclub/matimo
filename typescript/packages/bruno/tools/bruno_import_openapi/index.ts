@@ -2,6 +2,7 @@ import { getGlobalMatimoLogger } from '@matimo/core';
 import { execFileSync } from 'child_process';
 import { promises as fs } from 'fs';
 import * as path from 'path';
+import { checkBruVersion } from '../bru-utils';
 
 const logger = getGlobalMatimoLogger();
 
@@ -19,6 +20,8 @@ export default async function execute(params: Record<string, unknown>): Promise<
       errors: ['spec_source and output_directory parameters are required'],
     };
   }
+
+  checkBruVersion();
 
   const collectionName = (params.collection_name as string) || 'Imported Collection';
   const absoluteOutput = path.resolve(outputDirectory);

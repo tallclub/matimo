@@ -79,9 +79,6 @@ output_schema:
       type: string
       description: Success or error message
 
-authentication:
-  type: api_key
-
 examples:
   - name: "Add GET request with headers"
     params:

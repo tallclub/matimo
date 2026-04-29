@@ -33,11 +33,6 @@ output_schema:
       items:
         type: string
 
-authentication:
-  type: api_key
-  location: header
-  name: Authorization
-
 
 examples:
   - name: "Create new collection for microservice testing"

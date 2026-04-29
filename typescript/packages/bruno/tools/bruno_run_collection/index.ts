@@ -3,6 +3,7 @@ import { execFileSync } from 'child_process';
 import { promises as fs } from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import { checkBruVersion } from '../bru-utils';
 
 const logger = getGlobalMatimoLogger();
 
@@ -17,6 +18,8 @@ export default async function execute(params: Record<string, unknown>): Promise<
       errors: ['collection_path parameter is required'],
     };
   }
+
+  checkBruVersion();
 
   const absolutePath = path.resolve(collectionPath);
   const reportPath = path.resolve((params.report_path as string | undefined) ?? path.join(os.tmpdir(), `bru-report-${Date.now()}.json`));
