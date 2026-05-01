@@ -99,7 +99,10 @@ export class ApprovalManifest {
 
     // TTL check — if configured, reject approvals older than ttlSeconds
     if (this.ttlSeconds !== undefined) {
+      // Fail closed if timestamp is missing or unparsable
+      if (!record.approvedAt) return false;
       const approvedAt = new Date(record.approvedAt).getTime();
+      if (!Number.isFinite(approvedAt)) return false;
       const ageMs = Date.now() - approvedAt;
       if (ageMs > this.ttlSeconds * 1000) return false;
     }
