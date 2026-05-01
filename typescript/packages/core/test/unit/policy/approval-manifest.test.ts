@@ -157,6 +157,27 @@ describe('ApprovalManifest', () => {
   });
 
   describe('auto-generate secret', () => {
+    it('should require MATIMO_APPROVAL_SECRET in production when no secret is provided', () => {
+      const originalNodeEnv = process.env.NODE_ENV;
+      const originalMatimoEnv = process.env.MATIMO_ENV;
+      const originalSecret = process.env.MATIMO_APPROVAL_SECRET;
+
+      process.env.NODE_ENV = 'production';
+      delete process.env.MATIMO_ENV;
+      delete process.env.MATIMO_APPROVAL_SECRET;
+
+      expect(() => new ApprovalManifest(tmpDir)).toThrow(
+        'MATIMO_APPROVAL_SECRET is required in production environments'
+      );
+
+      if (originalNodeEnv !== undefined) process.env.NODE_ENV = originalNodeEnv;
+      else delete process.env.NODE_ENV;
+      if (originalMatimoEnv !== undefined) process.env.MATIMO_ENV = originalMatimoEnv;
+      else delete process.env.MATIMO_ENV;
+      if (originalSecret !== undefined) process.env.MATIMO_APPROVAL_SECRET = originalSecret;
+      else delete process.env.MATIMO_APPROVAL_SECRET;
+    });
+
     it('should auto-generate a secret when none provided', () => {
       // Temporarily clear the env var
       const original = process.env.MATIMO_APPROVAL_SECRET;
@@ -233,6 +254,18 @@ describe('ApprovalManifest', () => {
       const pending = reloaded.getPendingTools();
       expect(pending).toContain('pending-1');
       expect(pending).toContain('pending-2');
+    });
+  });
+
+  describe('TTL expiration', () => {
+    it('should treat approvals older than ttlSeconds as expired', async () => {
+      const ttlManifest = new ApprovalManifest(tmpDir, TEST_SECRET, 0);
+      const yamlHash = ttlManifest.computeHash('content');
+      ttlManifest.approve('expiring-tool', yamlHash);
+
+      await new Promise((resolve) => setTimeout(resolve, 5));
+
+      expect(ttlManifest.isApproved('expiring-tool', yamlHash)).toBe(false);
     });
   });
 

@@ -6,6 +6,31 @@ import { checkBruVersion } from '../bru-utils';
 
 const logger = getGlobalMatimoLogger();
 
+/** Count .bru files recursively — compatible with Node 18+. */
+async function countBruFilesRecursively(dir: string): Promise<number> {
+  let count = 0;
+  let entries: string[];
+  try {
+    entries = await fs.readdir(dir);
+  } catch {
+    return 0;
+  }
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry);
+    try {
+      const stat = await fs.stat(fullPath);
+      if (stat.isDirectory() && entry !== 'node_modules') {
+        count += await countBruFilesRecursively(fullPath);
+      } else if (!stat.isDirectory() && entry.endsWith('.bru')) {
+        count++;
+      }
+    } catch {
+      // skip
+    }
+  }
+  return count;
+}
+
 export default async function execute(params: Record<string, unknown>): Promise<unknown> {
   const specSource = params.spec_source as string;
   const outputDirectory = params.output_directory as string;
@@ -45,15 +70,10 @@ export default async function execute(params: Record<string, unknown>): Promise<
 
     logger.info('OpenAPI import completed');
 
-    // Count generated .bru files
+    // Count generated .bru files using a Node 18-compatible recursive walk
     let requestsGenerated = 0;
     try {
-      const entries = await fs.readdir(absoluteOutput, {
-        recursive: true,
-        withFileTypes: true,
-      });
-      const bruFiles = entries.filter((entry) => entry.isFile() && entry.name.endsWith('.bru'));
-      requestsGenerated = bruFiles.length;
+      requestsGenerated = await countBruFilesRecursively(absoluteOutput);
     } catch {
       // best-effort count
     }

@@ -4,6 +4,60 @@ import * as path from 'path';
 
 const logger = getGlobalMatimoLogger();
 
+interface RequestInfo {
+  name: string;
+  method: string;
+  url: string;
+  path: string;
+  tags: string[];
+  has_tests: boolean;
+}
+
+async function scanBruFiles(dir: string, results: RequestInfo[]): Promise<void> {
+  let entries: string[];
+  try {
+    entries = await fs.readdir(dir);
+  } catch {
+    return;
+  }
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry);
+    try {
+      const stat = await fs.stat(fullPath);
+      if (stat.isDirectory() && entry !== 'node_modules') {
+        await scanBruFiles(fullPath, results);
+      } else if (!stat.isDirectory() && entry.endsWith('.bru')) {
+        try {
+          const content = await fs.readFile(fullPath, 'utf-8');
+          const methodMatch = content.match(/^(get|post|put|patch|delete|head|options)\s*\{/im);
+          const method = methodMatch ? methodMatch[1].toUpperCase() : 'UNKNOWN';
+          const nameMatch = content.match(/meta\s*\{[^}]*name:\s*(.+)/i);
+          const name = nameMatch ? nameMatch[1].trim() : path.basename(entry, '.bru');
+          const urlMatch = content.match(/^\s+url:\s*(.+)$/m);
+          const url = urlMatch ? urlMatch[1].trim() : '';
+          const tagsMatch = content.match(/tags:\s*\[([^\]]*)\]/);
+          const tags = tagsMatch
+            ? tagsMatch[1].split(',').map((t) => t.trim()).filter(Boolean)
+            : [];
+          const hasTests = /\btests\s*\{/.test(content);
+          results.push({ name, method, url, path: fullPath, tags, has_tests: hasTests });
+        } catch {
+          results.push({
+            name: path.basename(entry, '.bru'),
+            method: 'UNKNOWN',
+            url: '',
+            path: fullPath,
+            tags: [],
+            has_tests: false,
+          });
+        }
+      }
+    } catch {
+      // skip
+    }
+  }
+}
+
 export default async function execute(params: Record<string, unknown>): Promise<unknown> {
   const collectionPath = params.collection_path as string;
 
@@ -21,6 +75,18 @@ export default async function execute(params: Record<string, unknown>): Promise<
 
     const brunoJsonPath = path.join(absolutePath, 'bruno.json');
     let collectionName = path.basename(absolutePath);
+
+    // Verify the path exists before proceeding
+    try {
+      await fs.stat(absolutePath);
+    } catch {
+      return {
+        success: false,
+        collection: undefined,
+        errors: [`Collection path not found: ${collectionPath}`],
+      };
+    }
+
     try {
       const raw = await fs.readFile(brunoJsonPath, 'utf-8');
       const parsed = JSON.parse(raw) as { name?: string };
@@ -29,25 +95,8 @@ export default async function execute(params: Record<string, unknown>): Promise<
       // bruno.json missing — use dirname as name
     }
 
-    const entries = await fs.readdir(absolutePath);
-    const requests: Array<{ name: string; method: string; path: string }> = [];
-
-    for (const entry of entries) {
-      if (!entry.endsWith('.bru')) continue;
-      const filePath = path.join(absolutePath, entry);
-      try {
-        const content = await fs.readFile(filePath, 'utf-8');
-        // Parse method from first block that looks like: get { / post { / etc.
-        const methodMatch = content.match(/^(get|post|put|patch|delete|head|options)\s*\{/im);
-        const method = methodMatch ? methodMatch[1].toUpperCase() : 'UNKNOWN';
-        // Parse name from meta block
-        const nameMatch = content.match(/meta\s*\{[^}]*name:\s*(.+)/i);
-        const name = nameMatch ? nameMatch[1].trim() : path.basename(entry, '.bru');
-        requests.push({ name, method, path: filePath });
-      } catch {
-        requests.push({ name: path.basename(entry, '.bru'), method: 'UNKNOWN', path: filePath });
-      }
-    }
+    const requests: RequestInfo[] = [];
+    await scanBruFiles(absolutePath, requests);
 
     return {
       success: true,

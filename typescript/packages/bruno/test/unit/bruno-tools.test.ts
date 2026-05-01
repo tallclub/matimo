@@ -280,9 +280,10 @@ describe('bruno_add_request executor', () => {
   });
 
   it('returns failure on write error', async () => {
-    // Create a DIRECTORY at the expected .bru output path so writeFile fails
-    const bruFileName = 'fail-write.bru';
-    const blocker = path.join(tmpDir, bruFileName);
+    // Create a DIRECTORY at the expected .bru output path (inside requests/) so writeFile fails
+    const requestsDir = path.join(tmpDir, 'requests');
+    fs.mkdirSync(requestsDir, { recursive: true });
+    const blocker = path.join(requestsDir, 'fail-write.bru');
     fs.mkdirSync(blocker);
     const result = await execute({
       collection_path: tmpDir,
@@ -463,31 +464,39 @@ describe('bruno_list_collections executor', () => {
   it('lists all collections', async () => {
     makeCollection(tmpDir, 'api-a');
     makeCollection(tmpDir, 'api-b');
-    const result = await execute({ workspace_path: tmpDir });
-    expect(Array.isArray(result)).toBe(true);
-    expect((result as unknown[]).length).toBe(2);
+    const result = (await execute({ workspace_path: tmpDir })) as {
+      success: boolean;
+      collections: unknown[];
+    };
+    expect(result.success).toBe(true);
+    expect(result.collections.length).toBe(2);
   });
 
   it('filters by name', async () => {
     makeCollection(tmpDir, 'payment-api');
     makeCollection(tmpDir, 'user-service');
-    const result = (await execute({ workspace_path: tmpDir, filter: 'payment' })) as Array<{
-      name: string;
-    }>;
-    expect(result.length).toBe(1);
-    expect(result[0].name).toBe('payment-api');
+    const result = (await execute({ workspace_path: tmpDir, filter: 'payment' })) as {
+      success: boolean;
+      collections: Array<{ name: string }>;
+    };
+    expect(result.success).toBe(true);
+    expect(result.collections.length).toBe(1);
+    expect(result.collections[0].name).toBe('payment-api');
   });
 
-  it('returns empty array for nonexistent workspace', async () => {
-    const result = await execute({ workspace_path: '/nonexistent/workspace' });
-    expect(Array.isArray(result)).toBe(true);
-    expect((result as unknown[]).length).toBe(0);
+  it('returns empty collections for nonexistent workspace', async () => {
+    const result = (await execute({ workspace_path: '/nonexistent/workspace' })) as {
+      success: boolean;
+      collections: unknown[];
+    };
+    expect(result.success).toBe(true);
+    expect(result.collections.length).toBe(0);
   });
 
-  it('returns empty array when workspace_path missing', async () => {
-    const result = await execute({});
-    expect(Array.isArray(result)).toBe(true);
-    expect((result as unknown[]).length).toBe(0);
+  it('returns failure when workspace_path missing', async () => {
+    const result = (await execute({})) as { success: boolean; collections: unknown[] };
+    expect(result.success).toBe(false);
+    expect(result.collections.length).toBe(0);
   });
 
   it('recovers from invalid bruno.json (falls back to dirname)', async () => {
@@ -496,26 +505,30 @@ describe('bruno_list_collections executor', () => {
     fs.writeFileSync(path.join(bad, 'bruno.json'), 'NOT JSON {{{{');
     makeCollection(tmpDir, 'good-col');
     // Executor includes both — bad one uses dirname as collection name
-    const result = (await execute({ workspace_path: tmpDir })) as Array<{ name: string }>;
-    expect(result.length).toBe(2);
-    expect(result.some((r) => r.name === 'good-col')).toBe(true);
-    expect(result.some((r) => r.name === 'bad-col')).toBe(true);
+    const result = (await execute({ workspace_path: tmpDir })) as {
+      collections: Array<{ name: string }>;
+    };
+    expect(result.collections.length).toBe(2);
+    expect(result.collections.some((r) => r.name === 'good-col')).toBe(true);
+    expect(result.collections.some((r) => r.name === 'bad-col')).toBe(true);
   });
 
   it('includes request_count from .bru files', async () => {
     const col = makeCollection(tmpDir, 'counted');
     makeBruFile(col, 'req1');
     makeBruFile(col, 'req2');
-    const result = (await execute({ workspace_path: tmpDir })) as Array<{ request_count: number }>;
-    expect(result[0].request_count).toBe(2);
+    const result = (await execute({ workspace_path: tmpDir })) as {
+      collections: Array<{ request_count: number }>;
+    };
+    expect(result.collections[0].request_count).toBe(2);
   });
 
   it('discovers nested collections', async () => {
     const nested = path.join(tmpDir, 'sub');
     fs.mkdirSync(nested, { recursive: true });
     makeCollection(nested, 'inner-col');
-    const result = await execute({ workspace_path: tmpDir });
-    expect((result as unknown[]).length).toBe(1);
+    const result = (await execute({ workspace_path: tmpDir })) as { collections: unknown[] };
+    expect(result.collections.length).toBe(1);
   });
 });
 
@@ -653,7 +666,7 @@ describe('bruno_run_collection executor', () => {
     const result = await execute({ collection_path: tmpDir });
     expect(result.success).toBe(true);
     const summary = result.summary as Record<string, number>;
-    expect(summary.total).toBe(3);
+    expect(summary.total_requests).toBe(3);
     expect(summary.passed).toBe(2);
   });
 });

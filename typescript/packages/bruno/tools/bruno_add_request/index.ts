@@ -69,10 +69,12 @@ export default async function execute(params: Record<string, unknown>): Promise<
     logger.info(`Adding request ${requestName} to collection at ${collectionPath}`);
 
     const absoluteCollectionPath = path.resolve(collectionPath);
-    await fs.mkdir(absoluteCollectionPath, { recursive: true });
+    // Write requests into a dedicated requests/ subfolder (consistent with Bruno convention)
+    const requestsDir = path.join(absoluteCollectionPath, 'requests');
+    await fs.mkdir(requestsDir, { recursive: true });
 
     const filename = `${requestName.toLowerCase().replace(/\s+/g, '-')}.bru`;
-    const requestPath = path.join(absoluteCollectionPath, filename);
+    const requestPath = path.join(requestsDir, filename);
 
     const content = generateBruContent(params);
     await fs.writeFile(requestPath, content, 'utf-8');

@@ -13,7 +13,7 @@ export default async function execute(params: Record<string, unknown>): Promise<
   if (!collectionPath) {
     return {
       success: false,
-      summary: { total: 0, passed: 0, failed: 0, duration: 0 },
+      summary: { total_requests: 0, passed: 0, failed: 0, execution_time_ms: 0 },
       results: [],
       errors: ['collection_path parameter is required'],
     };
@@ -61,12 +61,12 @@ export default async function execute(params: Record<string, unknown>): Promise<
       logger.warn('Could not read/parse JSON report');
     }
 
-    // Map Bruno report fields to expected shape
+    // Map Bruno report fields to schema-declared keys
     const summaryRaw = (reportData.summary as Record<string, number> | undefined) ?? {};
-    const total = (summaryRaw.totalRequests ?? 0) as number;
+    const totalRequests = (summaryRaw.totalRequests ?? 0) as number;
     const passed = (summaryRaw.passedRequests ?? 0) as number;
     const failed = (summaryRaw.failedRequests ?? 0) as number;
-    const duration = (summaryRaw.totalTime ?? 0) as number;
+    const executionTimeMs = (summaryRaw.totalTime ?? 0) as number;
 
     const rawResults = (reportData.results as unknown[]) ?? [];
     const results = rawResults.map((r) => {
@@ -80,7 +80,7 @@ export default async function execute(params: Record<string, unknown>): Promise<
 
     return {
       success: exitCode === 0,
-      summary: { total, passed, failed, duration },
+      summary: { total_requests: totalRequests, passed, failed, execution_time_ms: executionTimeMs },
       results,
       report_path: reportPath,
       errors: [],
@@ -91,7 +91,7 @@ export default async function execute(params: Record<string, unknown>): Promise<
     );
     return {
       success: false,
-      summary: { total: 0, passed: 0, failed: 0, duration: 0 },
+      summary: { total_requests: 0, passed: 0, failed: 0, execution_time_ms: 0 },
       results: [],
       errors: [error instanceof Error ? error.message : String(error)],
     };

@@ -4,6 +4,30 @@ import * as path from 'path';
 
 const logger = getGlobalMatimoLogger();
 
+async function countBruFilesRecursively(dir: string): Promise<number> {
+  let count = 0;
+  let entries: string[];
+  try {
+    entries = await fs.readdir(dir);
+  } catch {
+    return 0;
+  }
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry);
+    try {
+      const stat = await fs.stat(fullPath);
+      if (stat.isDirectory() && entry !== 'node_modules') {
+        count += await countBruFilesRecursively(fullPath);
+      } else if (!stat.isDirectory() && entry.endsWith('.bru')) {
+        count++;
+      }
+    } catch {
+      // skip
+    }
+  }
+  return count;
+}
+
 async function findCollections(
   dir: string
 ): Promise<Array<{ name: string; path: string; request_count: number }>> {
@@ -25,8 +49,9 @@ async function findCollections(
     } catch {
       // use dirname
     }
-    const bruFiles = entries.filter((e) => e.endsWith('.bru'));
-    results.push({ name, path: dir, request_count: bruFiles.length });
+    // Count .bru files recursively so nested requests are included
+    const requestCount = await countBruFilesRecursively(dir);
+    results.push({ name, path: dir, request_count: requestCount });
   }
 
   for (const entry of entries) {
@@ -49,7 +74,7 @@ export default async function execute(params: Record<string, unknown>): Promise<
   const workspacePath = params.workspace_path as string;
 
   if (!workspacePath) {
-    return [];
+    return { success: false, collections: [], errors: ['workspace_path parameter is required'] };
   }
 
   try {
@@ -62,11 +87,15 @@ export default async function execute(params: Record<string, unknown>): Promise<
       collections = collections.filter((c) => c.name.toLowerCase().includes(filter));
     }
 
-    return collections;
+    return { success: true, collections };
   } catch (error) {
     logger.error(
       `List collections failed: ${error instanceof Error ? error.message : String(error)}`
     );
-    return [];
+    return {
+      success: false,
+      collections: [],
+      errors: [error instanceof Error ? error.message : String(error)],
+    };
   }
 }
