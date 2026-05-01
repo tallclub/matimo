@@ -92,6 +92,7 @@ _CAMEL_TO_SNAKE: dict[str, str] = {
     "protectedNamespaces": "protected_namespaces",
     "enableHITL": "enable_hitl",
     "quarantineRiskLevels": "quarantine_risk_levels",
+    "approvalTtlSeconds": "approval_ttl_seconds",
 }
 
 

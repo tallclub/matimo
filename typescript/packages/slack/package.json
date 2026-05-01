@@ -1,6 +1,6 @@
 {
   "name": "@matimo/slack",
-  "version": "0.1.0-alpha.14",
+  "version": "0.1.0",
   "description": "Slack workspace tools for Matimo",
   "type": "module",
   "files": [
@@ -13,6 +13,6 @@
   },
   "devDependencies": {
     "@matimo/core": "workspace:*",
-    "axios": "^1.13.4"
+    "axios": "^1.15.2"
   }
 }

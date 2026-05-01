@@ -70,7 +70,7 @@ main().catch(console.error);
   • calculator
     Perform basic math operations
 
-  • gmail-send-email
+  • gmail_send_email
     Send an email via Gmail API
 
   ... (more tools)

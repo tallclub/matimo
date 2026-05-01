@@ -17,15 +17,15 @@ Matimo integrates seamlessly with **CrewAI** for multi-agent orchestration. Conv
 
 - Python 3.11+
 - CrewAI >= 0.80
-- Matimo >= 0.1.0a14
+- Matimo >= 0.1.0
 
 ### Install
 
 ```bash
 # Install matimo with CrewAI support
-pip install "matimo-core[crewai]" matimo-slack
+pip install "matimo[crewai]" matimo-slack
 # or with uv
-uv add "matimo-core[crewai]" matimo-slack
+uv add "matimo[crewai]" matimo-slack
 
 # Install CrewAI
 pip install crewai

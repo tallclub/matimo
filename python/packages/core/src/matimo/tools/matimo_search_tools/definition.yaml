@@ -1,0 +1,32 @@
+name: matimo_search_tools
+version: '1.0.0'
+description: Search the loaded tool registry by keyword. Returns matching tool names, descriptions, and tags. Use to discover available tools before calling them.
+requires_approval: false
+tags:
+  - matimo
+  - meta
+  - discovery
+
+parameters:
+  query:
+    type: string
+    required: true
+    description: Search keyword — matched against tool names, descriptions, and tags
+  limit:
+    type: number
+    required: false
+    description: Maximum number of results to return (default 20)
+
+execution:
+  type: function
+  code: './matimo_search_tools.py'
+
+output_schema:
+  type: object
+  properties:
+    results:
+      type: array
+    total:
+      type: number
+    query:
+      type: string

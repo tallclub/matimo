@@ -1,0 +1,75 @@
+name: bruno_import_openapi
+description: Bootstrap a new Bruno collection from an OpenAPI 3.0 specification (YAML or JSON). Enables agents to auto-generate test collections from API specs without manual setup.
+version: '1.0.0'
+status: approved
+
+parameters:
+  spec_source:
+    type: string
+    required: true
+    description: Path or URL to OpenAPI specification (YAML or JSON)
+
+  output_directory:
+    type: string
+    required: true
+    description: Directory where imported collection will be created
+
+  collection_name:
+    type: string
+    required: false
+    description: Name for imported collection (defaults to spec name)
+
+  collection_format:
+    type: string
+    required: false
+    default: bru
+    description: Format for collection files - 'bru' (classic) or 'opencollection' (YAML)
+
+  group_by:
+    type: string
+    required: false
+    default: tags
+    description: Group requests by 'tags' or 'path'
+
+  insecure:
+    type: boolean
+    required: false
+    default: false
+    description: Skip TLS verification when source is HTTPS URL
+
+execution:
+  type: function
+  code: index.ts
+  timeout: 30000
+
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+    collection_path:
+      type: string
+    collection_name:
+      type: string
+    requests_created:
+      type: number
+    message:
+      type: string
+    errors:
+      type: array
+      items:
+        type: string
+
+
+examples:
+  - name: "Import from local OpenAPI YAML"
+    params:
+      spec_source: "./specs/payment-api.yaml"
+      output_directory: "./collections"
+      collection_name: "Payment API"
+
+  - name: "Import from remote OpenAPI URL"
+    params:
+      spec_source: "https://api.example.com/openapi.json"
+      output_directory: "./collections"
+      group_by: "path"

@@ -190,7 +190,8 @@ export class HttpExecutor {
       const placeholder = `{${key}}`;
       // Allow empty-string values to be substituted (validation allows empty strings)
       if (value !== undefined && value !== null) {
-        result = result.replace(new RegExp(placeholder, 'g'), String(value));
+        const replacement = String(value);
+        result = result.replace(new RegExp(placeholder, 'g'), () => replacement);
       }
     }
     return result;

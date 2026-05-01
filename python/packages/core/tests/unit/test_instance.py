@@ -20,6 +20,9 @@ from matimo.instance import Matimo
 from matimo.policy.default_policy import DefaultPolicyEngine
 from matimo.policy.types import PolicyConfig, RiskLevel
 
+pytestmark = pytest.mark.asyncio
+
+
 
 def _make_get_tool(name: str = "get_data") -> ToolDefinition:
     return ToolDefinition(
@@ -395,6 +398,110 @@ class TestMatimoHitl:
             # approved=True skips policy
             result = await matimo.execute("old_tool", {}, approved=True)
         assert result["ok"] is True
+
+    @pytest.mark.asyncio
+    async def test_hitl_timeout_auto_rejects(self) -> None:
+        """When hitl_timeout_ms is set and callback exceeds it, tool is auto-rejected."""
+        import asyncio
+
+        reg = ToolRegistry()
+        reg.register(_make_delete_tool())
+
+        hitl_policy = DefaultPolicyEngine(
+            PolicyConfig(enable_hitl=True, quarantine_risk_levels=[RiskLevel.HIGH, RiskLevel.CRITICAL])
+        )
+
+        async def slow_callback(req: object) -> bool:  # noqa: ANN401
+            await asyncio.sleep(10)  # never resolves in test
+            return True
+
+        matimo = Matimo(
+            registry=reg,
+            policy_engine=hitl_policy,
+            loader=MagicMock(),
+            tool_paths=[],
+            on_event=None,
+            on_hitl=slow_callback,
+            matimo_logger=MagicMock(),
+            hitl_timeout_ms=50,  # 50 ms timeout
+        )
+
+        with pytest.raises(MatimoError) as exc:
+            await matimo.execute("delete_data", {"resource_id": "1"})
+
+        # Should be denied because timeout expired
+        assert exc.value.code == ErrorCode.POLICY_DENIED
+
+    @pytest.mark.asyncio
+    async def test_hitl_timeout_allows_fast_callback(self) -> None:
+        """When hitl_timeout_ms is set and callback resolves within time, tool proceeds normally."""
+        reg = ToolRegistry()
+        fast_tool = ToolDefinition(
+            name="fast_tool",
+            description="Fast approval",
+            execution=HttpExecution(type="http", method="DELETE", url="https://api.example.com/fast"),
+        )
+        reg.register(fast_tool)
+
+        hitl_policy = DefaultPolicyEngine(
+            PolicyConfig(enable_hitl=True, quarantine_risk_levels=[RiskLevel.HIGH, RiskLevel.CRITICAL])
+        )
+
+        async def fast_callback(req: object) -> bool:  # noqa: ANN401
+            return True  # resolves immediately
+
+        matimo = Matimo(
+            registry=reg,
+            policy_engine=hitl_policy,
+            loader=MagicMock(),
+            tool_paths=[],
+            on_event=None,
+            on_hitl=fast_callback,
+            matimo_logger=MagicMock(),
+            hitl_timeout_ms=5000,  # generous timeout
+        )
+
+        with respx.mock:
+            respx.delete("https://api.example.com/fast").mock(
+                return_value=httpx.Response(200, json={"ok": True})
+            )
+            result = await matimo.execute("fast_tool", {})
+
+        assert result["ok"] is True
+
+    @pytest.mark.asyncio
+    async def test_hitl_no_timeout_waits_for_callback(self) -> None:
+        """When hitl_timeout_ms is None (default), no timeout is applied."""
+        reg = ToolRegistry()
+        reg.register(_make_delete_tool())
+
+        hitl_policy = DefaultPolicyEngine(
+            PolicyConfig(enable_hitl=True, quarantine_risk_levels=[RiskLevel.HIGH, RiskLevel.CRITICAL])
+        )
+
+        call_count = 0
+
+        async def approving_callback(req: object) -> bool:  # noqa: ANN401
+            nonlocal call_count
+            call_count += 1
+            return False  # reject
+
+        matimo = Matimo(
+            registry=reg,
+            policy_engine=hitl_policy,
+            loader=MagicMock(),
+            tool_paths=[],
+            on_event=None,
+            on_hitl=approving_callback,
+            matimo_logger=MagicMock(),
+            # hitl_timeout_ms=None (default)
+        )
+
+        with pytest.raises(MatimoError) as exc:
+            await matimo.execute("delete_data", {"resource_id": "1"})
+
+        assert call_count == 1
+        assert exc.value.code == ErrorCode.POLICY_DENIED
 
 
 class TestMatimoReload:

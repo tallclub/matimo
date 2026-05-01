@@ -303,5 +303,43 @@ describe('CommandExecutor', () => {
         'Tool execution type is not command'
       );
     });
+
+    it('should reject templated execution.command values', async () => {
+      const tool = {
+        name: 'templated-command',
+        version: '1.0.0',
+        description: 'Invalid templated command',
+        parameters: {
+          cmd: { type: 'string' as const, description: 'Command' },
+        },
+        execution: {
+          type: 'command' as const,
+          command: '{cmd}',
+          args: ['hello'],
+        },
+      };
+
+      await expect(executor.execute(tool, { cmd: 'echo' })).rejects.toThrow(
+        'execution.command must not contain parameter placeholders'
+      );
+    });
+
+    it('should reject execution.command longer than 1024 chars', async () => {
+      const tool = {
+        name: 'long-command',
+        version: '1.0.0',
+        description: 'Too-long command',
+        parameters: {},
+        execution: {
+          type: 'command' as const,
+          command: 'x'.repeat(1025),
+          args: [],
+        },
+      };
+
+      await expect(executor.execute(tool, {})).rejects.toThrow(
+        'execution.command exceeds maximum length (1024 chars)'
+      );
+    });
   });
 });

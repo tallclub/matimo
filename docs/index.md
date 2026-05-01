@@ -8,12 +8,19 @@
   <a href="https://discord.gg/3JPt4mxWDV"><img src="https://img.shields.io/badge/Discord-Join%20Chat-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord"></a>
 </p>
 
-**Matimo — Enable Agents To Extend Itself.**
-Most SDKs give agents tools. Matimo gives agents the ability to build new tools — validated, approved, and live — without restarting. The meta-tool layer is Matimo's core differentiator.
+**Matimo — Enable AI Agents To Build Themselves**
 
-> A framework-agnostic SDK with pre-built provider tools, a skills knowledge layer, MCP out of the box, and agents that autonomously build new capabilities — governed by a policy engine you control
+> The First AI SDK with Meta-Tools, Policy Engine, and Human-in-the-Loop Control
 
-Complete documentation for Matimo **v0.1.0-alpha.14** (TypeScript & Python).
+Give your agents **137+ production-ready tools** to start. Then activate **10 meta-tools** that let them create, validate, and approve new capabilities at runtime — governed by your **policy engine** with **human approval workflows** for critical actions.
+
+**Self-extending agents with enterprise-grade control:**
+- 🔧 **Meta-Tools** — Agents write new tool definitions in YAML, validate schemas, approve for production, and hot-reload — all mid-conversation
+- 🛡️ **Policy Engine** — Classify every action by risk level, block dangerous operations, quarantine draft tools
+- 🤝 **Human-in-the-Loop (HITL)** — Critical tools require human approval before execution with configurable timeouts and audit trails
+- 🌐 **Universal Integration** — One YAML definition works across TypeScript, Python, LangChain, CrewAI, Claude MCP, OpenAI
+
+Complete documentation for Matimo **v0.1.0** (TypeScript & Python).
 
 ---
 
@@ -22,13 +29,13 @@ Complete documentation for Matimo **v0.1.0-alpha.14** (TypeScript & Python).
 ### 🟦 **TypeScript / Node.js**
 - Node.js 18+, npm/pnpm
 - ESM, full type support
-- 1,884 tests, 95%+ coverage
+- 2,001 tests, 95%+ coverage
 - **[Start with TypeScript](#typescript-getting-started)**
 
-### 🐍 **Python** ⭐ *NEW in alpha.14*
+### 🐍 **Python** 🎉 *Stable Release*
 - Python 3.11+, pip/uv
 - Native asyncio, full type hints
-- 657 tests, 97.38% coverage
+- 995 tests, 96.89% coverage
 - LangChain, CrewAI, MCP support
 - **[Start with Python](#python-getting-started)**
 

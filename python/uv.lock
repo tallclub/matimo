@@ -10,6 +10,7 @@ resolution-markers = [
 [manifest]
 members = [
     "matimo",
+    "matimo-bruno",
     "matimo-cli",
     "matimo-core",
     "matimo-examples",
@@ -1795,8 +1796,19 @@ requires-dist = [
 provides-extras = ["langchain", "crewai", "mcp", "dotenv", "vault", "aws", "all"]
 
 [[package]]
+name = "matimo-bruno"
+version = "0.1.0"
+source = { editable = "packages/bruno" }
+dependencies = [
+    { name = "matimo-core" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "matimo-core", editable = "packages/core" }]
+
+[[package]]
 name = "matimo-cli"
-version = "0.1.0a14.post1"
+version = "0.1.0"
 source = { editable = "packages/cli" }
 dependencies = [
     { name = "matimo-core", extra = ["mcp"] },
@@ -1813,7 +1825,7 @@ requires-dist = [
 
 [[package]]
 name = "matimo-core"
-version = "0.1.0a14.post2"
+version = "0.1.0"
 source = { editable = "packages/core" }
 dependencies = [
     { name = "anyio" },
@@ -1910,6 +1922,7 @@ dependencies = [
     { name = "langchain-mcp-adapters" },
     { name = "langchain-openai" },
     { name = "langgraph" },
+    { name = "matimo-bruno" },
     { name = "matimo-core" },
     { name = "matimo-github" },
     { name = "matimo-gmail" },
@@ -1935,6 +1948,7 @@ requires-dist = [
     { name = "langchain-mcp-adapters", specifier = ">=0.1" },
     { name = "langchain-openai", specifier = ">=1.0" },
     { name = "langgraph", specifier = ">=0.2" },
+    { name = "matimo-bruno", editable = "packages/bruno" },
     { name = "matimo-core", editable = "packages/core" },
     { name = "matimo-github", editable = "packages/github" },
     { name = "matimo-gmail", editable = "packages/gmail" },
@@ -1951,7 +1965,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "matimo-github"
-version = "0.1.0a14.post1"
+version = "0.1.0"
 source = { editable = "packages/github" }
 dependencies = [
     { name = "matimo-core" },
@@ -1962,7 +1976,7 @@ requires-dist = [{ name = "matimo-core", editable = "packages/core" }]
 
 [[package]]
 name = "matimo-gmail"
-version = "0.1.0a14.post1"
+version = "0.1.0"
 source = { editable = "packages/gmail" }
 dependencies = [
     { name = "matimo-core" },
@@ -1973,7 +1987,7 @@ requires-dist = [{ name = "matimo-core", editable = "packages/core" }]
 
 [[package]]
 name = "matimo-hubspot"
-version = "0.1.0a14.post1"
+version = "0.1.0"
 source = { editable = "packages/hubspot" }
 dependencies = [
     { name = "matimo-core" },
@@ -1984,7 +1998,7 @@ requires-dist = [{ name = "matimo-core", editable = "packages/core" }]
 
 [[package]]
 name = "matimo-mailchimp"
-version = "0.1.0a14.post1"
+version = "0.1.0"
 source = { editable = "packages/mailchimp" }
 dependencies = [
     { name = "matimo-core" },
@@ -1995,7 +2009,7 @@ requires-dist = [{ name = "matimo-core", editable = "packages/core" }]
 
 [[package]]
 name = "matimo-notion"
-version = "0.1.0a14.post1"
+version = "0.1.0"
 source = { editable = "packages/notion" }
 dependencies = [
     { name = "matimo-core" },
@@ -2006,7 +2020,7 @@ requires-dist = [{ name = "matimo-core", editable = "packages/core" }]
 
 [[package]]
 name = "matimo-postgres"
-version = "0.1.0a14.post1"
+version = "0.1.0"
 source = { editable = "packages/postgres" }
 dependencies = [
     { name = "asyncpg" },
@@ -2024,7 +2038,17 @@ name = "matimo-py-mcp"
 version = "0.1.0a14.post2"
 source = { virtual = "examples/mcp" }
 dependencies = [
+    { name = "matimo-bruno" },
+    { name = "matimo-cli" },
     { name = "matimo-core" },
+    { name = "matimo-github" },
+    { name = "matimo-gmail" },
+    { name = "matimo-hubspot" },
+    { name = "matimo-mailchimp" },
+    { name = "matimo-notion" },
+    { name = "matimo-postgres" },
+    { name = "matimo-slack" },
+    { name = "matimo-twilio" },
     { name = "mcp" },
     { name = "python-dotenv" },
 ]
@@ -2064,17 +2088,27 @@ slack = [
 [package.metadata]
 requires-dist = [
     { name = "langchain-mcp-adapters", marker = "extra == 'dev'", specifier = ">=0.1.0" },
-    { name = "langchain-openai", marker = "extra == 'dev'", specifier = ">=0.1.2" },
+    { name = "langchain-openai", marker = "extra == 'dev'", specifier = ">=1.1.14" },
     { name = "langgraph", marker = "extra == 'dev'", specifier = ">=0.1.0" },
+    { name = "matimo-bruno", editable = "packages/bruno" },
+    { name = "matimo-cli", editable = "packages/cli" },
     { name = "matimo-core", editable = "packages/core" },
+    { name = "matimo-github", editable = "packages/github" },
     { name = "matimo-github", marker = "extra == 'all'", editable = "packages/github" },
+    { name = "matimo-gmail", editable = "packages/gmail" },
     { name = "matimo-gmail", marker = "extra == 'all'", editable = "packages/gmail" },
+    { name = "matimo-hubspot", editable = "packages/hubspot" },
     { name = "matimo-hubspot", marker = "extra == 'all'", editable = "packages/hubspot" },
+    { name = "matimo-mailchimp", editable = "packages/mailchimp" },
     { name = "matimo-mailchimp", marker = "extra == 'all'", editable = "packages/mailchimp" },
+    { name = "matimo-notion", editable = "packages/notion" },
     { name = "matimo-notion", marker = "extra == 'all'", editable = "packages/notion" },
+    { name = "matimo-postgres", editable = "packages/postgres" },
     { name = "matimo-postgres", marker = "extra == 'all'", editable = "packages/postgres" },
+    { name = "matimo-slack", editable = "packages/slack" },
     { name = "matimo-slack", marker = "extra == 'all'", editable = "packages/slack" },
     { name = "matimo-slack", marker = "extra == 'slack'", editable = "packages/slack" },
+    { name = "matimo-twilio", editable = "packages/twilio" },
     { name = "matimo-twilio", marker = "extra == 'all'", editable = "packages/twilio" },
     { name = "mcp", specifier = ">=1.27.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
@@ -2093,7 +2127,7 @@ provides-extras = ["slack", "http", "all", "dev"]
 
 [[package]]
 name = "matimo-slack"
-version = "0.1.0a14.post1"
+version = "0.1.0"
 source = { editable = "packages/slack" }
 dependencies = [
     { name = "matimo-core" },
@@ -2104,7 +2138,7 @@ requires-dist = [{ name = "matimo-core", editable = "packages/core" }]
 
 [[package]]
 name = "matimo-twilio"
-version = "0.1.0a14.post1"
+version = "0.1.0"
 source = { editable = "packages/twilio" }
 dependencies = [
     { name = "matimo-core" },

@@ -30,17 +30,17 @@
 - [Storage Paths](#storage-paths)
 - [Name Rules](#name-rules)
 - [Examples Demo](#examples-demo)
-- [Coming in alpha.15 — Skills Meta-Tools](#coming-in-alpha15--skills-meta-tools)
+- [Future: Skills Meta-Tools (v0.1.1)](#future-skills-meta-tools-v011)
 
 ---
 
-## Coming in alpha.15 — Skills Meta-Tools
+## Future: Skills Meta-Tools (v0.1.1)
 
 > **Theme: Skills SDK as Agent-Callable Tools** — Promote programmatic SDK APIs to first-class agent-callable meta-tools, closing the gap between what the SDK can do and what agents can call from their tool loop.
 >
-> **Status:** Planned for v0.1.0-alpha.15. See [ROADMAP.md](../ROADMAP.md) for details.
+> **Status:** Planned for v0.1.1. See [ROADMAP.md](../ROADMAP.md) for details.
 
-### Planned Meta-Tools (alpha.15)
+### Planned Meta-Tools (v0.1.1)
 
 | Meta-Tool | Wraps SDK API | What agents gain |
 |-----------|--------------|-----------------|
@@ -48,16 +48,16 @@
 | `matimo_get_skill_sections` | `getSkillSections()` | Inventory a skill's sections and token costs before loading (progressive disclosure Level 2.5) |
 | `matimo_get_skill_content` | `getSkillContent()` | Load only specific sections of a skill — token-efficient context loading |
 
-**Why this matters:** In alpha.14, `semanticSearchSkills`, `getSkillSections`, and `getSkillContent` are **SDK-only** APIs. LangChain agents and MCP clients (Claude) cannot call them from their tool loop. alpha.15 will wrap each as a registered meta-tool in `packages/core/tools/`, making them callable like any other Matimo tool.
+**Why this matters:** In v0.1.0, `semanticSearchSkills`, `getSkillSections`, and `getSkillContent` are **SDK-only** APIs. LangChain agents and MCP clients (Claude) cannot call them from their tool loop. v0.1.1 will wrap each as a registered meta-tool in `packages/core/tools/`, making them callable like any other Matimo tool.
 
-### Current (alpha.14) vs Planned (alpha.15) Agent Workflow
+### Current (v0.1.0) vs Planned (v0.1.1) Agent Workflow
 
 ```typescript
-// Current (alpha.14) — agents discover by exact name or description
+// Current (v0.1.0) — agents discover by exact name or description
 matimo_list_skills()              // → all skill names + descriptions
 matimo_get_skill('slack')         // → full content
 
-// Planned (alpha.15) — agents can search by meaning and load selectively
+// Planned (v0.1.1) — agents can search by meaning and load selectively
 matimo_search_skills('rate limiting and retries')  // → ranked TF-IDF results with scores
 matimo_get_skill_sections('slack')                 // → section inventory with token estimates
 matimo_get_skill_content('slack', { sections: ['Messaging'] })  // → targeted section content
@@ -377,7 +377,7 @@ const results = await matimo.semanticSearchSkills('rate limiting and retries', {
 
 Embeddings are cached per skill — the first search builds the index, subsequent searches are fast.
 
-> **Agent availability:** `semanticSearchSkills` is a **programmatic SDK API** — it is not yet exposed as an agent-callable meta-tool. Agents using LangChain or MCP cannot call TF-IDF search directly during their tool loop in alpha.14. Use `buildRelevantSkillPrompt()` (non-MCP LangChain helper) or the [`matimo_list_skills` + `matimo_get_skill` meta-tools](#agent-skill-lifecycle) instead. A `matimo_search_skills` meta-tool is planned for **alpha.15**.
+> **Agent availability:** `semanticSearchSkills` is a **programmatic SDK API** — it is not yet exposed as an agent-callable meta-tool. Agents using LangChain or MCP cannot call TF-IDF search directly during their tool loop in v0.1.0. Use `buildRelevantSkillPrompt()` (non-MCP LangChain helper) or the [`matimo_list_skills` + `matimo_get_skill` meta-tools](#agent-skill-lifecycle) instead. A `matimo_search_skills` meta-tool is planned for **v0.1.1**.
 
 ### Custom Embedding Provider
 
@@ -696,7 +696,7 @@ cd python/examples/native && uv run -w ../.. python skills/skills_demo.py
 - `semanticSearchSkills(query)` / `semantic_search_skills(query)` — raw TF-IDF ranked results with scores per skill
 - `buildRelevantSkillPrompt(query)` / `build_relevant_skill_prompt(query)` — Level 2: TF-IDF search loads only relevant skill content
 
-> ⚠️ **Note:** `semanticSearchSkills` / `semantic_search_skills` is a **programmatic SDK API only** in alpha.14 — no agent-callable meta-tool wraps it yet. Agents (LangChain, MCP/Claude) cannot call TF-IDF search directly in their tool loop; they can only discover skills with `matimo_list_skills` and `matimo_get_skill`. A `matimo_search_skills` meta-tool is planned for **alpha.15**.
+> ⚠️ **Note:** `semanticSearchSkills` / `semantic_search_skills` is a **programmatic SDK API only** in v0.1.0 — no agent-callable meta-tool wraps it yet. Agents (LangChain, MCP/Claude) cannot call TF-IDF search directly in their tool loop; they can only discover skills with `matimo_list_skills` and `matimo_get_skill`. A `matimo_search_skills` meta-tool is planned for **v0.1.1**.
 
 **Docs:**
 - TypeScript: [`typescript/examples/tools/skills/README.md`](../../typescript/examples/tools/skills/)

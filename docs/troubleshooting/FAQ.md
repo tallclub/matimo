@@ -1,6 +1,6 @@
 # Troubleshooting & FAQ
 
-Common issues and solutions for Matimo v0.1.0-alpha.14 (TypeScript & Python)
+Common issues and solutions for Matimo v0.1.0 (TypeScript & Python)
 
 ## Installation & Setup
 

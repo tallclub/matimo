@@ -1,10 +1,10 @@
-# Matimo — The Agent That Builds Itself
+# Matimo — Enable AI Agents To Build Themselves
 
 <p align="center">
   <img src="./docs/assets/logo.png" alt="Matimo Logo" width="300" />
 </p>
 <p align="center">
-    <strong>Let The Agent Build Itself</strong>
+    <strong>Self-extending agents with enterprise-grade control</strong>
 </p>
 
 <p align="center">
@@ -21,11 +21,46 @@
   <a href="https://discord.gg/3JPt4mxWDV"><img src="https://img.shields.io/badge/Discord-Join%20Chat-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord"></a>
 </p>
 
-**Matimo** is a framework-agnostic SDK with pre-built providers, a skills knowledge layer, MCP out of the box, and agents that autonomously build new capabilities — governed by a policy engine you control.
+## The First AI SDK with Meta-Tools, Policy Engine, and Human-in-the-Loop Control
 
-Define tools **once in YAML**. Let agents extend themselves with new capabilities. Works with LangChain, OpenAI, Claude, CrewAI — any framework.
+Give your agents **137+ production-ready tools** to start. Then activate **10 meta-tools** that let them create, validate, and approve new capabilities at runtime — governed by your **policy engine** with **human approval workflows** for critical actions.
 
-**Key differentiator:** Unlike other SDKs that give agents tools, Matimo gives agents the power to build new tools themselves — validated, approved, and live — without restarting.
+**Why this matters:**
+
+- 🔧 **Meta-Tools**: Agents write new tool definitions in YAML, validate schemas, approve for production, and hot-reload — all mid-conversation. No restart. No redeployment.
+
+- 🛡️ **Policy Engine**: Classify every action by risk level (low/medium/high/critical). Block dangerous operations. Quarantine draft tools. Enforce your rules automatically.
+
+- 🤝 **Human-in-the-Loop (HITL)**: Critical tools require human approval before execution. Configurable timeouts, approval manifests, audit trails. You stay in control.
+
+- 🌐 **Universal Integration**: One YAML definition works across TypeScript, Python, LangChain, CrewAI, Claude MCP, OpenAI. Write once, run everywhere.
+
+---
+
+### See It In Action
+
+```python
+# Agent encounters a new API mid-task
+result = await agent.execute('matimo_create_tool', {
+    'name': 'stripe_create_payment',
+    'definition': yaml_content  # Agent generates this
+})
+
+# Policy engine classifies risk → requires approval
+# HITL callback triggers → human reviews and approves
+
+await agent.execute('matimo_reload_tools')
+
+# Tool is now live and production-ready
+payment = await agent.execute('stripe_create_payment', {
+    'amount': 5000,
+    'currency': 'usd'
+})
+```
+
+**Other SDKs give agents a toolbox. Matimo gives them a workshop — with safety guardrails.**
+
+🎯 **v0.1.0 Stable** (May 1, 2026) — 2,996 tests · 95%+ coverage · Production-ready
 
 [📖 Documentation](./docs) · [🚀 Quick Start](./docs/getting-started/QUICK_START.md) · [📚 API Reference](./docs/api-reference/SDK.md) · [🛠️ Add Tools](./docs/tool-development/ADDING_TOOLS.md) · [🤖 Examples](./examples)
 
@@ -372,9 +407,19 @@ MIT © 2026 Matimo Contributors
 
 ## Contributors
 
-<a href="https://github.com/tallclub/matimo/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=tallclub/matimo" />
-</a>
+<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+<!-- prettier-ignore-start -->
+<!-- markdownlint-disable -->
+
+<div align="left">
+  <a href="https://github.com/tallclub"><img src="https://avatars.githubusercontent.com/u/112923179?v=4&s=60" width="60" height="60" style="border-radius:50%;margin:0 10px;" alt="tallclub" title="tallclub - Code 💻 Documentation 📖 Design 🎨 Review 👀 Ideas 🤔 Maintenance 🚧"/></a>
+  <a href="https://github.com/Genmin"><img src="https://avatars.githubusercontent.com/u/90125084?v=4&s=60" width="60" height="60" style="border-radius:50%;margin:0 10px;" alt="Genmin" title="Genmin - Code 💻 Security 🛡️"/></a>
+</div>
+
+<!-- markdownlint-enable -->
+<!-- prettier-ignore-end -->
+
+<!-- ALL-CONTRIBUTORS-LIST:END -->
 
 ---
 

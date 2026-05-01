@@ -1,3 +1,200 @@
+## v0.1.0 — First Stable Release 🎉
+
+> **Release**: Production-Ready AI Tools SDK — Full-Stack TypeScript & Python with 137+ Tools, LangChain/CrewAI/MCP Support
+
+**Released**: May 1, 2026  
+
+---
+
+### 🎊 **Matimo v0.1.0 Stable — General Availability**
+
+After 14 alpha releases and extensive production testing, Matimo is now **production-ready**. This release represents the culmination of months of development, featuring a complete dual-SDK architecture, enterprise-grade security, and a rich ecosystem of 137+ production-tested tools.
+
+---
+
+## 📦 **What's New in v0.1.0**
+
+### 🧪 **Bruno CLI Provider** (NEW)
+
+Complete API testing lifecycle support via [Bruno](https://www.usebruno.com/) integration:
+
+**7 New Tools:**
+
+| Tool | Purpose |
+|------|---------|
+| `bruno_create_collection` | Create new Bruno API collection |
+| `bruno_add_request` | Add HTTP request to collection (GET/POST/PUT/DELETE/PATCH) |
+| `bruno_get_collection_info` | Inspect collection structure and requests |
+| `bruno_list_collections` | Discover all Bruno collections in workspace |
+| `bruno_run_collection` | Execute entire collection with JSON reporter |
+| `bruno_run_request` | Run single named request from collection |
+| `bruno_import_openapi` | Bootstrap collection from OpenAPI 3.0 spec |
+
+**Requirements**: Bruno CLI (`npm install -g @usebruno/cli`)  
+**Examples**: `pnpm bruno:complete` (TS), `uv run python bruno/complete_workflow.py` (Python)
+
+### 🔧 **Meta-Tools Enhancement**
+
+**2 New Meta-Tools** for runtime tool discovery:
+
+- `matimo_get_tool` — Retrieve full definition of any loaded tool (YAML + metadata)
+- `matimo_search_tools` — Search tools by name/description (supports fuzzy matching)
+
+These join the existing 8 meta-tools (`matimo_create_tool`, `matimo_validate_tool`, `matimo_approve_tool`, `matimo_reload_tools`, `matimo_list_user_tools`, `matimo_get_tool_status`, `matimo_create_skill`, `matimo_validate_skill`, `matimo_get_skill`, `matimo_list_skills`) for complete self-maintenance capability.
+
+### ⏱️ **HITL (Human-in-the-Loop) Enhancements**
+
+**New Features:**
+- `hitlTimeoutMs` / `hitl_timeout_ms` — Configurable timeout for approval requests (default: 5 minutes)
+- `approval_ttl_seconds` — Policy-level TTL for cached approvals (prevents stale approvals)
+
+**Example:**
+```typescript
+const matimo = await MatimoInstance.init('./tools', {
+  hitlTimeoutMs: 120000, // 2 minutes
+  onHitl: async (request) => {
+    // Custom approval UI
+    return { approved: true, reason: 'User reviewed' };
+  }
+});
+```
+
+### 🧹 **Quality & Stability**
+
+- ✅ **2996 total tests** (2001 TypeScript + 995 Python) — all passing
+- ✅ **95%+ test coverage** across both SDKs
+- ✅ **Zero test pollution** — Fixed pytest-asyncio marker issues
+- ✅ **Production security hardening** — 5 critical patches applied
+- ✅ **MCP standards compliance** — Full MCP 1.0 spec support
+
+---
+
+## 🚀 **Complete Feature Set** (v0.1.0 Stable)
+
+### **Core SDK** (TypeScript + Python)
+
+- ✅ **137+ production tools** across 10 provider packages
+- ✅ **4 SDK patterns**: Factory, Decorator, LangChain, CrewAI
+- ✅ **3 execution types**: HTTP, Command, Function
+- ✅ **10 meta-tools** for runtime tool management
+- ✅ **Skills system** with TF-IDF semantic search
+- ✅ **Policy engine** with risk classification + HITL workflows
+- ✅ **MCP Server** (stdio + HTTP) — Claude Desktop compatible
+- ✅ **OAuth2 support** with multi-provider setup
+- ✅ **Secret management** — Env, Dotenv, Vault, AWS Secrets Manager
+
+### **10 Provider Packages**
+
+| Provider | Tools | Highlights |
+|----------|-------|------------|
+| **@matimo/slack** / **matimo-slack** | 16+ | Messaging, channels, users, reactions |
+| **@matimo/github** / **matimo-github** | 10+ | Issues, repos, users, releases |
+| **@matimo/gmail** / **matimo-gmail** | 5+ | Send, read, search emails |
+| **@matimo/notion** / **matimo-notion** | 7+ | Databases, pages, blocks |
+| **@matimo/hubspot** / **matimo-hubspot** | 50+ | CRM, contacts, email campaigns |
+| **@matimo/mailchimp** / **matimo-mailchimp** | 8+ | Lists, campaigns, members |
+| **@matimo/postgres** / **matimo-postgres** | 6+ | Query, schema, transactions |
+| **@matimo/twilio** / **matimo-twilio** | 4+ | SMS, calls, messaging |
+| **@matimo/bruno** / **matimo-bruno** | 7 | API testing lifecycle (NEW) |
+| **@matimo/core** / **matimo-core** | 10+ | Meta-tools, execute, edit, search |
+
+### **Framework Integrations**
+
+- **LangChain** (TypeScript + Python) — `convertToolsToLangChain()`
+- **CrewAI** (Python only) — `convert_tools_to_crewai()`
+- **MCP** (TypeScript + Python) — `MCPServer` / `create_mcp_server()`
+
+### **Documentation & Examples**
+
+- ✅ **40+ production examples** across both SDKs
+- ✅ **Complete API documentation** at [matimo.dev/docs](https://matimo.dev/docs)
+- ✅ **MCP setup guides** for Claude Desktop, Cline, Continue
+- ✅ **Framework integration guides** for LangChain, CrewAI
+- ✅ **Bruno integration guide** with 6 workflow scenarios
+
+---
+
+## 📊 **By the Numbers** (v0.1.0)
+
+| Metric | Value |
+|--------|-------|
+| **Total Tools** | 137+ |
+| **Provider Packages** | 10 |
+| **Meta-Tools** | 10 |
+| **Skills** | 14 built-in |
+| **Test Suites** | 98 (TypeScript) + 102 (Python) |
+| **Total Tests** | 2996 |
+| **Test Coverage** | 95%+ (both SDKs) |
+| **Production Examples** | 40+ |
+| **Supported Patterns** | 4 (Factory, Decorator, LangChain, CrewAI) |
+| **Supported Languages** | 2 (TypeScript, Python) |
+| **Python Versions** | 3.11, 3.12 |
+| **Node Versions** | 18+, 20+, 22+ |
+
+---
+
+## 🔐 **Security Hardening**
+
+All critical security patches applied:
+
+1. ✅ **MCP Environment Isolation** — No `process.env` seeding in MCP server
+2. ✅ **Command Injection Prevention** — Template placeholder validation
+3. ✅ **Production Approval Secret** — `MATIMO_PRODUCTION_APPROVAL_SECRET` enforcement
+4. ✅ **Embedded Code Sandboxing** — Function executor hardening
+5. ✅ **Template Dollar Sign Fix** — Prevent `$&`, `$'`, `$`` special sequence injection
+
+---
+
+## 📦 **Installation**
+
+### TypeScript
+```bash
+npm install @matimo/core @matimo/slack @matimo/github @matimo/bruno
+# or
+pnpm add @matimo/core @matimo/slack
+```
+
+### Python
+```bash
+pip install matimo-core[slack,github,bruno]
+# or  
+uv add matimo-core --extras slack --extras bruno
+```
+
+---
+
+## 🎯 **Migration from Alpha**
+
+### From v0.1.0-alpha.14 → v0.1.0
+
+**Breaking Changes:** None (100% backward compatible)  
+**Deprecations:** None  
+**New Features:** Bruno CLI, 2 meta-tools, HITL timeout/TTL
+
+Simply update your `package.json` / `pyproject.toml`:
+```diff
+- "version": "0.1.0-alpha.14"
++ "version": "0.1.0"
+```
+
+All existing code, tool definitions, and configurations work as-is.
+
+---
+
+## 🙏 **Acknowledgments**
+
+Special thanks to all contributors and alpha testers who helped make Matimo production-ready. This release represents the work of many hands and countless hours of testing, refinement, and community feedback.
+
+---
+
+## v0.1.0-alpha.14-patch.1 — Bruno CLI Integration
+
+> **Release**: Bruno CLI provider package — first-class API testing lifecycle support for TypeScript and Python SDKs
+
+**Released**: April 25, 2026
+
+---
+
 ## v0.1.0-alpha.14
 
 > **Release**: Python SDK Official Launch — Full-featured Python support for LangChain, CrewAI, and MCP with comprehensive examples, 657+ tests, 97.38% coverage, and enterprise-grade security hardening

@@ -190,7 +190,7 @@ class TestCrewAIRunBranches:
 
         assert result == {"ok": True}
 
-    async def test_run_in_running_loop_uses_thread(self) -> None:
+    def test_run_in_running_loop_uses_thread(self) -> None:
         """Cover lines 96-102: concurrent.futures branch when loop.is_running()."""
         pytest.importorskip("crewai")
         from matimo.integrations.crewai import convert_tools_to_crewai

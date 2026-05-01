@@ -1,0 +1,33 @@
+name: Update Changelog on Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  update-changelog:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install git-cliff
+        run: |
+          curl -sSL https://github.com/orhun/git-cliff/releases/download/v0.13.0/git-cliff-v0.13.0-x86_64-unknown-linux-gnu.tar.gz | tar xz -C /usr/local/bin/
+
+      - name: Generate Changelog
+        run: git-cliff --config cliff.toml --output CHANGELOG.md
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          git commit -m "chore(release): update CHANGELOG for $(git describe --tags)" || echo "no changes to commit"
+          git push

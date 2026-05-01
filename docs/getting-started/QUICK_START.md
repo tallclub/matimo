@@ -40,6 +40,11 @@ async def main():
 asyncio.run(main())
 ```
 
+> **ℹ️ Tool Naming**  
+> You'll notice Matimo tools use both `kebab-case` (e.g., `slack-send-message`) and `snake_case` (e.g., `slack_send_channel_message`).  
+> Both work identically — legacy tools use kebab-case, newer tools use snake_case.  
+> **Recommended for new tools:** `snake_case` following `{provider}_{action}` (e.g., `notion_create_page`).
+
 **Build your own Python tool (5 min):**
 
 **1. Create `tools/calculator/definition.yaml`:**
@@ -150,6 +155,10 @@ const result = await matimo.execute('slack-send-message', {
 
 console.log('Message sent!', result);
 ```
+
+> **ℹ️ Tool Naming**  
+> Matimo supports both `kebab-case` and `snake_case` tool names. Legacy tools (Gmail, GitHub, older Slack) use `kebab-case` (e.g., `slack-send-message`), while newer tools use `snake_case` (e.g., `bruno_run_request`, `matimo_create_tool`).  
+> **Recommended:** Use `snake_case` for new tools following `{provider}_{action}`.
 
 ✅ Great for: Using existing integrations in your app
 📖 **[See All Available Tools →](../user-guide/AVAILABLE_TOOLS.md)**

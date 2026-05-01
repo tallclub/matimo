@@ -1,0 +1,18 @@
+meta {
+  name: Updated user
+  type: http
+  seq: 4
+  tags: [
+    user
+  ]
+}
+
+put {
+  url: {{baseUrl}}/user/:username
+  body: none
+  auth: inherit
+}
+
+params:path {
+  username: 
+}

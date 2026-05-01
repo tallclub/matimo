@@ -1,0 +1,48 @@
+name: bruno_list_collections
+description: Discover all Bruno API collections in a workspace directory. Returns collection metadata including name, path, and request count.
+version: '1.0.0'
+status: approved
+
+parameters:
+  workspace_path:
+    type: string
+    required: true
+    description: Path to Bruno workspace directory
+
+  filter:
+    type: string
+    required: false
+    description: Filter collections by name (substring match)
+
+execution:
+  type: function
+  code: executor.py
+
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+    collections:
+      type: array
+      items:
+        type: object
+        properties:
+          name:
+            type: string
+          path:
+            type: string
+          request_count:
+            type: number
+        required: ["name", "path", "request_count"]
+
+
+examples:
+  - name: "List all collections in workspace"
+    params:
+      workspace_path: "./bruno-collections"
+
+  - name: "Filter collections by name"
+    params:
+      workspace_path: "./bruno-collections"
+      filter: "api"

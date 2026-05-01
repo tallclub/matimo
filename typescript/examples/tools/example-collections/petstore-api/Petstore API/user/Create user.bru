@@ -1,0 +1,14 @@
+meta {
+  name: Create user
+  type: http
+  seq: 7
+  tags: [
+    user
+  ]
+}
+
+post {
+  url: {{baseUrl}}/user
+  body: none
+  auth: inherit
+}

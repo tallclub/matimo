@@ -1,6 +1,6 @@
 {
   "name": "@matimo/core",
-  "version": "0.1.0-alpha.14",
+  "version": "0.1.0",
   "description": "Core SDK for Matimo: Framework-agnostic YAML-driven tool ecosystem for AI agents.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -72,7 +72,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "axios": "^1.13.4",
+    "axios": "^1.15.2",
     "dotenv": "^17.2.3",
     "js-yaml": "^4.1.1",
     "winston": "^3.19.0",
@@ -80,8 +80,8 @@
     "zod": "^4.3.6"
   },
   "peerDependencies": {
-    "node-vault": ">=0.10.0",
-    "@aws-sdk/client-secrets-manager": ">=3.0.0"
+    "@aws-sdk/client-secrets-manager": ">=3.0.0",
+    "node-vault": ">=0.10.0"
   },
   "peerDependenciesMeta": {
     "node-vault": {

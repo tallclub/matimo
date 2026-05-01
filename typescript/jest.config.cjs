@@ -33,6 +33,7 @@ module.exports = {
     '/node_modules/',
     '/dist/'
   ],
+  setupFiles: ['<rootDir>/jest.setup.js'],
   transform: {
     '^.+\\.ts$': ['ts-jest', {
       tsconfig: {
@@ -40,7 +41,12 @@ module.exports = {
         experimentalDecorators: true,
         emitDecoratorMetadata: true,
         target: 'ES2020',
-        module: 'ES2020'
+        module: 'ES2020',
+        baseUrl: '.',
+        paths: {
+          '@matimo/core': ['packages/core/src/index.ts'],
+          'matimo': ['packages/core/src/index.ts']
+        }
       }
     }]
   }

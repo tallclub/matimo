@@ -367,7 +367,7 @@ const bot = new EmailBot();
 
 // When you call bot.sendMessage(), the decorator:
 // 1. Maps arguments to parameters: { channel: '#general', text: '...' }
-// 2. Calls matimo.execute('slack-send-message', {...})
+// 2. Calls matimo.execute('slack_send_channel_message', {...})
 // 3. Returns the result
 await bot.sendMessage('#general', 'Hello from decorator!');
 const channels = await bot.listChannels();
@@ -395,7 +395,7 @@ await bot.sendMessage('#general', 'Hello!');
 ```
 1. Intercept call: sendMessage('#general', 'Hello!')
 2. Map args to params: { channel: '#general', text: 'Hello!' }
-3. Call matimo.execute('slack-send-message', {...})
+3. Call matimo.execute('slack_send_channel_message', {...})
 4. Return result to caller
 ```
 
@@ -482,7 +482,7 @@ async function runSlackAgent() {
   const matimo = await MatimoInstance.init('./tools');
 
   // Get Slack tools only
-  const slackTools = matimo.listTools().filter((t) => t.name.startsWith('slack-'));
+  const slackTools = matimo.listTools().filter((t) => t.name.startsWith('slack-') || t.name.startsWith('slack_'));
 
   console.log(`📦 Loaded ${slackTools.length} Slack tools`);
 

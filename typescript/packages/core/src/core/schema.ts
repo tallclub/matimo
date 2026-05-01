@@ -81,6 +81,26 @@ export type ExecutionConfig = z.infer<typeof ExecutionConfigSchema>;
 
 // Output schema for validation
 // Aligned with TypeScript interface: type should be one of the known types (or unknown string for extensibility)
+
+// Recursive property schema — validates that each property value in output_schema.properties
+// is a valid schema object (not a raw primitive).
+const OutputPropertySchema: z.ZodType = z.lazy(() =>
+  z.object({
+    type: z
+      .union([
+        z.enum(['string', 'number', 'integer', 'boolean', 'array', 'object', 'null']),
+        z.string(),
+        z.array(z.string()), // Allow nullable arrays: [string, "null"]
+      ])
+      .optional(),
+    description: z.string().optional(),
+    properties: z.record(z.string(), OutputPropertySchema).optional(),
+    items: OutputPropertySchema.optional(),
+    required: z.array(z.string()).optional(),
+    enum: z.array(z.unknown()).optional(),
+  })
+);
+
 export const OutputSchemaSchema = z.object({
   type: z
     .union([
@@ -88,7 +108,7 @@ export const OutputSchemaSchema = z.object({
       z.string(), // Allow other custom types for extensibility
     ])
     .optional(),
-  properties: z.record(z.string(), z.unknown()).optional(),
+  properties: z.record(z.string(), OutputPropertySchema).optional(),
   required: z.array(z.string()).optional(),
   description: z.string().optional(),
 });
@@ -127,6 +147,7 @@ export const ToolDefinitionSchema = z.object({
   error_handling: ErrorHandlingSchema.optional(),
   rate_limiting: RateLimitingSchema.optional(),
   requires_approval: z.boolean().optional(),
+  risk: z.enum(['low', 'medium', 'high', 'critical']).optional(),
   examples: z
     .array(
       z.object({

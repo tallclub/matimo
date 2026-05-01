@@ -30,13 +30,16 @@ export class ApprovalManifest {
   private readonly manifestPath: string;
   private cache: Map<string, ApprovalRecord> = new Map();
   private pendingSet: Set<string> = new Set();
+  private readonly ttlSeconds: number | undefined;
 
   /**
    * @param approvalDir - Directory where `.matimo-approvals.json` lives
    * @param secret - HMAC secret. If not provided, reads `MATIMO_APPROVAL_SECRET`
    *   from env. If that's also missing, generates one and logs it.
+   * @param ttlSeconds - Optional TTL in seconds. Approvals older than this are treated as expired.
    */
-  constructor(approvalDir: string, secret?: string) {
+  constructor(approvalDir: string, secret?: string, ttlSeconds?: number) {
+    this.ttlSeconds = ttlSeconds;
     this.manifestPath = path.join(approvalDir, '.matimo-approvals.json');
 
     if (secret) {
@@ -93,6 +96,16 @@ export class ApprovalManifest {
 
     // Hash mismatch = YAML was modified after approval → revoked
     if (record.hash !== currentYamlHash) return false;
+
+    // TTL check — if configured, reject approvals older than ttlSeconds
+    if (this.ttlSeconds !== undefined) {
+      // Fail closed if timestamp is missing or unparsable
+      if (!record.approvedAt) return false;
+      const approvedAt = new Date(record.approvedAt).getTime();
+      if (!Number.isFinite(approvedAt)) return false;
+      const ageMs = Date.now() - approvedAt;
+      if (ageMs > this.ttlSeconds * 1000) return false;
+    }
 
     // Verify HMAC to detect manifest tampering
     const expectedSig = this.sign(toolName, record.hash);

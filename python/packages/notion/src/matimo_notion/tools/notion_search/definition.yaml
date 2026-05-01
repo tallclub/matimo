@@ -67,7 +67,9 @@ output_schema:
     has_more:
       type: boolean
     next_cursor:
-      type: string
+      anyOf:
+        - type: string
+        - type: "null"
   required: ["object", "type", "results", "has_more"]
 
 examples:

@@ -297,3 +297,8 @@ meta-flow:
 # ── Advanced Agent ────────────────────────────────────────────────────────────
 agent-langchain-skills-policy:
 	$(PYTHON) langchain/agents/langchain_skills_policy_agent.py
+# ── Bruno CLI API Testing ─────────────────────────────────────────────────────
+bruno-complete:
+	$(PYTHON) bruno/complete_workflow.py
+bruno-crewai:
+	$(PYTHON) bruno/crewai_agent.py

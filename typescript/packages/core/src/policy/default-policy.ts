@@ -18,7 +18,8 @@ import { validateToolContent } from './content-validator';
 import { classifyRisk } from './risk-classifier';
 import { extractAuthPlaceholders } from '../mcp/tool-converter';
 
-const DEFAULT_CONFIG: Required<PolicyConfig> = {
+const DEFAULT_CONFIG: Required<Omit<PolicyConfig, 'approvalTtlSeconds'>> &
+  Pick<PolicyConfig, 'approvalTtlSeconds'> = {
   allowedDomains: [],
   allowedCredentials: [],
   allowedHttpMethods: ['GET', 'POST'],
@@ -30,7 +31,8 @@ const DEFAULT_CONFIG: Required<PolicyConfig> = {
 };
 
 export class DefaultPolicyEngine implements PolicyEngine {
-  private config: Required<PolicyConfig>;
+  private config: Required<Omit<PolicyConfig, 'approvalTtlSeconds'>> &
+    Pick<PolicyConfig, 'approvalTtlSeconds'>;
 
   constructor(config?: PolicyConfig) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -204,7 +206,9 @@ export class DefaultPolicyEngine implements PolicyEngine {
   }
 
   /** Expose the resolved config (read-only snapshot). */
-  getConfig(): Readonly<Required<PolicyConfig>> {
+  getConfig(): Readonly<
+    Required<Omit<PolicyConfig, 'approvalTtlSeconds'>> & Pick<PolicyConfig, 'approvalTtlSeconds'>
+  > {
     return { ...this.config };
   }
 

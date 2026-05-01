@@ -11,6 +11,13 @@ Each tool provider:
 - Is auto-discovered when installed in `node_modules/@matimo/*`
 - Contains YAML tool definitions that work across all patterns
 
+> **⚠️ Tool Naming Convention**  
+> Matimo supports both `kebab-case` and `snake_case` tool names for backward compatibility:  
+> - **Legacy tools** (GitHub, Gmail, older Slack): `kebab-case` (e.g., `gmail-send-email`, `github-create-issue`)  
+> - **Modern tools** (Bruno, meta-tools, newer providers): `snake_case` (e.g., `bruno_run_request`, `matimo_create_tool`)  
+> - **Recommended for new tools**: `snake_case` following the pattern `{provider}_{action}` (e.g., `stripe_create_payment`, `notion_create_page`)  
+> - Both naming styles work identically in all SDK patterns, filters need to check both: `.startsWith('slack-') || .startsWith('slack_')`
+
 ## Step 1: Create a New Tool Provider Package
 
 ```bash
@@ -22,7 +29,7 @@ cd packages/github
 cat > package.json << 'EOF'
 {
   "name": "@matimo/github",
-  "version": "0.1.0-alpha.11",
+  "version": "0.1.0",
   "description": "GitHub repository and issue management tools for Matimo",
   "type": "module",
   "files": ["tools", "definition.yaml"],
@@ -46,7 +53,7 @@ Each tool gets its own directory with a `definition.yaml` file.
 Create `packages/github/tools/github-create-issue/definition.yaml`:
 
 ```yaml
-name: github-create-issue
+name: github_create_issue
 description: Create a new issue in a GitHub repository
 version: '1.0.0'
 
@@ -222,7 +229,7 @@ import { MatimoInstance } from 'matimo';
 const matimo = await MatimoInstance.init({ autoDiscover: true });
 
 // github-create-issue is now available!
-const result = await matimo.execute('github-create-issue', {
+const result = await matimo.execute('github_create_issue', {
   owner: 'tallclub',
   repo: 'matimo',
   title: 'Amazing new feature',

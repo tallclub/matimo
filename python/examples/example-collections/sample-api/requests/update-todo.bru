@@ -1,0 +1,15 @@
+meta {
+  name: update-todo
+  type: http
+  seq: 1
+}
+
+PUT {
+  url: https://jsonplaceholder.typicode.com/todos/1
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {"id": 1, "title": "Master Matimo", "completed": true, "userId": 1}
+}

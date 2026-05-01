@@ -1,3 +1,4 @@
+from pathlib import Path
 import asyncio
 import os
 import sysconfig
@@ -21,6 +22,13 @@ def _is_port_in_use(port: int, host: str = "127.0.0.1") -> bool:
 
 
 async def main():
+    # Ensure we run from the correct directory to discover tools/skills
+    # (server script is in src/, but tools are in parent mcp/)
+    script_dir = Path(__file__).parent
+    examples_mcp_dir = script_dir.parent
+    import os
+    os.chdir(examples_mcp_dir)
+    
     # ── Tool paths: discover matimo provider packages efficiently ──────────────
     # Scan site-packages for matimo_* packages, adding only their tools/ subdirectories.
     # This is much faster than passing the entire site-packages tree to Matimo.

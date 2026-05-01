@@ -1,0 +1,9 @@
+#!/bin/sh
+# Auto-generate changelog after commits with version tags
+# This allows developers to see what will be in the next release
+
+if git describe --tags --exact-match 2>/dev/null; then
+  git-cliff --config cliff.toml --output CHANGELOG.md
+  git add CHANGELOG.md
+  git commit --amend --no-edit || true
+fi

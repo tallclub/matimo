@@ -1,17 +1,28 @@
 {
-  "extends": "../../internal/tsconfig/base.json",
   "compilerOptions": {
+    "target": "ES2020",
+    "module": "ES2020",
+    "lib": ["ES2020"],
+    "moduleResolution": "bundler",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
     "composite": true,
     "outDir": "./dist",
     "rootDir": "./src",
-    "module": "ES2020",
-    "moduleResolution": "bundler"
+    "emitDeclarationOnly": false,
+    "types": ["node"]
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "test", "dist", "**/*.test.ts", "**/*.spec.ts"],
-  "ts-node": {
-    "compilerOptions": {
-      "module": "ES2020"
-    }
-  }
+  "exclude": ["node_modules", "test", "dist", "**/*.test.ts", "**/*.spec.ts"]
 }

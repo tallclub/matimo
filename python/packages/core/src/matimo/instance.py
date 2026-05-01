@@ -86,10 +86,12 @@ class InitOptions:
     # Approval manifest
     approval_secret: str | None = None
     approval_dir: str | None = None
+    approval_ttl_seconds: int | None = None
 
     # Events / HITL
     on_event: MatimoEventHandler | None = None
     on_hitl: HITLCallback | None = None
+    hitl_timeout_ms: int | None = None
 
     # Logging
     log_level: str | None = None
@@ -113,6 +115,7 @@ class Matimo:
         on_event: MatimoEventHandler | None,
         on_hitl: HITLCallback | None,
         matimo_logger: MatimoLogger,
+        hitl_timeout_ms: int | None = None,
         skill_registry: SkillRegistry | None = None,
     ) -> None:
         self._registry = registry
@@ -121,6 +124,7 @@ class Matimo:
         self._tool_paths = tool_paths
         self._on_event = on_event
         self._on_hitl = on_hitl
+        self._hitl_timeout_ms = hitl_timeout_ms
         self._logger = matimo_logger
         self._skill_registry: SkillRegistry = skill_registry or SkillRegistry()
 
@@ -146,8 +150,10 @@ class Matimo:
         untrusted_paths: list[str] | None = None,
         approval_secret: str | None = None,
         approval_dir: str | None = None,
+        approval_ttl_seconds: int | None = None,
         on_event: MatimoEventHandler | None = None,
         on_hitl: HITLCallback | None = None,
+        hitl_timeout_ms: int | None = None,
         log_level: str | None = None,
         log_format: str | None = None,
     ) -> Matimo:
@@ -165,6 +171,9 @@ class Matimo:
             untrusted_paths: Paths considered agent-created (undergo content validation).
             on_event:      Audit event handler.
             on_hitl:       Human-in-the-loop callback for quarantined tools.
+            hitl_timeout_ms: Timeout in milliseconds for the HITL callback.
+                           If the callback does not resolve within this time the tool
+                           is auto-rejected. Defaults to None (waits indefinitely).
             log_level:     One of 'silent' | 'error' | 'warn' | 'info' | 'debug'.
             log_format:    'json' | 'simple'.
 
@@ -209,11 +218,19 @@ class Matimo:
 
         # Load skills (optional)
         skill_reg = SkillRegistry()
-        if skill_paths:
+        
+        # Auto-discover skill paths if auto_discover=True
+        skill_discovery_paths = list(skill_paths) if skill_paths else []
+        # Note: auto_discover is for tools only, not skills. Skills must be passed via skill_paths.
+        
+        if skill_discovery_paths:
             skill_loader = SkillLoader()
-            for sp in skill_paths:
+            for sp in skill_discovery_paths:
                 skills = skill_loader.load_skills_from_directory(sp)
                 skill_reg.register_all(skills)
+        
+        if skill_reg.count() > 0:
+            matimo_logger.info(f"{skill_reg.count()} skill(s) loaded")
 
         return cls(
             registry=registry,
@@ -223,6 +240,7 @@ class Matimo:
             on_event=on_event,
             on_hitl=on_hitl,
             matimo_logger=matimo_logger,
+            hitl_timeout_ms=hitl_timeout_ms,
             skill_registry=skill_reg,
         )
 
@@ -389,6 +407,37 @@ class Matimo:
         """Return the full markdown content of a skill, or None if not found."""
         return self._skill_registry.get_skill_content(name, options)
 
+    async def execute_tool(
+        self,
+        tool_name: str,
+        params: dict[str, Any] | None = None,
+        *,
+        credentials: dict[str, str] | None = None,
+        context: PolicyContext | None = None,
+        approved: bool = False,
+    ) -> Any:  # noqa: ANN401
+        """
+        Execute a tool (alias for execute() with simpler params).
+        
+        Args:
+            tool_name: Name of the tool to execute
+            params: Tool parameters (defaults to empty dict)
+            credentials: Per-call credential overrides
+            context: Policy context
+            approved: Whether tool is pre-approved
+            
+        Returns:
+            Tool execution result
+        """
+        return await self.execute(
+            tool_name,
+            params or {},
+            credentials=credentials,
+            context=context,
+            approved=approved,
+        )
+
+
     async def semantic_search_skills(
         self,
         query: str,
@@ -474,6 +523,8 @@ class Matimo:
         context: PolicyContext,
     ) -> bool:
         """Invoke the HITL callback or deny if no callback is configured."""
+        import asyncio
+
         from matimo.policy.types import HITLRequest
 
         if self._on_hitl is None:
@@ -491,7 +542,19 @@ class Matimo:
             tool_definition=tool.model_dump(exclude={"_definition_path"}),
         )
 
-        approved = await self._on_hitl(request)
+        if self._hitl_timeout_ms is not None:
+            timeout_s = self._hitl_timeout_ms / 1000.0
+            try:
+                approved = await asyncio.wait_for(self._on_hitl(request), timeout=timeout_s)
+            except TimeoutError:
+                self._logger.warn(
+                    f"HITL callback timed out after {self._hitl_timeout_ms}ms for tool "
+                    f"'{tool.name}' — auto-rejecting"
+                )
+                approved = False
+        else:
+            approved = await self._on_hitl(request)
+
         self._emit_event({
             "type": "tool:quarantine_approved" if approved else "tool:quarantine_rejected",
             "tool_name": tool.name,

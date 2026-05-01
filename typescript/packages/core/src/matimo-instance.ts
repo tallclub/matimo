@@ -87,6 +87,11 @@ export interface InitOptions extends LoggerConfig {
   approvalSecret?: string;
   /** Directory for .matimo-approvals.json. Defaults to process.cwd(). */
   approvalDir?: string;
+  /**
+   * Approval TTL in seconds. Approvals older than this are treated as expired
+   * and the tool must be re-approved. If not set, approvals never expire.
+   */
+  approvalTtlSeconds?: number;
   /** Event handler for audit events (tool creation, approval, execution, etc.) */
   onEvent?: MatimoEventHandler;
   /**
@@ -96,6 +101,12 @@ export interface InitOptions extends LoggerConfig {
    * If not set, quarantined tools are rejected by default.
    */
   onHITL?: HITLCallback;
+  /**
+   * Timeout in milliseconds for the HITL callback.
+   * If the callback does not resolve within this time, the tool is auto-rejected.
+   * Defaults to no timeout (waits indefinitely).
+   */
+  hitlTimeoutMs?: number;
 }
 
 /**
@@ -103,6 +114,9 @@ export interface InitOptions extends LoggerConfig {
  * Combines loader, registry, and executors into one interface
  */
 export class MatimoInstance {
+  // Sentinel value used to distinguish HITL timeout from explicit rejection
+  private static readonly HITL_TIMEOUT_SENTINEL = Symbol('HITL_TIMEOUT');
+
   private toolPaths: string[];
   private skillPaths: string[];
   private loader: ToolLoader;
@@ -121,6 +135,7 @@ export class MatimoInstance {
   #approvalManifest: ApprovalManifest | null;
   #onEvent: MatimoEventHandler | null;
   #hitlCallback: HITLCallback | null;
+  #hitlTimeoutMs: number | null;
   #trustedPaths: string[];
   #untrustedPaths: string[];
   #policyFile: string | null;
@@ -135,8 +150,10 @@ export class MatimoInstance {
       untrustedPaths?: string[];
       approvalSecret?: string;
       approvalDir?: string;
+      approvalTtlSeconds?: number;
       onEvent?: MatimoEventHandler;
       onHITL?: HITLCallback;
+      hitlTimeoutMs?: number;
       policyFile?: string;
     }
   ) {
@@ -161,12 +178,17 @@ export class MatimoInstance {
     this.#integrityTracker = new ToolIntegrityTracker();
     this.#onEvent = policyOptions?.onEvent ?? null;
     this.#hitlCallback = policyOptions?.onHITL ?? null;
+    this.#hitlTimeoutMs = policyOptions?.hitlTimeoutMs ?? null;
     this.#policyFile = policyOptions?.policyFile ?? null;
 
     // Approval manifest
     if (this.#policy) {
       const approvalDir = policyOptions?.approvalDir ?? process.cwd();
-      this.#approvalManifest = new ApprovalManifest(approvalDir, policyOptions?.approvalSecret);
+      this.#approvalManifest = new ApprovalManifest(
+        approvalDir,
+        policyOptions?.approvalSecret,
+        policyOptions?.approvalTtlSeconds
+      );
     } else {
       this.#approvalManifest = null;
     }
@@ -300,6 +322,8 @@ export class MatimoInstance {
       approvalDir: finalOptions.approvalDir,
       onEvent: finalOptions.onEvent,
       onHITL: finalOptions.onHITL,
+      hitlTimeoutMs: finalOptions.hitlTimeoutMs,
+      approvalTtlSeconds: finalOptions.approvalTtlSeconds,
       policyFile: finalOptions.policyFile,
     });
 
@@ -561,6 +585,21 @@ export class MatimoInstance {
    */
   getAllTools(context?: PolicyContext): ToolDefinition[] {
     return this.listTools(context);
+  }
+
+  /**
+   * Return only the tools this agent context is permitted to use.
+   * Mirrors: Matimo.get_tools_for_agent() in Python SDK.
+   *
+   * @param context - PolicyContext (agentId, roles, environment)
+   * @returns Tools permitted for this context, filtered through the policy engine
+   */
+  getToolsForAgent(context: PolicyContext): ToolDefinition[] {
+    const tools = this.registry.getAll();
+    if (this.#policy) {
+      return this.#policy.filterForAgent(context, tools);
+    }
+    return tools;
   }
 
   /**
@@ -1270,7 +1309,7 @@ export class MatimoInstance {
         timestamp: new Date().toISOString(),
       });
 
-      const approved = await this.#hitlCallback({
+      const callbackPromise = this.#hitlCallback({
         toolName: tool.name,
         riskLevel: decision.riskLevel,
         reason: decision.reason,
@@ -1278,6 +1317,26 @@ export class MatimoInstance {
         agentId: context.agentId,
         toolDefinition: tool,
       });
+
+      let approved: boolean;
+      if (this.#hitlTimeoutMs !== null) {
+        const timeoutPromise = new Promise<boolean | typeof MatimoInstance.HITL_TIMEOUT_SENTINEL>(
+          (resolve) =>
+            setTimeout(() => resolve(MatimoInstance.HITL_TIMEOUT_SENTINEL), this.#hitlTimeoutMs!)
+        );
+        const result = await Promise.race([callbackPromise, timeoutPromise]);
+
+        if (result === MatimoInstance.HITL_TIMEOUT_SENTINEL) {
+          this.logger.warn(
+            `HITL callback timed out after ${this.#hitlTimeoutMs}ms for tool '${tool.name}' — auto-rejecting`
+          );
+          approved = false;
+        } else {
+          approved = result;
+        }
+      } else {
+        approved = await callbackPromise;
+      }
 
       // If approved, record in manifest for future calls
       if (approved && this.#approvalManifest) {

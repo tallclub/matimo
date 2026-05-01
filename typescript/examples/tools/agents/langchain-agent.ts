@@ -46,12 +46,30 @@ async function runLangChainAgent() {
     console.info('🚀 Initializing Matimo...');
     const matimo = await MatimoInstance.init({ autoDiscover: true });
 
-    const matimoTools = matimo.listTools();
-    console.info(`📦 Loaded ${matimoTools.length} tools:\n`);
-    matimoTools.forEach((t) => {
-      console.info(`  • ${t.name}`);
-      console.info(`    ${t.description}\n`);
-    });
+    const allTools = matimo.listTools();
+    console.info(`📦 Loaded ${allTools.length} tools`);
+
+    // Filter tools to OpenAI's 128-tool limit (major providers only)
+    const allowedPrefixes = [
+      'slack_',
+      'gmail_',
+      'github_',
+      'notion_',
+      'execute',
+      'read',
+      'search',
+      'web',
+      'edit',
+      'postgres_',
+      'twilio_',
+      'hubspot_',
+      'mailchimp_',
+    ];
+    let matimoTools = allTools.filter((t) => allowedPrefixes.some((p) => t.name.startsWith(p)));
+    if (matimoTools.length > 128) {
+      matimoTools = matimoTools.slice(0, 128);
+    }
+    console.info(`📋 Filtered to ${matimoTools.length} tools (OpenAI limit: 128)\n`);
 
     // ✅ Convert Matimo tools to LangChain tools
     console.info('🔧 Converting Matimo tools to LangChain format...\n');
@@ -73,10 +91,10 @@ async function runLangChainAgent() {
       console.info(`📚 ${skillsMeta.length} skill(s) discovered (Level 1 metadata)\n`);
     }
 
-    // 🤖 Create GPT-4o-mini LLM with tool binding
-    console.info('🧠 Creating GPT-4o-mini LLM with tool binding...\n');
+    // 🤖 Create GPT-4o LLM with tool binding
+    console.info('🧠 Creating GPT-4o LLM with tool binding...\n');
     const llm = new ChatOpenAI({
-      model: 'gpt-4o-mini',
+      model: 'gpt-4o',
       temperature: 0,
     });
 

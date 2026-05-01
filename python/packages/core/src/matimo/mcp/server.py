@@ -54,6 +54,10 @@ class MCPServerOptions:
     untrusted_paths: list[str] | None = None
     approval_secret: str | None = None
     approval_dir: str | None = None
+    # Trust _matimo_approved from MCP tool-call arguments as an out-of-band
+    # approval. Defaults to False because MCP arguments are supplied by the
+    # client/model and are not a server-side approval signal by themselves.
+    trust_client_approval: bool = False
 
 
 class MCPServer:
@@ -96,6 +100,10 @@ class MCPServer:
                 "MCP Python SDK not installed. Install with: pip install matimo[mcp]",
                 ErrorCode.EXECUTION_FAILED,
             ) from exc
+
+        # Register the Matimo instance as global so meta-tools can access it
+        from matimo.decorators import set_global_matimo_instance
+        set_global_matimo_instance(self._matimo)
 
         server = Server("matimo")
         self._server = server
@@ -205,7 +213,7 @@ class MCPServer:
             # Bearer token auth (health endpoint is exempt)
             if path != "/health" and mcp_token:
                 headers = {
-                    k.lower(): v.decode("latin-1")
+                    k.decode("latin-1").lower(): v.decode("latin-1")
                     for k, v in scope.get("headers", [])
                 }
                 auth = headers.get("authorization", "")
@@ -225,19 +233,41 @@ class MCPServer:
 
             # Health check endpoint
             if path == "/health":
-                body = _json.dumps({"ok": True, "transport": "http"}).encode()
+                tool_count = len(self._get_mcp_tools())
+                body = _json.dumps({"status": "ok", "tools": tool_count, "transport": "http"}).encode()
                 await send({
                     "type": "http.response.start",
                     "status": 200,
                     "headers": [
                         (b"content-type", b"application/json"),
+                        (b"content-length", str(len(body)).encode()),
                         (b"access-control-allow-origin", b"*"),
                     ],
                 })
                 await send({"type": "http.response.body", "body": body, "more_body": False})
                 return
 
-            # All other requests — forward to MCP session manager
+            # MCP protocol endpoint — only /mcp and / are valid MCP paths.
+            # All other paths get a 404 with a helpful message so that
+            # misconfigured clients fail fast rather than silently timing out.
+            if path not in ("/mcp", "/"):
+                body = _json.dumps({
+                    "error": "Not found",
+                    "hint": "MCP protocol endpoint is at /mcp",
+                }).encode()
+                await send({
+                    "type": "http.response.start",
+                    "status": 404,
+                    "headers": [
+                        (b"content-type", b"application/json"),
+                        (b"content-length", str(len(body)).encode()),
+                        (b"access-control-allow-origin", b"*"),
+                    ],
+                })
+                await send({"type": "http.response.body", "body": body, "more_body": False})
+                return
+
+            # Forward to MCP Streamable HTTP session manager
             await session_manager.handle_request(scope, receive, send)
 
         config = uvicorn.Config(
@@ -287,16 +317,17 @@ class MCPServer:
         except ImportError:
             return []
 
-        # Extract _matimo_approved flag before forwarding to execute.
-        # Mirrors: const { _matimo_approved, ...cleanArgs } = args in TS.
-        matimo_approved: object = arguments.get("_matimo_approved", False)
+        # Extract _matimo_approved before forwarding to execute. By default this
+        # client-supplied flag is only a confirmation prompt signal; it must not
+        # bypass server-side approval checks.
+        matimo_approved: bool = arguments.get("_matimo_approved") is True
         clean_args = {k: v for k, v in arguments.items() if k != "_matimo_approved"}
 
         # Get tool definition once — used for approval check and fallback secrets.
         tool_def = self._matimo.get_tool(name)
 
         # Approval gate: rejection mirrors TypeScript behaviour (throw before execute)
-        if tool_def and getattr(tool_def, "requires_approval", False) and not matimo_approved:
+        if tool_def and getattr(tool_def, "requires_approval", False) and matimo_approved is not True:
             msg = (
                 f"Tool '{name}' requires approval. This is a destructive operation. "
                 "Re-invoke with parameter _matimo_approved: true to confirm execution."
@@ -319,7 +350,11 @@ class MCPServer:
                 name,
                 clean_args,
                 credentials=credentials or None,
-                approved=matimo_approved is True,
+                approved=(
+                    self._options.trust_client_approval
+                    and bool(tool_def and getattr(tool_def, "requires_approval", False))
+                    and matimo_approved
+                ),
             )
             output = _json.dumps(result, indent=2, default=str)
             return [mcp_types.TextContent(type="text", text=output)]

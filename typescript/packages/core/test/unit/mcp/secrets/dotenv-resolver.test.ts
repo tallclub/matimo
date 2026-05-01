@@ -73,6 +73,11 @@ describe('DotenvSecretResolver', () => {
       expect(await resolver.resolve('ANY_KEY')).toBeUndefined();
     });
 
+    it('should handle read errors gracefully when dotenv path is a directory', async () => {
+      const resolver = new DotenvSecretResolver(tempDir);
+      expect(await resolver.resolve('ANY_KEY')).toBeUndefined();
+    });
+
     it('should cache file after first read', async () => {
       const envFile = join(tempDir, '.env');
       writeFileSync(envFile, 'KEY=original\n');

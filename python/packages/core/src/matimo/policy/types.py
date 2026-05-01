@@ -85,6 +85,8 @@ class PolicyConfig(BaseModel):
     protected_namespaces: list[str] = ["matimo_"]
     enable_hitl: bool = False
     quarantine_risk_levels: list[RiskLevel] = [RiskLevel.MEDIUM]
+    approval_ttl_seconds: int | None = None
+    """Number of seconds after which an approval expires. None means never expire."""
 
 
 # ---------------------------------------------------------------------------

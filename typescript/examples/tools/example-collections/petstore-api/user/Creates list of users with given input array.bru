@@ -1,0 +1,14 @@
+meta {
+  name: Creates list of users with given input array
+  type: http
+  seq: 1
+  tags: [
+    user
+  ]
+}
+
+post {
+  url: {{baseUrl}}/user/createWithArray
+  body: none
+  auth: inherit
+}

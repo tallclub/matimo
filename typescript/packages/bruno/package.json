@@ -1,0 +1,17 @@
+{
+  "name": "@matimo/bruno",
+  "version": "0.1.0",
+  "description": "Bruno CLI tools for Matimo — API collection execution, import, and validation",
+  "files": [
+    "tools",
+    "README.md",
+    "definition.yaml"
+  ],
+  "dependencies": {
+    "@matimo/core": "workspace:*",
+    "@usebruno/cli": "^3.3.0"
+  },
+  "peerDependencies": {
+    "matimo": "workspace:*"
+  }
+}

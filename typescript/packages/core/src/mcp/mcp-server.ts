@@ -71,6 +71,12 @@ export interface MCPServerOptions {
   approvalSecret?: string;
   /** Directory for .matimo-approvals.json. */
   approvalDir?: string;
+  /**
+   * Trust `_matimo_approved: true` from MCP tool-call arguments as an
+   * out-of-band approval. Defaults to false because MCP arguments are supplied
+   * by the client/model and are not a server-side approval signal by themselves.
+   */
+  trustClientApproval?: boolean;
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────
@@ -444,7 +450,7 @@ export class MCPServer {
 
               if (tool.requires_approval) {
                 const approved = args._matimo_approved;
-                if (!approved) {
+                if (approved !== true) {
                   throw new MatimoError(
                     `Tool '${tool.name}' requires approval. This is a destructive operation. Re-invoke with parameter _matimo_approved: true to confirm execution.`,
                     ErrorCode.EXECUTION_FAILED
@@ -453,12 +459,14 @@ export class MCPServer {
               }
 
               // Strip _matimo_approved from args before passing to execute.
-              // When MCP already confirmed approval, pass a per-execution
-              // approval override so MatimoInstance.execute() doesn't
-              // re-prompt via the interactive handler.
+              // By default this client-supplied flag is only a confirmation
+              // prompt signal; it must not bypass server-side approval checks.
               const { _matimo_approved, ...cleanArgs } = args;
               const result = await matimo.execute(tool.name, cleanArgs, {
-                approved: _matimo_approved === true,
+                approved:
+                  this.options.trustClientApproval === true &&
+                  tool.requires_approval === true &&
+                  _matimo_approved === true,
                 credentials: this.resolvedSecrets,
               });
 

@@ -1,0 +1,108 @@
+name: bruno_add_request
+description: Add a new HTTP request to a Bruno collection programmatically. Creates a .bru file with the specified method, URL, headers, body, and test assertions.
+version: '1.0.0'
+status: approved
+
+parameters:
+  collection_path:
+    type: string
+    required: true
+    description: Path to Bruno collection directory
+    example: './api-tests/payment-api'
+
+  request_name:
+    type: string
+    required: true
+    description: Request name (becomes .bru filename, alphanumeric + hyphens)
+    example: 'get-users'
+
+  method:
+    type: string
+    required: true
+    description: HTTP method
+    enum: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS']
+    example: 'GET'
+
+  url:
+    type: string
+    required: true
+    description: Full request URL (can contain {variables})
+    example: 'https://api.example.com/users/{user_id}'
+
+  headers:
+    type: object
+    required: false
+    description: HTTP headers as key-value pairs
+    example:
+      Content-Type: 'application/json'
+      Authorization: 'Bearer {api_token}'
+
+  body:
+    type: string
+    required: false
+    description: Request body (JSON or raw text)
+    example: '{"name": "John", "email": "john@example.com"}'
+
+  tests:
+    type: string
+    required: false
+    description: Bruno test script (JavaScript assertions)
+    example: |
+      test("Status is 200", function() {
+        expect(res.getStatus()).to.equal(200);
+      });
+
+  documentation:
+    type: string
+    required: false
+    description: Request documentation/description
+    example: 'Fetch list of all users from the system'
+
+execution:
+  type: function
+  code: executor.py
+  timeout: 10000
+
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+      description: Whether request was created successfully
+    request_path:
+      type: string
+      description: Full path to created .bru file
+    request_name:
+      type: string
+      description: Request name
+    message:
+      type: string
+      description: Success or error message
+
+examples:
+  - name: "Add GET request with headers"
+    params:
+      collection_path: "./api-tests/payment-api"
+      request_name: "get-transactions"
+      method: "GET"
+      url: "https://api.payment.com/v1/transactions"
+      headers:
+        Authorization: "Bearer {api_token}"
+        Accept: "application/json"
+
+  - name: "Add POST request with body and tests"
+    params:
+      collection_path: "./api-tests/payment-api"
+      request_name: "create-payment"
+      method: "POST"
+      url: "https://api.payment.com/v1/payments"
+      headers:
+        Content-Type: "application/json"
+        Authorization: "Bearer {api_token}"
+      body: '{"amount": 100, "currency": "USD", "description": "Payment for order"}'
+      tests: |
+        test("Payment created with 201", function() {
+          expect(res.getStatus()).to.equal(201);
+          expect(res.getBody().id).to.exist;
+        });
+      documentation: "Create a new payment transaction"

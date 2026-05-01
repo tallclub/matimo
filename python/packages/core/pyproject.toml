@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "matimo-core"
-version = "0.1.0a14.post2"
+version = "0.1.0"
 description = "Matimo core — framework-agnostic SDK: pre-built providers, skills layer, MCP, and a policy engine you control"
 readme = "README.md"
 license = { text = "MIT" }
@@ -111,6 +111,8 @@ ignore = ["ANN101", "ANN102", "S603", "S607"]
 # S101: pytest uses `assert` by design — stripping it with -O is not a concern in test code.
 # S105/S106: test fixtures use literal strings as mock tokens, not real secrets.
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101", "S105", "S106"]
+# S101/S105/S106: asserts and hardcoded passwords are fine in tests
+# ANN401: mock decorator helpers in tests genuinely require Any for arbitrary handler signatures
+"tests/**" = ["S101", "S105", "S106", "ANN401"]
 
 

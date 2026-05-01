@@ -119,6 +119,7 @@ class TestBuildParams:
 
 
 class TestToolDecoratorAsync:
+    @pytest.mark.asyncio
     async def test_async_method_executes_tool(self) -> None:
         mock_matimo = _make_matimo_mock({"result": "done"})
         set_global_matimo_instance(mock_matimo)
@@ -135,6 +136,7 @@ class TestToolDecoratorAsync:
         )
         assert result == {"result": "done"}
 
+    @pytest.mark.asyncio
     async def test_async_tool_uses_self_matimo(self) -> None:
         mock_matimo = _make_matimo_mock()
 
@@ -150,6 +152,7 @@ class TestToolDecoratorAsync:
         await agent.run("test")  # type: ignore[call-arg]
         mock_matimo.execute.assert_called_once_with("my_tool", {"value": "test"})
 
+    @pytest.mark.asyncio
     async def test_async_tool_no_instance_raises(self) -> None:
         set_global_matimo_instance(None)  # type: ignore[arg-type]
 
@@ -259,6 +262,7 @@ class TestToolDecoratorSyncEdgeCases:
 
         assert result == {"result": "ok"}
 
+    @pytest.mark.asyncio
     async def test_sync_wrapper_in_running_loop_uses_thread(self) -> None:
         """Cover lines 76-81: concurrent.futures branch when loop.is_running()."""
         mock_matimo = _make_matimo_mock({"ok": True})

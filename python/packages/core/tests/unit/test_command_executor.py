@@ -9,6 +9,9 @@ from matimo.core.models import CommandExecution, Parameter, ParameterType, ToolD
 from matimo.errors import ErrorCode, MatimoError
 from matimo.executors.command_executor import CommandExecutor
 
+pytestmark = pytest.mark.asyncio
+
+
 
 def _make_command_tool(
     command: str = "echo",
