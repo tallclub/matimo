@@ -50,22 +50,21 @@ def _load_skills_from_path_sync(skills_path: Path) -> list[dict]:  # type: ignor
 
 
 async def run(params: dict) -> dict:  # type: ignore[type-arg]
-    logger.info("matimo_list_skills: START")
+    logger.debug("matimo_list_skills: START")
     skills_dir: str | None = params.get("skills_dir")
     # Use dict to deduplicate by name (mirrors TS Map behaviour)
     all_skills: dict[str, dict] = {}  # type: ignore[type-arg]
 
     # Try global instance first (non-blocking)
-    logger.info("matimo_list_skills: getting global instance...")
+    logger.debug("matimo_list_skills: attempting global instance lookup")
     try:
         from matimo.decorators import get_global_matimo_instance
 
         instance = get_global_matimo_instance()
-        logger.info(f"matimo_list_skills: global instance = {instance}")
         if instance is not None and hasattr(instance, "list_skills"):
-            logger.info("matimo_list_skills: calling list_skills()...")
+            logger.debug("matimo_list_skills: loading skills from global instance")
             skills = instance.list_skills()
-            logger.info(f"matimo_list_skills: got {len(skills)} skills")
+            logger.debug(f"matimo_list_skills: loaded {len(skills)} skills from instance")
             for s in skills:
                 all_skills[s.name] = {
                     "name": s.name,
@@ -76,21 +75,21 @@ async def run(params: dict) -> dict:  # type: ignore[type-arg]
                     "source": getattr(s, "source", "user"),
                 }
         else:
-            logger.info("matimo_list_skills: instance is None or no list_skills method")
+            logger.debug("matimo_list_skills: no global instance available")
     except Exception as exc:
-        logger.error(f"matimo_list_skills: global instance lookup failed: {exc}", exc_info=True)
+        logger.debug(f"matimo_list_skills: global instance lookup failed: {exc}")
 
     # Explicit directory (run file I/O in executor to avoid blocking event loop)
     if skills_dir:
-        logger.info(f"matimo_list_skills: loading from disk: {skills_dir}")
+        logger.debug(f"matimo_list_skills: loading from directory: {skills_dir}")
         loop = asyncio.get_running_loop()
         disk_skills = await loop.run_in_executor(
             None, _load_skills_from_path_sync, Path(skills_dir)
         )
-        logger.info(f"matimo_list_skills: got {len(disk_skills)} disk skills")
+        logger.debug(f"matimo_list_skills: loaded {len(disk_skills)} skills from disk")
         for skill in disk_skills:
             all_skills.setdefault(skill["name"], skill)
 
     skills = list(all_skills.values())
-    logger.info(f"matimo_list_skills: returning {len(skills)} total skills")
+    logger.debug(f"matimo_list_skills: returning {len(skills)} total skills")
     return {"skills": skills, "total": len(skills)}
