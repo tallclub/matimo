@@ -823,16 +823,16 @@ describe('bruno_import_openapi executor', () => {
     makeBruFile(tmpDir, 'get-users');
     makeBruFile(tmpDir, 'create-user');
     const result = await execute({ spec_source: './spec.yaml', output_directory: tmpDir });
-    expect(result.requests_generated).toBe(2);
+    expect(result.requests_created).toBe(2);
   });
 
-  it('handles readdir failure gracefully (best-effort count, requestsGenerated=0)', async () => {
+  it('handles readdir failure gracefully (best-effort count, requests_created=0)', async () => {
     // Use a regular file as output_directory so readdir throws ENOTDIR
     const filePath = path.join(tmpDir, 'not-a-dir.txt');
     fs.writeFileSync(filePath, 'file content');
     const result = await execute({ spec_source: './spec.yaml', output_directory: filePath });
     expect(result.success).toBe(true);
-    expect(result.requests_generated).toBe(0);
+    expect(result.requests_created).toBe(0);
   });
 });
 

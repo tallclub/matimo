@@ -40,7 +40,7 @@ export default async function execute(params: Record<string, unknown>): Promise<
       success: false,
       collection_path: '',
       collection_name: '',
-      requests_generated: 0,
+      requests_created: 0,
       message: 'spec_source and output_directory parameters are required',
       errors: ['spec_source and output_directory parameters are required'],
     };
@@ -71,9 +71,9 @@ export default async function execute(params: Record<string, unknown>): Promise<
     logger.info('OpenAPI import completed');
 
     // Count generated .bru files using a Node 18-compatible recursive walk
-    let requestsGenerated = 0;
+    let requestsCreated = 0;
     try {
-      requestsGenerated = await countBruFilesRecursively(absoluteOutput);
+      requestsCreated = await countBruFilesRecursively(absoluteOutput);
     } catch {
       // best-effort count
     }
@@ -82,7 +82,7 @@ export default async function execute(params: Record<string, unknown>): Promise<
       success: true,
       collection_path: absoluteOutput,
       collection_name: collectionName,
-      requests_generated: requestsGenerated,
+      requests_created: requestsCreated,
       message: `Collection "${collectionName}" imported from OpenAPI spec`,
       errors: [],
     };
@@ -94,7 +94,7 @@ export default async function execute(params: Record<string, unknown>): Promise<
       success: false,
       collection_path: absoluteOutput,
       collection_name: collectionName,
-      requests_generated: 0,
+      requests_created: 0,
       message: 'Import failed',
       errors: [error instanceof Error ? error.message : String(error)],
     };
