@@ -450,7 +450,7 @@ export class MCPServer {
 
               if (tool.requires_approval) {
                 const approved = args._matimo_approved;
-                if (!approved) {
+                if (approved !== true) {
                   throw new MatimoError(
                     `Tool '${tool.name}' requires approval. This is a destructive operation. Re-invoke with parameter _matimo_approved: true to confirm execution.`,
                     ErrorCode.EXECUTION_FAILED
