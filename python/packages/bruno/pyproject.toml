@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "matimo-bruno"
-version = "0.1.0a14.post1"
+version = "0.1.0"
 description = "Matimo provider — Bruno API testing tools (collections, requests, imports, reports)"
 readme = "README.md"
 license = { text = "MIT" }

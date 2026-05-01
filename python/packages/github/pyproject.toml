@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "matimo-github"
-version = "0.1.0a14.post1"
+version = "0.1.0"
 description = "Matimo provider — GitHub tools (repos, issues, PRs, releases)"
 readme = "README.md"
 license = { text = "MIT" }
