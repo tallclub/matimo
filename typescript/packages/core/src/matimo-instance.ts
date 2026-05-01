@@ -114,6 +114,9 @@ export interface InitOptions extends LoggerConfig {
  * Combines loader, registry, and executors into one interface
  */
 export class MatimoInstance {
+  // Sentinel value used to distinguish HITL timeout from explicit rejection
+  private static readonly HITL_TIMEOUT_SENTINEL = Symbol('HITL_TIMEOUT');
+
   private toolPaths: string[];
   private skillPaths: string[];
   private loader: ToolLoader;
@@ -1317,14 +1320,19 @@ export class MatimoInstance {
 
       let approved: boolean;
       if (this.#hitlTimeoutMs !== null) {
-        const timeoutPromise = new Promise<boolean>((resolve) =>
-          setTimeout(() => resolve(false), this.#hitlTimeoutMs!)
+        const timeoutPromise = new Promise<boolean | typeof MatimoInstance.HITL_TIMEOUT_SENTINEL>(
+          (resolve) =>
+            setTimeout(() => resolve(MatimoInstance.HITL_TIMEOUT_SENTINEL), this.#hitlTimeoutMs!)
         );
-        approved = await Promise.race([callbackPromise, timeoutPromise]);
-        if (approved === false) {
+        const result = await Promise.race([callbackPromise, timeoutPromise]);
+
+        if (result === MatimoInstance.HITL_TIMEOUT_SENTINEL) {
           this.logger.warn(
             `HITL callback timed out after ${this.#hitlTimeoutMs}ms for tool '${tool.name}' — auto-rejecting`
           );
+          approved = false;
+        } else {
+          approved = result;
         }
       } else {
         approved = await callbackPromise;
