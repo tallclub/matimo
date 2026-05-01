@@ -11,6 +11,10 @@ def execute(params: dict[str, Any]) -> dict[str, Any]:
     """Import OpenAPI specification into Bruno collection using 'bru import openapi'."""
     spec_source = params.get("spec_source")
     output_directory = params.get("output_directory")
+    collection_name = params.get("collection_name")
+    collection_format = params.get("collection_format", "bru")
+    group_by = params.get("group_by", "tags")
+    insecure = params.get("insecure", False)
     
     if not spec_source or not output_directory:
         raise ValueError("spec_source and output_directory parameters are required")
@@ -20,8 +24,19 @@ def execute(params: dict[str, Any]) -> dict[str, Any]:
     try:
         logger.info(f"Importing OpenAPI from: {spec_source} to {output_directory}")
         
-        # Bruno v3: bru import openapi --source <spec> --output <dir>
+        # Build bru import openapi command with all supported options
+        # Bruno v3: bru import openapi --source <spec> --output <dir> [--format <fmt>] [--group-by <key>] [--insecure]
         args = ["bru", "import", "openapi", "--source", spec_source, "--output", output_directory]
+        
+        # Add optional parameters as CLI flags
+        if collection_format and collection_format in ("bru", "opencollection"):
+            args.extend(["--format", collection_format])
+        
+        if group_by and group_by in ("tags", "path"):
+            args.extend(["--group-by", group_by])
+        
+        if insecure:
+            args.append("--insecure")
         
         logger.debug(f"Executing: {' '.join(args)}")
         
@@ -32,7 +47,7 @@ def execute(params: dict[str, Any]) -> dict[str, Any]:
             return {
                 "success": False,
                 "collection_path": output_directory,
-                "collection_name": params.get("collection_name", ""),
+                "collection_name": collection_name or "",
                 "requests_created": 0,
                 "message": "Import failed",
                 "errors": [result.stderr]
@@ -43,7 +58,7 @@ def execute(params: dict[str, Any]) -> dict[str, Any]:
         return {
             "success": True,
             "collection_path": output_directory,
-            "collection_name": params.get("collection_name", "Imported Collection"),
+            "collection_name": collection_name or "Imported Collection",
             "requests_created": 0,
             "message": "Collection imported successfully from OpenAPI",
             "errors": []

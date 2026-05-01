@@ -27,11 +27,11 @@ def execute(params: dict[str, Any]) -> dict[str, Any]:
         
         # Read bruno.json if it exists
         bruno_json_file = path_obj / "bruno.json"
-        collection_name = None
+        collection_name = path_obj.name  # Default to directory name
         if bruno_json_file.exists():
             try:
                 bruno_data = json.loads(bruno_json_file.read_text())
-                collection_name = bruno_data.get("name", "Unknown")
+                collection_name = bruno_data.get("name") or collection_name
             except Exception as e:
                 logger.warning(f"Could not parse bruno.json: {e}")
         
@@ -40,22 +40,49 @@ def execute(params: dict[str, Any]) -> dict[str, Any]:
         for bru_file in path_obj.rglob("*.bru"):
             try:
                 content = bru_file.read_text()
-                # Parse basic metadata from .bru file
+                
+                # Parse method (get, post, put, delete, patch, head, options)
+                method = "UNKNOWN"
+                for m in ["get", "post", "put", "patch", "delete", "head", "options"]:
+                    if f"{m} {{" in content.lower():
+                        method = m.upper()
+                        break
+                
+                # Parse request name from meta block or use filename
                 req_name = bru_file.stem
-                method = "GET"  # default
-                if "post {" in content.lower():
-                    method = "POST"
-                elif "put {" in content.lower():
-                    method = "PUT"
-                elif "delete {" in content.lower():
-                    method = "DELETE"
-                elif "patch {" in content.lower():
-                    method = "PATCH"
+                import re
+                for line in content.split("\n"):
+                    if "name:" in line.lower():
+                        # Extract name value
+                        parts = line.split(":", 1)
+                        if len(parts) > 1:
+                            req_name = parts[1].strip()
+                            break
+                
+                # Parse URL from the .bru file
+                url = ""
+                for line in content.split("\n"):
+                    if line.strip().startswith("url:"):
+                        url = line.split(":", 1)[1].strip() if ":" in line else ""
+                        break
+                
+                # Parse tags
+                tags: list[str] = []
+                tags_match = re.search(r'tags:\s*\[([^\]]*)\]', content)
+                if tags_match:
+                    tags_str = tags_match.group(1)
+                    tags = [t.strip().strip('"\'') for t in tags_str.split(",") if t.strip()]
+                
+                # Check for tests
+                has_tests = "tests {" in content.lower()
                 
                 requests.append({
                     "name": req_name,
                     "method": method,
-                    "path": str(bru_file.relative_to(path_obj))
+                    "url": url,
+                    "path": str(bru_file),
+                    "tags": tags,
+                    "has_tests": has_tests
                 })
             except Exception as e:
                 logger.debug(f"Could not parse {bru_file}: {e}")

@@ -98,6 +98,67 @@ class TestApprovalManifestIsApproved:
         )
         assert manifest.is_approved("tool_tamper", "hash_tamper") is False
 
+    def test_ttl_rejects_expired_approval(self, tmp_path: Path) -> None:
+        # TTL of 1 second; approval is immediately expired
+        manifest = ApprovalManifest(
+            approval_dir=str(tmp_path), approval_secret="secret", ttl_seconds=1
+        )
+        manifest.approve("tool", "hash")
+        # Wait slightly more than 1 second
+        import time
+        time.sleep(1.1)
+        assert manifest.is_approved("tool", "hash") is False
+
+    def test_ttl_missing_timestamp_fails_closed(self, tmp_path: Path) -> None:
+        manifest = ApprovalManifest(
+            approval_dir=str(tmp_path), approval_secret="secret", ttl_seconds=3600
+        )
+        manifest.approve("tool", "hash")
+        record = manifest._records["tool"]
+        # Remove timestamp (fail closed test)
+        manifest._records["tool"] = ApprovalRecord(
+            name=record.name,
+            hash=record.hash,
+            signature=record.signature,
+            approved_at="",  # Empty string
+            approved_by=record.approved_by,
+        )
+        assert manifest.is_approved("tool", "hash") is False
+
+    def test_ttl_invalid_timestamp_format_fails_closed(self, tmp_path: Path) -> None:
+        manifest = ApprovalManifest(
+            approval_dir=str(tmp_path), approval_secret="secret", ttl_seconds=3600
+        )
+        manifest.approve("tool", "hash")
+        record = manifest._records["tool"]
+        # Set invalid timestamp format
+        manifest._records["tool"] = ApprovalRecord(
+            name=record.name,
+            hash=record.hash,
+            signature=record.signature,
+            approved_at="not-a-valid-iso-timestamp",
+            approved_by=record.approved_by,
+        )
+        assert manifest.is_approved("tool", "hash") is False
+
+    def test_ttl_naive_datetime_fails_closed(self, tmp_path: Path) -> None:
+        from datetime import datetime
+        manifest = ApprovalManifest(
+            approval_dir=str(tmp_path), approval_secret="secret", ttl_seconds=3600
+        )
+        manifest.approve("tool", "hash")
+        record = manifest._records["tool"]
+        # Set naive datetime (no timezone info)
+        naive_dt = datetime(2026, 5, 2, 12, 0, 0)  # No tzinfo
+        manifest._records["tool"] = ApprovalRecord(
+            name=record.name,
+            hash=record.hash,
+            signature=record.signature,
+            approved_at=naive_dt.isoformat(),  # Will be naive
+            approved_by=record.approved_by,
+        )
+        assert manifest.is_approved("tool", "hash") is False
+
 
 class TestApprovalManifestRevoke:
     def test_revoke_existing_returns_true(self, tmp_path: Path) -> None:

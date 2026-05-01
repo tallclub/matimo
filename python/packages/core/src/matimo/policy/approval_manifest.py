@@ -97,9 +97,19 @@ class ApprovalManifest:
             return False
         # TTL check — if configured, reject approvals older than ttl_seconds
         if self._ttl_seconds is not None:
-            approved_at = datetime.fromisoformat(record.approved_at)
-            age_s = (datetime.now(UTC) - approved_at).total_seconds()
-            if age_s > self._ttl_seconds:
+            # Fail closed if timestamp is missing or unparsable
+            if not record.approved_at:
+                return False
+            try:
+                approved_at = datetime.fromisoformat(record.approved_at)
+                # Ensure aware datetime (fail closed if naive)
+                if approved_at.tzinfo is None:
+                    return False
+                age_s = (datetime.now(UTC) - approved_at).total_seconds()
+                if age_s > self._ttl_seconds:
+                    return False
+            except (ValueError, TypeError):
+                # Invalid timestamp format or timezone-aware comparison failed
                 return False
         return self._verify_signature(record)
 

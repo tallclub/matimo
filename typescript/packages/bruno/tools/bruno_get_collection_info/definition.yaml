@@ -37,27 +37,18 @@ output_schema:
                 type: string
               url:
                 type: string
+              path:
+                type: string
               tags:
                 type: array
                 items:
                   type: string
               has_tests:
                 type: boolean
-        environments:
-          type: array
-          items:
-            type: object
-            properties:
-              name:
-                type: string
-              variables:
-                type: array
-                items:
-                  type: string
-        variables:
-          type: object
-        authentication:
-          type: object
+    errors:
+      type: array
+      items:
+        type: string
 
 
 examples:
