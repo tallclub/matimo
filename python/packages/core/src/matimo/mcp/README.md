@@ -172,10 +172,13 @@ async def _call_tool(self, name: str, arguments: dict) -> list:
     if tool_def and tool_def.requires_approval and not matimo_approved:
         return [TextContent(type="text", text="Approval required. Re-invoke with _matimo_approved: true")]
     
-    # Safe to execute
-    result = await self._matimo.execute(name, clean_args, approved=matimo_approved)
+    # The client-supplied flag is a confirmation signal only by default.
+    result = await self._matimo.execute(name, clean_args, approved=False)
     return [TextContent(type="text", text=json.dumps(result))]
 ```
+
+Only set `MCPServerOptions(trust_client_approval=True)` when the transport or
+embedding application provides a server-trusted approval signal.
 
 ---
 
@@ -529,7 +532,7 @@ uv run pytest packages/core/tests/unit/test_mcp_server.py -v
 3. **Credentials stored in memory only** — never written to process.env or disk
 4. **Secrets per-call injection** — only passed to `matimo.execute()`, not to clients
 5. **Bearer token for HTTP** — required in `Authorization` header for HTTP transport
-6. **Approval gating** — destructive tools require explicit `_matimo_approved=true`
+6. **Approval gating** — destructive tools require explicit `_matimo_approved=true`, then server-side approval still applies by default
 
 ---
 

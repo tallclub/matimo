@@ -54,6 +54,10 @@ class MCPServerOptions:
     untrusted_paths: list[str] | None = None
     approval_secret: str | None = None
     approval_dir: str | None = None
+    # Trust _matimo_approved from MCP tool-call arguments as an out-of-band
+    # approval. Defaults to False because MCP arguments are supplied by the
+    # client/model and are not a server-side approval signal by themselves.
+    trust_client_approval: bool = False
 
 
 class MCPServer:
@@ -287,8 +291,9 @@ class MCPServer:
         except ImportError:
             return []
 
-        # Extract _matimo_approved flag before forwarding to execute.
-        # Mirrors: const { _matimo_approved, ...cleanArgs } = args in TS.
+        # Extract _matimo_approved before forwarding to execute. By default this
+        # client-supplied flag is only a confirmation prompt signal; it must not
+        # bypass server-side approval checks.
         matimo_approved: object = arguments.get("_matimo_approved", False)
         clean_args = {k: v for k, v in arguments.items() if k != "_matimo_approved"}
 
@@ -319,7 +324,11 @@ class MCPServer:
                 name,
                 clean_args,
                 credentials=credentials or None,
-                approved=matimo_approved is True,
+                approved=(
+                    self._options.trust_client_approval
+                    and bool(tool_def and getattr(tool_def, "requires_approval", False))
+                    and matimo_approved is True
+                ),
             )
             output = _json.dumps(result, indent=2, default=str)
             return [mcp_types.TextContent(type="text", text=output)]

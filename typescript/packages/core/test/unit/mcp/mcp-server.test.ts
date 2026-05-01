@@ -443,7 +443,7 @@ describe('MCPServer', () => {
       await server.stop();
     });
 
-    it('should execute approval-required tools with _matimo_approved', async () => {
+    it('should not trust _matimo_approved as server approval by default', async () => {
       const tool = createTestTool({
         name: 'dangerous_delete',
         requires_approval: true,
@@ -452,6 +452,38 @@ describe('MCPServer', () => {
       mockExecute.mockResolvedValue({ deleted: true });
 
       const server = new MCPServer({ transport: 'stdio', autoDiscover: false });
+      await server.start();
+
+      const callback = mockRegisterTool.mock.calls[0][2];
+      const result = await callback({ message: 'delete all', _matimo_approved: true });
+
+      expect(result).toEqual({
+        content: [{ type: 'text', text: JSON.stringify({ deleted: true }, null, 2) }],
+      });
+      expect(mockExecute).toHaveBeenCalledWith(
+        'dangerous_delete',
+        {
+          message: 'delete all',
+        },
+        { approved: false, credentials: {} }
+      );
+
+      await server.stop();
+    });
+
+    it('should trust _matimo_approved only when explicitly configured', async () => {
+      const tool = createTestTool({
+        name: 'dangerous_delete',
+        requires_approval: true,
+      });
+      mockListTools.mockReturnValue([tool]);
+      mockExecute.mockResolvedValue({ deleted: true });
+
+      const server = new MCPServer({
+        transport: 'stdio',
+        autoDiscover: false,
+        trustClientApproval: true,
+      });
       await server.start();
 
       const callback = mockRegisterTool.mock.calls[0][2];
