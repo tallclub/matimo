@@ -337,8 +337,8 @@ class TestMCPServerCallTool:
         # execute must NOT have been called
         matimo.execute.assert_not_awaited()
 
-    async def test_call_tool_approval_required_with_flag(self) -> None:
-        """Tools with requires_approval=True execute when _matimo_approved=True."""
+    async def test_call_tool_does_not_trust_approval_flag_by_default(self) -> None:
+        """_matimo_approved=True must not bypass server-side approval by default."""
         mock_mcp_types = MagicMock()
         mock_mcp_types.TextContent.return_value = MagicMock()
 
@@ -349,6 +349,30 @@ class TestMCPServerCallTool:
         matimo.get_tool.return_value = tool
         matimo.execute = AsyncMock(return_value={"ok": True})
         server = MCPServer(matimo, MCPServerOptions())
+
+        with patch.dict("sys.modules", {"mcp": MagicMock(), "mcp.types": mock_mcp_types}):
+            result = await server._call_tool("dangerous_tool", {"_matimo_approved": True})
+
+        assert len(result) == 1
+        matimo.execute.assert_awaited_once()
+        _, kwargs = matimo.execute.await_args
+        assert kwargs.get("approved") is False
+
+    async def test_call_tool_trusts_approval_flag_only_when_configured(self) -> None:
+        """Servers can opt in to trusting transport-level approval confirmation."""
+        mock_mcp_types = MagicMock()
+        mock_mcp_types.TextContent.return_value = MagicMock()
+
+        tool = _make_tool("dangerous_tool")
+        object.__setattr__(tool, "requires_approval", True)
+
+        matimo = _make_matimo_mock()
+        matimo.get_tool.return_value = tool
+        matimo.execute = AsyncMock(return_value={"ok": True})
+        server = MCPServer(
+            matimo,
+            MCPServerOptions(trust_client_approval=True),
+        )
 
         with patch.dict("sys.modules", {"mcp": MagicMock(), "mcp.types": mock_mcp_types}):
             result = await server._call_tool("dangerous_tool", {"_matimo_approved": True})
