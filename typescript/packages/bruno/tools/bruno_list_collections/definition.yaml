@@ -1,5 +1,5 @@
 name: bruno_list_collections
-description: Discover and introspect all Bruno API collections in a workspace directory. Returns metadata about available collections including request count and environments.
+description: Discover all Bruno API collections in a workspace directory. Returns collection metadata including name, path, and request count.
 version: '1.0.0'
 status: approved
 
@@ -35,14 +35,7 @@ output_schema:
             type: string
           request_count:
             type: number
-          environments:
-            type: array
-            items:
-              type: string
-          tags:
-            type: array
-            items:
-              type: string
+        required: ["name", "path", "request_count"]
 
 
 examples:
