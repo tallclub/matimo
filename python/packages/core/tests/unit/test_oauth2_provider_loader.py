@@ -4,7 +4,11 @@ from __future__ import annotations
 from pathlib import Path
 from urllib.parse import urlparse
 
+import pytest
+
 from matimo.auth.oauth2_provider_loader import OAuth2ProviderLoader
+
+pytestmark = pytest.mark.asyncio
 
 
 def _write_provider_definition(directory: Path, provider_name: str) -> None:

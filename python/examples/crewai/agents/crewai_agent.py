@@ -62,10 +62,23 @@ async def run(task: str) -> None:
     print("🚀  Initialising Matimo (auto-discover)…")
     matimo = await Matimo.init(auto_discover=True)
     all_tools = matimo.list_tools()
-    print(f"✅  Loaded {len(all_tools)} tools from all providers\n")
+    print(f"✅  Loaded {len(all_tools)} tools from all providers")
+
+    # ── 1.5 Filter tools to OpenAI's 128-tool limit ──────────────────────────
+    # Keep tools from core + major providers (Slack, Gmail, GitHub, Notion)
+    allowed_prefixes = (
+        "slack_", "gmail_", "github_", "notion_", 
+        "execute", "read", "search", "web", "edit",
+        "postgres_", "twilio_", "hubspot_", "mailchimp_"
+    )
+    filtered_tools = [t for t in all_tools if any(t.name.startswith(p) for p in allowed_prefixes)]
+    # Trim to 128 tools max (OpenAI limit)
+    if len(filtered_tools) > 128:
+        filtered_tools = filtered_tools[:128]
+    print(f"📋  Filtered to {len(filtered_tools)} tools (OpenAI limit: 128)\n")
 
     # ── 2. Convert to CrewAI BaseTools ───────────────────────────────────────
-    crewai_tools = convert_tools_to_crewai(all_tools, matimo)
+    crewai_tools = convert_tools_to_crewai(filtered_tools, matimo)
     print(f"🔧  {len(crewai_tools)} CrewAI tools ready\n")
 
     # ── 3. Build Agent + Task + Crew ─────────────────────────────────────────
@@ -76,7 +89,7 @@ async def run(task: str) -> None:
             "You are an expert at using integration tools to interact with external services. "
             "You always pick the right tool for the job and return clean, structured results."
         ),
-        model="gpt-4o-mini",
+        model="gpt-4o",
         tools=crewai_tools,
         verbose=True,
     )

@@ -200,10 +200,11 @@ class OutputSchema(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     type: str | None = None
-    properties: dict[str, Any] | None = None
+    properties: dict[str, OutputSchema] | None = None
     items: OutputSchema | None = None
     required: list[str] | None = None
     description: str | None = None
+    enum: list[Any] | None = None
 
 
 class ErrorHandlingConfig(BaseModel):
@@ -257,6 +258,7 @@ class ToolDefinition(BaseModel):
     error_handling: ErrorHandlingConfig | None = None
     rate_limiting: RateLimitConfig | None = None
     requires_approval: bool = False
+    risk: str | None = None  # optional explicit override: 'low' | 'medium' | 'high' | 'critical'
     examples: list[ToolExample] = Field(default_factory=list)
     deprecated: bool = False
     deprecation_message: str | None = None

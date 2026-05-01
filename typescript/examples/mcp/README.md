@@ -208,6 +208,66 @@ This channel is then used for all subsequent tasks in the same run.
 
 ---
 
+## VS Code Integration
+
+Connect the TypeScript HTTP server to **VS Code Copilot Chat**.
+
+### Step 1 — Start the MCP server
+```bash
+cd typescript
+pnpm mcp:start:http
+# equivalent: npx matimo mcp --transport http --port 3555
+# Server starts on http://localhost:3555
+```
+
+### Step 2 — Configure VS Code
+
+Create (or update) `.vscode/mcp.json` at your **workspace root** — **not** `settings.json`:
+
+```json
+{
+  "servers": {
+    "matimo-ts": {
+      "type": "http",
+      "url": "http://localhost:3555/mcp",
+      "headers": {
+        "Authorization": "Bearer ${input:matimo_token}"
+      }
+    }
+  },
+  "inputs": [
+    {
+      "id": "matimo_token",
+      "type": "promptString",
+      "description": "MATIMO_MCP_TOKEN from your .env",
+      "password": true
+    }
+  ]
+}
+```
+
+Or **no token** (skip auth by omitting the `headers` block if your server runs without
+`MATIMO_MCP_TOKEN`).
+
+**No pre-start needed?** Use stdio — VS Code spawns the server on demand:
+```json
+{
+  "servers": {
+    "matimo": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["matimo", "mcp"],
+      "cwd": "${workspaceFolder}/typescript"
+    }
+  }
+}
+```
+
+### Step 3 — Reload
+Command Palette (Cmd+Shift+P) → `MCP: Restart Server`
+
+---
+
 ## Troubleshooting
 
 **`SLACK_BOT_TOKEN not set`**

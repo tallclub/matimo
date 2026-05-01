@@ -73,14 +73,27 @@ async def run_agent(mission: str) -> None:
     print("🚀  Initialising Matimo (auto-discover mode)…")
     matimo = await Matimo.init(auto_discover=True)
     all_tools = matimo.list_tools()
-    print(f"✅  Loaded {len(all_tools)} tools across all providers\n")
+    print(f"✅  Loaded {len(all_tools)} tools across all providers")
+
+    # ── 1.5 Filter tools to OpenAI's 128-tool limit ──────────────────────────
+    # Keep tools from core + major providers (Slack, Gmail, GitHub, Notion)
+    allowed_prefixes = (
+        "slack_", "gmail_", "github_", "notion_", 
+        "execute", "read", "search", "web", "edit",
+        "postgres_", "twilio_", "hubspot_", "mailchimp_"
+    )
+    filtered_tools = [t for t in all_tools if any(t.name.startswith(p) for p in allowed_prefixes)]
+    # Trim to 128 tools max (OpenAI limit)
+    if len(filtered_tools) > 128:
+        filtered_tools = filtered_tools[:128]
+    print(f"📋  Filtered to {len(filtered_tools)} tools (OpenAI limit: 128)\n")
 
     # ── 2. Convert to LangChain StructuredTools ───────────────────────────────
-    lc_tools = convert_tools_to_langchain(all_tools, matimo)
+    lc_tools = convert_tools_to_langchain(filtered_tools, matimo)
     print(f"🔧  {len(lc_tools)} LangChain tools ready\n")
 
     # ── 3. Bind tools to LLM ─────────────────────────────────────────────────
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+    llm = ChatOpenAI(model="gpt-4o", temperature=0, api_key=openai_key)
     llm_with_tools = llm.bind_tools(lc_tools)
 
     tool_map = {t.name: t for t in lc_tools}

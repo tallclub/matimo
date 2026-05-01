@@ -43,12 +43,19 @@ DEPENDENCIES:
 from __future__ import annotations
 
 import asyncio
+import os
 import sys
 from pathlib import Path
 
 
 async def main() -> None:
     """Start the Matimo MCP stdio server."""
+    # Ensure we run from the correct directory to discover tools/skills
+    # (server script is in src/, but tools/.env are in parent mcp/)
+    script_dir = Path(__file__).parent
+    examples_mcp_dir = script_dir.parent
+    os.chdir(examples_mcp_dir)
+
     try:
         from matimo import Matimo
         from matimo.mcp.server import MCPServer, MCPServerOptions
@@ -68,8 +75,24 @@ async def main() -> None:
         {"type": "dotenv", "path": str(env_file)},
     ])
 
+    # Discover skill paths explicitly (like TypeScript --skill-paths)
+    skill_paths = []
+
+    # Check for local matimo-tools/skills
+    examples_skills = examples_mcp_dir / "matimo-tools" / "skills"
+    if examples_skills.exists():
+        skill_paths.append(str(examples_skills))
+
+    # Check for src/matimo-tools/skills
+    src_skills = examples_mcp_dir / "src" / "matimo-tools" / "skills"
+    if src_skills.exists():
+        skill_paths.append(str(src_skills))
+
     # Auto-discover all installed matimo-* provider packages (entry_points)
-    matimo = await Matimo.init(auto_discover=True)
+    matimo = await Matimo.init(
+        skill_paths=skill_paths if skill_paths else None,
+        auto_discover=True
+    )
 
     # Start the MCP server on stdio
     server = MCPServer(

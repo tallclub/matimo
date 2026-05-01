@@ -40,7 +40,12 @@ module.exports = {
         experimentalDecorators: true,
         emitDecoratorMetadata: true,
         target: 'ES2020',
-        module: 'ES2020'
+        module: 'ES2020',
+        baseUrl: '.',
+        paths: {
+          '@matimo/core': ['packages/core/src/index.ts'],
+          'matimo': ['packages/core/src/index.ts']
+        }
       }
     }]
   }

@@ -9,6 +9,9 @@ from matimo.core.models import FunctionExecution, Parameter, ParameterType, Tool
 from matimo.errors import ErrorCode, MatimoError
 from matimo.executors.function_executor import FunctionExecutor
 
+pytestmark = pytest.mark.asyncio
+
+
 
 def _make_function_tool(code: str, tmp_path: Path, params: dict | None = None) -> ToolDefinition:
     py_file = tmp_path / "tool_func.py"

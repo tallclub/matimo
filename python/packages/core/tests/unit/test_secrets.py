@@ -16,6 +16,8 @@ from matimo.mcp.secrets import (
 )
 from matimo.mcp.secrets.types import SecretResolver
 
+pytestmark = pytest.mark.asyncio
+
 # ---------------------------------------------------------------------------
 # SecretResolver Protocol
 # ---------------------------------------------------------------------------

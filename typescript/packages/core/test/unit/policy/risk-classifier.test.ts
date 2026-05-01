@@ -13,6 +13,14 @@ function makeTool(
 }
 
 describe('classifyRisk', () => {
+  it('should honor explicit risk override before execution-type checks', () => {
+    const tool = makeTool({
+      execution: { type: 'command', command: 'echo hello' },
+      risk: 'low',
+    });
+    expect(classifyRisk(tool)).toBe('low');
+  });
+
   it('should classify function execution as critical', () => {
     const tool = makeTool({ execution: { type: 'function', code: './fn.ts' } });
     expect(classifyRisk(tool)).toBe('critical');
@@ -63,6 +71,15 @@ describe('classifyRisk', () => {
       execution: { type: 'http', method: 'GET', url: 'https://api.example.com' },
       requires_approval: true,
     });
+    expect(classifyRisk(tool)).toBe('high');
+  });
+
+  it('should treat unknown execution type as high risk', () => {
+    const tool = makeTool({
+      execution: { type: 'http', method: 'GET', url: 'https://api.example.com' },
+    });
+    // Runtime guard: if malformed definitions bypass schema validation, default to high risk.
+    (tool as unknown as { execution: { type: string } }).execution.type = 'unknown';
     expect(classifyRisk(tool)).toBe('high');
   });
 });

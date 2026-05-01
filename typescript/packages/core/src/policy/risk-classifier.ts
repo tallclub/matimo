@@ -17,6 +17,11 @@ import type { RiskLevel } from './types';
  * - low: HTTP GET, read-only tools
  */
 export function classifyRisk(tool: ToolDefinition): RiskLevel {
+  // Explicit override declared in the tool YAML takes precedence
+  if (tool.risk) {
+    return tool.risk as RiskLevel;
+  }
+
   const exec = tool.execution;
 
   // Arbitrary code execution is always critical risk

@@ -20,6 +20,9 @@ from matimo.core.models import (
 from matimo.errors import ErrorCode, MatimoError
 from matimo.executors.http_executor import HttpExecutor
 
+pytestmark = pytest.mark.asyncio
+
+
 
 def _make_http_tool(
     name: str = "test_tool",

@@ -1,0 +1,14 @@
+meta {
+  name: Logs out current logged in user session
+  type: http
+  seq: 8
+  tags: [
+    user
+  ]
+}
+
+get {
+  url: {{baseUrl}}/user/logout
+  body: none
+  auth: inherit
+}

@@ -1,0 +1,18 @@
+meta {
+  name: Updates a pet in the store with form data
+  type: http
+  seq: 7
+  tags: [
+    pet
+  ]
+}
+
+post {
+  url: {{baseUrl}}/pet/:petId
+  body: none
+  auth: inherit
+}
+
+params:path {
+  petId: 
+}

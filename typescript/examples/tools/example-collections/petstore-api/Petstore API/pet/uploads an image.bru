@@ -1,0 +1,18 @@
+meta {
+  name: uploads an image
+  type: http
+  seq: 1
+  tags: [
+    pet
+  ]
+}
+
+post {
+  url: {{baseUrl}}/pet/:petId/uploadImage
+  body: none
+  auth: inherit
+}
+
+params:path {
+  petId: 
+}

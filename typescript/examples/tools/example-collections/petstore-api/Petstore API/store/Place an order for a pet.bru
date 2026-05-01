@@ -1,0 +1,14 @@
+meta {
+  name: Place an order for a pet
+  type: http
+  seq: 2
+  tags: [
+    store
+  ]
+}
+
+post {
+  url: {{baseUrl}}/store/order
+  body: none
+  auth: inherit
+}

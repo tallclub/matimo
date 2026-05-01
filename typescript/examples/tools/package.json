@@ -49,6 +49,9 @@
     "twilio:factory": "tsx twilio/twilio-factory.ts",
     "twilio:decorator": "tsx twilio/twilio-decorator.ts",
     "twilio:langchain": "tsx twilio/twilio-langchain.ts",
+    "bruno:complete": "tsx ./bruno/bruno-complete-workflow.ts",
+    "bruno:langchain": "tsx ./bruno/bruno-langchain-agent.ts",
+    "debug:discovery": "tsx ./debug-discovery.ts",
     "credentials:example": "tsx credentials/credentials-example.ts",
     "policy:demo": "tsx policy/policy-demo.ts",
     "skills:demo": "tsx skills/skills-demo.ts",
@@ -64,25 +67,26 @@
   "dependencies": {
     "@langchain/core": "^1.1.18",
     "@langchain/openai": "^1.2.4",
-    "langchain": "^1.2.16",
-    "matimo": "workspace:*",
+    "@matimo/bruno": "workspace:*",
     "@matimo/core": "workspace:*",
-    "@matimo/slack": "workspace:*",
-    "@matimo/gmail": "workspace:*",
-    "@matimo/postgres": "workspace:*",
     "@matimo/github": "workspace:*",
+    "@matimo/gmail": "workspace:*",
     "@matimo/hubspot": "workspace:*",
-    "@matimo/notion": "workspace:*",
     "@matimo/mailchimp": "workspace:*",
+    "@matimo/notion": "workspace:*",
+    "@matimo/postgres": "workspace:*",
+    "@matimo/slack": "workspace:*",
     "@matimo/twilio": "workspace:*",
     "dotenv": "^17.2.3",
+    "langchain": "^1.2.16",
+    "matimo": "workspace:*",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/node": "^25.1.0",
     "better-sqlite3": "^12.6.2",
-    "typescript": "^5.9.3",
-    "tsx": "^4.21.0"
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
   },
   "engines": {
     "node": ">=18.0.0"

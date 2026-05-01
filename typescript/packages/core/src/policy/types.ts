@@ -125,6 +125,11 @@ export interface PolicyConfig {
    * Default: ['medium'] — critical/high are always blocked, low is always auto.
    */
   quarantineRiskLevels?: RiskLevel[];
+  /**
+   * Number of seconds after which an approval expires and the tool must be re-approved.
+   * If not set, approvals never expire.
+   */
+  approvalTtlSeconds?: number;
 }
 
 // ─── Policy Engine Interface ────────────────────────────────────────────

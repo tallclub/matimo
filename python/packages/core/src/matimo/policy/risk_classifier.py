@@ -13,6 +13,7 @@ def classify_risk(tool: ToolDefinition) -> RiskLevel:
     Assign a risk level based on execution type and HTTP method.
 
     Rules (matches TypeScript classifyRisk):
+      explicit risk field → honours it directly
       function → critical
       command  → high
       http:
@@ -21,6 +22,10 @@ def classify_risk(tool: ToolDefinition) -> RiskLevel:
         POST / PUT / PATCH → medium
         GET (default)     → low
     """
+    # Explicit override declared in the tool YAML takes precedence
+    if tool.risk:
+        return RiskLevel(tool.risk)
+
     exec_type = tool.execution.type
 
     if exec_type == "function":

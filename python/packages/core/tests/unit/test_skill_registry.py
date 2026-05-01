@@ -12,6 +12,8 @@ from matimo.core.skill_registry import SemanticSearchResult, SkillRegistry
 from matimo.core.tfidf_embedding import TfIdfEmbeddingProvider
 from matimo.errors import ErrorCode, MatimoError
 
+pytestmark = pytest.mark.asyncio
+
 
 def _make_skill(
     name: str = "test-skill",

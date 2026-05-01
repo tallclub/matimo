@@ -1,0 +1,344 @@
+[
+  {
+    "iterationIndex": 0,
+    "results": [
+      {
+        "test": {
+          "filename": "create-todo.bru"
+        },
+        "request": {
+          "method": "POST",
+          "url": "https://jsonplaceholder.typicode.com/todos",
+          "headers": {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          },
+          "data": "{\n  \"title\": \"Buy groceries\",\n  \"completed\": false,\n  \"userId\": 1\n}"
+        },
+        "response": {
+          "status": 201,
+          "statusText": "Created",
+          "headers": {
+            "date": "Sat, 25 Apr 2026 14:22:29 GMT",
+            "content-type": "application/json; charset=utf-8",
+            "content-length": "80",
+            "connection": "close",
+            "access-control-allow-credentials": "true",
+            "access-control-expose-headers": "Location",
+            "cache-control": "no-cache",
+            "etag": "W/\"50-VnTCKhfKEyjICbcR10rsIIuWVyw\"",
+            "expires": "-1",
+            "location": "https://jsonplaceholder.typicode.com/todos/201",
+            "nel": "{\"report_to\":\"heroku-nel\",\"response_headers\":[\"Via\"],\"max_age\":3600,\"success_fraction\":0.01,\"failure_fraction\":0.1}",
+            "pragma": "no-cache",
+            "report-to": "{\"group\":\"heroku-nel\",\"endpoints\":[{\"url\":\"https://nel.heroku.com/reports?s=X1tIjl5gB8IPjoJTxx5aEmSK6JKriEvMQS2slg3GIN4%3D\\u0026sid=e11707d5-02a7-43ef-b45e-2cf4d2036f7d\\u0026ts=1777126949\"}],\"max_age\":3600}",
+            "reporting-endpoints": "heroku-nel=\"https://nel.heroku.com/reports?s=X1tIjl5gB8IPjoJTxx5aEmSK6JKriEvMQS2slg3GIN4%3D&sid=e11707d5-02a7-43ef-b45e-2cf4d2036f7d&ts=1777126949\"",
+            "server": "cloudflare",
+            "vary": "Origin, X-HTTP-Method-Override, Accept-Encoding",
+            "via": "2.0 heroku-router",
+            "x-content-type-options": "nosniff",
+            "x-powered-by": "Express",
+            "x-ratelimit-limit": "1000",
+            "x-ratelimit-remaining": "999",
+            "x-ratelimit-reset": "1777126965",
+            "cf-cache-status": "DYNAMIC",
+            "cf-ray": "9f1e000868abcfa3-MRS",
+            "alt-svc": "h3=\":443\"; ma=86400"
+          },
+          "data": {
+            "title": "Buy groceries",
+            "completed": false,
+            "userId": 1,
+            "id": 201
+          },
+          "url": "https://jsonplaceholder.typicode.com/todos",
+          "responseTime": 581
+        },
+        "error": null,
+        "status": "pass",
+        "assertionResults": [],
+        "testResults": [
+          {
+            "description": "Status is 201",
+            "status": "pass",
+            "uid": "1CAxI1XOPkogy2gazKShs"
+          },
+          {
+            "description": "Response has id",
+            "status": "pass",
+            "uid": "KUGyHr9b-9wvl4ORV6jnC"
+          },
+          {
+            "description": "Title matches",
+            "status": "pass",
+            "uid": "XSqQeb3M38KiiaUKds0zL"
+          }
+        ],
+        "preRequestTestResults": [],
+        "postResponseTestResults": [],
+        "shouldStopRunnerExecution": false,
+        "runDuration": 0.672704666,
+        "name": "create-todo",
+        "path": "create-todo",
+        "iterationIndex": 0
+      },
+      {
+        "test": {
+          "filename": "delete-todo.bru"
+        },
+        "request": {
+          "method": "DELETE",
+          "url": "https://jsonplaceholder.typicode.com/todos/1",
+          "headers": {
+            "Content-Type": "application/json"
+          }
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "headers": {
+            "date": "Sat, 25 Apr 2026 14:22:29 GMT",
+            "content-type": "application/json; charset=utf-8",
+            "content-length": "2",
+            "connection": "close",
+            "access-control-allow-credentials": "true",
+            "cache-control": "no-cache",
+            "etag": "W/\"2-vyGp6PvFo4RvsFtPoIWeCReyIC8\"",
+            "expires": "-1",
+            "nel": "{\"report_to\":\"heroku-nel\",\"response_headers\":[\"Via\"],\"max_age\":3600,\"success_fraction\":0.01,\"failure_fraction\":0.1}",
+            "pragma": "no-cache",
+            "report-to": "{\"group\":\"heroku-nel\",\"endpoints\":[{\"url\":\"https://nel.heroku.com/reports?s=X1tIjl5gB8IPjoJTxx5aEmSK6JKriEvMQS2slg3GIN4%3D\\u0026sid=e11707d5-02a7-43ef-b45e-2cf4d2036f7d\\u0026ts=1777126949\"}],\"max_age\":3600}",
+            "reporting-endpoints": "heroku-nel=\"https://nel.heroku.com/reports?s=X1tIjl5gB8IPjoJTxx5aEmSK6JKriEvMQS2slg3GIN4%3D&sid=e11707d5-02a7-43ef-b45e-2cf4d2036f7d&ts=1777126949\"",
+            "server": "cloudflare",
+            "vary": "Origin, Accept-Encoding",
+            "via": "2.0 heroku-router",
+            "x-content-type-options": "nosniff",
+            "x-powered-by": "Express",
+            "x-ratelimit-limit": "1000",
+            "x-ratelimit-remaining": "998",
+            "x-ratelimit-reset": "1777126965",
+            "cf-cache-status": "DYNAMIC",
+            "cf-ray": "9f1e000bf8f1a9cc-MRS",
+            "alt-svc": "h3=\":443\"; ma=86400"
+          },
+          "data": {},
+          "url": "https://jsonplaceholder.typicode.com/todos/1",
+          "responseTime": 487
+        },
+        "error": null,
+        "status": "pass",
+        "assertionResults": [],
+        "testResults": [
+          {
+            "description": "Status is 200",
+            "status": "pass",
+            "uid": "UmPvQ9EFKoVcB1ZRnTN48"
+          }
+        ],
+        "preRequestTestResults": [],
+        "postResponseTestResults": [],
+        "shouldStopRunnerExecution": false,
+        "runDuration": 0.5339605,
+        "name": "delete-todo",
+        "path": "delete-todo",
+        "iterationIndex": 0
+      },
+      {
+        "test": {
+          "filename": "fetch-todos.bru"
+        },
+        "request": {
+          "method": "GET",
+          "url": "https://jsonplaceholder.typicode.com/todos?_limit=5",
+          "headers": {
+            "Accept": "application/json",
+            "content-type": null
+          }
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "headers": {
+            "date": "Sat, 25 Apr 2026 14:22:30 GMT",
+            "content-type": "application/json; charset=utf-8",
+            "transfer-encoding": "chunked",
+            "connection": "close",
+            "access-control-allow-credentials": "true",
+            "access-control-expose-headers": "X-Total-Count",
+            "cache-control": "max-age=43200",
+            "etag": "W/\"222-Jlf0URYqNjT6OVRKt6wScS3N4iQ\"",
+            "expires": "-1",
+            "nel": "{\"report_to\":\"heroku-nel\",\"response_headers\":[\"Via\"],\"max_age\":3600,\"success_fraction\":0.01,\"failure_fraction\":0.1}",
+            "pragma": "no-cache",
+            "report-to": "{\"group\":\"heroku-nel\",\"endpoints\":[{\"url\":\"https://nel.heroku.com/reports?s=4wl0y1e1Hiyyvil%2FbrR9SvjUsyKC5us%2B1S5wupvfYPY%3D\\u0026sid=e11707d5-02a7-43ef-b45e-2cf4d2036f7d\\u0026ts=1777093902\"}],\"max_age\":3600}",
+            "reporting-endpoints": "heroku-nel=\"https://nel.heroku.com/reports?s=4wl0y1e1Hiyyvil%2FbrR9SvjUsyKC5us%2B1S5wupvfYPY%3D&sid=e11707d5-02a7-43ef-b45e-2cf4d2036f7d&ts=1777093902\"",
+            "server": "cloudflare",
+            "vary": "Origin, Accept-Encoding",
+            "via": "2.0 heroku-router",
+            "x-content-type-options": "nosniff",
+            "x-powered-by": "Express",
+            "x-ratelimit-limit": "1000",
+            "x-ratelimit-remaining": "999",
+            "x-ratelimit-reset": "1777093905",
+            "x-total-count": "200",
+            "age": "2076",
+            "cf-cache-status": "HIT",
+            "cf-ray": "9f1e000f5d8a12a0-MRS",
+            "alt-svc": "h3=\":443\"; ma=86400"
+          },
+          "data": [
+            {
+              "userId": 1,
+              "id": 1,
+              "title": "delectus aut autem",
+              "completed": false
+            },
+            {
+              "userId": 1,
+              "id": 2,
+              "title": "quis ut nam facilis et officia qui",
+              "completed": false
+            },
+            {
+              "userId": 1,
+              "id": 3,
+              "title": "fugiat veniam minus",
+              "completed": false
+            },
+            {
+              "userId": 1,
+              "id": 4,
+              "title": "et porro tempora",
+              "completed": true
+            },
+            {
+              "userId": 1,
+              "id": 5,
+              "title": "laboriosam mollitia et enim quasi adipisci quia provident illum",
+              "completed": false
+            }
+          ],
+          "url": "https://jsonplaceholder.typicode.com/todos?_limit=5",
+          "responseTime": 454
+        },
+        "error": null,
+        "status": "pass",
+        "assertionResults": [],
+        "testResults": [
+          {
+            "description": "Status is 200",
+            "status": "pass",
+            "uid": "7iPnOv8H_M5EnkMIhIpFr"
+          },
+          {
+            "description": "Response is array",
+            "status": "pass",
+            "uid": "p28lYPdNjfqGKUVgqoRN2"
+          },
+          {
+            "description": "Todo has required fields",
+            "status": "pass",
+            "uid": "Lf2lowMor6X6c1_s_ggC9"
+          }
+        ],
+        "preRequestTestResults": [],
+        "postResponseTestResults": [],
+        "shouldStopRunnerExecution": false,
+        "runDuration": 0.510563667,
+        "name": "fetch-todos",
+        "path": "fetch-todos",
+        "iterationIndex": 0
+      },
+      {
+        "test": {
+          "filename": "update-todo.bru"
+        },
+        "request": {
+          "method": "PUT",
+          "url": "https://jsonplaceholder.typicode.com/todos/1",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "data": "{\n  \"title\": \"Updated todo\",\n  \"completed\": true\n}"
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "headers": {
+            "date": "Sat, 25 Apr 2026 14:22:30 GMT",
+            "content-type": "application/json; charset=utf-8",
+            "transfer-encoding": "chunked",
+            "connection": "close",
+            "access-control-allow-credentials": "true",
+            "cache-control": "no-cache",
+            "etag": "W/\"3d-WJ9G137cdk2nUxf7A4j9vr20ixY\"",
+            "expires": "-1",
+            "nel": "{\"report_to\":\"heroku-nel\",\"response_headers\":[\"Via\"],\"max_age\":3600,\"success_fraction\":0.01,\"failure_fraction\":0.1}",
+            "pragma": "no-cache",
+            "report-to": "{\"group\":\"heroku-nel\",\"endpoints\":[{\"url\":\"https://nel.heroku.com/reports?s=T4uEPa48T17%2FZbbmD2YlTGriWCpWLqpwgsBS%2BZPwr8k%3D\\u0026sid=e11707d5-02a7-43ef-b45e-2cf4d2036f7d\\u0026ts=1777126950\"}],\"max_age\":3600}",
+            "reporting-endpoints": "heroku-nel=\"https://nel.heroku.com/reports?s=T4uEPa48T17%2FZbbmD2YlTGriWCpWLqpwgsBS%2BZPwr8k%3D&sid=e11707d5-02a7-43ef-b45e-2cf4d2036f7d&ts=1777126950\"",
+            "server": "cloudflare",
+            "vary": "Origin, Accept-Encoding",
+            "via": "2.0 heroku-router",
+            "x-content-type-options": "nosniff",
+            "x-powered-by": "Express",
+            "x-ratelimit-limit": "1000",
+            "x-ratelimit-remaining": "997",
+            "x-ratelimit-reset": "1777126965",
+            "cf-cache-status": "DYNAMIC",
+            "cf-ray": "9f1e0012acf0e1d0-MRS",
+            "alt-svc": "h3=\":443\"; ma=86400"
+          },
+          "data": {
+            "title": "Updated todo",
+            "completed": true,
+            "id": 1
+          },
+          "url": "https://jsonplaceholder.typicode.com/todos/1",
+          "responseTime": 525
+        },
+        "error": null,
+        "status": "pass",
+        "assertionResults": [],
+        "testResults": [
+          {
+            "description": "Status is 200",
+            "status": "pass",
+            "uid": "DEp7q6kHmMUlpgku0008L"
+          },
+          {
+            "description": "Todo updated",
+            "status": "pass",
+            "uid": "htY0Gh3Pwr1IiaLFCJ4bw"
+          }
+        ],
+        "preRequestTestResults": [],
+        "postResponseTestResults": [],
+        "shouldStopRunnerExecution": false,
+        "runDuration": 0.576442833,
+        "name": "update-todo",
+        "path": "update-todo",
+        "iterationIndex": 0
+      }
+    ],
+    "summary": {
+      "totalRequests": 4,
+      "passedRequests": 4,
+      "failedRequests": 0,
+      "errorRequests": 0,
+      "skippedRequests": 0,
+      "totalAssertions": 0,
+      "passedAssertions": 0,
+      "failedAssertions": 0,
+      "totalTests": 9,
+      "passedTests": 9,
+      "failedTests": 0,
+      "totalPreRequestTests": 0,
+      "passedPreRequestTests": 0,
+      "failedPreRequestTests": 0,
+      "totalPostResponseTests": 0,
+      "passedPostResponseTests": 0,
+      "failedPostResponseTests": 0
+    }
+  }
+]

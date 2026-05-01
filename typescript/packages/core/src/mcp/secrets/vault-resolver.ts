@@ -133,7 +133,7 @@ export class VaultSecretResolver implements SecretResolver {
         throw error;
       }
 
-      logger.error('Failed to fetch secrets from Vault', {
+      logger.warn('Vault resolver unreachable — falling back to next resolver', {
         resolver: this.name,
         error: error instanceof Error ? error.message : String(error),
       });

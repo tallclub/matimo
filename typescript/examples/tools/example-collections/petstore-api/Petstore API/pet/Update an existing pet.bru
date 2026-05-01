@@ -1,0 +1,14 @@
+meta {
+  name: Update an existing pet
+  type: http
+  seq: 3
+  tags: [
+    pet
+  ]
+}
+
+put {
+  url: {{baseUrl}}/pet
+  body: none
+  auth: inherit
+}

@@ -473,5 +473,93 @@ quarantineRiskLevels:
       // Verify event was emitted during HITL (line 1268-1273)
       expect(Array.isArray(events)).toBe(true);
     });
+
+    it('should auto-reject when HITL callback exceeds hitlTimeoutMs', async () => {
+      const trustedPath = path.join(tmpDir, 'trusted-timeout');
+      fs.mkdirSync(trustedPath, { recursive: true });
+      const untrustedPath = path.join(tmpDir, 'untrusted-timeout');
+      fs.mkdirSync(untrustedPath, { recursive: true });
+      const toolDir = path.join(untrustedPath, 'slow-hitl-tool');
+      fs.mkdirSync(toolDir, { recursive: true });
+      // Use HTTP DELETE — classifies as high risk to ensure quarantine
+      fs.writeFileSync(
+        path.join(toolDir, 'definition.yaml'),
+        'name: slow-hitl-tool\nversion: "1.0.0"\ndescription: "Slow HITL"\nexecution:\n  type: http\n  method: DELETE\n  url: "https://api.example.com/items/{id}"\nparameters:\n  id:\n    type: string\n    required: true\n'
+      );
+      const policyPath = path.join(tmpDir, 'policy-hitl-timeout.yaml');
+      fs.writeFileSync(
+        policyPath,
+        `enableHITL: true\nquarantineRiskLevels:\n  - medium\n  - high\n  - critical\n`
+      );
+      const approvalDir = path.join(tmpDir, 'approvals-hitl-timeout');
+      fs.mkdirSync(approvalDir, { recursive: true });
+
+      const matimo = await MatimoInstance.init({
+        toolPaths: [trustedPath, untrustedPath],
+        untrustedPaths: [untrustedPath],
+        policyFile: policyPath,
+        approvalDir,
+        hitlTimeoutMs: 50, // 50 ms timeout
+        logLevel: 'silent',
+      });
+
+      // Callback resolves after 500 ms — will be timed out
+      matimo.setHITLCallback(() => new Promise((resolve) => setTimeout(() => resolve(true), 500)));
+
+      let errorThrown = false;
+      try {
+        await matimo.execute('slow-hitl-tool', { id: '1' }, { context: { environment: 'prod' } });
+      } catch (err: unknown) {
+        errorThrown = true;
+        expect((err as Error).message).toContain('slow-hitl-tool');
+      }
+
+      expect(errorThrown).toBe(true);
+    }, 10000);
+
+    it('should succeed when HITL callback resolves within hitlTimeoutMs', async () => {
+      const trustedPath = path.join(tmpDir, 'trusted-fast');
+      fs.mkdirSync(trustedPath, { recursive: true });
+      const untrustedPath = path.join(tmpDir, 'untrusted-fast');
+      fs.mkdirSync(untrustedPath, { recursive: true });
+      const toolDir = path.join(untrustedPath, 'fast-hitl-tool');
+      fs.mkdirSync(toolDir, { recursive: true });
+      // Use HTTP DELETE — classifies as high risk to ensure quarantine
+      fs.writeFileSync(
+        path.join(toolDir, 'definition.yaml'),
+        'name: fast-hitl-tool\nversion: "1.0.0"\ndescription: "Fast HITL"\nexecution:\n  type: http\n  method: DELETE\n  url: "https://api.example.com/items/{id}"\nparameters:\n  id:\n    type: string\n    required: true\n'
+      );
+      const policyPath = path.join(tmpDir, 'policy-hitl-fast.yaml');
+      fs.writeFileSync(
+        policyPath,
+        `enableHITL: true\nquarantineRiskLevels:\n  - medium\n  - high\n  - critical\n`
+      );
+      const approvalDir = path.join(tmpDir, 'approvals-hitl-fast');
+      fs.mkdirSync(approvalDir, { recursive: true });
+
+      const matimo = await MatimoInstance.init({
+        toolPaths: [trustedPath, untrustedPath],
+        untrustedPaths: [untrustedPath],
+        policyFile: policyPath,
+        approvalDir,
+        hitlTimeoutMs: 5000, // generous timeout
+        logLevel: 'silent',
+      });
+
+      // Callback resolves immediately
+      matimo.setHITLCallback(async () => true);
+
+      // Should NOT be rejected due to timeout; may fail at execution (no HTTP server)
+      // but should not fail with a timeout-related error
+      let rejectedByTimeout = false;
+      try {
+        await matimo.execute('fast-hitl-tool', { id: '1' }, { context: { environment: 'prod' } });
+      } catch (err: unknown) {
+        const msg = (err as Error).message;
+        rejectedByTimeout = msg.includes('timed out');
+      }
+
+      expect(rejectedByTimeout).toBe(false);
+    }, 10000);
   });
 });

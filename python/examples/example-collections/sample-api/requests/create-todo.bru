@@ -1,0 +1,15 @@
+meta {
+  name: create-todo
+  type: http
+  seq: 1
+}
+
+POST {
+  url: https://jsonplaceholder.typicode.com/todos
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {"title": "Learn Matimo", "completed": false, "userId": 1}
+}

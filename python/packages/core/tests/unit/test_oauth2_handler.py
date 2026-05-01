@@ -18,6 +18,9 @@ from matimo.auth.oauth2_provider_loader import OAuth2ProviderLoader
 from matimo.core.models import OAuth2Endpoints
 from matimo.errors import ErrorCode, MatimoError
 
+pytestmark = pytest.mark.asyncio
+
+
 
 def _make_config(
     provider: str = "test-provider",

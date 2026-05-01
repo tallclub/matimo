@@ -1,0 +1,85 @@
+name: bruno_run_request
+description: Execute a single request from a Bruno collection for targeted debugging and validation. Returns detailed request/response data and assertion results.
+version: '1.0.0'
+status: approved
+
+parameters:
+  collection_path:
+    type: string
+    required: true
+    description: Path to Bruno collection directory
+
+  request_name:
+    type: string
+    required: true
+    description: Name of the request to execute (exact match)
+
+  environment:
+    type: string
+    required: false
+    description: Environment name to use (overrides collection default)
+
+  env_file:
+    type: string
+    required: false
+    description: Path to environment file to override variables
+
+  sandbox_mode:
+    type: string
+    required: false
+    default: safe
+    description: JavaScript execution mode - 'safe' or 'developer'
+
+execution:
+  type: function
+  code: executor.py
+
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+    request:
+      type: object
+      properties:
+        method:
+          type: string
+        url:
+          type: string
+        headers:
+          type: object
+        body:
+          type: object
+    response:
+      type: object
+      properties:
+        status:
+          type: number
+        headers:
+          type: object
+        body:
+          type: object
+        duration_ms:
+          type: number
+    assertions:
+      type: array
+      items:
+        type: object
+    errors:
+      type: array
+      items:
+        type: string
+
+
+examples:
+  - name: "Debug single authentication request"
+    params:
+      collection_path: "./collections/auth"
+      request_name: "Login"
+      environment: "staging"
+
+  - name: "Test specific endpoint with custom environment"
+    params:
+      collection_path: "./collections/api"
+      request_name: "Get User Profile"
+      env_file: "./envs/test.json"

@@ -20,7 +20,10 @@ make install
 # 3. Run your first example
 make slack-factory
 
-# 4. Run an advanced native demo (needs OPENAI_API_KEY)
+# 4. Try Bruno API testing (no API key needed)
+make bruno-complete
+
+# 5. Run an advanced native demo (needs OPENAI_API_KEY)
 make policy-demo
 make skills-demo
 make meta-flow
@@ -39,6 +42,7 @@ Examples are organized into three framework groups plus a set of advanced native
 | **native/policy/**, **native/skills/**, **native/meta_flow/** | Advanced LangChain ReAct demos | Full-featured policy, skills, and meta-tool lifecycle walkthroughs |
 | **langchain/** | LangChain ReAct | LLM-driven agents — model decides which tools to call |
 | **crewai/** | CrewAI | Multi-agent workflows with role-based crews |
+| **bruno/** | Bruno CLI testing | API collection lifecycle — create, run, inspect, import (no LLM needed for complete workflow) |
 
 ---
 
@@ -49,6 +53,10 @@ examples/
 ├── pyproject.toml              ← standalone project (declares matimo as a dep)
 ├── Makefile                    ← run any example with `make <target>`
 ├── .env.example                ← credential template — copy to .env
+│
+├── bruno/                      ← Bruno CLI API testing (no LLM needed for complete workflow)
+│   ├── complete_workflow.py        ← 7 tools × 6 workflows: create, add, inspect, run, list, import ✅
+│   └── crewai_agent.py             ← CrewAI agent autonomously driving Bruno tools ✅
 │
 ├── native/                     ← Factory, Decorator, and advanced agent demos
 │   │
@@ -188,6 +196,47 @@ examples/
 
 ---
 
+## Bruno CLI API Testing
+
+The `bruno/` folder contains two standalone examples for the **`@matimo/bruno`** provider (7 tools):
+
+### `bruno/complete_workflow.py` — All 7 Tools (no API key needed)
+
+6 workflows covering the full Bruno collection lifecycle:
+
+| Workflow | What it shows |
+|----------|---------------|
+| 1 | `bruno_create_collection` — creates directory + `bruno.json` |
+| 2 | `bruno_add_request` × 4 — adds GET / POST / PUT / DELETE requests |
+| 3 | `bruno_get_collection_info` — reads collection structure and request list |
+| 4 | `bruno_run_collection` — executes all requests via `bru run` |
+| 5 | `bruno_run_request` — runs a single named request |
+| 6 | `bruno_import_openapi` + `bruno_list_collections` — OpenAPI import + discovery |
+
+```bash
+make bruno-complete
+# or directly:
+uv run python bruno/complete_workflow.py
+```
+
+### `bruno/crewai_agent.py` — CrewAI Agent (needs OPENAI_API_KEY)
+
+A CrewAI researcher-then-executor crew that autonomously:
+1. Creates a Bruno collection
+2. Adds 4 HTTP requests (GET/POST/PUT/DELETE)
+3. Inspects the collection
+4. Runs all tests
+5. Debugs a single request
+6. Imports from a public OpenAPI spec
+
+```bash
+make bruno-crewai
+# or directly:
+uv run python bruno/crewai_agent.py
+```
+
+---
+
 ## Advanced Native Demos
 
 These three demos (plus the logger) are full-featured walkthroughs designed to be studied end-to-end. They use real LangChain ReAct loops — not mocks — and verify each step programmatically.
@@ -260,6 +309,10 @@ No API key needed. 6 sections:
 
 ```bash
 make help              # Show all available targets
+
+# ── Bruno CLI API Testing ──────────────────────────────────────────
+make bruno-complete    # 7 tools × 6 workflows (no API key needed)
+make bruno-crewai      # CrewAI agent driving Bruno tools (needs OPENAI_API_KEY)
 
 # ── Advanced Native Demos (requires OPENAI_API_KEY) ──
 make policy-demo       # Policy + HITL lifecycle (11 missions)

@@ -1,0 +1,135 @@
+name: bruno_run_collection
+description: Execute a Bruno API collection with configurable environment, data files, and reporting options. Returns structured JSON results with test assertions, metrics, and failure details.
+version: '1.0.0'
+status: approved
+
+parameters:
+  collection_path:
+    type: string
+    required: true
+    description: Path to Bruno collection file (.bru) or collection directory
+
+  environment:
+    type: string
+    required: false
+    description: Environment name to use for execution (e.g., dev, staging, prod)
+
+  env_file:
+    type: string
+    required: false
+    description: Path to environment file (.bru or .json) to override collection environment
+
+  data_file:
+    type: string
+    required: false
+    description: Path to CSV or JSON data file for data-driven testing
+
+  iteration_count:
+    type: number
+    required: false
+    default: 1
+    description: Number of times to run the collection
+
+  delay_ms:
+    type: number
+    required: false
+    description: Delay between each request in milliseconds
+
+  tags:
+    type: string
+    required: false
+    description: Comma-separated tags - only run requests with ALL specified tags
+
+  exclude_tags:
+    type: string
+    required: false
+    description: Comma-separated tags - skip requests with ANY of these tags
+
+  tests_only:
+    type: boolean
+    required: false
+    default: false
+    description: Only run requests that have tests or active assertions
+
+  bail_on_failure:
+    type: boolean
+    required: false
+    default: false
+    description: Stop execution after first failure
+
+  parallel:
+    type: boolean
+    required: false
+    default: false
+    description: Run requests in parallel order
+
+  sandbox_mode:
+    type: string
+    required: false
+    default: safe
+    description: JavaScript execution mode - 'safe' or 'developer'
+
+  report_format:
+    type: string
+    required: false
+    description: Report format - json, junit, or html
+
+  report_path:
+    type: string
+    required: false
+    description: Path to write report file
+
+execution:
+  type: function
+  code: executor.py
+
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+    summary:
+      type: object
+      properties:
+        total_requests:
+          type: number
+        passed:
+          type: number
+        failed:
+          type: number
+        execution_time_ms:
+          type: number
+    results:
+      type: array
+      items:
+        type: object
+    errors:
+      type: array
+      items:
+        type: string
+    report_path:
+      type: string
+
+
+examples:
+  - name: "Run entire collection against staging"
+    params:
+      collection_path: "./collections/my-api"
+      environment: "staging"
+      report_format: json
+      report_path: "./reports/staging-results.json"
+
+  - name: "Run data-driven tests with bail on failure"
+    params:
+      collection_path: "./collections/auth-flow.bru"
+      data_file: "./data/users.csv"
+      bail_on_failure: true
+      report_format: html
+      report_path: "./reports/auth-flow.html"
+
+  - name: "Run only tagged tests in parallel"
+    params:
+      collection_path: "./collections/api"
+      tags: "smoke,critical"
+      parallel: true
+      iteration_count: 3

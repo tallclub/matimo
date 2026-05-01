@@ -1,4 +1,5 @@
 packages:
+  - "packages/bruno"
   - "packages/core"
   - "packages/slack"
   - "packages/gmail"

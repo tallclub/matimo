@@ -8,6 +8,11 @@
 
 ## 🎯 What These Examples Demonstrate
 
+✅ **Bruno CLI API Testing (New):**
+- 7 tools for full API collection lifecycle management
+- Complete + LangChain agent examples — no API key required for complete workflow
+- Integrates with any existing Bruno collection
+
 ✅ **Framework-Independent Tool Execution:**
 - Matimo loads and manages tools independently
 - Tools work the same way in any framework (LangChain, CrewAI, etc.)
@@ -83,6 +88,12 @@ pnpm search:langchain
 pnpm web:decorator
 ```
 
+**👉 Want to test API collections with Bruno?**
+```bash
+pnpm bruno:complete       # 7 tools × 6 workflows (no API key needed)
+pnpm bruno:langchain      # LangChain agent driving Bruno tools (needs OPENAI_API_KEY)
+```
+
 **👉 Want advanced features?**
 ```bash
 pnpm meta:flow            # Meta-tools + policy + approvals
@@ -97,6 +108,14 @@ pnpm skills:demo
 For complete reference of all 50+ examples, see [QUICK_COMMANDS.md](./QUICK_COMMANDS.md).
 
 Quick reference:
+
+### Bruno CLI API Testing
+```bash
+pnpm bruno:complete       # Complete workflow — 7 tools × 6 workflows (no API key needed)
+pnpm bruno:langchain      # LangChain agent driving Bruno tools autonomously
+```
+
+Covers: `bruno_create_collection`, `bruno_add_request`, `bruno_get_collection_info`, `bruno_run_collection`, `bruno_run_request`, `bruno_list_collections`, `bruno_import_openapi`
 
 ### Meta/Demo Examples
 ```bash
@@ -305,6 +324,9 @@ Result returned to LangChain
 
 ```
 examples/tools/
+├── bruno/                              # Bruno CLI API testing
+│   ├── bruno-complete-workflow.ts      # 7 tools × 6 workflows (no API key)
+│   └── bruno-langchain-agent.ts        # LangChain agent driving Bruno tools
 ├── agents/                             # Agent examples (3 patterns)
 │   ├── langchain-agent.ts              # ⭐ LangChain Official API (recommended)
 │   ├── decorator-pattern-agent.ts      # Uses @tool decorator with MatimoInstance
@@ -620,8 +642,9 @@ npm run agent:langchain   # or agent:decorator, agent:factory
 
 ### Beginner
 1. **Run all three agent patterns** — compare approaches: `npm run agent:langchain`, `agent:decorator`, `agent:factory`
-2. **Try a provider** — pick Slack/Gmail/GitHub: `npm run slack:factory`, `npm run github:langchain`, etc.
-3. **Test core features** — execute, read, edit: `npm run execute:factory`, `npm run read:langchain`, etc.
+2. **Try Bruno API testing** — no API key needed: `pnpm bruno:complete`
+3. **Try a provider** — pick Slack/Gmail/GitHub: `npm run slack:factory`, `npm run github:langchain`, etc.
+4. **Test core features** — execute, read, edit: `npm run execute:factory`, `npm run read:langchain`, etc.
 
 ### Intermediate
 4. **Modify example prompts** — edit `agents/*.ts` or provider files to change queries
@@ -649,6 +672,7 @@ These examples prove Matimo's core value proposition:
 **Use them with THREE calling patterns** (LangChain, Decorator, Factory) ↓  
 **Use them with TEN+ providers** (Slack, Gmail, GitHub, PostgreSQL, Notion, HubSpot, Mailchimp, Twilio, etc.) ↓  
 **Use them with FIVE core features** (Execute, Read, Edit, Search, Web) ↓  
+**Use them for API testing** (Bruno CLI — create, run, import, inspect collections) ↓  
 **Use them with advanced capabilities** (Meta-tools, Policy, Skills, Approvals) ↓  
 **Use them EVERYWHERE**: LangChain, SDK, CrewAI, MCP, REST API, CLI ↓  
 

@@ -11,6 +11,8 @@ from matimo.core.tfidf_embedding import (
     cosine_similarity,
 )
 
+pytestmark = pytest.mark.asyncio
+
 
 class TestCosineSimilarity:
     def test_identical_vectors_return_one(self) -> None:

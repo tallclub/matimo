@@ -146,7 +146,7 @@ export class AwsSecretsManagerResolver implements SecretResolver {
         throw error;
       }
 
-      logger.error('Failed to fetch secrets from AWS Secrets Manager', {
+      logger.warn('AWS Secrets Manager resolver unreachable — falling back to next resolver', {
         resolver: this.name,
         error: error instanceof Error ? error.message : String(error),
       });

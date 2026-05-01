@@ -13,6 +13,7 @@ dependencies = [
     "matimo-core>=0.1.0a14.post1,<0.2.0",
     # Provider packages
     "matimo-slack>=0.1.0a14.post1,<0.2.0",
+    "matimo-bruno>=0.1.0a14.post1,<0.2.0",
     "matimo-github>=0.1.0a14.post1,<0.2.0",
     "matimo-gmail>=0.1.0a14.post1,<0.2.0",
     "matimo-hubspot>=0.1.0a14.post1,<0.2.0",
@@ -38,6 +39,7 @@ dev = ["rich>=13.0"]
 [tool.uv.sources]
 matimo-core      = { workspace = true }
 matimo-slack     = { workspace = true }
+matimo-bruno     = { workspace = true }
 matimo-github    = { workspace = true }
 matimo-gmail     = { workspace = true }
 matimo-hubspot   = { workspace = true }
