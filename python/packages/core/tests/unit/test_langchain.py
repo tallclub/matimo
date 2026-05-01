@@ -7,6 +7,9 @@ import pytest
 
 from matimo.core.models import HttpExecution, Parameter, ParameterType, ToolDefinition
 
+pytestmark = pytest.mark.asyncio
+
+
 
 def _make_tool(
     name: str = "echo_tool",

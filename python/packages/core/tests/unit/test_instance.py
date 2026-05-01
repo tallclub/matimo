@@ -20,6 +20,9 @@ from matimo.instance import Matimo
 from matimo.policy.default_policy import DefaultPolicyEngine
 from matimo.policy.types import PolicyConfig, RiskLevel
 
+pytestmark = pytest.mark.asyncio
+
+
 
 def _make_get_tool(name: str = "get_data") -> ToolDefinition:
     return ToolDefinition(

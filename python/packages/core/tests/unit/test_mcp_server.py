@@ -10,6 +10,9 @@ from matimo.core.models import HttpExecution, Parameter, ParameterType, ToolDefi
 from matimo.errors import ErrorCode, MatimoError
 from matimo.mcp.server import MCPServer, MCPServerOptions, create_mcp_server
 
+pytestmark = pytest.mark.asyncio
+
+
 
 def _make_matimo_mock(tools: list[ToolDefinition] | None = None) -> MagicMock:
     """Create a mock Matimo instance."""

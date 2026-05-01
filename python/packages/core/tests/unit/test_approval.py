@@ -14,6 +14,9 @@ from matimo.approval.handler import (
 )
 from matimo.core.models import HttpExecution, ToolDefinition
 
+pytestmark = pytest.mark.asyncio
+
+
 
 def _make_delete_tool() -> ToolDefinition:
     return ToolDefinition(
