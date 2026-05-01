@@ -165,7 +165,7 @@ See [Contributing Guide](https://github.com/tallclub/matimo/blob/main/CONTRIBUTI
 
 ## Version
 
-Alpha 14 (v0.1.0-alpha.14) — **Python SDK Official Launch** (Released Apr 10, 2026)
+Alpha 14 (v0.1.0) — **Python SDK Official Launch** (Released Apr 10, 2026)
 
 ### Release Highlights
 

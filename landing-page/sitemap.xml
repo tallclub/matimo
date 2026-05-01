@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
-    <!-- Updated for v0.1.0-alpha.14 release (2026-04-10). Deploy after merging. -->
+    <!-- Updated for v0.1.0 release (2026-05-01). Deploy after merging. -->
     <!-- Homepage -->
     <url>
         <loc>https://matimo.dev/</loc>
-        <lastmod>2026-04-10</lastmod>
+        <lastmod>2026-05-01</lastmod>
         <changefreq>weekly</changefreq>
         <priority>1.0</priority>
     </url>
@@ -17,55 +17,55 @@
             or omit external links entirely. -->
     <url>
         <loc>https://docs.matimo.dev/</loc>
-        <lastmod>2026-04-10</lastmod>
+        <lastmod>2026-05-01</lastmod>
         <changefreq>weekly</changefreq>
         <priority>0.9</priority>
     </url>
     <url>
         <loc>https://docs.matimo.dev/getting-started/QUICK_START</loc>
-        <lastmod>2026-04-10</lastmod>
+        <lastmod>2026-05-01</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.9</priority>
     </url>
     <url>
         <loc>https://docs.matimo.dev/api-reference/SDK</loc>
-        <lastmod>2026-04-10</lastmod>
+        <lastmod>2026-05-01</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.8</priority>
     </url>
     <url>
         <loc>https://docs.matimo.dev/tool-development/ADDING_TOOLS</loc>
-        <lastmod>2026-04-10</lastmod>
+        <lastmod>2026-05-01</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.8</priority>
     </url>
     <url>
         <loc>https://docs.matimo.dev/api-reference/POLICY_AND_LIFECYCLE</loc>
-        <lastmod>2026-04-10</lastmod>
+        <lastmod>2026-05-01</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.8</priority>
     </url>
     <url>
         <loc>https://docs.matimo.dev/skills/SKILLS.md</loc>
-        <lastmod>2026-04-10</lastmod>
+        <lastmod>2026-05-01</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.8</priority>
     </url>
     <url>
         <loc>https://docs.matimo.dev/framework-integrations/LANGCHAIN</loc>
-        <lastmod>2026-04-10</lastmod>
+        <lastmod>2026-05-01</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.7</priority>
     </url>
     <url>
         <loc>https://docs.matimo.dev/MCP</loc>
-        <lastmod>2026-03-26</lastmod>
+        <lastmod>2026-05-01</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.8</priority>
     </url>
     <url>
         <loc>https://docs.matimo.dev/ROADMAP</loc>
-        <lastmod>2026-03-26</lastmod>
+        <lastmod>2026-05-01</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.7</priority>
     </url>
