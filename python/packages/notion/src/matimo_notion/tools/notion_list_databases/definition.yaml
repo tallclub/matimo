@@ -55,9 +55,9 @@ output_schema:
     has_more:
       type: boolean
     next_cursor:
-      type:
-        - string
-        - "null"
+      anyOf:
+        - type: string
+        - type: "null"
 
 examples:
   - name: "List all databases in workspace"
