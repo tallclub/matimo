@@ -33,6 +33,7 @@ parameters:
 execution:
   type: function
   code: executor.py
+  timeout: 60000
 
 output_schema:
   type: object
@@ -40,35 +41,19 @@ output_schema:
     success:
       type: boolean
     request:
-      type: object
-      properties:
-        method:
-          type: string
-        url:
-          type: string
-        headers:
-          type: object
-        body:
-          type: object
-    response:
-      type: object
-      properties:
-        status:
-          type: number
-        headers:
-          type: object
-        body:
-          type: object
-        duration_ms:
-          type: number
-    assertions:
-      type: array
-      items:
-        type: object
+      type: string
+      description: Name of the request that was executed
+    status:
+      type: number
+      description: HTTP status code parsed from bru output
+    duration_ms:
+      type: number
+      description: Total execution time in milliseconds
     errors:
       type: array
       items:
         type: string
+  required: ["success", "request", "status", "duration_ms", "errors"]
 
 
 examples:
