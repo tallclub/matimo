@@ -11,6 +11,13 @@
       "avatar_url": "https://avatars.githubusercontent.com/u/112923179?v=4",
       "profile": "https://github.com/tallclub",
       "contributions": ["code", "doc", "design", "review", "ideas", "maintenance"]
+    },
+    {
+      "login": "Genmin",
+      "name": "Genmin",
+      "avatar_url": "https://avatars.githubusercontent.com/u/90125084?v=4",
+      "profile": "https://github.com/Genmin",
+      "contributions": ["code", "security"]
     }
   ],
   "files": ["README.md"],

@@ -407,9 +407,19 @@ MIT © 2026 Matimo Contributors
 
 ## Contributors
 
-<a href="https://github.com/tallclub/matimo/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=tallclub/matimo" />
-</a>
+<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+<!-- prettier-ignore-start -->
+<!-- markdownlint-disable -->
+
+<div align="left">
+  <a href="https://github.com/tallclub"><img src="https://avatars.githubusercontent.com/u/112923179?v=4&s=60" width="60" height="60" style="border-radius:50%;margin:0 10px;" alt="tallclub" title="tallclub - Code 💻 Documentation 📖 Design 🎨 Review 👀 Ideas 🤔 Maintenance 🚧"/></a>
+  <a href="https://github.com/Genmin"><img src="https://avatars.githubusercontent.com/u/90125084?v=4&s=60" width="60" height="60" style="border-radius:50%;margin:0 10px;" alt="Genmin" title="Genmin - Code 💻 Security 🛡️"/></a>
+</div>
+
+<!-- markdownlint-enable -->
+<!-- prettier-ignore-end -->
+
+<!-- ALL-CONTRIBUTORS-LIST:END -->
 
 ---
 
