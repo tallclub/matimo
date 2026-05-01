@@ -231,7 +231,7 @@ Store tokens securely:
 const m = await MatimoInstance.init('./tools');
 
 // Execute Gmail tool
-const email = await m.execute('gmail-send-email', {
+const email = await m.execute('gmail_send_email', {
   to: 'user@example.com',
   subject: 'From Matimo',
   body: 'Test',

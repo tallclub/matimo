@@ -2,76 +2,82 @@
 
 ## Current Status
 
-**Latest Release**: v0.1.0-alpha.14 (April 10, 2026) — **🐍 Python SDK Official Launch + Security Hardening**
+**Latest Release**: **v0.1.0** (May 1, 2026) — **🎉 First Stable Release — Production-Ready GA**
 
-### 🎉 Major Milestone Completed
-✅ **Python SDK Now Available** — Feature parity with TypeScript, full LangChain + CrewAI support, 40+ production examples, 657 tests (97.38% coverage)
+### 🏆 Production Launch — General Availability
 
-✅ **Completed Features**:
+Matimo v0.1.0 stable is now **production-ready** with full TypeScript and Python SDK support, 137+ tools, enterprise-grade security, and comprehensive framework integrations.
+
+✅ **v0.1.0 Stable — Completed Features**:
 
 **Core SDK (TypeScript + Python)**
 - OAuth2 authentication with multi-provider setup
 - Tool execution (function, command, and HTTP types)
-- YAML-based tool definitions + Pydantic v2 validation (Python)
-- SDK patterns: Factory, Decorator, LangChain, CrewAI
-- Core tools (execute, read, edit, search, web, calculator)
-- CLI: list, search, install, help, doctor, review
-- MCP Server (stdio + HTTP, Claude Desktop compatible)
+- YAML-based tool definitions + Zod (TS) / Pydantic v2 (Python) validation
+- **4 SDK patterns**: Factory, Decorator, LangChain, CrewAI
+- **10 meta-tools** for runtime tool and skill management
+- CLI: list, search, install, help, doctor, review, validate, mcp
+- MCP Server (stdio + HTTP on port 3101, Claude Desktop compatible)
+- Skills system with TF-IDF semantic search
+- Policy engine with risk classification + HITL workflows
+- Secret management (Env, Dotenv, Vault, AWS Secrets Manager)
 
-**Provider Ecosystem** (110+ tools across 8 providers)
-- Slack (16+), GitHub (10+), Gmail (5+), Notion (7+), HubSpot (50+), Mailchimp (8+), Postgres (6+), Twilio (4+)
-- All providers have Python SDK, LangChain, and CrewAI examples
+**Provider Ecosystem** (137+ tools across 10 providers)
+- **Slack** (16+), **GitHub** (10+), **Gmail** (5+), **Notion** (7+)
+- **HubSpot** (50+), **Mailchimp** (8+), **Postgres** (6+), **Twilio** (4+)
+- **Bruno CLI** (7) — NEW in v0.1.0: Complete API testing lifecycle
+- All providers ship with TypeScript + Python SDKs, LangChain/CrewAI examples
 
-**Python SDK Launch (0.1.0a14)**
-- ✅ 657 tests, 97.38% coverage
+**Bruno CLI Provider** (v0.1.0 — NEW)
+- ✅ 7 production tools: create, add, run, inspect, import OpenAPI
+- ✅ Full workflow examples in both SDKs
+- ✅ JSON reporter integration
+- ✅ Collection and request-level execution
+
+**Meta-Tools** (10 total — 2 new in v0.1.0)
+- ✅ Tool lifecycle: `create`, `validate`, `approve`, `reload`, `list`
+- ✅ Tool discovery: **`get_tool`** (NEW), **`search_tools`** (NEW)
+- ✅ Skill management: `create_skill`, `get_skill`, `list_skills`, `validate_skill`
+- ✅ Full MCP + LangChain agent integration
+
+**HITL Enhancements** (v0.1.0 — NEW)
+- ✅ `hitlTimeoutMs` / `hitl_timeout_ms` — Configurable approval timeout
+- ✅ `approval_ttl_seconds` — Policy-level approval TTL
+- ✅ Production fail-fast if HITL handler not provided
+
+**Quality & Security** (v0.1.0 stable)
+- ✅ **2996 total tests** (2001 TypeScript + 995 Python)
+- ✅ **95%+ test coverage** (both SDKs)
+- ✅ **Zero test pollution** (pytest-asyncio markers fixed)
+- ✅ **5 critical security patches** applied
+- ✅ **MCP 1.0 standards compliance**
+
+**Python SDK** (v0.1.0 stable)
+- ✅ 995 tests, 95%+ coverage
 - ✅ Python 3.11+ (asyncio-based)
 - ✅ `convert_tools_to_langchain()` — LangChain integration
 - ✅ `convert_tools_to_crewai()` — CrewAI integration
 - ✅ `create_mcp_server()` — MCP server support
-- ✅ Decorator + Factory patterns with full examples
-- ✅ 40+ production examples (native, LangChain, CrewAI)
+- ✅ Decorator + Factory patterns with 40+ examples
 - ✅ Complete type hints + documentation
 
-**Security Hardening (0.1.0-alpha.14)**
-- ✅ 6 critical patches (MCP isolation, command injection prevention, production fail-fast, embedded code sandboxing)
-- ✅ Case-insensitive secret detection (prevents credential leakage)
-- ✅ Tool name sanitization (hyphenated → valid identifiers)
-- ✅ 19 comprehensive auth injection tests
-- ✅ CrewAI performance optimization (shared executor)
-- ✅ PEP 440 version compliance
-- ✅ GitHub Actions CI/CD fixes
+**TypeScript SDK** (v0.1.0 stable)
+- ✅ 2001 tests, 95%+ coverage (branches: 87%, functions: 97%, lines: 95%)
+- ✅ Node.js 18+, 20+, 22+
+- ✅ `convertToolsToLangChain()` — LangChain integration
+- ✅ `MCPServer` — MCP stdio + HTTP server
+- ✅ pnpm workspaces, Jest, TypeScript strict mode
+- ✅ 40+ production examples
 
-**Skills System** (from 0.1.0-alpha.13)
-- ✅ TF-IDF semantic search (`semanticSearchSkills`)
-- ✅ Progressive skill disclosure (Level 1, 2, 2.5)
-- ✅ MCP resource exposure (`skills://`)
-- ✅ LangChain helpers (`getSkillsMetadata`, `buildRelevantSkillPrompt`)
-
-**Policy Engine** (from 0.1.0-alpha.13)
-- ✅ Risk classification + approval tiers
-- ✅ HITL quarantine workflow
-- ✅ Integrity tracking (file tampering detection)
-- ✅ Hot-reload atomicity with rollback support
-
-**Meta-tools** (10 callable tools for agents)
-- ✅ Tool lifecycle: create, validate, approve, reload, list, describe, status
-- ✅ Skill management: create, get, list, validate skills
-- ✅ Full MCP + LangChain agent integration
-
-**Quality Metrics**
-- ✅ 2,541 total tests (1,884 TypeScript + 657 Python)
-- ✅ 97.38% coverage (exceeds 95% requirement)
-- ✅ Parity across both SDKs
-
-**See [RELEASES.md](./RELEASES.md)** for detailed setup and migration guide.
+**See [RELEASES.md](./RELEASES.md)** for complete v0.1.0 changelog and migration guide.
 
 ---
 
-## v0.1.0-alpha.15 — Next Release (Skills Meta-Tools & Agent Call ability)
+## v0.1.1 — Next Patch Release
 
-> **Theme:** Expose skills discovery and content loading as first-class agent-callable meta-tools. Currently `semanticSearchSkills`, `getSkillSections`, and `getSkillContent` are SDK-only APIs — agents (LangChain, MCP) cannot directly call them. This release closes that gap by wrapping them as callable tools.
+> **Theme:** Skills Meta-Tools & Agent Call Ability — Expose skills discovery and content loading as first-class agent-callable meta-tools
 
-### Skills Meta-Tools (New)
+### Skills Meta-Tools (Planned)
 
 - [ ] **`matimo_search_skills`** — Wrap `semanticSearchSkills()` as a meta-tool
   - Allows LangChain agents and MCP clients to semantic-search skills by natural language query
@@ -88,53 +94,35 @@
   - Replaces full-file loads with selective section retrieval
   - Returns: `{ skillName, content, tokensUsed }`
 
-### Skills Example Coverage
+### Context Window Tooling (Planned)
 
-- ⚠️ **Caution**: `skillDemoex.ts` Phase 4 currently demonstrates non-MCP helpers:
-  - `getSkillsMetadata(matimo)` — metadata-only (Level 1)
-  - `semanticSearchSkills()` — raw API call
-  - `buildRelevantSkillPrompt()` — pre-built integration
-- [ ] **Needs update**: Show agent calling `matimo_search_skills` as a tool instead of SDK API
-- [ ] **Update**: `langchain-skills-policy-agent.ts` system prompt to mention new meta-tools
-
-### Context Window Tooling
-
-- [ ] **Dynamic tool filtering** — When `autoDiscover` loads 128+ tools (at model API limits):
+- [ ] **Dynamic tool filtering** — When `autoDiscover` loads 137+ tools (at model API limits):
   - Provide utility: `selectToolsByProvider(tools, providers)` to filter by provider/tag
   - Prevents silent tool drops at API limit
   - Example: `selectToolsByProvider(allTools, ['slack', 'github'])` returns only those provider tools
 
-### Acceptance Criteria (alpha.15)
-
-- [ ] `matimo_search_skills`, `matimo_get_skill_sections`, `matimo_get_skill_content` registered as meta-tools
-- [ ] All 3 meta-tools in `packages/core/tools/` with full YAML definitions
-- [ ] Agent in `pnpm agent:skills` can call `matimo_search_skills` with natural language query
-- [ ] `skills-demo.ts` Phase 5 shows agent calling meta-tools (not just SDK APIs)
-- [ ] All new meta-tools have unit + integration tests
-- [ ] `docs/api-reference/META_TOOLS.md` updated with all 3 new tools
-
 ---
 
-## v0.1.0 Roadmap
+## v0.2.0 — Future Minor Release
 
-**Target Target**: Q2 2026 — Production Ready
+**Target**: Q3 2026 — Extended Provider Ecosystem
 
-### Phase 1: More 3rd Party Tools (Current)
+### Phase 1: Additional 3rd Party Tools
 
 Expand provider ecosystem with real-world integrations:
 
 - [x] **GitHub** — Repositories, issues, pull requests, releases (v0.1.0-alpha.8)
-- [ ] **Stripe** — Payments, invoices, customers, subscriptions
 - [x] **HubSpot** — CRM, contacts, deals, tickets (v0.1.0-alpha.9)
-- [ ] **Linear** — Issues, projects, milestones
 - [x] **Notion** — Databases, pages, blocks (v0.1.0-alpha.10)
 - [x] **Twilio** — SMS, MMS, messaging (v0.1.0-alpha.11)
 - [x] **Mailchimp** — Email campaigns, subscribers, lists (v0.1.0-alpha.11)
+- [x] **Bruno CLI** — API testing lifecycle (v0.1.0 stable) ✅
+- [ ] **Stripe** — Payments, invoices, customers, subscriptions
+- [ ] **Linear** — Issues, projects, milestones
 - [ ] **Airtable** — Tables, records, views
 - [ ] **Jira** — Issues, projects, workflows
 - [ ] **AWS** — EC2, S3, Lambda, and core services
 - [ ] **Azure** — VMs, Storage, Functions
-- [ ] **Bruno CLI** - Bruno CLI as native matimo tool for agent to call api and test
 
 **Acceptance Criteria**:
 
@@ -250,7 +238,7 @@ Enable Claude and other MCP clients to use Matimo tools:
 ## Timeline Overview
 
 ```
-Alpha Phase (✅ Completed)
+Alpha Phase (✅ Completed — Feb-Apr 2026)
   v0.1.0-alpha.1  Feb 3, 2026
   v0.1.0-alpha.2  Feb 4, 2026
   v0.1.0-alpha.3  Feb 5, 2026
@@ -264,22 +252,25 @@ Alpha Phase (✅ Completed)
   v0.1.0-alpha.11 Feb 27, 2026  (Twilio & Mailchimp tools)
   v0.1.0-alpha.12   Mar 11, 2026  (🚀 MCP Server — stdio + HTTP, secrets, Claude integration)
   v0.1.0-alpha.12.1 Mar 12, 2026  (🔑 Per-execution credential override, getRequiredCredentials(), Changesets release workflow)
-  v0.1.0-alpha.13   Mar 22, 2026  (🧠 Skills system, policy engine, 10 meta-tools, HITL quarantine, security hardening) ← Current
-  v0.1.0-alpha.14   TBD           (🔍 Skills SDK as agent-callable tools — matimo_search_skills, matimo_get_skill_sections, matimo_get_skill_content, dynamic tool filtering)
+  v0.1.0-alpha.13   Mar 22, 2026  (🧠 Skills system, policy engine, 10 meta-tools, HITL quarantine, security hardening)
+  v0.1.0-alpha.14   Apr 10, 2026  (🐍 Python SDK — LangChain, CrewAI, MCP, 995 tests, 96.89% coverage)
 
-v0.1.0 Release (📅 Late March 2026)
-  ✅ Completed:
-    - MCP Server (dual-transport, pluggable secrets)
-    - Claude Desktop integration
-    - Comprehensive MCP examples & docs
-    - Security fixes (CodeQL)
-  
-  Remaining priorities:
-    1. More 3rd party tools     (Stripe, Airtable, etc.)     March 2026
-    2. Python SDK               March-April 2026
-    3. Logging & Monitoring     April 2026
-    4. Skills/Workflows         April-May 2026
-    5. Changeset-driven package releases (in progress)
+v0.1.0 Stable Release (✅ Released — May 1, 2026)
+  ✅ Production-Ready GA:
+    - 137+ tools across 10 providers
+    - Bruno CLI provider (7 new tools)
+    - 2 new meta-tools (matimo_get_tool, matimo_search_tools)
+    - HITL enhancements (timeout, TTL)
+    - 2996 total tests passing (2001 TS + 995 Python)
+    - 5 critical security patches
+    - Full TypeScript + Python SDK parity
+    - Comprehensive documentation and examples
+
+v0.1.1 Patch Release (📅 Planned — Q3 2026)
+  Priorities:
+    - Skills meta-tools (matimo_search_skills, matimo_get_skill_sections, matimo_get_skill_content)
+    - Dynamic tool filtering for context window management
+    - Additional provider enhancements
 
   v0.1.0-rc.1     Late March 2026
   v0.1.0          March 2026 ← Stable Release

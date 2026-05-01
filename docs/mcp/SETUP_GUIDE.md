@@ -71,7 +71,7 @@ uv run python src/server_http.py
 
 ## System Architecture
 
-Matimo MCP exposes **128+ tools** that agents use to create new provider packages:
+Matimo MCP exposes **137+ tools** that agents use to create new provider packages:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -83,7 +83,7 @@ Matimo MCP exposes **128+ tools** that agents use to create new provider package
              ↓
 ┌─────────────────────────────────────────────────────────┐
 │ MCP Server on port 3101 (Python process)                │
-│ Exposes 128+ Matimo tools via JSON-RPC                  │
+│ Exposes 137+ Matimo tools via JSON-RPC                  │
 └────────────┬────────────────────────────────────────────┘
              │
              ↓

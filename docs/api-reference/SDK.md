@@ -993,7 +993,7 @@ for _ in range(10):
         messages.append(ToolMessage(tool_call_id=call['id'], content=str(tool_result)))
 ```
 
-**OpenAI 128-tool hard limit:** When `auto_discover=True` loads 128+ tools, bind only the subset you need:
+**OpenAI 128-tool hard limit:** When `auto_discover=True` loads 137+ tools, bind only the subset you need:
 
 ```python
 # Keep matimo_* meta-tools + specific providers

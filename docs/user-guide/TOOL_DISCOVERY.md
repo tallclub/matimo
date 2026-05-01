@@ -33,8 +33,8 @@ Tools are automatically discovered from these providers:
 ```typescript
 // Tools are auto-discovered from installed packages:
 // @matimo/slack      → slack_send_message, slack_list_channels, etc.
-// @matimo/gmail      → gmail-send-email, gmail-list-messages, etc.
-// @matimo/github     → github-create-issue, github-list-repos, etc.
+// @matimo/gmail      → gmail_send_email, gmail_list_messages, etc.
+// @matimo/github     → github_create_issue, github_list_repos, etc.
 
 const m = await MatimoInstance.init({ autoDiscover: true });
 const allTools = m.listTools();
@@ -43,9 +43,9 @@ allTools.forEach((tool) => {
   console.log(`• ${tool.name}`);
   // • slack_send_message
   // • slack_list_channels
-  // • gmail-send-email
-  // • gmail-list-messages
-  // • github-create-issue
+  // • gmail_send_email
+  // • gmail_list_messages
+  // • github_create_issue
   // ...
 });
 ```
@@ -137,9 +137,9 @@ allTools.forEach((tool) => {
 ```
 Loaded 8 tools
 • calculator - Perform basic math operations
-• gmail-send-email - Send an email via Gmail API
-• gmail-list-messages - List emails from Gmail
-• github-create-issue - Create a GitHub issue
+• gmail_send_email - Send an email via Gmail API
+• gmail_list_messages - List emails from Gmail
+• github_create_issue - Create a GitHub issue
 ... (more tools)
 ```
 
@@ -186,11 +186,11 @@ results.forEach((tool) => {
 **Output:**
 
 ```
-Found: gmail-send-email
+Found: gmail_send_email
   Description: Send an email via Gmail API
   Tags: email, gmail, http
 
-Found: gmail-list-messages
+Found: gmail_list_messages
   Description: List emails from Gmail
   Tags: email, gmail, http
 ```
@@ -222,11 +222,11 @@ console.log(`OAuth2 tools: ${oauth2Tools.map((t) => t.name).join(', ')}`);
 
 ```typescript
 // Gmail tools
-const gmailTools = m.listTools().filter((t) => t.name.startsWith('gmail-'));
+const gmailTools = m.listTools().filter((t) => t.name.startsWith('gmail_'));
 console.log(`Gmail tools: ${gmailTools.map((t) => t.name).join(', ')}`);
 
 // GitHub tools
-const githubTools = m.listTools().filter((t) => t.name.startsWith('github-'));
+const githubTools = m.listTools().filter((t) => t.name.startsWith('github_'));
 console.log(`GitHub tools: ${githubTools.map((t) => t.name).join(', ')}`);
 ```
 

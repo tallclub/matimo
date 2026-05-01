@@ -1064,7 +1064,7 @@ The Python MCP implementation mirrors TypeScript with full feature parity:
 1. **Language:** Python uses async/await throughout; TypeScript uses top-level await
 2. **HTTP:** Python uses pure-ASGI with async context management; TypeScript uses Node HTTP + Node streams
 3. **Secret storage:** Both store in memory **after resolution**, never written back to process env — Python uses `dict[str, str]`, TypeScript uses `Record<string, string>`
-4. **Test coverage:** Both at 95%+ — 824 Python tests, 1884 TypeScript tests
+4. **Test coverage:** Both at 95%+ — 995 Python tests, 2001 TypeScript tests
 
 For full implementation details, see [python/packages/core/src/matimo/mcp/README.md](../../python/packages/core/src/matimo/mcp/README.md).
 
