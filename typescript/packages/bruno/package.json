@@ -9,12 +9,11 @@
     "definition.yaml"
   ],
   "dependencies": {
+    "@matimo/core": "workspace:*",
     "@usebruno/cli": ">=3.3.0"
   },
   "peerDependencies": {
     "matimo": "workspace:*"
   },
-  "devDependencies": {
-    "@matimo/core": "workspace:*"
-  }
+  "devDependencies": {}
 }
