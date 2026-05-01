@@ -1,20 +1,20 @@
 [project]
 name = "matimo-py-mcp"
-version = "0.1.0a14.post2"
+version = "0.1.0"
 description = "Matimo MCP Examples - Unified Agent with Multi-Transport Support (stdio / HTTP / Multi)"
 requires-python = ">=3.11"
 dependencies = [
-    "matimo-core>=0.1.0a14",
-    "matimo-cli>=0.1.0a14",
-    "matimo-slack>=0.1.0a14",
-    "matimo-github>=0.1.0a14",
-    "matimo-gmail>=0.1.0a14",
-    "matimo-notion>=0.1.0a14",
-    "matimo-postgres>=0.1.0a14",
-    "matimo-twilio>=0.1.0a14",
-    "matimo-hubspot>=0.1.0a14",
-    "matimo-mailchimp>=0.1.0a14",
-    "matimo-bruno>=0.1.0a14",
+    "matimo-core>=0.1.0,<0.2.0",
+    "matimo-cli>=0.1.0,<0.2.0",
+    "matimo-slack>=0.1.0,<0.2.0",
+    "matimo-github>=0.1.0,<0.2.0",
+    "matimo-gmail>=0.1.0,<0.2.0",
+    "matimo-notion>=0.1.0,<0.2.0",
+    "matimo-postgres>=0.1.0,<0.2.0",
+    "matimo-twilio>=0.1.0,<0.2.0",
+    "matimo-hubspot>=0.1.0,<0.2.0",
+    "matimo-mailchimp>=0.1.0,<0.2.0",
+    "matimo-bruno>=0.1.0,<0.2.0",
     "python-dotenv>=1.2.2",
     "mcp>=1.27.0",
 ]
@@ -22,7 +22,7 @@ dependencies = [
 [project.optional-dependencies]
 # Minimal: Just core + Slack (for basic examples)
 slack = [
-    "matimo-slack>=0.1.0a14",
+    "matimo-slack>=0.1.0,<0.2.0",
     "starlette>=1.0.0",
     "uvicorn>=0.44.0",
 ]
@@ -36,14 +36,14 @@ http = [
 
 # All providers (for comprehensive testing)
 all = [
-    "matimo-slack>=0.1.0a14",
-    "matimo-github>=0.1.0a14",
-    "matimo-gmail>=0.1.0a14",
-    "matimo-notion>=0.1.0a14",
-    "matimo-postgres>=0.1.0a14",
-    "matimo-twilio>=0.1.0a14",
-    "matimo-hubspot>=0.1.0a14",
-    "matimo-mailchimp>=0.1.0a14",
+    "matimo-slack>=0.1.0,<0.2.0",
+    "matimo-github>=0.1.0,<0.2.0",
+    "matimo-gmail>=0.1.0,<0.2.0",
+    "matimo-notion>=0.1.0,<0.2.0",
+    "matimo-postgres>=0.1.0,<0.2.0",
+    "matimo-twilio>=0.1.0,<0.2.0",
+    "matimo-hubspot>=0.1.0,<0.2.0",
+    "matimo-mailchimp>=0.1.0,<0.2.0",
     "starlette>=1.0.0",
     "uvicorn>=0.44.0",
     "sse-starlette>=3.3.4",
