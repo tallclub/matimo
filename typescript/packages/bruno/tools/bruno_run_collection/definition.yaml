@@ -69,15 +69,10 @@ parameters:
     default: safe
     description: JavaScript execution mode - 'safe' or 'developer'
 
-  report_format:
-    type: string
-    required: false
-    description: Report format - json, junit, or html
-
   report_path:
     type: string
     required: false
-    description: Path to write report file
+    description: Custom path for JSON report output (defaults to temp directory)
 
 execution:
   type: function
