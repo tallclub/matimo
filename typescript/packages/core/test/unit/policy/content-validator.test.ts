@@ -217,6 +217,61 @@ describe('validateToolContent', () => {
       const domainViolation = result.violations.find((v) => v.rule === 'blocked-domain');
       expect(domainViolation).toBeUndefined();
     });
+
+    it('should skip blocked-domain check when URL cannot be parsed', () => {
+      const tool = makeTool({
+        execution: { type: 'http', method: 'GET', url: 'not-a-valid-url' },
+      });
+      const ctx = makeContext({
+        policy: { ...makeContext().policy, allowedDomains: ['api.example.com'] },
+      });
+      const result = validateToolContent(tool, ctx);
+      const domainViolation = result.violations.find((v) => v.rule === 'blocked-domain');
+      expect(domainViolation).toBeUndefined();
+    });
+  });
+
+  describe('unauthorized-credential', () => {
+    it('should flag credentials not present in allowlist', () => {
+      const tool = makeTool({
+        execution: {
+          type: 'http',
+          method: 'GET',
+          url: 'https://api.example.com/data',
+          headers: {
+            Authorization: 'Bearer {SECRET_TOKEN}',
+          },
+        },
+      });
+      const ctx = makeContext({
+        policy: { ...makeContext().policy, allowedCredentials: ['SAFE_TOKEN'] },
+      });
+      const result = validateToolContent(tool, ctx);
+      expect(result.violations).toContainEqual(
+        expect.objectContaining({ rule: 'unauthorized-credential', severity: 'high' })
+      );
+    });
+
+    it('should allow credentials present in allowlist', () => {
+      const tool = makeTool({
+        execution: {
+          type: 'http',
+          method: 'GET',
+          url: 'https://api.example.com/data',
+          headers: {
+            Authorization: 'Bearer {SAFE_TOKEN}',
+          },
+        },
+      });
+      const ctx = makeContext({
+        policy: { ...makeContext().policy, allowedCredentials: ['SAFE_TOKEN'] },
+      });
+      const result = validateToolContent(tool, ctx);
+      const credentialViolation = result.violations.find(
+        (v) => v.rule === 'unauthorized-credential'
+      );
+      expect(credentialViolation).toBeUndefined();
+    });
   });
 
   describe('forced-draft-status', () => {
