@@ -77,7 +77,7 @@ jobs:
           for provider_dir in */; do
             provider_name="${provider_dir%/}"
             # Skip non-provider packages
-            if [[ "$provider_name" != "core" && "$provider_name" != "cli" && "$provider_name" != "matimo" ]]; then
+            if [[ "$provider_name" != "core" && "$provider_name" != "matimo" ]]; then
               echo "Building matimo-$provider_name..."
               uv build --package matimo-$provider_name
             fi
