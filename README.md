@@ -21,6 +21,12 @@
   <a href="https://discord.gg/3JPt4mxWDV"><img src="https://img.shields.io/badge/Discord-Join%20Chat-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord"></a>
 </p>
 
+<p align="center">
+  <a href="https://colab.research.google.com/github/tallclub/matimo/blob/main/docs/notebooks/01_quickstart.ipynb" target="_parent">
+    <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/>
+  </a>
+</p>
+
 ## The First AI SDK with Meta-Tools, Policy Engine, and Human-in-the-Loop Control
 
 Give your agents **137+ production-ready tools** to start. Then activate **10 meta-tools** that let them create, validate, and approve new capabilities at runtime — governed by your **policy engine** with **human approval workflows** for critical actions.
