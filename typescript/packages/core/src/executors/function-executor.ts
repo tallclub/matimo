@@ -1,8 +1,8 @@
 import path from 'path';
 import { pathToFileURL } from 'node:url';
-import { ToolDefinition } from '../core/schema';
-import { MatimoError, ErrorCode } from '../errors/matimo-error';
-import { getGlobalMatimoLogger } from '../logging/logger';
+import { ToolDefinition } from '../core/schema.js';
+import { MatimoError, ErrorCode } from '../errors/matimo-error.js';
+import { getGlobalMatimoLogger } from '../logging/index.js';
 
 /**
  * FunctionExecutor - Executes async functions

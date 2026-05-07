@@ -18,9 +18,9 @@
 import fs from 'fs/promises';
 import path from 'path';
 import YAML from 'yaml';
-import { OAuth2Endpoints } from './oauth2-config';
-import { MatimoError, ErrorCode } from '../errors/matimo-error';
-import { validateProviderDefinition, type ProviderDefinition } from '../core/schema';
+import { OAuth2Endpoints } from './oauth2-config.js';
+import { MatimoError, ErrorCode } from '../errors/matimo-error.js';
+import { validateProviderDefinition, type ProviderDefinition } from '../core/schema.js';
 
 /**
  * OAuth2ProviderLoader - Loads OAuth2 provider configurations from YAML

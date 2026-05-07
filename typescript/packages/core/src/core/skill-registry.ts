@@ -11,12 +11,16 @@ import {
   SearchSkillsOptions,
   EmbeddingProvider,
   SkillContentOptions,
-} from './types';
-import { MatimoError, ErrorCode } from '../errors/matimo-error';
-import { getGlobalMatimoLogger } from '../logging';
-import { TfIdfEmbeddingProvider, cosineSimilarity } from './tfidf-embedding';
-import { parseSkillSections, extractSkillContent, listSkillSections } from './skill-content-parser';
-import type { ParsedSkillContent } from './skill-content-parser';
+} from './types.js';
+import { MatimoError, ErrorCode } from '../errors/matimo-error.js';
+import { getGlobalMatimoLogger } from '../logging/index.js';
+import { TfIdfEmbeddingProvider, cosineSimilarity } from './tfidf-embedding.js';
+import {
+  parseSkillSections,
+  extractSkillContent,
+  listSkillSections,
+} from './skill-content-parser.js';
+import type { ParsedSkillContent } from './skill-content-parser.js';
 
 /**
  * Semantic search result with relevance score.

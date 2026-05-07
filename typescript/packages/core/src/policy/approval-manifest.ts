@@ -8,8 +8,8 @@
 import { createHmac, randomUUID, createHash } from 'crypto';
 import fs from 'fs';
 import path from 'path';
-import { MatimoError, ErrorCode } from '../errors/matimo-error';
-import { getGlobalMatimoLogger } from '../logging';
+import { MatimoError, ErrorCode } from '../errors/matimo-error.js';
+import { getGlobalMatimoLogger } from '../logging/index.js';
 
 export interface ApprovalRecord {
   name: string;

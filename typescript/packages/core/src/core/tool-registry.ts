@@ -1,5 +1,5 @@
-import { ToolDefinition } from './schema';
-import { MatimoError, ErrorCode } from '../errors/matimo-error';
+import { ToolDefinition } from './schema.js';
+import { MatimoError, ErrorCode } from '../errors/matimo-error.js';
 
 /**
  * Tool Registry - In-memory store for loaded tools

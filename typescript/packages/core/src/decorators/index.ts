@@ -1,1 +1,1 @@
-export { tool, setGlobalMatimoInstance, getGlobalMatimoInstance } from './tool-decorator';
+export { tool, setGlobalMatimoInstance, getGlobalMatimoInstance } from './tool-decorator.js';

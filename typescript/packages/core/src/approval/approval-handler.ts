@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { MatimoError, ErrorCode } from '../errors/matimo-error';
+import { MatimoError, ErrorCode } from '../errors/matimo-error.js';
 
 /**
  * Approval request for any tool operation

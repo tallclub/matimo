@@ -8,8 +8,8 @@
 
 import { readFileSync, existsSync } from 'fs';
 import { resolve as resolvePath } from 'path';
-import type { SecretResolver } from './types';
-import { getGlobalMatimoLogger } from '../../logging';
+import type { SecretResolver } from './types.js';
+import { getGlobalMatimoLogger } from '../../logging/index.js';
 
 /**
  * Parse a .env file into key-value pairs.

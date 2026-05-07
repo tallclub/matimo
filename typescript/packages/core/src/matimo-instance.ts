@@ -1,13 +1,13 @@
 import fs from 'fs';
 import path from 'path';
-import { ToolLoader } from './core/tool-loader';
-import { ToolRegistry } from './core/tool-registry';
-import { SkillLoader } from './core/skill-loader';
-import { SkillRegistry } from './core/skill-registry';
-import type { SemanticSearchResult } from './core/skill-registry';
-import { CommandExecutor } from './executors/command-executor';
-import { HttpExecutor } from './executors/http-executor';
-import { FunctionExecutor } from './executors/function-executor';
+import { ToolLoader } from './core/tool-loader.js';
+import { ToolRegistry } from './core/tool-registry.js';
+import { SkillLoader } from './core/skill-loader.js';
+import { SkillRegistry } from './core/skill-registry.js';
+import type { SemanticSearchResult } from './core/skill-registry.js';
+import { CommandExecutor } from './executors/command-executor.js';
+import { HttpExecutor } from './executors/http-executor.js';
+import { FunctionExecutor } from './executors/function-executor.js';
 import {
   ToolDefinition,
   SkillDefinition,
@@ -15,23 +15,23 @@ import {
   SearchSkillsOptions,
   SkillContentOptions,
   EmbeddingProvider,
-} from './core/types';
-import { MatimoError, ErrorCode } from './errors/matimo-error';
+} from './core/types.js';
+import { MatimoError, ErrorCode } from './errors/matimo-error.js';
 import {
   MatimoLogger,
   LoggerConfig,
   getLoggerConfig,
   createLogger,
   setGlobalMatimoLogger,
-} from './logging';
-import { ApprovalHandler, getGlobalApprovalHandler } from './approval/approval-handler';
-import type { ExecuteOptions } from './core/types';
-import type { PolicyEngine, PolicyContext, PolicyConfig, HITLCallback } from './policy/types';
-import { DefaultPolicyEngine } from './policy/default-policy';
-import { loadPolicyFromFile } from './policy/policy-loader';
-import { ToolIntegrityTracker } from './policy/integrity-tracker';
-import { ApprovalManifest } from './policy/approval-manifest';
-import type { MatimoEvent, MatimoEventHandler } from './policy/events';
+} from './logging/index.js';
+import { ApprovalHandler, getGlobalApprovalHandler } from './approval/approval-handler.js';
+import type { ExecuteOptions } from './core/types.js';
+import type { PolicyEngine, PolicyContext, PolicyConfig, HITLCallback } from './policy/types.js';
+import { DefaultPolicyEngine } from './policy/default-policy.js';
+import { loadPolicyFromFile } from './policy/policy-loader.js';
+import { ToolIntegrityTracker } from './policy/integrity-tracker.js';
+import { ApprovalManifest } from './policy/approval-manifest.js';
+import type { MatimoEvent, MatimoEventHandler } from './policy/events.js';
 
 /**
  * Find the core skills directory by walking up from process.cwd().

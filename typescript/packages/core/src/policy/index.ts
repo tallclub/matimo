@@ -11,12 +11,12 @@ export type {
   Violation,
   ValidationResult,
   ValidationContext,
-} from './types';
-export { DefaultPolicyEngine } from './default-policy';
-export { validateToolContent, isSSRFTarget } from './content-validator';
-export { classifyRisk } from './risk-classifier';
-export { ToolIntegrityTracker } from './integrity-tracker';
-export type { IntegrityRecord, IntegrityAction } from './integrity-tracker';
-export { ApprovalManifest } from './approval-manifest';
-export type { ApprovalRecord } from './approval-manifest';
-export type { MatimoEvent, MatimoEventHandler } from './events';
+} from './types.js';
+export { DefaultPolicyEngine } from './default-policy.js';
+export { validateToolContent, isSSRFTarget } from './content-validator.js';
+export { classifyRisk } from './risk-classifier.js';
+export { ToolIntegrityTracker } from './integrity-tracker.js';
+export type { IntegrityRecord, IntegrityAction } from './integrity-tracker.js';
+export { ApprovalManifest } from './approval-manifest.js';
+export type { ApprovalRecord } from './approval-manifest.js';
+export type { MatimoEvent, MatimoEventHandler } from './events.js';

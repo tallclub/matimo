@@ -5,8 +5,8 @@
  * events to their own logging/audit system.
  */
 
-import type { RiskLevel } from './types';
-import type { Violation } from './types';
+import type { RiskLevel } from './types.js';
+import type { Violation } from './types.js';
 
 export type MatimoEvent =
   | {

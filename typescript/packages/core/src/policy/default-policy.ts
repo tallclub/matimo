@@ -5,7 +5,7 @@
  * Frozen at boot time — agents cannot modify policy at runtime.
  */
 
-import type { ToolDefinition } from '../core/schema';
+import type { ToolDefinition } from '../core/schema.js';
 import type {
   PolicyEngine,
   PolicyContext,
@@ -13,10 +13,10 @@ import type {
   PolicyConfig,
   PolicyTier,
   RiskLevel,
-} from './types';
-import { validateToolContent } from './content-validator';
-import { classifyRisk } from './risk-classifier';
-import { extractAuthPlaceholders } from '../mcp/tool-converter';
+} from './types.js';
+import { validateToolContent } from './content-validator.js';
+import { classifyRisk } from './risk-classifier.js';
+import { extractAuthPlaceholders } from '../mcp/tool-converter.js';
 
 const DEFAULT_CONFIG: Required<Omit<PolicyConfig, 'approvalTtlSeconds'>> &
   Pick<PolicyConfig, 'approvalTtlSeconds'> = {

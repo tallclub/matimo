@@ -5,7 +5,7 @@
  * Agents cannot mutate policy at runtime; the host configures it and may hot-reload via `updateConfig()`.
  */
 
-import type { ToolDefinition } from '../core/schema';
+import type { ToolDefinition } from '../core/schema.js';
 
 // ─── Risk Levels ────────────────────────────────────────────────────────
 

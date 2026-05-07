@@ -2,7 +2,7 @@
  * Core type definitions for Matimo tool ecosystem
  */
 
-import { ParameterEncodingConfig } from '../encodings/parameter-encoding';
+import { ParameterEncodingConfig } from '../encodings/parameter-encoding.js';
 
 /**
  * Parameter definition for a tool

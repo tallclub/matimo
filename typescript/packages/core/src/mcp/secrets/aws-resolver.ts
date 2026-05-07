@@ -10,9 +10,9 @@
  * Install: pnpm add @aws-sdk/client-secrets-manager
  */
 
-import type { SecretResolver } from './types';
-import { MatimoError, ErrorCode } from '../../errors/matimo-error';
-import { getGlobalMatimoLogger } from '../../logging';
+import type { SecretResolver } from './types.js';
+import { MatimoError, ErrorCode } from '../../errors/matimo-error.js';
+import { getGlobalMatimoLogger } from '../../logging/index.js';
 
 /** Default cache TTL: 5 minutes */
 const DEFAULT_CACHE_TTL_MS = 300_000;

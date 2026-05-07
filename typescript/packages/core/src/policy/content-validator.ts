@@ -5,9 +5,9 @@
  * in agent-created tool definitions. No LLM involved.
  */
 
-import type { ToolDefinition } from '../core/schema';
-import type { ValidationResult, ValidationContext, Violation } from './types';
-import { extractAuthPlaceholders } from '../mcp/tool-converter';
+import type { ToolDefinition } from '../core/schema.js';
+import type { ValidationResult, ValidationContext, Violation } from './types.js';
+import { extractAuthPlaceholders } from '../mcp/tool-converter.js';
 
 const DEFAULT_ALLOWED_HTTP_METHODS = ['GET', 'POST'];
 const DEFAULT_PROTECTED_NAMESPACES = ['matimo_'];

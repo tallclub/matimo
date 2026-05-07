@@ -6,7 +6,7 @@
  * No tool-specific code needed - keeps Matimo universal.
  */
 
-import { MatimoError, ErrorCode } from '../errors/matimo-error';
+import { MatimoError, ErrorCode } from '../errors/matimo-error.js';
 
 /**
  * Encoding configuration from YAML

@@ -1,3 +1,133 @@
+## v0.1.2 — TypeScript ESM Hotfix 🔧
+
+> **Release**: Critical fix for ES Module imports in published npm package
+
+**Released**: May 7, 2026  
+**Scope**: TypeScript SDK only — All 11 packages bumped to v0.1.2  
+**Severity**: 🔴 **CRITICAL** — Breaks all public npm consumers
+
+---
+
+### 🐛 **Issue: ESM Module Resolution Failure**
+
+**Problem:**  
+Published npm package (`matimo@0.1.1`) failed on all public consumers with:
+```
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module 
+  '/path/to/node_modules/@matimo/core/dist/core/schema'
+```
+
+**Root Cause:**  
+TypeScript compilation **does not automatically add `.js` extensions** to ES Module imports. When compiled JavaScript runs in Node.js, ESM resolution is **strict** and requires explicit file extensions.
+
+**Example:**
+```typescript
+// ❌ This source compiles to `dist/index.js` but breaks at runtime:
+export { ToolLoader } from './core/tool-loader';  // Missing .js!
+
+// ✅ Should compile to:
+export { ToolLoader } from './core/tool-loader.js';  // Correct
+```
+
+**Impact:**
+- All 137 tools unavailable
+- LangChain integration broken
+- MCP server failed to start
+- CLI non-functional
+- **v0.1.1 npm package unusable by public users**
+
+---
+
+### ✅ **Solution: Add Explicit `.js` Extensions**
+
+**Files Fixed:**
+- `typescript/packages/core/src/index.ts` — 35+ imports
+- `typescript/packages/core/src/matimo-instance.ts` — 19+ imports
+- **Total: 102+ imports corrected across 23 files**
+
+**Before:**
+```typescript
+import { ToolLoader } from './core/tool-loader';
+import { MatimoError } from './errors/matimo-error';
+import { ApprovalHandler } from './approval/approval-handler';
+```
+
+**After:**
+```typescript
+import { ToolLoader } from './core/tool-loader.js';
+import { MatimoError } from './errors/matimo-error.js';
+import { ApprovalHandler } from './approval/approval-handler.js';
+```
+
+When TypeScript compiles these imports, the `.js` extensions are preserved in the output, allowing Node.js ESM resolution to work correctly.
+
+---
+
+### 📦 **Version Bumps**
+
+| Package | Previous | New | Type |
+|---------|----------|-----|------|
+| matimo (root) | 0.1.1 | 0.1.2 | Patch |
+| @matimo/core | 0.1.0 | 0.1.2 | Patch |
+| @matimo/cli | 0.1.0 | 0.1.2 | Patch |
+| @matimo/bruno | 0.1.0 | 0.1.2 | Patch |
+| @matimo/github | 0.1.0 | 0.1.2 | Patch |
+| @matimo/gmail | 0.1.0 | 0.1.2 | Patch |
+| @matimo/hubspot | 0.1.0 | 0.1.2 | Patch |
+| @matimo/mailchimp | 0.1.0 | 0.1.2 | Patch |
+| @matimo/notion | 0.1.0 | 0.1.2 | Patch |
+| @matimo/postgres | 0.1.0 | 0.1.2 | Patch |
+| @matimo/slack | 0.1.0 | 0.1.2 | Patch |
+| @matimo/twilio | 0.1.0 | 0.1.2 | Patch |
+
+---
+
+### 🧪 **Verification**
+
+- ✅ Build succeeds for all packages
+- ✅ 137 tools discovered correctly  
+- ✅ All examples work (slack, github, postgres, bruno, web, read, search, etc.)
+- ✅ Meta-tools functional (`matimo_list_tools`, `matimo_search_tools`, etc.)
+- ✅ LangChain integration verified
+- ✅ Approval workflows operational
+
+---
+
+### 📝 **Why This Happened**
+
+**TypeScript Compilation Behavior:**
+TypeScript's `tsc` compiler is **format-preserving** for import statements. When you write `import { X } from './x'`, the compiler outputs `import { X } from './x'` (no automatic `.js` addition). 
+
+**CJS vs ESM:**
+- **CommonJS** (`.js` with `require()`): Node resolves `./x` to `./x.js` automatically
+- **ESM** (`.mjs` or `"type": "module"` in package.json): Node **requires explicit extensions** per ES spec
+
+**Local Development vs npm:**
+- Local examples using `tsx` or `ts-node` have TypeScript semantic understanding — they resolve `./x` to `./x.ts` automatically
+- Published npm consumers get **pre-compiled JavaScript only** — `tsc` output with no semantic help
+
+**Best Practice Going Forward:**
+Always add `.js` extensions explicitly in TypeScript when targeting ESM + npm distribution.
+
+---
+
+### 🔄 **Next Steps for Users**
+
+**Immediate:**
+```bash
+npm install matimo@0.1.2  # New hotfix version
+# or
+npm update matimo
+```
+
+**Local Development:**
+Continue using local source — no changes needed. TypeScript compilation still works correctly.
+
+**Migration:**
+No code changes required — the fix is transparent. All APIs remain identical.
+
+---
+
 ## v0.1.0 — First Stable Release 🎉
 
 > **Release**: Production-Ready AI Tools SDK — Full-Stack TypeScript & Python with 137+ Tools, LangChain/CrewAI/MCP Support

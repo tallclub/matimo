@@ -5,12 +5,12 @@
  * Includes a factory function to instantiate resolvers from config objects.
  */
 
-import type { SecretResolver, SecretResolverConfig, SecretResolverChainConfig } from './types';
-import { EnvSecretResolver } from './env-resolver';
-import { DotenvSecretResolver } from './dotenv-resolver';
-import { VaultSecretResolver } from './vault-resolver';
-import { AwsSecretsManagerResolver } from './aws-resolver';
-import { getGlobalMatimoLogger } from '../../logging';
+import type { SecretResolver, SecretResolverConfig, SecretResolverChainConfig } from './types.js';
+import { EnvSecretResolver } from './env-resolver.js';
+import { DotenvSecretResolver } from './dotenv-resolver.js';
+import { VaultSecretResolver } from './vault-resolver.js';
+import { AwsSecretsManagerResolver } from './aws-resolver.js';
+import { getGlobalMatimoLogger } from '../../logging/index.js';
 
 /**
  * Create a SecretResolver instance from a config object.
