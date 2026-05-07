@@ -5,8 +5,8 @@
  * type, HTTP method, and approval requirements. No schema changes needed.
  */
 
-import type { ToolDefinition } from '../core/schema';
-import type { RiskLevel } from './types';
+import type { ToolDefinition } from '../core/schema.js';
+import type { RiskLevel } from './types.js';
 
 /**
  * Classify the risk level of a tool based on its definition.

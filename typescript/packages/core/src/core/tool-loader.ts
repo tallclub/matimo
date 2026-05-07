@@ -1,8 +1,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as YAML from 'js-yaml';
-import { ToolDefinition, validateToolDefinition } from './schema';
-import { MatimoError, ErrorCode } from '../errors/matimo-error';
+import { ToolDefinition, validateToolDefinition } from './schema.js';
+import { MatimoError, ErrorCode } from '../errors/matimo-error.js';
 
 /**
  * Tool Loader - Loads and validates YAML/JSON tool definitions

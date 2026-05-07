@@ -13,15 +13,15 @@
  */
 
 // MCP Server
-export { MCPServer, createMCPServer } from './mcp-server';
-export type { MCPServerOptions } from './mcp-server';
+export { MCPServer, createMCPServer } from './mcp-server.js';
+export type { MCPServerOptions } from './mcp-server.js';
 
 // Tool converter
 export {
   convertParametersToMcpSchema,
   toolToMcpRegistration,
   extractAuthPlaceholders,
-} from './tool-converter';
+} from './tool-converter.js';
 
 // Secret resolvers
 export {
@@ -43,4 +43,4 @@ export {
   // Chain
   SecretResolverChain,
   createResolverChain,
-} from './secrets/index';
+} from './secrets/index.js';

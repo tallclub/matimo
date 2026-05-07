@@ -1,7 +1,7 @@
 import axios, { AxiosRequestConfig } from 'axios';
-import { ToolDefinition } from '../core/schema';
-import { applyParameterEncodings } from '../encodings/parameter-encoding';
-import { MatimoError, ErrorCode, fromHttpError } from '../errors/matimo-error';
+import { ToolDefinition } from '../core/schema.js';
+import { applyParameterEncodings } from '../encodings/parameter-encoding.js';
+import { MatimoError, ErrorCode, fromHttpError } from '../errors/matimo-error.js';
 
 /**
  * HttpExecutor - Executes HTTP requests

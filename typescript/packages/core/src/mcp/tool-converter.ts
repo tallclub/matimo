@@ -7,8 +7,8 @@
  */
 
 import { z } from 'zod';
-import type { Parameter } from '../core/types';
-import type { ToolDefinition } from '../core/schema';
+import type { Parameter } from '../core/types.js';
+import type { ToolDefinition } from '../core/schema.js';
 
 /**
  * Convert a single Matimo Parameter to a Zod schema.

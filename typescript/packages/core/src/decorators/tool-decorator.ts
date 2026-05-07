@@ -1,6 +1,6 @@
 import { ToolDefinition } from '../core/types.js';
 import type { MatimoInstance } from '../matimo-instance.js';
-import { MatimoError, ErrorCode } from '../errors/matimo-error';
+import { MatimoError, ErrorCode } from '../errors/matimo-error.js';
 
 /**
  * Global Matimo instance for decorator usage

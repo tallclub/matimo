@@ -15,14 +15,14 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
 import type * as Http from 'http';
-import { MatimoInstance } from '../matimo-instance';
-import { MatimoError, ErrorCode } from '../errors/matimo-error';
-import { getGlobalMatimoLogger, setGlobalMatimoLogger } from '../logging';
-import { createLogger } from '../logging/winston-logger';
-import { toolToMcpRegistration, extractAuthPlaceholders } from './tool-converter';
-import { createResolverChain, SecretResolverChain } from './secrets/resolver-chain';
-import type { SecretResolverChainConfig } from './secrets/types';
-import type { ToolDefinition } from '../core/schema';
+import { MatimoInstance } from '../matimo-instance.js';
+import { MatimoError, ErrorCode } from '../errors/matimo-error.js';
+import { getGlobalMatimoLogger, setGlobalMatimoLogger } from '../logging/index.js';
+import { createLogger } from '../logging/winston-logger.js';
+import { toolToMcpRegistration, extractAuthPlaceholders } from './tool-converter.js';
+import { createResolverChain, SecretResolverChain } from './secrets/resolver-chain.js';
+import type { SecretResolverChainConfig } from './secrets/types.js';
+import type { ToolDefinition } from '../core/schema.js';
 
 // ─── Types ──────────────────────────────────────────────────────────────
 

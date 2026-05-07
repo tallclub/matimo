@@ -10,9 +10,9 @@ import {
   OAuth2Endpoints,
   TokenResponse,
   AuthorizationOptions,
-} from './oauth2-config';
-import { OAuth2ProviderLoader } from './oauth2-provider-loader';
-import { MatimoError, ErrorCode } from '../errors/matimo-error';
+} from './oauth2-config.js';
+import { OAuth2ProviderLoader } from './oauth2-provider-loader.js';
+import { MatimoError, ErrorCode } from '../errors/matimo-error.js';
 
 /**
  * OAuth2Handler - Provider-Agnostic OAuth2 Flow Manager

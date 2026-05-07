@@ -13,15 +13,15 @@ export type {
   DotenvResolverConfig,
   VaultResolverConfig,
   AwsSecretsManagerResolverConfig,
-} from './types';
+} from './types.js';
 
 // Implementations
-export { EnvSecretResolver } from './env-resolver';
-export { DotenvSecretResolver } from './dotenv-resolver';
-export { VaultSecretResolver } from './vault-resolver';
-export type { VaultResolverOptions } from './vault-resolver';
-export { AwsSecretsManagerResolver } from './aws-resolver';
-export type { AwsResolverOptions } from './aws-resolver';
+export { EnvSecretResolver } from './env-resolver.js';
+export { DotenvSecretResolver } from './dotenv-resolver.js';
+export { VaultSecretResolver } from './vault-resolver.js';
+export type { VaultResolverOptions } from './vault-resolver.js';
+export { AwsSecretsManagerResolver } from './aws-resolver.js';
+export type { AwsResolverOptions } from './aws-resolver.js';
 
 // Chain
-export { SecretResolverChain, createResolverChain } from './resolver-chain';
+export { SecretResolverChain, createResolverChain } from './resolver-chain.js';

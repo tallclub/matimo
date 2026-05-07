@@ -34,9 +34,9 @@
 import fs from 'fs';
 import yaml from 'js-yaml';
 import { z } from 'zod';
-import { DefaultPolicyEngine } from './default-policy';
-import type { PolicyEngine, PolicyConfig } from './types';
-import { MatimoError, ErrorCode } from '../errors/matimo-error';
+import { DefaultPolicyEngine } from './default-policy.js';
+import type { PolicyEngine, PolicyConfig } from './types.js';
+import { MatimoError, ErrorCode } from '../errors/matimo-error.js';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Zod schema — validates the YAML before constructing PolicyConfig

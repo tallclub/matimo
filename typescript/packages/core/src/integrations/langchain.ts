@@ -17,8 +17,8 @@
  */
 
 import { z } from 'zod';
-import type { ToolDefinition, Parameter } from '../core/types';
-import type { MatimoInstance } from '../matimo-instance';
+import type { ToolDefinition, Parameter } from '../core/types.js';
+import type { MatimoInstance } from '../matimo-instance.js';
 
 // LangChain tool type - dynamically imported to avoid hard dependency
 export interface LangChainTool {

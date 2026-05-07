@@ -6,7 +6,7 @@
  * This matches the existing injectAuthParameters() behavior.
  */
 
-import type { SecretResolver } from './types';
+import type { SecretResolver } from './types.js';
 
 export class EnvSecretResolver implements SecretResolver {
   readonly name = 'env';

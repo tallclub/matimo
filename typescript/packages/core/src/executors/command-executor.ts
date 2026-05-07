@@ -1,6 +1,6 @@
 import { spawn } from 'child_process';
-import { ToolDefinition } from '../core/schema';
-import { MatimoError, ErrorCode } from '../errors/matimo-error';
+import { ToolDefinition } from '../core/schema.js';
+import { MatimoError, ErrorCode } from '../errors/matimo-error.js';
 
 /**
  * CommandExecutor - Executes shell commands

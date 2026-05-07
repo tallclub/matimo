@@ -9,7 +9,7 @@
  * No external dependencies — works out of the box.
  */
 
-import { EmbeddingProvider } from './types';
+import { EmbeddingProvider } from './types.js';
 
 /**
  * Simple TF-IDF based embedding provider.

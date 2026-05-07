@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { MatimoError, ErrorCode } from '../errors/matimo-error';
+import { MatimoError, ErrorCode } from '../errors/matimo-error.js';
 
 /**
  * Core Zod validation schemas for all Matimo tool properties.
@@ -211,7 +211,7 @@ export type ProviderDefinition = z.infer<typeof ProviderDefinitionSchema>;
  *
  * @example
  * ```typescript
- * import { getGlobalMatimoLogger } from '../logging';
+ * import { getGlobalMatimoLogger } from '../logging.js';
  *
  * try {
  *   const tool = validateToolDefinition(parsedYAML);

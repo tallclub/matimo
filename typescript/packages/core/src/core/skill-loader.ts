@@ -16,10 +16,11 @@ import {
   ParsedSkill,
   BundledResources,
   SkillSummary,
-} from './types';
-import { parseSkillSections } from './skill-content-parser';
-import { getGlobalMatimoLogger } from '../logging';
-import { MatimoError, ErrorCode } from '../errors/matimo-error';
+} from './types.js';
+import { parseSkillSections } from './skill-content-parser.js';
+// @ts-ignore
+import { getGlobalMatimoLogger } from '../logging/index.js';
+import { MatimoError, ErrorCode } from '../errors/matimo-error.js';
 
 // ─── Name Validation ─────────────────────────────────────────────────────────
 
