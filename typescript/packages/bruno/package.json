@@ -1,7 +1,7 @@
 {
   "name": "@matimo/bruno",
-  "version": "0.1.1",
-  "description": "Bruno CLI tools for Matimo — API collection execution, import, and validation",
+  "version": "0.1.2",
+  "description": "Bruno CLI tools for Matimo \u2014 API collection execution, import, and validation",
   "files": [
     "tools",
     "README.md",

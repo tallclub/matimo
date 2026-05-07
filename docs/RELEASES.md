@@ -3,7 +3,7 @@
 > **Release**: Critical fix for ES Module imports in published npm package
 
 **Released**: May 7, 2026  
-**Scope**: TypeScript SDK only — All 11 packages bumped to v0.1.1  
+**Scope**: TypeScript SDK only — All 11 packages bumped to v0.1.2  
 **Severity**: 🔴 **CRITICAL** — Breaks all public npm consumers
 
 ---
@@ -68,17 +68,17 @@ When TypeScript compiles these imports, the `.js` extensions are preserved in th
 | Package | Previous | New | Type |
 |---------|----------|-----|------|
 | matimo (root) | 0.1.1 | 0.1.2 | Patch |
-| @matimo/core | 0.1.0 | 0.1.1 | Patch |
-| @matimo/cli | 0.1.0 | 0.1.1 | Patch |
-| @matimo/bruno | 0.1.0 | 0.1.1 | Patch |
-| @matimo/github | 0.1.0 | 0.1.1 | Patch |
-| @matimo/gmail | 0.1.0 | 0.1.1 | Patch |
-| @matimo/hubspot | 0.1.0 | 0.1.1 | Patch |
-| @matimo/mailchimp | 0.1.0 | 0.1.1 | Patch |
-| @matimo/notion | 0.1.0 | 0.1.1 | Patch |
-| @matimo/postgres | 0.1.0 | 0.1.1 | Patch |
-| @matimo/slack | 0.1.0 | 0.1.1 | Patch |
-| @matimo/twilio | 0.1.0 | 0.1.1 | Patch |
+| @matimo/core | 0.1.0 | 0.1.2 | Patch |
+| @matimo/cli | 0.1.0 | 0.1.2 | Patch |
+| @matimo/bruno | 0.1.0 | 0.1.2 | Patch |
+| @matimo/github | 0.1.0 | 0.1.2 | Patch |
+| @matimo/gmail | 0.1.0 | 0.1.2 | Patch |
+| @matimo/hubspot | 0.1.0 | 0.1.2 | Patch |
+| @matimo/mailchimp | 0.1.0 | 0.1.2 | Patch |
+| @matimo/notion | 0.1.0 | 0.1.2 | Patch |
+| @matimo/postgres | 0.1.0 | 0.1.2 | Patch |
+| @matimo/slack | 0.1.0 | 0.1.2 | Patch |
+| @matimo/twilio | 0.1.0 | 0.1.2 | Patch |
 
 ---
 
