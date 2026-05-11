@@ -825,14 +825,15 @@ class TestInstanceSkillsAndCoverage:
     @pytest.mark.asyncio
     async def test_execute_matimo_reload_tools_interception(self) -> None:
         """Lines 299-306: matimo_reload_tools is intercepted and calls reload()."""
-        from pathlib import Path
         from unittest.mock import AsyncMock, patch
 
-        import matimo as _matimo_pkg
+        from matimo import get_core_tools_path
         from matimo.instance import ReloadResult
 
         # Load built-in core tools so matimo_reload_tools is in the registry
-        core_tools_dir = str(Path(_matimo_pkg.__file__).parent / "tools")
+        # Use get_core_tools_path() — resolves correctly whether matimo is installed
+        # as a meta-package or directly as matimo-core.
+        core_tools_dir = get_core_tools_path()
         instance = await Matimo.init(core_tools_dir)
         reload_result = ReloadResult(loaded=5, removed=1, revalidated=0, rejected=[])
         with patch.object(instance, "reload", new=AsyncMock(return_value=reload_result)):

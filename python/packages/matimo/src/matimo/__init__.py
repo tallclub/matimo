@@ -178,6 +178,21 @@ from matimo.policy.types import (
 )
 from matimo.sync import MatimoSync
 
+
+def get_core_tools_path() -> str:
+    """Return the absolute path to matimo-core's bundled tool definitions.
+
+    Resolves via ``matimo.instance`` (always lives in matimo-core) so the
+    path is correct regardless of whether this meta-package is installed
+    as an editable package or as a regular wheel.
+    """
+    from pathlib import Path
+
+    import matimo.instance as _instance_mod
+
+    return str(Path(_instance_mod.__file__).parent / "tools")
+
+
 __all__ = [
     # Core models
     "ToolDefinition", "Parameter", "ParameterType", "AuthConfig", "AuthType",
@@ -233,5 +248,7 @@ __all__ = [
     "create_execution_error", "create_validation_error", "from_http_error",
     # Instance
     "Matimo", "MatimoSync", "matimo", "InitOptions", "ReloadResult",
+    # Core tools path (entry point)
+    "get_core_tools_path",
 ]
 
