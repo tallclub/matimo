@@ -1,3 +1,76 @@
+## v0.1.1 — Python Meta-Package Import Fix 🐛
+
+> **Release**: Hotfix for broken `pip install matimo` imports in Python SDK
+
+**Released**: May 11, 2026  
+**Scope**: Python SDK only — `matimo` meta-package bumped to v0.1.1  
+**Severity**: 🔴 **CRITICAL** — Breaks all public `pip install matimo` consumers
+
+---
+
+### 🐛 **Issue: Empty Meta-Package `__init__.py`**
+
+**Problem:**  
+After `pip install matimo`, all import attempts failed with:
+```
+ImportError: cannot import name 'Matimo' from 'matimo'
+```
+
+**Root Cause:**  
+The `matimo` Python meta-package `__init__.py` was empty — it declared `matimo-core` as a dependency but never re-exported anything from it. Users installing `matimo` got an empty shell with no accessible API.
+
+**Impact:**
+- `from matimo import Matimo` — broken
+- `from matimo import convert_tools_to_langchain` — broken  
+- `from matimo import convert_tools_to_crewai` — broken
+- All LangChain, CrewAI, MCP integrations inaccessible
+- **`matimo` PyPI package unusable by all public users**
+
+---
+
+### ✅ **Solution: `pkgutil.extend_path` Namespace Merge**
+
+Updated `python/packages/matimo/src/matimo/__init__.py` to:
+1. Use `pkgutil.extend_path(__path__, __name__)` to merge the meta-package namespace with `matimo-core`'s files in site-packages
+2. Explicitly re-export the full public API from `matimo-core` submodules
+3. Include a complete `__all__` matching `matimo-core`'s public API
+
+**Before:**
+```python
+# Empty — no exports at all
+```
+
+**After:**
+```python
+import pkgutil
+__path__ = pkgutil.extend_path(__path__, __name__)
+
+from matimo.instance import Matimo, InitOptions, ReloadResult, matimo
+from matimo.integrations.langchain import convert_tools_to_langchain
+from matimo.integrations.crewai import convert_tools_to_crewai
+# ... full public API
+```
+
+---
+
+### 📦 **Version Bumps**
+
+| Package | Previous | New | Type |
+|---------|----------|-----|------|
+| matimo (Python meta-package) | 0.1.0 | 0.1.1 | Patch |
+
+---
+
+### 🧪 **Verification**
+
+- ✅ `from matimo import Matimo` works
+- ✅ `from matimo import convert_tools_to_langchain, convert_tools_to_crewai` works
+- ✅ All policy, MCP, secrets, logging, approval exports accessible
+- ✅ `Matimo.init(auto_discover=True)` — 119 tools loaded successfully
+- ✅ No recursion errors
+
+---
+
 ## v0.1.2 — TypeScript ESM Hotfix 🔧
 
 > **Release**: Critical fix for ES Module imports in published npm package
