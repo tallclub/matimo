@@ -28,7 +28,7 @@ try:
     from importlib.metadata import version as _pkg_version
     __version__ = _pkg_version("matimo")
 except Exception:
-    __version__ = "0.1.1"  # fallback for editable / source installs
+    __version__ = "0.1.1.post1"  # fallback for editable / source installs
 
 # ---------------------------------------------------------------------------
 # matimo-core re-exports
