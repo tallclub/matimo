@@ -22,8 +22,7 @@ uv add "matimo[langchain]" langchain-openai langchain
 ```python
 import asyncio
 import os
-from matimo import Matimo
-from matimo.integrations.langchain import convert_tools_to_langchain
+from matimo import Matimo, convert_tools_to_langchain
 
 async def main():
     # 1. Load Matimo tools
@@ -58,8 +57,7 @@ asyncio.run(main())
 ```python
 import asyncio
 import os
-from matimo import Matimo
-from matimo.integrations.langchain import convert_tools_to_langchain
+from matimo import Matimo, convert_tools_to_langchain
 from langchain_openai import ChatOpenAI
 from langchain.agents import AgentExecutor, create_tool_calling_agent
 from langchain_core.prompts import ChatPromptTemplate
@@ -112,8 +110,7 @@ For full control over the tool-call loop:
 import asyncio
 import json
 import os
-from matimo import Matimo
-from matimo.integrations.langchain import convert_tools_to_langchain
+from matimo import Matimo, convert_tools_to_langchain
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
@@ -148,7 +145,7 @@ asyncio.run(run_manual_agent("List the Slack channels and send hello to #general
 ### API Reference: `convert_tools_to_langchain`
 
 ```python
-from matimo.integrations.langchain import convert_tools_to_langchain
+from matimo import convert_tools_to_langchain
 
 def convert_tools_to_langchain(
     tools: list[ToolDefinition],
@@ -194,9 +191,7 @@ lc_tools = convert_tools_to_langchain(
 When running LangChain without an MCP server, use the skills helpers to implement progressive skill disclosure:
 
 ```python
-from matimo import Matimo
-from matimo.core.skill_registry import SkillRegistry
-from matimo.integrations.langchain import convert_tools_to_langchain
+from matimo import Matimo, SkillRegistry, convert_tools_to_langchain
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
 

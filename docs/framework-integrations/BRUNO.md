@@ -86,7 +86,7 @@ console.log(result.summary); // { total, passed, failed, duration }
 ### Python
 
 ```python
-from matimo.instance import Matimo
+from matimo import Matimo
 from matimo_bruno import get_tools_path
 
 matimo = await Matimo.init([get_tools_path()])
@@ -146,8 +146,7 @@ const response = await agent.invoke({
 ### Python (CrewAI)
 
 ```python
-from matimo.instance import Matimo
-from matimo.integrations.crewai import convert_tools_to_crewai
+from matimo import Matimo, convert_tools_to_crewai
 from matimo_bruno import get_tools_path
 from crewai import Agent, Task, Crew
 

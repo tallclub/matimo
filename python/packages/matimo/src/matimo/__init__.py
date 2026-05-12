@@ -24,7 +24,11 @@ import pkgutil
 # Must happen before any matimo.* sub-imports below.
 __path__ = pkgutil.extend_path(__path__, __name__)  # type: ignore[assignment]
 
-__version__ = "0.1.1"
+try:
+    from importlib.metadata import version as _pkg_version
+    __version__ = _pkg_version("matimo")
+except Exception:
+    __version__ = "0.1.1"  # fallback for editable / source installs
 
 # ---------------------------------------------------------------------------
 # matimo-core re-exports
@@ -180,40 +184,78 @@ from matimo.sync import MatimoSync  # noqa: E402
 # ---------------------------------------------------------------------------
 
 
-def convert_tools_to_langchain(*args: object, **kwargs: object) -> object:  # noqa: ANN401
+def convert_tools_to_langchain(
+    tools: list[ToolDefinition],
+    matimo_instance: Matimo,
+    credentials: dict[str, str] | None = None,
+) -> list[object]:  # noqa: ANN401 — return type is langchain StructuredTool, optional dep
     """Convert Matimo tools to LangChain StructuredTool list. Requires langchain-core."""
     from matimo.integrations.langchain import convert_tools_to_langchain as _inner
-    return _inner(*args, **kwargs)
+    return _inner(tools, matimo_instance, credentials)
 
 
-def get_skills_metadata(*args: object, **kwargs: object) -> object:  # noqa: ANN401
+def get_skills_metadata(matimo_instance: Matimo) -> list[dict[str, str]]:
     """Return Level-1 metadata (name + description) for all available skills."""
     from matimo.integrations.langchain import get_skills_metadata as _inner
-    return _inner(*args, **kwargs)
+    return _inner(matimo_instance)
 
 
-async def build_relevant_skill_prompt(*args: object, **kwargs: object) -> str:
+async def build_relevant_skill_prompt(
+    matimo_instance: Matimo,
+    query: str,
+    *,
+    top_k: int = 3,
+    min_score: float = 0.3,
+    header: str | None = None,
+) -> str:
     """Build a per-request skill context prompt using TF-IDF semantic search."""
     from matimo.integrations.langchain import build_relevant_skill_prompt as _inner
-    return await _inner(*args, **kwargs)
+    return await _inner(matimo_instance, query, top_k=top_k, min_score=min_score, header=header)
 
 
-def convert_tools_to_crewai(*args: object, **kwargs: object) -> object:  # noqa: ANN401
+def convert_tools_to_crewai(
+    tools: list[ToolDefinition],
+    matimo_instance: Matimo,
+    credentials: dict[str, str] | None = None,
+) -> list[object]:  # noqa: ANN401 — return type is crewai BaseTool, optional dep
     """Convert Matimo tools to CrewAI BaseTool list. Requires crewai."""
     from matimo.integrations.crewai import convert_tools_to_crewai as _inner
-    return _inner(*args, **kwargs)
+    return _inner(tools, matimo_instance, credentials)
 
 
 def get_core_tools_path() -> str:
     """Return the absolute path to matimo-core's bundled tool definitions.
 
-    Resolves via ``matimo.instance`` (always lives in matimo-core) so the
-    path is correct regardless of whether this meta-package is installed
-    as an editable package or as a regular wheel.
+    Prefer package resource resolution so this works consistently for normal
+    installs, editable installs, and zip-imported packages, with a filesystem
+    fallback for environments where the resource path cannot be resolved.
+    Aligned with the implementation in matimo-core.
     """
+    import importlib.resources
     from pathlib import Path
-    import matimo.instance as _instance_mod
-    return str(Path(_instance_mod.__file__).parent / "tools")
+
+    # Resolve via matimo.instance, which always lives in matimo-core (not in this
+    # meta-package), so the path is correct for both wheels and editable installs.
+    # importlib.resources.files("matimo") is intentionally avoided here because in
+    # an editable install it resolves to the meta-package directory, not matimo-core.
+    try:
+        import matimo.instance as _instance_mod
+        candidate = Path(_instance_mod.__file__).parent / "tools"
+        if candidate.is_dir():
+            return str(candidate)
+    except Exception:
+        pass
+
+    # Secondary: package resource lookup (works reliably for published wheels)
+    try:
+        ref = importlib.resources.files("matimo") / "tools"
+        candidate = Path(str(ref))
+        if candidate.is_dir():
+            return str(candidate)
+    except Exception:
+        pass
+
+    raise FileNotFoundError("Could not locate matimo bundled tools directory")
 
 
 __all__ = [

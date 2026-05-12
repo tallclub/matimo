@@ -46,9 +46,9 @@ import pkgutil
 __path__ = pkgutil.extend_path(__path__, __name__)
 
 from matimo.instance import Matimo, InitOptions, ReloadResult, matimo
-from matimo.integrations.langchain import convert_tools_to_langchain
-from matimo.integrations.crewai import convert_tools_to_crewai
-# ... full public API
+from matimo import convert_tools_to_langchain
+from matimo import convert_tools_to_crewai
+# ... full public API (lazy wrappers — no ImportError if optional deps absent)
 ```
 
 ---
@@ -741,22 +741,22 @@ No breaking changes to TypeScript SDK; all security patches are backward-compati
 ### For New Python Users
 ```bash
 # Install core + specific providers
-pip install matimo-core matimo-slack matimo-github
+pip install matimo matimo-slack matimo-github
 
 # With LangChain
-pip install matimo-core[langchain] matimo-slack
+pip install "matimo[langchain]" matimo-slack
 
 # With CrewAI
-pip install matimo-core[crewai] matimo-slack
+pip install "matimo[crewai]" matimo-slack
 
 # With everything
-pip install matimo-core[all]
+pip install "matimo[langchain,crewai]"
 ```
 
 ### Verify Installation
 ```python
 import matimo
-print(f"Matimo version: {matimo.__version__}")  # Should be 0.1.0a14
+print(f"Matimo version: {matimo.__version__}")  # Should be 0.1.1
 
 # Quick test
 from matimo import Matimo
