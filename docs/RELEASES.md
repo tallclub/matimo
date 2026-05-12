@@ -1,13 +1,12 @@
-## v0.1.1 — Python Meta-Package Import Fix 🐛
+## v0.1.1.post1 — Meta-Package Tools Path Fix 🐛
 
 > **Release**: Hotfix for broken `pip install matimo` imports in Python SDK
 
-**Released**: May 11, 2026  
-**Scope**: Python SDK only — `matimo` meta-package bumped to v0.1.1  
+**Released**: May 12, 2026  
+**Scope**: Python SDK only — `matimo` meta-package bumped to v0.1.1.post1  
 **Severity**: 🔴 **CRITICAL** — Breaks all public `pip install matimo` consumers
 
 ---
-
 ### 🐛 **Issue: Empty Meta-Package `__init__.py`**
 
 **Problem:**  
@@ -57,7 +56,7 @@ from matimo import convert_tools_to_crewai
 
 | Package | Previous | New | Type |
 |---------|----------|-----|------|
-| matimo (Python meta-package) | 0.1.0 | 0.1.1 | Patch |
+| matimo (Python meta-package) | 0.1.0 | 0.1.1.post1 | Patch |
 
 ---
 
@@ -68,6 +67,13 @@ from matimo import convert_tools_to_crewai
 - ✅ All policy, MCP, secrets, logging, approval exports accessible
 - ✅ `Matimo.init(auto_discover=True)` — 119 tools loaded successfully
 - ✅ No recursion errors
+
+---
+
+### ✅ **Additional Improvements**
+
+- Typed wrapper signatures for `convert_tools_to_langchain`, `convert_tools_to_crewai`, `build_relevant_skill_prompt` (replacing `*args/**kwargs`)
+- `__version__` derived from `importlib.metadata.version("matimo")` with `"0.1.1.post1"` fallback
 
 ---
 
@@ -756,7 +762,7 @@ pip install "matimo[langchain,crewai]"
 ### Verify Installation
 ```python
 import matimo
-print(f"Matimo version: {matimo.__version__}")  # Should be 0.1.1
+print(f"Matimo version: {matimo.__version__}")  # Should be 0.1.1.post1
 
 # Quick test
 from matimo import Matimo

@@ -6,15 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
-## [v0.1.1] - 2026-05-11
+## [v0.1.1.post1] - 2026-05-12
 
 ### 🐛 Bug Fixes
+- Fix `get_core_tools_path()` in `matimo` meta-package — `importlib.resources.files("matimo")` resolved to the meta-package directory in editable installs, returning a non-existent path and causing `matimo_reload_tools` to fail with 0 tools loaded
+- Resolve via `matimo.instance.__file__` (always in `matimo-core`) with `importlib.resources` as secondary fallback for published wheels
+- Add typed wrapper signatures for `convert_tools_to_langchain`, `convert_tools_to_crewai`, and `build_relevant_skill_prompt`
+- Derive `__version__` from `importlib.metadata` with `"0.1.1.post1"` fallback
 - Fix `matimo` Python meta-package `__init__.py` — was empty, causing `ImportError: cannot import name 'Matimo' from 'matimo'` for all users after `pip install matimo`
 - Use `pkgutil.extend_path` to merge meta-package namespace with `matimo-core` site-packages, enabling direct submodule imports
 - Full public API of `matimo-core` and `matimo-cli` now re-exported from the `matimo` meta-package
 
 ### 📦 Version Bumps
-- `matimo` (Python meta-package): `0.1.0` → `0.1.1`
+- `matimo` (Python meta-package): `0.1.1` → `0.1.1.post1`
+
 
 ---
 ## [v0.1.0] - 2026-05-01
