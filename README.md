@@ -27,7 +27,7 @@
   </a>
 </p>
 
-## The AI SDK with Meta-Tools, Policy Engine, Goverance and Human-in-the-Loop Control
+## The AI SDK with Meta-Tools, Policy Engine, Governance and Human-in-the-Loop Control
 
 Give your agents **137+ production-ready tools** to start. Then activate **10 meta-tools** that let them create, validate, and approve new capabilities at runtime — governed by your **policy engine** with **human approval workflows** for critical actions.
 
