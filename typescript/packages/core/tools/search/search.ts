@@ -53,8 +53,9 @@ export default async function searchTool(params: SearchParams): Promise<SearchRe
     caseSensitive = false,
     maxResults = 50,
     contextLines = 2,
-    excludePatterns = ['**/node_modules/**', '**/.git/**', '**/dist/**', '**/build/**'],
   } = params;
+
+  const excludePatterns = params.excludePatterns;
 
   const startTime = Date.now();
 
@@ -116,11 +117,20 @@ export default async function searchTool(params: SearchParams): Promise<SearchRe
   let files: string[] = [];
 
   try {
-    files = await glob(globPattern, {
+    const globOptions: {
+      nodir: true;
+      absolute: true;
+      ignore?: string[];
+    } = {
       nodir: true,
       absolute: true,
-      ignore: excludePatterns,
-    });
+    };
+
+    if (excludePatterns && excludePatterns.length > 0) {
+      globOptions.ignore = excludePatterns;
+    }
+
+    files = await glob(globPattern, globOptions);
   } catch {
     throw new MatimoError('Invalid glob pattern', ErrorCode.INVALID_PARAMETER, {
       pattern: filePattern,

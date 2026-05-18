@@ -3,8 +3,8 @@
  * Pattern: Function-based tool (same as execute)
  */
 
-import { MatimoError, ErrorCode } from '../../src/errors/matimo-error';
-import { getGlobalMatimoLogger } from '../../src/logging/logger';
+import { MatimoError, ErrorCode } from '../../dist/errors/matimo-error.js';
+import { getGlobalMatimoLogger } from '../../dist/logging/logger.js';
 
 interface CalculatorParams {
   operation: string;
