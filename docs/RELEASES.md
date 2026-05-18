@@ -36,9 +36,19 @@ import { getGlobalMatimoLogger } from '../../src/logging/logger';
 
 **After:**
 ```typescript
-import { MatimoError, ErrorCode } from '../../dist/errors/matimo-error.js';
-import { getGlobalMatimoLogger } from '../../dist/logging/logger.js';
+import { MatimoError, ErrorCode, getGlobalMatimoLogger, getGlobalApprovalHandler } from '@matimo/core/runtime';
 ```
+
+**Why `@matimo/core/runtime` and not `../../dist/`:**  
+Tool files are shipped as raw `.ts` source in the npm tarball (`tools/` is not compiled). They are loaded at runtime via dynamic `import()` by the `FunctionExecutor`. Two constraints apply simultaneously:
+- `../../src/` — works in the monorepo (dev/tests) but `src/` is not shipped in the tarball, so it fails for npm consumers
+- `../../dist/` — exists in the tarball but is ESM output; Jest (CJS runtime) cannot parse it
+
+The `@matimo/core/runtime` subpath resolves both:
+- **npm runtime**: resolved by `package.json` `exports["./runtime"]` → `dist/runtime/index.js` ✅
+- **Jest**: mapped by `moduleNameMapper` → `src/runtime/index.ts` ✅
+
+A dedicated `src/runtime/index.ts` entrypoint was added as a narrow export surface (only the 4 symbols built-in tools need), reducing coupling to the full package barrel.
 
 ---
 

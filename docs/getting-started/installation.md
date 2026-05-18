@@ -115,7 +115,7 @@ pnpm add @matimo/gmail   # Gmail tools
 pnpm add @matimo/cli     # CLI tool management
 ```
 
-**Note**: v0.1.2 is the latest stable release on npm. Future releases follow semantic versioning.
+**Note**: Check [npm](https://www.npmjs.com/package/@matimo/core) for the latest stable release. Future releases follow semantic versioning.
 
 ### Option 2: From Source (Recommended for Contributors)
 

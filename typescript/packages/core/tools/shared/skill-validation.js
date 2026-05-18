@@ -86,6 +86,12 @@ export function parseSkillContent(content) {
       continue;
     }
 
+    if (currentArray !== null && currentArrayKey) {
+      fields[currentArrayKey] = currentArray;
+    }
+    if (currentMetadata !== null) {
+      fields.metadata = currentMetadata;
+    }
     currentMetadata = null;
     currentArray = null;
     currentArrayKey = null;
@@ -97,7 +103,7 @@ export function parseSkillContent(content) {
 
     if (key === 'metadata' && !value) {
       currentMetadata = {};
-      fields.__metadata__ = 'MAP';
+      fields.metadata = currentMetadata;
       continue;
     }
 
