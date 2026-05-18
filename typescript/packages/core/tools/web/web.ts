@@ -5,7 +5,7 @@
  */
 
 import axios, { AxiosRequestConfig, AxiosError } from 'axios';
-import { MatimoError, ErrorCode } from '../../dist/errors/matimo-error.js';
+import { MatimoError, ErrorCode } from '@matimo/core/runtime';
 
 interface WebParams {
   url: string;

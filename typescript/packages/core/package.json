@@ -11,9 +11,18 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
+    "./runtime": {
+      "types": "./dist/runtime/index.d.ts",
+      "default": "./dist/runtime/index.js"
+    },
     "./mcp": {
       "types": "./dist/mcp/index.d.ts",
       "default": "./dist/mcp/index.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "runtime": ["./src/runtime/index.ts"]
     }
   },
   "engines": {
