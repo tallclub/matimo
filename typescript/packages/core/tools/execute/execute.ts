@@ -6,9 +6,12 @@
 
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { MatimoError, ErrorCode } from '../../src/errors/matimo-error';
-import { getGlobalMatimoLogger } from '../../src/logging/logger';
-import { getGlobalApprovalHandler } from '../../src/approval/approval-handler';
+import {
+  MatimoError,
+  ErrorCode,
+  getGlobalMatimoLogger,
+  getGlobalApprovalHandler,
+} from '@matimo/core/runtime';
 
 const execAsync = promisify(exec);
 

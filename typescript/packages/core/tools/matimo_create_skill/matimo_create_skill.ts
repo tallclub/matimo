@@ -5,7 +5,7 @@ import {
   validateSkillName,
   parseSkillContent,
   validateFrontmatter,
-} from '../shared/skill-validation';
+} from '../shared/skill-validation.js';
 
 interface CreateSkillParams {
   name: string;

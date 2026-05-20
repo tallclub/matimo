@@ -1,7 +1,14 @@
 import fs from 'fs';
 import path from 'path';
 import { getGlobalMatimoLogger, getGlobalMatimoInstance, ToolLoader, SkillSummary } from '@matimo/core';
-import { parseSkillContent, listBundledResources, type BundledResources } from '../shared/skill-validation';
+import { parseSkillContent, listBundledResources } from '../shared/skill-validation.js';
+
+interface BundledResources {
+  scripts: string[];
+  references: string[];
+  assets: string[];
+  other: string[];
+}
 
 interface GetSkillParams {
   name: string;

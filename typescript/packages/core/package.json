@@ -1,6 +1,6 @@
 {
   "name": "@matimo/core",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Core SDK for Matimo: Framework-agnostic YAML-driven tool ecosystem for AI agents.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -10,6 +10,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./runtime": {
+      "types": "./dist/runtime/index.d.ts",
+      "default": "./dist/runtime/index.js"
     },
     "./mcp": {
       "types": "./dist/mcp/index.d.ts",

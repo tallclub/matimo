@@ -5,7 +5,7 @@
  */
 
 import axios, { AxiosRequestConfig, AxiosError } from 'axios';
-import { MatimoError, ErrorCode } from '../../src/errors/matimo-error';
+import { MatimoError, ErrorCode } from '@matimo/core/runtime';
 
 interface WebParams {
   url: string;
@@ -74,7 +74,7 @@ export default async function webTool(params: WebParams): Promise<WebResult> {
     headers: {
       'User-Agent': 'Matimo/1.0 (AI Agent Tool SDK)',
       Accept: 'application/json, text/plain, text/html, */*',
-      ...headers,
+      ...(headers || {}),
     },
     validateStatus: () => true, // Don't throw on any status code
   };

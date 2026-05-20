@@ -5,9 +5,20 @@ import {
   parseSkillContent,
   validateFrontmatter,
   listBundledResources,
-  type ValidationIssue,
-  type BundledResources,
-} from '../shared/skill-validation';
+} from '../shared/skill-validation.js';
+
+interface ValidationIssue {
+  field: string;
+  message: string;
+  severity: 'error' | 'warning';
+}
+
+interface BundledResources {
+  scripts: string[];
+  references: string[];
+  assets: string[];
+  other: string[];
+}
 
 interface ValidateSkillParams {
   /** Name of the skill directory to validate. */

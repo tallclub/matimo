@@ -1,3 +1,134 @@
+---
+
+## v0.1.3 — Tool Import & Package Hotfix 🔧
+
+> **Release**: Critical fix for broken runtime imports in published tool files and missing meta package README
+
+**Released**: May 19, 2026  
+**Scope**: TypeScript SDK only — All packages bumped to v0.1.3  
+**Severity**: 🔴 **CRITICAL** — Function-type tools crash at runtime for all public npm consumers
+
+---
+
+### 🐛 **Issue 1: Tool Files Importing from `../../src/` at Runtime**
+
+**Problem:**  
+Function-type tool files shipped under `tools/` in the tarball contained imports pointing to `../../src/...` — a path that does not exist in the published npm package (only `dist/` is shipped):
+
+```
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module
+  '/path/to/node_modules/@matimo/core/src/errors/matimo-error'
+```
+
+**Root Cause:**  
+The `tsconfig.json` for `@matimo/core` only compiles `src/**/*` to `dist/`. Tool files under `tools/` are shipped as raw source and loaded at runtime via dynamic `import()` by `FunctionExecutor`. These files must import from the compiled `dist/` output, not the unshipped `src/` tree.
+
+**Files Fixed:**
+- `tools/web/web.ts` — 1 import
+- `tools/calculator/calculator.ts` — 2 imports
+- `tools/execute/execute.ts` — 3 imports
+
+**Before:**
+```typescript
+import { MatimoError, ErrorCode } from '../../src/errors/matimo-error';
+import { getGlobalMatimoLogger } from '../../src/logging/logger';
+```
+
+**After:**
+```typescript
+import { MatimoError, ErrorCode, getGlobalMatimoLogger, getGlobalApprovalHandler } from '@matimo/core/runtime';
+```
+
+**Why `@matimo/core/runtime` and not `../../dist/`:**  
+Tool files are shipped as raw `.ts` source in the npm tarball (`tools/` is not compiled). They are loaded at runtime via dynamic `import()` by the `FunctionExecutor`. Two constraints apply simultaneously:
+- `../../src/` — works in the monorepo (dev/tests) but `src/` is not shipped in the tarball, so it fails for npm consumers
+- `../../dist/` — exists in the tarball but is ESM output; Jest (CJS runtime) cannot parse it
+
+The `@matimo/core/runtime` subpath resolves both:
+- **npm runtime**: resolved by `package.json` `exports["./runtime"]` → `dist/runtime/index.js` ✅
+- **Jest**: mapped by `moduleNameMapper` → `src/runtime/index.ts` ✅
+
+A dedicated `src/runtime/index.ts` entrypoint was added as a narrow export surface (only the 4 symbols built-in tools need), reducing coupling to the full package barrel.
+
+---
+
+### 🐛 **Issue 2: Skill Tool Files Importing Shared Helper Without `.js` Extension**
+
+**Problem:**  
+`matimo_create_skill`, `matimo_get_skill`, and `matimo_validate_skill` tool files imported `'../shared/skill-validation'` without a `.js` extension. Node ESM requires explicit extensions on relative imports.
+
+**Solution:**  
+- Added `.js` extension to all three imports: `'../shared/skill-validation.js'`
+- Created `tools/shared/skill-validation.js` — a plain ESM JavaScript runtime equivalent of the `.ts` source (since `tools/` is excluded from `tsconfig` compilation, the `.ts` file cannot be `import()`-ed directly at runtime)
+- Replaced TypeScript-only type imports (`type ValidationIssue`, `type BundledResources`) with local interface definitions in each tool file
+
+---
+
+### 🐛 **Issue 3: Default `excludePatterns` in `search` Tool**
+
+**Problem:**  
+The `search` tool silently excluded `dist/`, `build/`, `node_modules/`, and `.git/` from results by default — preventing legitimate use cases (e.g. inspecting compiled output).
+
+**Solution:**  
+Removed all hardcoded default exclusions. The `glob` `ignore` option is now only applied when the caller explicitly provides `excludePatterns`. Callers who want to exclude common directories must opt in explicitly.
+
+---
+
+### 🐛 **Issue 4: Meta `matimo` Package Had No README**
+
+**Problem:**  
+`typescript/package.json` declared `"README.md"` in its `files` array, but no `typescript/README.md` existed — so the `matimo` npm package tarball shipped with no README at all.
+
+**Solution:**  
+Added `typescript/README.md` — a TypeScript-only edition of the project README with absolute GitHub URLs for all links and images (relative paths do not resolve on npmjs.com).
+
+---
+
+### 📦 **Version Bumps**
+
+| Package | Previous | New | Type |
+|---------|----------|-----|------|
+| matimo (root) | 0.1.2 | 0.1.3 | Patch |
+| @matimo/core | 0.1.2 | 0.1.3 | Patch |
+| @matimo/cli | 0.1.2 | 0.1.3 | Patch |
+| @matimo/bruno | 0.1.2 | 0.1.3 | Patch |
+| @matimo/github | 0.1.2 | 0.1.3 | Patch |
+| @matimo/gmail | 0.1.2 | 0.1.3 | Patch |
+| @matimo/hubspot | 0.1.2 | 0.1.3 | Patch |
+| @matimo/linkedin | 0.1.0 | 0.1.3 | Patch |
+| @matimo/mailchimp | 0.1.2 | 0.1.3 | Patch |
+| @matimo/medium | 0.1.0 | 0.1.3 | Patch |
+| @matimo/notion | 0.1.2 | 0.1.3 | Patch |
+| @matimo/postgres | 0.1.2 | 0.1.3 | Patch |
+| @matimo/reddit | 0.1.0 | 0.1.3 | Patch |
+| @matimo/slack | 0.1.2 | 0.1.3 | Patch |
+| @matimo/twilio | 0.1.2 | 0.1.3 | Patch |
+
+---
+
+### 🧪 **Verification**
+
+- ✅ Function-type tools (`web`, `calculator`, `execute`, skill meta-tools) load and execute correctly from installed package
+- ✅ Skill meta-tools (`matimo_create_skill`, `matimo_get_skill`, `matimo_validate_skill`) import shared helper correctly
+- ✅ `search` tool returns results from `dist/` and `build/` when no `excludePatterns` specified
+- ✅ `matimo` npm package tarball includes README
+- ✅ All 137+ tools discoverable via auto-discovery
+
+---
+
+### 🔄 **Upgrade**
+
+```bash
+npm install matimo@0.1.3
+# or
+npm update matimo
+```
+
+No API changes — all interfaces remain identical.
+
+---
+
+
 ## v0.1.1.post1 — Meta-Package Tools Path Fix 🐛
 
 > **Release**: Hotfix for broken `pip install matimo` imports in Python SDK
@@ -76,7 +207,6 @@ from matimo import convert_tools_to_crewai
 - `__version__` derived from `importlib.metadata.version("matimo")` with `"0.1.1.post1"` fallback
 
 ---
-
 ## v0.1.2 — TypeScript ESM Hotfix 🔧
 
 > **Release**: Critical fix for ES Module imports in published npm package
