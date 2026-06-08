@@ -89,7 +89,7 @@ async def run(task: str) -> None:
             "You can explore schemas, write efficient queries, and translate raw data "
             "into clear, actionable insights for stakeholders."
         ),
-        model="gpt-4o-mini",
+        llm="gpt-4o-mini",
         tools=crewai_tools,
         verbose=True,
     )

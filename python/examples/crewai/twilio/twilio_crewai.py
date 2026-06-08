@@ -85,7 +85,7 @@ async def run(task: str) -> None:
             "You track message delivery, identify failures, and ensure that all "
             "critical communications reach their intended recipients."
         ),
-        model="gpt-4o-mini",
+        llm="gpt-4o-mini",
         tools=crewai_tools,
         verbose=True,
     )

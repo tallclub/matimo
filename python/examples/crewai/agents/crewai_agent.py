@@ -89,7 +89,7 @@ async def run(task: str) -> None:
             "You are an expert at using integration tools to interact with external services. "
             "You always pick the right tool for the job and return clean, structured results."
         ),
-        model="gpt-4o",
+        llm="gpt-4o",
         tools=crewai_tools,
         verbose=True,
     )

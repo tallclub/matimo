@@ -78,7 +78,7 @@ async def run(task: str) -> None:
             "You can efficiently search through databases and pages to surface "
             "the most relevant information for any knowledge request."
         ),
-        model="gpt-4o-mini",
+        llm="gpt-4o-mini",
         tools=crewai_tools,
         verbose=True,
     )
