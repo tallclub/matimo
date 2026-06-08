@@ -18,6 +18,7 @@ members = [
     "matimo-gmail",
     "matimo-hubspot",
     "matimo-mailchimp",
+    "matimo-microsoft",
     "matimo-notion",
     "matimo-postgres",
     "matimo-py-mcp",
@@ -1941,6 +1942,7 @@ dependencies = [
     { name = "matimo-gmail" },
     { name = "matimo-hubspot" },
     { name = "matimo-mailchimp" },
+    { name = "matimo-microsoft" },
     { name = "matimo-notion" },
     { name = "matimo-postgres" },
     { name = "matimo-slack" },
@@ -1967,6 +1969,7 @@ requires-dist = [
     { name = "matimo-gmail", editable = "packages/gmail" },
     { name = "matimo-hubspot", editable = "packages/hubspot" },
     { name = "matimo-mailchimp", editable = "packages/mailchimp" },
+    { name = "matimo-microsoft", editable = "packages/microsoft" },
     { name = "matimo-notion", editable = "packages/notion" },
     { name = "matimo-postgres", editable = "packages/postgres" },
     { name = "matimo-slack", editable = "packages/slack" },
@@ -2013,6 +2016,17 @@ requires-dist = [{ name = "matimo-core", editable = "packages/core" }]
 name = "matimo-mailchimp"
 version = "0.1.0"
 source = { editable = "packages/mailchimp" }
+dependencies = [
+    { name = "matimo-core" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "matimo-core", editable = "packages/core" }]
+
+[[package]]
+name = "matimo-microsoft"
+version = "0.1.0"
+source = { editable = "packages/microsoft" }
 dependencies = [
     { name = "matimo-core" },
 ]
