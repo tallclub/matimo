@@ -66,7 +66,7 @@ async def run(params: dict[str, Any]) -> dict[str, Any]:
     if _is_plain_text_mime(mime_type):
         return {
             "success": True,
-            "content": buffer.decode("utf-8"),
+            "content": buffer.decode("utf-8", errors="replace"),
             "name": name,
             "mime_type": mime_type,
             "size_bytes": size_bytes,

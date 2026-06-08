@@ -249,6 +249,22 @@ class TestReadFile:
         assert "warning" not in result
 
     @respx.mock
+    async def test_decodes_non_utf8_bytes_with_replacement_characters(self) -> None:
+        # Latin-1 byte 0xFF is invalid UTF-8 — must not raise UnicodeDecodeError
+        respx.get(f"{GRAPH_BASE_URL}/drives/d1/items/i1").mock(
+            return_value=httpx.Response(
+                200, json={"name": "latin.txt", "size": 3, "file": {"mimeType": "text/plain"}}
+            )
+        )
+        respx.get(f"{GRAPH_BASE_URL}/drives/d1/items/i1/content").mock(
+            return_value=httpx.Response(200, content=b"caf\xff")
+        )
+
+        result = await read_file({**CONTEXT, "drive_id": "d1", "item_id": "i1"})
+        assert result["success"] is True
+        assert "�" in result["content"]  # replacement character for 0xFF
+
+    @respx.mock
     async def test_decodes_application_json_content_as_text(self) -> None:
         respx.get(f"{GRAPH_BASE_URL}/drives/d1/items/i1").mock(
             return_value=httpx.Response(
@@ -447,6 +463,7 @@ class TestGetEmail:
         def handler(request: httpx.Request) -> httpx.Response:
             captured["url"] = str(request.url)
             captured["query"] = dict(request.url.params)
+            captured["consistency_level"] = request.headers.get("ConsistencyLevel")
             return httpx.Response(200, json={"value": []})
 
         respx.get(f"{GRAPH_BASE_URL}/me/mailFolders/inbox/messages").mock(side_effect=handler)
@@ -458,6 +475,19 @@ class TestGetEmail:
         assert "/me/mailFolders/inbox/messages" in captured["url"]
         assert captured["query"]["$filter"] == "isRead eq false"
         assert captured["query"]["$search"] == "invoice"
+        assert captured["consistency_level"] == "eventual"
+
+    @respx.mock
+    async def test_does_not_send_consistency_level_header_without_search(self) -> None:
+        captured: dict[str, Any] = {}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            captured["consistency_level"] = request.headers.get("ConsistencyLevel")
+            return httpx.Response(200, json={"value": []})
+
+        respx.get(f"{GRAPH_BASE_URL}/me/messages").mock(side_effect=handler)
+        await get_email({**CONTEXT})
+        assert captured["consistency_level"] is None
 
     @respx.mock
     async def test_handles_message_with_no_sender(self) -> None:
