@@ -86,6 +86,15 @@ class TestMapGraphError:
         assert error.code == ErrorCode.RATE_LIMIT_EXCEEDED
         assert error.details["retryAfterSeconds"] is None
 
+    def test_maps_429_with_http_date_retry_after_falls_back_to_none(self) -> None:
+        # RFC 9110 §10.2.3 allows Retry-After to be an HTTP-date instead of
+        # delta-seconds — must not raise ValueError out of error mapping.
+        error = map_graph_error(
+            429, {}, httpx.Headers({"Retry-After": "Fri, 31 Dec 1999 23:59:59 GMT"}), "Resource"
+        )
+        assert error.code == ErrorCode.RATE_LIMIT_EXCEEDED
+        assert error.details["retryAfterSeconds"] is None
+
     def test_maps_500_and_503_to_execution_failed(self) -> None:
         assert map_graph_error(500, {}, None, "Resource").code == ErrorCode.EXECUTION_FAILED
         assert map_graph_error(503, {}, None, "Resource").code == ErrorCode.EXECUTION_FAILED
