@@ -1,0 +1,99 @@
+name: ms_search_knowledge
+description: |
+  Search across Microsoft 365 content — SharePoint sites, OneDrive/SharePoint document
+  libraries, and list items — using the Microsoft Search API (POST /search/query).
+  Returns ranked hits with summaries and links, useful for grounding agent answers in
+  organizational knowledge.
+version: '1.0.0'
+status: approved
+risk: low
+
+parameters:
+  query:
+    type: string
+    description: 'Search query string. Supports KQL syntax, e.g. "quarterly report filetype:xlsx"'
+    required: true
+
+  entity_types:
+    type: array
+    description: Microsoft Search entity types to search across
+    required: false
+    default: [driveItem, listItem, site]
+
+  site_id:
+    type: string
+    description: >-
+      Optional SharePoint site ID used to scope the search. The Microsoft Search API has
+      no dedicated site filter for these entity types, so this is folded into the query
+      string as a best-effort hint rather than a guaranteed server-side filter.
+    required: false
+
+  drive_id:
+    type: string
+    description: >-
+      Optional OneDrive/SharePoint drive ID used to scope the search. Same best-effort
+      caveat as site_id — there is no dedicated drive filter in the Search API for these
+      entity types.
+    required: false
+
+  top:
+    type: number
+    description: Maximum number of results to return (1-25)
+    required: false
+    default: 10
+
+execution:
+  type: function
+  code: ./ms_search_knowledge.py
+  timeout: 20000
+
+authentication:
+  type: oauth2
+  provider: microsoft
+  scopes:
+    - https://graph.microsoft.com/Sites.Read.All
+    - https://graph.microsoft.com/Files.Read.All
+
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+    results:
+      type: array
+      items:
+        type: object
+        properties:
+          id:
+            type: string
+          name:
+            type: string
+          summary:
+            type: string
+          web_url:
+            type: string
+          last_modified:
+            type: string
+          score:
+            type: number
+    total_count:
+      type: number
+      description: Total number of hits reported by Microsoft Search for this query
+
+error_handling:
+  retry: 2
+  backoff_type: exponential
+  initial_delay_ms: 500
+
+tags: [microsoft, graph, search, knowledge, sharepoint, onedrive]
+
+examples:
+  - name: Search the tenant for a budget spreadsheet
+    params:
+      query: 'Q3 budget filetype:xlsx'
+      top: 5
+  - name: Search a specific SharePoint site for onboarding docs
+    params:
+      query: 'onboarding checklist'
+      site_id: 'contoso.sharepoint.com,11111111-1111-1111-1111-111111111111'
+      entity_types: [driveItem, listItem]

@@ -1,0 +1,88 @@
+name: ms_get_email
+description: |
+  List messages in the signed-in user's mailbox (GET /me/messages), with optional
+  OData filtering, free-text search, and folder scoping. Returns a clean, agent-friendly
+  summary of each message rather than the full raw Graph payload.
+version: '1.0.0'
+status: approved
+risk: low
+
+parameters:
+  top:
+    type: number
+    description: Maximum number of messages to return (1-50)
+    required: false
+    default: 10
+
+  filter:
+    type: string
+    description: >-
+      Raw OData $filter expression, e.g. "isRead eq false" or
+      "from/emailAddress/address eq 'alerts@contoso.com'"
+    required: false
+
+  search:
+    type: string
+    description: Free-text $search expression, e.g. '"quarterly report"'
+    required: false
+
+  folder_id:
+    type: string
+    description: >-
+      ID (or well-known name such as "inbox", "sentitems", "drafts") of the mail
+      folder to list messages from. Defaults to the entire mailbox when omitted.
+    required: false
+
+execution:
+  type: function
+  code: ./ms_get_email.py
+  timeout: 20000
+
+authentication:
+  type: oauth2
+  provider: microsoft
+  scopes:
+    - https://graph.microsoft.com/Mail.Read
+
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+    messages:
+      type: array
+      items:
+        type: object
+        properties:
+          id:
+            type: string
+          subject:
+            type: string
+          from:
+            type: string
+            description: Display name and/or email address of the sender
+          received_at:
+            type: string
+          is_read:
+            type: boolean
+          body_preview:
+            type: string
+          has_attachments:
+            type: boolean
+
+error_handling:
+  retry: 2
+  backoff_type: exponential
+  initial_delay_ms: 500
+
+tags: [microsoft, graph, mail, outlook, read]
+
+examples:
+  - name: List the 5 most recent unread messages
+    params:
+      top: 5
+      filter: 'isRead eq false'
+  - name: Search the inbox for messages mentioning "invoice"
+    params:
+      folder_id: inbox
+      search: '"invoice"'

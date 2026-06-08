@@ -37,6 +37,7 @@ members = [
     "packages/gmail",
     "packages/hubspot",
     "packages/mailchimp",
+    "packages/microsoft",
     "packages/notion",
     "packages/postgres",
     "packages/slack",
@@ -54,6 +55,7 @@ matimo-github = { workspace = true }
 matimo-gmail = { workspace = true }
 matimo-hubspot = { workspace = true }
 matimo-mailchimp = { workspace = true }
+matimo-microsoft = { workspace = true }
 matimo-notion = { workspace = true }
 matimo-postgres = { workspace = true }
 matimo-slack = { workspace = true }
