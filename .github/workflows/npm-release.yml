@@ -5,10 +5,11 @@ on:
     tags:
       - 'v*.*.*'
       - 'typescript/v*'
+      - 'typescript/providers/*/v*'
 
 jobs:
   publish:
-    if: startsWith(github.ref, 'refs/tags/')
+    if: startsWith(github.ref, 'refs/tags/') && !startsWith(github.ref, 'refs/tags/typescript/providers/')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -73,4 +74,76 @@ jobs:
           draft: false
           prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
 
-  
+  publish-provider:
+    if: startsWith(github.ref, 'refs/tags/typescript/providers/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract provider from tag
+        id: parse
+        run: |
+          # Tag format: typescript/providers/{provider}/v{version}
+          TAG="${GITHUB_REF#refs/tags/}"
+          PROVIDER=$(echo "$TAG" | cut -d'/' -f3)
+          echo "provider=$PROVIDER" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
+
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: typescript
+
+      - name: Build
+        run: pnpm build
+        working-directory: typescript
+
+      - name: Run tests
+        run: pnpm test
+        working-directory: typescript
+
+      - name: Publish provider to npm
+        run: pnpm --filter @matimo/${{ steps.parse.outputs.provider }} publish --access public --no-git-checks
+        working-directory: typescript
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          name: Release ${{ github.ref_name }}
+          body: |
+            See the [changelog](https://github.com/tallclub/matimo/blob/main/docs/RELEASES.md) for detailed release notes.
+          draft: false
+          prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
