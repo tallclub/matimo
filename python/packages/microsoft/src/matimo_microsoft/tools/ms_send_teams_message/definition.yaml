@@ -1,0 +1,87 @@
+name: ms_send_teams_message
+description: |
+  Post a message to a Microsoft Teams channel (POST /teams/{team_id}/channels/{channel_id}/messages),
+  optionally as a reply to an existing message
+  (POST /teams/{team_id}/channels/{channel_id}/messages/{reply_to_message_id}/replies).
+version: '1.0.0'
+status: approved
+risk: medium
+
+parameters:
+  team_id:
+    type: string
+    description: ID of the team that owns the channel
+    required: true
+
+  channel_id:
+    type: string
+    description: ID of the channel to post the message to
+    required: true
+
+  text:
+    type: string
+    description: Message content
+    required: true
+
+  reply_to_message_id:
+    type: string
+    description: >-
+      ID of an existing message to reply to. When provided, the message is posted
+      as a threaded reply instead of a new top-level channel message.
+    required: false
+
+  content_type:
+    type: string
+    description: Whether `text` is plain text or HTML
+    required: false
+    default: text
+    enum: [text, html]
+
+execution:
+  type: function
+  code: ./ms_send_teams_message.py
+  timeout: 20000
+
+authentication:
+  type: oauth2
+  provider: microsoft
+  scopes:
+    - https://graph.microsoft.com/ChannelMessage.Send
+
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+    message_id:
+      type: string
+    web_url:
+      type: string
+    created_at:
+      type: string
+
+error_handling:
+  retry: 1
+  backoff_type: exponential
+  initial_delay_ms: 1000
+
+tags: [microsoft, graph, teams, chat, write]
+
+examples:
+  - name: Post a status update to a channel
+    params:
+      team_id: '11111111-1111-1111-1111-111111111111'
+      channel_id: '19:abcdefgh@thread.tacv2'
+      text: 'Deployment to production completed successfully ✅'
+  - name: Reply to an existing thread
+    params:
+      team_id: '11111111-1111-1111-1111-111111111111'
+      channel_id: '19:abcdefgh@thread.tacv2'
+      reply_to_message_id: '1700000000000'
+      text: 'Following up — this is now resolved.'
+
+notes:
+  caution: >-
+    Posts a real message visible to the channel's members. Marked risk: medium —
+    review the policy tier configuration if your deployment requires HITL approval
+    for Teams writes as well.

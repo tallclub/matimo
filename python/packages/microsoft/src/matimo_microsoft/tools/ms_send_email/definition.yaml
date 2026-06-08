@@ -1,0 +1,94 @@
+name: ms_send_email
+description: |
+  Send an email as the signed-in user. Microsoft Graph's /me/sendMail endpoint returns
+  an empty 202 Accepted with no message identifier, so this tool creates a draft first
+  (POST /me/messages, which returns an `id`) and then sends that draft
+  (POST /me/messages/{id}/send) — giving callers a real `message_id` to reference
+  afterwards. High-risk: this sends mail on the user's behalf and requires approval.
+version: '1.0.0'
+status: approved
+risk: high
+requires_approval: true
+
+parameters:
+  to:
+    type: array
+    description: Recipient email addresses
+    required: true
+
+  subject:
+    type: string
+    description: Subject line of the email
+    required: true
+
+  body:
+    type: string
+    description: Body content of the email
+    required: true
+
+  body_type:
+    type: string
+    description: Whether `body` is plain text or HTML
+    required: false
+    default: text
+    enum: [text, html]
+
+  cc:
+    type: array
+    description: CC recipient email addresses
+    required: false
+
+  bcc:
+    type: array
+    description: BCC recipient email addresses
+    required: false
+
+execution:
+  type: function
+  code: ./ms_send_email.py
+  timeout: 30000
+
+authentication:
+  type: oauth2
+  provider: microsoft
+  scopes:
+    - https://graph.microsoft.com/Mail.Send
+    - https://graph.microsoft.com/Mail.ReadWrite
+
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+    sent:
+      type: boolean
+    message_id:
+      type: string
+      description: ID of the sent message (obtained from the draft creation step)
+
+error_handling:
+  retry: 1
+  backoff_type: exponential
+  initial_delay_ms: 1000
+
+tags: [microsoft, graph, mail, outlook, send, write]
+
+examples:
+  - name: Send a plain-text email to one recipient
+    params:
+      to: ['alice@contoso.com']
+      subject: 'Weekly status update'
+      body: 'Here is the summary for this week...'
+  - name: Send an HTML email with CC
+    params:
+      to: ['team@contoso.com']
+      cc: ['manager@contoso.com']
+      subject: 'Release notes — v2.4.0'
+      body: '<h1>v2.4.0</h1><p>Highlights...</p>'
+      body_type: html
+
+notes:
+  caution: >-
+    This tool sends real email on behalf of the connected user. It is marked
+    risk: high and requires_approval: true — Matimo will route it through the
+    human-in-the-loop approval flow before it executes.

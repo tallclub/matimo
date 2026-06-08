@@ -1,0 +1,74 @@
+name: ms_read_file
+description: |
+  Read the contents of a file stored in OneDrive or a SharePoint document library
+  (GET /drives/{drive_id}/items/{item_id}/content). Plain-text formats (text, HTML,
+  CSV, JSON, Markdown, XML) are decoded and returned as UTF-8 text. Rich document
+  formats (PDF, Word, Excel, PowerPoint) and other binary formats are NOT extracted —
+  the tool returns an empty `content` string plus a `warning` explaining why, so
+  agents can fall back to sharing the file's web URL instead of guessing at content.
+version: '1.0.0'
+status: approved
+risk: low
+
+parameters:
+  drive_id:
+    type: string
+    description: ID of the drive (OneDrive or SharePoint document library) containing the file
+    required: true
+
+  item_id:
+    type: string
+    description: ID of the drive item (file) to read
+    required: true
+
+execution:
+  type: function
+  code: ./ms_read_file.py
+  timeout: 30000
+
+authentication:
+  type: oauth2
+  provider: microsoft
+  scopes:
+    - https://graph.microsoft.com/Files.Read.All
+
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+    content:
+      type: string
+      description: UTF-8 text content of the file, or an empty string if extraction is not supported
+    name:
+      type: string
+    mime_type:
+      type: string
+    size_bytes:
+      type: number
+    warning:
+      type: string
+      description: Present only when text extraction was not performed for this file's format
+
+error_handling:
+  retry: 2
+  backoff_type: exponential
+  initial_delay_ms: 500
+
+tags: [microsoft, graph, files, onedrive, sharepoint, read]
+
+examples:
+  - name: Read a plain-text README from OneDrive
+    params:
+      drive_id: 'b!xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+      item_id: '01ABCXYZ7654321'
+  - name: Read a CSV export from a SharePoint document library
+    params:
+      drive_id: 'b!yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy'
+      item_id: '01DEF9876543210'
+
+notes:
+  caution: >-
+    Rich document formats (PDF, DOCX, XLSX, PPTX, legacy DOC/XLS) and other binary
+    formats return `content: ""` with a `warning` rather than extracted text — this
+    tool intentionally avoids bundling unverified third-party parsing libraries.
