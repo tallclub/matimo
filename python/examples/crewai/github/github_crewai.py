@@ -78,7 +78,7 @@ async def run(task: str) -> None:
             "and repository analysis. You can quickly navigate GitHub to find relevant "
             "information and synthesise it into clear reports."
         ),
-        model="gpt-4o-mini",
+        llm="gpt-4o-mini",
         tools=crewai_tools,
         verbose=True,
     )

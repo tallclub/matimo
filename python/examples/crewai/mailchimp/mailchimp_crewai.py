@@ -79,7 +79,7 @@ async def run(task: str) -> None:
             "You can extract audience insights, evaluate campaign performance, and "
             "recommend improvements to increase engagement."
         ),
-        model="gpt-4o-mini",
+        llm="gpt-4o-mini",
         tools=crewai_tools,
         verbose=True,
     )

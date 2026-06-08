@@ -77,7 +77,7 @@ async def run(task: str) -> None:
             "You are an experienced Slack community manager who knows how to navigate "
             "channels, post messages, and keep teams informed efficiently."
         ),
-        model="gpt-4o-mini",
+        llm="gpt-4o-mini",
         tools=crewai_tools,
         verbose=True,
     )

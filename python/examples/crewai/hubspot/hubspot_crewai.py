@@ -79,7 +79,7 @@ async def run(task: str) -> None:
             "You excel at searching for contacts, uncovering deal pipeline gaps, and "
             "producing actionable summaries for sales teams."
         ),
-        model="gpt-4o-mini",
+        llm="gpt-4o-mini",
         tools=crewai_tools,
         verbose=True,
     )
