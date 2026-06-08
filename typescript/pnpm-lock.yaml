@@ -147,6 +147,9 @@ importers:
       '@matimo/mailchimp':
         specifier: workspace:*
         version: link:../../packages/mailchimp
+      '@matimo/microsoft':
+        specifier: workspace:*
+        version: link:../../packages/microsoft
       '@matimo/notion':
         specifier: workspace:*
         version: link:../../packages/notion
@@ -343,6 +346,19 @@ importers:
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
+
+  packages/microsoft:
+    dependencies:
+      matimo:
+        specifier: workspace:*
+        version: link:../..
+    devDependencies:
+      '@matimo/core':
+        specifier: workspace:*
+        version: link:../core
+      axios:
+        specifier: ^1.15.2
+        version: 1.16.0(debug@4.4.3)
 
   packages/notion:
     dependencies:

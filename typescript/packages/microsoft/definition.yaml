@@ -1,0 +1,61 @@
+# Microsoft Identity Platform OAuth2 Provider Definition
+#
+# This file defines the OAuth2 configuration for Microsoft (Entra ID / Azure AD v2.0).
+# All Microsoft Graph tools reference this provider definition.
+#
+# Users can override these endpoints via:
+# 1. Runtime config (highest priority)
+# 2. Environment variables: OAUTH_MICROSOFT_AUTH_URL, OAUTH_MICROSOFT_TOKEN_URL, etc.
+# 3. This YAML definition (lowest priority)
+#
+# Pattern: Define once, use everywhere
+
+name: microsoft-provider
+type: provider
+version: '1.0.0'
+
+description: |
+  Microsoft Identity Platform OAuth2 Provider Configuration
+
+  All Microsoft Graph tools use these endpoints to obtain delegated
+  access tokens for the Graph API (https://graph.microsoft.com).
+
+  Setup:
+  1. Register an application in the Microsoft Entra admin center (https://entra.microsoft.com)
+  2. Add a Web/SPA redirect URI for your OAuth callback
+  3. Create a client secret (or configure a certificate) under "Certificates & secrets"
+  4. Grant the delegated Graph scopes your tools need under "API permissions"
+  5. Set MICROSOFT_CLIENT_ID and MICROSOFT_CLIENT_SECRET environment variables
+  6. Set MICROSOFT_REDIRECT_URI to your callback URL
+
+  Note: Matimo never performs the OAuth code exchange itself — it expects a
+  valid delegated access token to be supplied at execution time (e.g. via
+  MICROSOFT_GRAPH_ACCESS_TOKEN), exactly like the Slack/Gmail providers.
+
+provider:
+  name: microsoft
+  displayName: Microsoft
+
+  # OAuth2 Endpoints (Microsoft identity platform v2.0, multi-tenant "common" tenant)
+  # See: https://learn.microsoft.com/en-us/entra/identity-platform/v2-protocols-oauth-code
+  endpoints:
+    authorizationUrl: https://login.microsoftonline.com/common/oauth2/v2.0/authorize
+    tokenUrl: https://login.microsoftonline.com/common/oauth2/v2.0/token
+    revokeUrl: https://login.microsoftonline.com/common/oauth2/v2.0/logout
+
+  # Standard delegated scopes for the tools in this package.
+  # Tools can request a narrower set with their own `authentication.scopes`.
+  defaultScopes:
+    - offline_access
+    - https://graph.microsoft.com/Sites.Read.All
+    - https://graph.microsoft.com/Files.Read.All
+    - https://graph.microsoft.com/Mail.Read
+    - https://graph.microsoft.com/Mail.Send
+    - https://graph.microsoft.com/ChannelMessage.Send
+    - https://graph.microsoft.com/Files.ReadWrite
+    - https://graph.microsoft.com/Calendars.ReadWrite
+    - https://graph.microsoft.com/Sites.Manage.All
+
+  # Additional metadata
+  documentation: https://learn.microsoft.com/en-us/graph/overview
+  learnMore: https://developer.microsoft.com/en-us/graph/graph-explorer
