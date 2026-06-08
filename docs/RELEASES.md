@@ -1,5 +1,82 @@
 ---
 
+## Microsoft Graph Provider — v0.1.0 🪟
+
+> **Release**: New provider package — Microsoft Graph integration for search, mail, files, Teams, calendar, and SharePoint
+
+**Released**: June 9, 2026
+**Scope**: New packages only — `@matimo/microsoft v0.1.0` (npm) · `matimo-microsoft v0.1.0` (PyPI)
+**Severity**: 🟢 **Additive** — no changes to existing packages
+
+---
+
+### 🆕 **New Provider: Microsoft Graph**
+
+9 tools covering the full Microsoft 365 surface area, using delegated OAuth2 access tokens:
+
+| Tool | Description | Risk | Graph Endpoint |
+|------|-------------|------|----------------|
+| `ms_search_knowledge` | Search SharePoint sites, OneDrive/SharePoint files, and list items | low | `POST /search/query` |
+| `ms_read_file` | Read a OneDrive/SharePoint file's contents (plain-text formats) | low | `GET /drives/{id}/items/{id}/content` |
+| `ms_list_files` | List children of a OneDrive/SharePoint folder | low | `GET /drives/{id}/items/{id}/children` |
+| `ms_get_email` | List messages in the signed-in user's mailbox | low | `GET /me/messages` |
+| `ms_send_email` | Send an email as the signed-in user | **high** (approval) | `POST /me/messages` + `/send` |
+| `ms_send_teams_message` | Post or reply to a message in a Teams channel | medium | `POST /teams/{id}/channels/{id}/messages` |
+| `ms_create_document` | Upload a file to OneDrive/SharePoint (≤4 MB) | medium | `PUT /drives/{id}/items/{id}:/{name}:/content` |
+| `ms_create_calendar_event` | Create a calendar event, optionally as a Teams meeting | medium | `POST /me/events` |
+| `ms_publish_to_sharepoint` | Create and publish a SharePoint site page | **high** (approval) | `POST /sites/{id}/pages` + `/publish` |
+
+`ms_send_email` and `ms_publish_to_sharepoint` are `risk: high` with `requires_approval: true` — routed through the HITL flow before execution.
+
+---
+
+### 🐛 **Bug Fix: Retry-After Header Parsing**
+
+**Problem:**
+The Python `graph_client.py` called `float(retry_after_header)` directly when mapping 429 responses. Per RFC 9110 §10.2.3, `Retry-After` MAY be an HTTP-date string (e.g. `Fri, 31 Dec 1999 23:59:59 GMT`) rather than delta-seconds. Python's `float()` raises `ValueError` on non-numeric input — unlike JavaScript's `Number()` which returns `NaN` — so an HTTP-date header from a proxy or gateway would crash error mapping entirely rather than gracefully falling back to exponential backoff.
+
+**Fix:**
+Extracted `_parse_retry_after_seconds()` helper that guards the conversion in a `try/except (TypeError, ValueError)` block, returning `None` on non-numeric values. The retry loop already handled `None` correctly (falls back to exponential backoff). Regression test added for the HTTP-date case.
+
+---
+
+### 📦 **New Packages**
+
+| Package | Version | Registry |
+|---------|---------|----------|
+| `@matimo/microsoft` | 0.1.0 | npm |
+| `matimo-microsoft` | 0.1.0 | PyPI |
+
+No existing package versions changed.
+
+---
+
+### 🧪 **Verification**
+
+- ✅ All 9 TypeScript tool YAMLs validate against schema (`pnpm validate-tools`)
+- ✅ TypeScript: 2155 tests pass, 95.94% line coverage, 97.53% function coverage
+- ✅ Python: 1141 tests pass, 98% coverage — `matimo_microsoft` package at 100%
+- ✅ TypeScript lint clean
+- ✅ Python ruff clean (all findings are pre-existing in unrelated example files)
+
+---
+
+### 🔄 **Install**
+
+```bash
+# TypeScript
+npm install @matimo/microsoft
+
+# Python
+pip install matimo-microsoft
+```
+
+Authentication: provide a delegated Microsoft Graph access token via the `MICROSOFT_GRAPH_ACCESS_TOKEN` environment variable or `credentials` parameter. Matimo never performs the OAuth exchange itself.
+
+---
+
+---
+
 ## v0.1.3 — Tool Import & Package Hotfix 🔧
 
 > **Release**: Critical fix for broken runtime imports in published tool files and missing meta package README
