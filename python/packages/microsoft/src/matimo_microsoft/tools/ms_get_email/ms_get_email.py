@@ -71,6 +71,7 @@ async def run(params: dict[str, Any]) -> dict[str, Any]:
         token=token,
         resource_type="Mail folder",
         query=query,
+        headers={"ConsistencyLevel": "eventual"} if search_expr else None,
     )
     raw_messages = data.get("value") if isinstance(data, dict) else None
 

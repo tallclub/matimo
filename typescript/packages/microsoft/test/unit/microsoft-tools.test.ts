@@ -423,10 +423,23 @@ describe('ms_get_email executor', () => {
 
     await getEmail({ folder_id: 'inbox', filter: 'isRead eq false', search: '"invoice"' }, CONTEXT);
 
-    const requestUrl = (mockedAxios.request.mock.calls[0][0] as { url: string }).url;
-    expect(requestUrl).toContain('/me/mailFolders/inbox/messages');
-    expect(requestUrl).toContain('%24filter=isRead%20eq%20false');
-    expect(requestUrl).toContain('%24search=%22invoice%22');
+    const call = mockedAxios.request.mock.calls[0][0] as {
+      url: string;
+      headers: Record<string, string>;
+    };
+    expect(call.url).toContain('/me/mailFolders/inbox/messages');
+    expect(call.url).toContain('%24filter=isRead%20eq%20false');
+    expect(call.url).toContain('%24search=%22invoice%22');
+    expect(call.headers['ConsistencyLevel']).toBe('eventual');
+  });
+
+  it('does not send ConsistencyLevel header when search is not provided', async () => {
+    mockGraphResponse(200, { value: [] });
+
+    await getEmail({}, CONTEXT);
+
+    const call = mockedAxios.request.mock.calls[0][0] as { headers: Record<string, string> };
+    expect(call.headers['ConsistencyLevel']).toBeUndefined();
   });
 
   it('handles a sender with only a name or only an address', async () => {

@@ -68,6 +68,7 @@ export default async function execute(
     path,
     token,
     resourceType: 'Mail folder',
+    headers: search ? { 'ConsistencyLevel': 'eventual' } : undefined,
     query: {
       $top: top,
       $select: 'id,subject,from,receivedDateTime,isRead,bodyPreview,hasAttachments',
