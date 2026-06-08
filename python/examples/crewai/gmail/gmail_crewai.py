@@ -81,7 +81,7 @@ async def run(task: str) -> None:
             "You are a meticulous personal assistant who handles email with precision. "
             "You triage inboxes, identify important messages, and draft clear replies."
         ),
-        model="gpt-4o-mini",
+        llm="gpt-4o-mini",
         tools=crewai_tools,
         verbose=True,
     )

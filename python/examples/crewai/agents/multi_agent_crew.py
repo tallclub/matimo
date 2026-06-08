@@ -135,7 +135,7 @@ async def run(task: str) -> None:
             "You are a senior SRE who monitors GitHub issues to spot service degradations "
             "and bugs before they escalate. You are thorough and precise."
         ),
-        model="gpt-4o-mini",
+        llm="gpt-4o-mini",
         tools=github_tools,
         verbose=True,
         allow_delegation=False,
@@ -151,7 +151,7 @@ async def run(task: str) -> None:
             "You are a communication specialist who translates raw incident data into "
             "crisp Slack messages that engineers can act on immediately."
         ),
-        model="gpt-4o-mini",
+        llm="gpt-4o-mini",
         tools=slack_tools,
         verbose=True,
         allow_delegation=False,
