@@ -1,0 +1,10 @@
+{
+  "extends": "../../internal/tsconfig/base.json",
+  "compilerOptions": {
+    "rootDir": "./tools",
+    "outDir": "./dist",
+    "declaration": true
+  },
+  "include": ["tools/**/*"],
+  "exclude": ["node_modules", "dist", "test/**/*"]
+}

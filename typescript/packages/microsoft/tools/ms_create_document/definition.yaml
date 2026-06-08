@@ -1,0 +1,103 @@
+name: ms_create_document
+description: |
+  Create (or overwrite) a small file in OneDrive or a SharePoint document library by
+  uploading content directly
+  (PUT /drives/{drive_id}/items/{parent_item_id}:/{filename}:/content). Intended for
+  small text-based documents — Microsoft Graph requires resumable upload sessions for
+  files larger than 4 MB, which this tool does not implement.
+version: '1.0.0'
+status: approved
+risk: medium
+
+parameters:
+  drive_id:
+    type: string
+    description: ID of the destination drive (OneDrive or SharePoint document library)
+    required: true
+
+  parent_item_id:
+    type: string
+    description: ID of the destination folder item. Defaults to the drive's root folder.
+    required: false
+    default: root
+
+  filename:
+    type: string
+    description: 'Name to give the new file, including extension, e.g. "report.md"'
+    required: true
+
+  content:
+    type: string
+    description: File content. Provide as plain text, or as base64 when content_encoding is "base64"
+    required: true
+
+  content_encoding:
+    type: string
+    description: How `content` is encoded
+    required: false
+    default: text
+    enum: [text, base64]
+
+  conflict_behaviour:
+    type: string
+    description: >-
+      How to handle a name collision with an existing item. Passed as the
+      @microsoft.graph.conflictBehavior query hint on a best-effort basis — Graph's
+      simple-upload (PUT .../content) endpoint documents this parameter primarily for
+      resumable upload sessions, so behaviour may vary by tenant/library configuration.
+    required: false
+    default: replace
+    enum: [replace, rename, fail]
+
+execution:
+  type: function
+  code: ms_create_document.ts
+  timeout: 30000
+
+authentication:
+  type: oauth2
+  provider: microsoft
+  scopes:
+    - https://graph.microsoft.com/Files.ReadWrite
+
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+    item_id:
+      type: string
+    name:
+      type: string
+    web_url:
+      type: string
+    size_bytes:
+      type: number
+
+error_handling:
+  retry: 1
+  backoff_type: exponential
+  initial_delay_ms: 1000
+
+tags: [microsoft, graph, files, onedrive, sharepoint, write]
+
+examples:
+  - name: Create a Markdown summary document at the drive root
+    params:
+      drive_id: 'b!xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+      filename: 'meeting-notes-2026-06-07.md'
+      content: '# Meeting notes\n\n- Decided to ship v2.4.0 next week'
+  - name: Upload a base64-encoded file into a specific folder
+    params:
+      drive_id: 'b!xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+      parent_item_id: '01ABCXYZ7654321'
+      filename: 'export.csv'
+      content: 'bmFtZSxlbWFpbAphbGljZSxhbGljZUBjb250b3NvLmNvbQ=='
+      content_encoding: base64
+      conflict_behaviour: rename
+
+notes:
+  caution: >-
+    Uses the simple-upload endpoint, which Microsoft Graph limits to files up to
+    4 MB. Larger files require a resumable upload session
+    (createUploadSession), which this tool does not implement.
