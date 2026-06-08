@@ -17,6 +17,7 @@ dependencies = [
     "matimo-github>=0.1.0,<0.2.0",
     "matimo-gmail>=0.1.0,<0.2.0",
     "matimo-hubspot>=0.1.0,<0.2.0",
+    "matimo-microsoft>=0.1.0,<0.2.0",
     "matimo-notion>=0.1.0,<0.2.0",
     "matimo-postgres>=0.1.0,<0.2.0",
     "matimo-mailchimp>=0.1.0,<0.2.0",
@@ -43,6 +44,7 @@ matimo-bruno     = { workspace = true }
 matimo-github    = { workspace = true }
 matimo-gmail     = { workspace = true }
 matimo-hubspot   = { workspace = true }
+matimo-microsoft = { workspace = true }
 matimo-notion    = { workspace = true }
 matimo-postgres  = { workspace = true }
 matimo-mailchimp = { workspace = true }
@@ -100,6 +102,12 @@ matimo-hubspot-factory   = "native.hubspot.hubspot_factory:main"
 matimo-hubspot-decorator = "native.hubspot.hubspot_decorator:main"
 matimo-hubspot-langchain = "langchain.hubspot.hubspot_langchain:main"
 matimo-hubspot-crewai    = "crewai.hubspot.hubspot_crewai:main"
+
+# Microsoft Graph
+matimo-microsoft-factory   = "native.microsoft.microsoft_factory:main"
+matimo-microsoft-decorator = "native.microsoft.microsoft_decorator:main"
+matimo-microsoft-langchain = "langchain.microsoft.microsoft_langchain:main"
+matimo-microsoft-crewai    = "crewai.microsoft.microsoft_crewai:main"
 
 # Mailchimp
 matimo-mailchimp-factory   = "native.mailchimp.mailchimp_factory:main"
