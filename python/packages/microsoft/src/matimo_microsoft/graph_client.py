@@ -71,6 +71,22 @@ def require_params(params: dict[str, Any], required: list[str], tool_name: str) 
         )
 
 
+def _parse_retry_after_seconds(retry_after_header: str | None) -> float | None:
+    """
+    Parse a `Retry-After` header into delta-seconds, returning None when it's
+    absent or not a numeric delay. Per RFC 9110 §10.2.3, `Retry-After` MAY be
+    an HTTP-date instead of delta-seconds — float() raises ValueError on that
+    (unlike JS's Number(), which yields NaN), so the conversion must be guarded
+    to avoid crashing error mapping for 429 responses.
+    """
+    if retry_after_header is None:
+        return None
+    try:
+        return float(retry_after_header)
+    except (TypeError, ValueError):
+        return None
+
+
 def map_graph_error(
     status: int,
     data: Any,
@@ -104,7 +120,7 @@ def map_graph_error(
         retry_after_header = None
         if headers is not None:
             retry_after_header = headers.get("retry-after") or headers.get("Retry-After")
-        retry_after_seconds = float(retry_after_header) if retry_after_header is not None else None
+        retry_after_seconds = _parse_retry_after_seconds(retry_after_header)
         return MatimoError(
             "Microsoft Graph rate limit exceeded. Respect Retry-After before retrying.",
             ErrorCode.RATE_LIMIT_EXCEEDED,
