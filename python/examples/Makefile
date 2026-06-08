@@ -5,6 +5,7 @@
   postgres-factory postgres-decorator postgres-langchain postgres-approval postgres-crewai \
   notion-factory notion-decorator notion-langchain notion-crewai \
   hubspot-factory hubspot-decorator hubspot-langchain hubspot-crewai \
+  microsoft-factory microsoft-decorator microsoft-langchain microsoft-crewai \
   mailchimp-factory mailchimp-decorator mailchimp-langchain mailchimp-crewai \
   twilio-factory twilio-decorator twilio-langchain twilio-crewai \
   execute-factory execute-decorator execute-langchain \
@@ -69,6 +70,12 @@ help:
 	@echo "  make hubspot-decorator"
 	@echo "  make hubspot-langchain"
 	@echo "  make hubspot-crewai"
+	@echo ""
+	@echo "  ─ Microsoft Graph ─────────────────────────"
+	@echo "  make microsoft-factory"
+	@echo "  make microsoft-decorator"
+	@echo "  make microsoft-langchain"
+	@echo "  make microsoft-crewai"
 	@echo ""
 	@echo "  ─ Mailchimp ───────────────────────────────"
 	@echo "  make mailchimp-factory"
@@ -198,6 +205,16 @@ hubspot-langchain:
 	$(PYTHON) langchain/hubspot/hubspot_langchain.py
 hubspot-crewai:
 	$(PYTHON) crewai/hubspot/hubspot_crewai.py
+
+# ── Microsoft Graph ───────────────────────────────────────────────────────────
+microsoft-factory:
+	$(PYTHON) native/microsoft/microsoft_factory.py
+microsoft-decorator:
+	$(PYTHON) native/microsoft/microsoft_decorator.py
+microsoft-langchain:
+	$(PYTHON) langchain/microsoft/microsoft_langchain.py
+microsoft-crewai:
+	$(PYTHON) crewai/microsoft/microsoft_crewai.py
 
 # ── Mailchimp ─────────────────────────────────────────────────────────────────
 mailchimp-factory:
