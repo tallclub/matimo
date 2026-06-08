@@ -1,0 +1,92 @@
+name: ms_publish_to_sharepoint
+description: |
+  Create a SharePoint site page (POST /sites/{site_id}/pages) with a single text web
+  part containing the supplied content, then optionally publish it
+  (POST /sites/{site_id}/pages/{page_id}/microsoft.graph.sitePage/publish). Publishing
+  makes the page visible to everyone with site access — high-risk, requires approval.
+version: '1.0.0'
+status: approved
+risk: high
+requires_approval: true
+
+parameters:
+  site_id:
+    type: string
+    description: ID of the SharePoint site to publish the page to
+    required: true
+
+  title:
+    type: string
+    description: Title of the page. Also used to derive the page's file name.
+    required: true
+
+  content:
+    type: string
+    description: Body content for the page's single text web part
+    required: true
+
+  content_type:
+    type: string
+    description: >-
+      Whether `content` is HTML or plain text. Plain text is escaped and wrapped in
+      a paragraph before being placed in the web part's HTML container, since
+      SharePoint site pages always store web part content as HTML.
+    required: false
+    default: html
+    enum: [html, text]
+
+  publish:
+    type: boolean
+    description: When true (the default), publish the page immediately after creating it
+    required: false
+    default: true
+
+execution:
+  type: function
+  code: ms_publish_to_sharepoint.ts
+  timeout: 30000
+
+authentication:
+  type: oauth2
+  provider: microsoft
+  scopes:
+    - https://graph.microsoft.com/Sites.Manage.All
+
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+    page_id:
+      type: string
+    web_url:
+      type: string
+    published:
+      type: boolean
+
+error_handling:
+  retry: 1
+  backoff_type: exponential
+  initial_delay_ms: 1000
+
+tags: [microsoft, graph, sharepoint, publish, write]
+
+examples:
+  - name: Publish an HTML announcement page
+    params:
+      site_id: 'contoso.sharepoint.com,11111111-1111-1111-1111-111111111111'
+      title: 'Q3 results are in'
+      content: '<h2>We hit our targets</h2><p>Thanks to everyone who contributed.</p>'
+  - name: Create a plain-text draft without publishing
+    params:
+      site_id: 'contoso.sharepoint.com,11111111-1111-1111-1111-111111111111'
+      title: 'Draft: Office relocation FAQ'
+      content: 'This page is still being reviewed by Facilities.'
+      content_type: text
+      publish: false
+
+notes:
+  caution: >-
+    Publishing makes the page visible to everyone with access to the site. Marked
+    risk: high and requires_approval: true so Matimo routes it through the
+    human-in-the-loop approval flow before it executes.

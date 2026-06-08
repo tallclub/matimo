@@ -1,0 +1,81 @@
+name: ms_list_files
+description: |
+  List the children of a folder in OneDrive or a SharePoint document library
+  (GET /drives/{drive_id}/items/{item_id}/children). Defaults to listing the root
+  folder of the drive. Returns a flat list of files and subfolders with basic metadata.
+version: '1.0.0'
+status: approved
+risk: low
+
+parameters:
+  drive_id:
+    type: string
+    description: ID of the drive (OneDrive or SharePoint document library) to list
+    required: true
+
+  item_id:
+    type: string
+    description: ID of the folder item whose children should be listed
+    required: false
+    default: root
+
+  top:
+    type: number
+    description: Maximum number of items to return (1-100)
+    required: false
+    default: 20
+
+execution:
+  type: function
+  code: ms_list_files.ts
+  timeout: 20000
+
+authentication:
+  type: oauth2
+  provider: microsoft
+  scopes:
+    - https://graph.microsoft.com/Files.Read.All
+
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+    items:
+      type: array
+      items:
+        type: object
+        properties:
+          id:
+            type: string
+          name:
+            type: string
+          type:
+            type: string
+            description: "'file' or 'folder'"
+          size_bytes:
+            type: number
+          last_modified:
+            type: string
+          mime_type:
+            type: string
+            description: Present only for files (folders have no MIME type)
+          web_url:
+            type: string
+
+error_handling:
+  retry: 2
+  backoff_type: exponential
+  initial_delay_ms: 500
+
+tags: [microsoft, graph, files, onedrive, sharepoint, list]
+
+examples:
+  - name: List the root of a OneDrive
+    params:
+      drive_id: 'b!xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+  - name: List a specific folder, capped at 50 items
+    params:
+      drive_id: 'b!xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+      item_id: '01ABCXYZ7654321'
+      top: 50

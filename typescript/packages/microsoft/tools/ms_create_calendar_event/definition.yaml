@@ -1,0 +1,100 @@
+name: ms_create_calendar_event
+description: |
+  Create an event on the signed-in user's default calendar (POST /me/events).
+  Supports attendees, location, a single IANA/Windows time zone for both start and
+  end, and Microsoft Teams online meetings (isOnlineMeeting), returning the meeting's
+  join URL when one is created.
+version: '1.0.0'
+status: approved
+risk: medium
+
+parameters:
+  subject:
+    type: string
+    description: Title of the event
+    required: true
+
+  body:
+    type: string
+    description: Description / agenda for the event (plain text)
+    required: false
+
+  start:
+    type: string
+    description: 'Start date and time, e.g. "2026-06-15T09:00:00"'
+    required: true
+
+  end:
+    type: string
+    description: 'End date and time, e.g. "2026-06-15T09:30:00"'
+    required: true
+
+  timezone:
+    type: string
+    description: 'IANA or Windows time zone applied to both `start` and `end`, e.g. "America/Los_Angeles"'
+    required: false
+    default: UTC
+
+  attendees:
+    type: array
+    description: Email addresses of attendees to invite
+    required: false
+
+  location:
+    type: string
+    description: Free-text location / room name for the event
+    required: false
+
+  is_online_meeting:
+    type: boolean
+    description: When true, Microsoft Teams creates an online meeting for this event
+    required: false
+    default: false
+
+execution:
+  type: function
+  code: ms_create_calendar_event.ts
+  timeout: 25000
+
+authentication:
+  type: oauth2
+  provider: microsoft
+  scopes:
+    - https://graph.microsoft.com/Calendars.ReadWrite
+
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+    event_id:
+      type: string
+    web_link:
+      type: string
+    join_url:
+      type: string
+      description: Microsoft Teams meeting join URL — present only when is_online_meeting is true
+
+error_handling:
+  retry: 1
+  backoff_type: exponential
+  initial_delay_ms: 1000
+
+tags: [microsoft, graph, calendar, outlook, teams, write]
+
+examples:
+  - name: Schedule a 30-minute internal sync
+    params:
+      subject: 'Sprint planning'
+      start: '2026-06-15T09:00:00'
+      end: '2026-06-15T09:30:00'
+      timezone: 'America/Los_Angeles'
+      attendees: ['alice@contoso.com', 'bob@contoso.com']
+  - name: Schedule an online Teams meeting with a location fallback
+    params:
+      subject: 'All-hands'
+      start: '2026-06-20T17:00:00'
+      end: '2026-06-20T18:00:00'
+      timezone: UTC
+      location: 'Building 4, Room 200'
+      is_online_meeting: true

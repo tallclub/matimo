@@ -3,6 +3,7 @@ packages:
   - "packages/core"
   - "packages/slack"
   - "packages/gmail"
+  - "packages/microsoft"
   - "packages/github"
   - "packages/hubspot"
   - "packages/notion"
