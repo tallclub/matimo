@@ -53,7 +53,7 @@ parameters:
 
 execution:
   type: function
-  code: ms_create_calendar_event.ts
+  code: ms_create_calendar_event.js
   timeout: 25000
 
 authentication:

@@ -5,8 +5,12 @@
  *   Reply:        POST /teams/{team-id}/channels/{channel-id}/messages/{message-id}/replies
  *                 https://learn.microsoft.com/en-us/graph/api/chatmessage-post-replies
  */
-import { MatimoError, ErrorCode } from '@matimo/core';
-import { getAccessToken, requireParams, graphRequest, type ToolContext } from '../graph-client';
+import { MatimoError, ErrorCode } from '@matimo/core/runtime';
+import { getAccessToken, requireParams, graphRequest } from '../graph-client.js';
+
+interface ToolContext {
+  credentials?: Record<string, string>;
+}
 
 const VALID_CONTENT_TYPES = ['text', 'html'];
 

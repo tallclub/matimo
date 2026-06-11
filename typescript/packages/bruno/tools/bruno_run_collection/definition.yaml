@@ -76,7 +76,7 @@ parameters:
 
 execution:
   type: function
-  code: index.ts
+  code: index.js
   timeout: 120000
 
 output_schema:

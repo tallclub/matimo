@@ -7,8 +7,12 @@
  * identifier, but this tool's contract promises a `message_id`. Creating a draft
  * first gives us a real message ID we can report back, then we send that draft.
  */
-import { MatimoError, ErrorCode } from '@matimo/core';
-import { getAccessToken, requireParams, graphRequest, type ToolContext } from '../graph-client';
+import { MatimoError, ErrorCode } from '@matimo/core/runtime';
+import { getAccessToken, requireParams, graphRequest } from '../graph-client.js';
+
+interface ToolContext {
+  credentials?: Record<string, string>;
+}
 
 const VALID_BODY_TYPES = ['text', 'html'];
 

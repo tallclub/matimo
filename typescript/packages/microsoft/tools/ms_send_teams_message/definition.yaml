@@ -39,7 +39,7 @@ parameters:
 
 execution:
   type: function
-  code: ms_send_teams_message.ts
+  code: ms_send_teams_message.js
   timeout: 20000
 
 authentication:

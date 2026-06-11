@@ -33,7 +33,7 @@ describe('Read Tool', () => {
 
       expect(readTool!.execution.type).toBe('function');
       expect(readTool!.execution).toHaveProperty('code');
-      expect((readTool!.execution as Record<string, unknown>).code).toBe('./read.ts');
+      expect((readTool!.execution as Record<string, unknown>).code).toBe('./read.js');
     });
   });
 

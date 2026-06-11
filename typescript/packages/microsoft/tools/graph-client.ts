@@ -9,7 +9,7 @@
  *   ErrorCode (Matimo has no per-provider error classes — see errors/matimo-error.ts).
  */
 import axios from 'axios';
-import { MatimoError, ErrorCode } from '@matimo/core';
+import { MatimoError, ErrorCode } from '@matimo/core/runtime';
 
 export const GRAPH_BASE_URL = 'https://graph.microsoft.com/v1.0';
 

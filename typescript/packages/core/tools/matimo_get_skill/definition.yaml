@@ -29,7 +29,7 @@ parameters:
 
 execution:
   type: function
-  code: './matimo_get_skill.ts'
+  code: './matimo_get_skill.js'
 
 output_schema:
   type: object

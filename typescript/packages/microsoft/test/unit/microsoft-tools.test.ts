@@ -92,7 +92,7 @@ describe('microsoft tool YAML definitions', () => {
 
       it('is implemented as a function tool with a co-located executor file', () => {
         expect(def.execution?.type).toBe('function');
-        expect(def.execution?.code).toBe(`${name}.ts`);
+        expect(def.execution?.code).toBe(`${name}.js`);
         expect(fs.existsSync(path.join(TOOLS_ROOT, name, def.execution?.code as string))).toBe(
           true
         );

@@ -23,7 +23,7 @@ parameters:
 
 execution:
   type: function
-  code: './matimo_validate_skill.ts'
+  code: './matimo_validate_skill.js'
 
 output_schema:
   type: object

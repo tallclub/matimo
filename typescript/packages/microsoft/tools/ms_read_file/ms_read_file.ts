@@ -9,7 +9,11 @@
  * pdf-parse/mammoth/xlsx/cheerio). Truly-unsupported binaries get the exact warning
  * the tool's contract specifies: "Binary file — text extraction not supported".
  */
-import { getAccessToken, requireParams, graphRequest, type ToolContext } from '../graph-client';
+import { getAccessToken, requireParams, graphRequest } from '../graph-client.js';
+
+interface ToolContext {
+  credentials?: Record<string, string>;
+}
 
 const TEXT_MIME_PREFIXES = ['text/'];
 const TEXT_MIME_TYPES = new Set(['application/json', 'application/xml']);

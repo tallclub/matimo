@@ -19,7 +19,7 @@ parameters:
 
 execution:
   type: function
-  code: './matimo_search_tools.ts'
+  code: './matimo_search_tools.js'
 
 output_schema:
   type: object

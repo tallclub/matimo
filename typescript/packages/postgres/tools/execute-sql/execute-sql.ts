@@ -1,5 +1,5 @@
 import { Client } from 'pg';
-import { MatimoError, ErrorCode } from '@matimo/core';
+import { MatimoError, ErrorCode } from '@matimo/core/runtime';
 
 export default async function (input: Record<string, unknown>) {
   const sql = (input.sql as string) || '';

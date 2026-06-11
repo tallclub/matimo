@@ -6,8 +6,12 @@
  * 4 MB; larger files require a resumable upload session, which is out of scope here
  * and is rejected with a clear validation error rather than silently truncating.
  */
-import { MatimoError, ErrorCode } from '@matimo/core';
-import { getAccessToken, requireParams, graphRequest, type ToolContext } from '../graph-client';
+import { MatimoError, ErrorCode } from '@matimo/core/runtime';
+import { getAccessToken, requireParams, graphRequest } from '../graph-client.js';
+
+interface ToolContext {
+  credentials?: Record<string, string>;
+}
 
 const VALID_ENCODINGS = ['text', 'base64'];
 const VALID_CONFLICT_BEHAVIOURS = ['replace', 'rename', 'fail'];

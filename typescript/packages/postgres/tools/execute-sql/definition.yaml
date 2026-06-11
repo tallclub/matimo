@@ -19,7 +19,7 @@ parameters:
 execution:
   type: function
   # The function file path is resolved relative to this definition.yaml
-  code: ./execute-sql.ts
+  code: ./execute-sql.js
   timeout: 30000
 
 authentication:

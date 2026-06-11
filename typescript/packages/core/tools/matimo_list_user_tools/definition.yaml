@@ -19,7 +19,7 @@ parameters:
 
 execution:
   type: function
-  code: './matimo_list_user_tools.ts'
+  code: './matimo_list_user_tools.js'
 
 output_schema:
   type: object

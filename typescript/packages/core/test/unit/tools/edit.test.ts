@@ -33,7 +33,7 @@ describe('Edit Tool', () => {
 
       expect(editTool!.execution.type).toBe('function');
       expect(editTool!.execution).toHaveProperty('code');
-      expect((editTool!.execution as Record<string, unknown>).code).toBe('./edit.ts');
+      expect((editTool!.execution as Record<string, unknown>).code).toBe('./edit.js');
     });
   });
 
