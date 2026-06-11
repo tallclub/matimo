@@ -3,7 +3,7 @@ import { Parameter } from '../../src/core/types';
 import path from 'path';
 
 // Increase timeout for HTTP-based tests (httpbin.org calls can be slow)
-jest.setTimeout(30000);
+jest.setTimeout(60000);
 
 describe('MatimoInstance - Uncovered Lines Deep Coverage', () => {
   let instance: MatimoInstance;
