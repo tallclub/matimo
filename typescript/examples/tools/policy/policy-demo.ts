@@ -89,6 +89,17 @@ function result(label: string, status: string, detail?: string): void {
   console.info(`    ${msg}`);
 }
 
+/**
+ * OpenAI rejects requests with more than 128 bound tools. With autoDiscover: true,
+ * every installed @matimo/<provider> package's tools get registered (146+ across
+ * the example workspace), but this demo's missions only ever call matimo_* meta-tools,
+ * core tools, and tools the agent creates itself (under toolPaths). Drop the
+ * provider-package tools from the LangChain binding to stay under the cap.
+ */
+function forLangChain(tools: ToolDefinition[]): ToolDefinition[] {
+  return tools.filter((t) => !/\/node_modules\/@matimo\/(?!core\/)/.test(t._definitionPath ?? ''));
+}
+
 // ─── Interactive Terminal Approval ──────────────────────────────────────
 
 /** Tracks tools the human has approved during this session. */
@@ -441,7 +452,10 @@ async function main(): Promise<void> {
     console.info(`    ${INFO} Available tools: ${tools.map((t) => t.name).join(', ')}`);
 
     // Convert to LangChain format so the LLM can call them
-    const langchainTools = await convertToolsToLangChain(tools as ToolDefinition[], matimo);
+    const langchainTools = await convertToolsToLangChain(
+      forLangChain(tools as ToolDefinition[]),
+      matimo
+    );
     result(`Converted ${langchainTools.length} tools to LangChain format`, PASS);
 
     // Create the LLM with tools bound
@@ -561,7 +575,7 @@ async function main(): Promise<void> {
 
     // Rebind LLM with updated tool list (now includes city_lookup)
     const updatedLangchainTools = await convertToolsToLangChain(
-      updatedTools as ToolDefinition[],
+      forLangChain(updatedTools as ToolDefinition[]),
       matimo
     );
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -628,7 +642,7 @@ async function main(): Promise<void> {
     // Rebind LLM after reload so tool list is current
     const postReloadTools = matimo.listTools();
     const postReloadLangchainTools = await convertToolsToLangChain(
-      postReloadTools as ToolDefinition[],
+      forLangChain(postReloadTools as ToolDefinition[]),
       matimo
     );
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

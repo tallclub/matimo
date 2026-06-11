@@ -68,6 +68,17 @@ function result(label: string, status: string, detail?: string): void {
   console.info(`    ${msg}`);
 }
 
+/**
+ * OpenAI rejects requests with more than 128 bound tools. With autoDiscover: true,
+ * every installed @matimo/<provider> package's tools get registered (146+ across
+ * the example workspace), but this demo's missions only ever call matimo_* meta-tools,
+ * core tools, and tools the agent creates itself (under toolPaths). Drop the
+ * provider-package tools from the LangChain binding to stay under the cap.
+ */
+function forLangChain(tools: ToolDefinition[]): ToolDefinition[] {
+  return tools.filter((t) => !/\/node_modules\/@matimo\/(?!core\/)/.test(t._definitionPath ?? ''));
+}
+
 // ─── Interactive Approval (Human-in-the-Loop) ────────────────────────────
 
 const stdinLineBuffer: string[] = [];
@@ -350,7 +361,10 @@ async function main(): Promise<void> {
     const metaTools = tools.filter((t) => t.name.startsWith('matimo_'));
     result('Meta-tools available', PASS, metaTools.map((t) => t.name).join(', '));
 
-    const langchainTools = await convertToolsToLangChain(tools as ToolDefinition[], matimo);
+    const langchainTools = await convertToolsToLangChain(
+      forLangChain(tools as ToolDefinition[]),
+      matimo
+    );
     const llm = new ChatOpenAI({ model: 'gpt-4o-mini', temperature: 0, timeout: 30000 });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const llmWithTools = llm.bindTools(langchainTools as any);
