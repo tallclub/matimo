@@ -1,5 +1,98 @@
 ---
 
+## v0.1.4 — Function-Type Tool Runtime Loading Fix & Microsoft Provider Fixes 🔧
+
+> **Release**: Closes the remaining "function-type tools crash at runtime for npm consumers" gap from v0.1.3 across `@matimo/core`, `@matimo/bruno`, `@matimo/notion`, `@matimo/postgres`, and `@matimo/microsoft` — plus Microsoft Graph bug fixes and example corrections
+
+**Released**: June 11, 2026
+**Scope**: TypeScript workspace — `matimo` (root), `@matimo/core`, `@matimo/bruno`, `@matimo/notion`, `@matimo/postgres`, and `@matimo/microsoft` bumped to v0.1.4
+**Severity**: 🟠 **Important** — fixes a runtime crash for npm consumers of `type: function` tools in the affected packages; no breaking API changes
+
+---
+
+### 🐛 **Bug Fix: Function-Type Tools Now Compile to `.js` In Place (extends v0.1.3 Issue 1)**
+
+**Problem:**
+v0.1.3 fixed `@matimo/core`'s built-in function-type tools (`web`, `calculator`, `execute`) by rewriting their imports to a runtime-safe `@matimo/core/runtime` subpath — but the tool files themselves still shipped as raw `.ts` source with `code: './foo.ts'` in `definition.yaml`. `FunctionExecutor` loads these via dynamic `import()`, which Node cannot resolve for `.ts` files without a transpiling loader (`tsx`/`ts-node`) — something npm consumers of `@matimo/core`, `@matimo/bruno`, `@matimo/notion`, `@matimo/postgres`, and `@matimo/microsoft` do not have installed. Every `type: function` tool in these 5 packages — built-in core tools (`web`, `calculator`, `execute`, `read`, `edit`, `search`), all 10 `matimo_*` meta-tools, the 7 Bruno CLI tools, the Notion page-creation tool, the Postgres SQL executor, and all 9 Microsoft Graph tools — would fail to load at runtime outside the monorepo.
+
+**Fix:**
+- Each affected package now compiles `tools/**/*.ts` → `tools/**/*.js` **in place** via a new build step (`@matimo/core` adds `tsc -p tsconfig.tools.json`; `@matimo/bruno`, `@matimo/notion`, `@matimo/postgres`, and `@matimo/microsoft` each get their own `tsc` build script). The `tools/` tsconfig uses `module: ES2020`, `moduleResolution: bundler`, and `outDir` == `rootDir` (`./tools`), so the compiled `.js` sits next to its `.ts` source and ships in the npm tarball alongside it.
+- Every `definition.yaml` for a `type: function` tool now points `code:` at the compiled `./<tool>.js` instead of `./<tool>.ts`.
+- All affected tool source files import `@matimo/core/runtime` (not the full `@matimo/core` barrel), use explicit `.js` extensions on relative imports (e.g. `'../graph-client.js'`), and define local `ToolContext`-style interfaces instead of importing TypeScript-only types across the runtime boundary — the same pattern v0.1.3 established for core's built-in tools and skill meta-tools.
+- `@matimo/bruno`, `@matimo/notion`, `@matimo/postgres`, and `@matimo/microsoft` now declare `@matimo/core` as a runtime `dependency` (previously absent or dev-only), since their compiled tool files `import` from `@matimo/core/runtime` at execution time.
+- `@matimo/core` gained `glob` as a runtime dependency (used by the `search` tool, now compiled and shipped under `tools/`).
+- The hand-written `tools/shared/skill-validation.js` runtime shim added in v0.1.3 is now generated from `skill-validation.ts` by the new build step and removed from version control (`.gitignore` now excludes `typescript/packages/*/tools/**/*.js`).
+- `jest.config.cjs` updated (`allowJs: true`, transform matches `.ts`/`.js`, `transformIgnorePatterns` for `node_modules`/`dist`) so ts-jest runs cleanly against the mixed `.ts`/`.js` `tools/` trees.
+
+---
+
+### 🐛 **Bug Fix: Microsoft Graph `$search` ConsistencyLevel Header & Non-UTF-8 File Decoding**
+
+**Problem 1 — `ms_get_email` search queries:**
+Microsoft Graph's `$search` on `/me/messages` requires the `ConsistencyLevel: eventual` header; omitting it can cause a `400 UnsupportedQuery` error.
+
+**Fix:** `ms_get_email` now injects `ConsistencyLevel: eventual` only when the `search` parameter is provided — `$filter`/`$orderby`-only queries are unaffected.
+
+**Problem 2 — `ms_read_file` non-UTF-8 content:**
+The Python executor decoded file content with `buffer.decode('utf-8')`, which raises `UnicodeDecodeError` on non-UTF-8 bytes (e.g. Latin-1 encoded `text/plain` files). Node's `Buffer.toString()` has no equivalent failure mode — it silently replaces invalid sequences — so the Python and TypeScript executors behaved differently for the same file.
+
+**Fix:** Python decode now uses `errors='replace'`, matching the TypeScript executor's behavior. Regression tests added for both cases.
+
+*(commit `b8c7cb0`)*
+
+---
+
+### 🛠 **Example Fixes**
+
+- **`bruno-complete-workflow.ts`** — Fixed 5 field-name mismatches between the example script and the current `@matimo/bruno` tool output schemas; all 6 workflows now run end-to-end without crashing.
+- **128-tool cap in LangChain demos** — `policy-demo.ts`, `skills-demo.ts`, and `meta-tools-integration.ts` now filter provider-package tools out of the LangChain binding via a shared `forLangChain()` helper before calling `bindTools()`. With `autoDiscover: true` now loading 146+ tools across 11 provider packages, OpenAI's 128-tool hard limit was previously exceeded; these demos only ever invoke `matimo_*` meta-tools, core tools, and self-created tools, so provider-package tools are safely excluded from the binding.
+
+---
+
+### 📦 **Version Bumps**
+
+| Package | Previous | New | Type |
+|---------|----------|-----|------|
+| matimo (root) | 0.1.3 | 0.1.4 | Patch |
+| @matimo/core | 0.1.3 | 0.1.4 | Patch |
+| @matimo/bruno | 0.1.3 | 0.1.4 | Patch |
+| @matimo/notion | 0.1.3 | 0.1.4 | Patch |
+| @matimo/postgres | 0.1.3 | 0.1.4 | Patch |
+| @matimo/microsoft | 0.1.0 | 0.1.4 | Catch-up |
+
+`@matimo/microsoft` jumps from `0.1.0` to `0.1.4` to align with the rest of the workspace's release train. All other packages (slack, gmail, github, hubspot, mailchimp, twilio, cli, linkedin, medium, reddit) are unchanged in this release — they have no `type: function` tools affected by the build-pipeline fix above.
+
+---
+
+### 📊 **Current Totals**
+
+- **146+ tools** across **11 provider packages**: Slack (16+), GitHub (10+), Gmail (5+), Notion (7+), HubSpot (50+), Mailchimp (8+), Postgres (6+), Twilio (4+), Bruno CLI (7), Microsoft Graph (9), plus Core (19 built-in tools)
+- **10 meta-tools** for runtime tool and skill management
+
+---
+
+### 🧪 **Verification**
+
+- ✅ `pnpm build` — 12/12 packages, `tools/**/*.js` generated alongside `.ts` source for every `type: function` tool in core, bruno, notion, postgres, and microsoft
+- ✅ `pnpm test` — 100/100 suites, 2156/2156 tests passing
+- ✅ All 6 `bruno-complete-workflow.ts` workflows complete without error
+- ✅ Policy, Skills, and Meta-Tools LangChain demos run cleanly under the 128-tool cap
+
+---
+
+### 🔄 **Upgrade**
+
+```bash
+npm install matimo@0.1.4
+# or
+npm update matimo
+```
+
+No API changes — all interfaces remain identical. Consumers of `@matimo/core`, `@matimo/bruno`, `@matimo/notion`, `@matimo/postgres`, or `@matimo/microsoft` who previously hit `ERR_MODULE_NOT_FOUND` / `ERR_UNKNOWN_FILE_EXTENSION` errors loading `type: function` tools should reinstall to pick up the compiled `.js` tool files.
+
+---
+---
+
 ## Microsoft Graph Provider — v0.1.0 🪟
 
 > **Release**: New provider package — Microsoft Graph integration for search, mail, files, Teams, calendar, and SharePoint
