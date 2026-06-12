@@ -45,7 +45,7 @@ parameters:
 
 execution:
   type: function
-  code: ms_send_email.ts
+  code: ms_send_email.js
   timeout: 30000
 
 authentication:

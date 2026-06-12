@@ -42,7 +42,7 @@ parameters:
 
 execution:
   type: function
-  code: './edit.ts'
+  code: './edit.js'
 
 output_schema:
   type: object

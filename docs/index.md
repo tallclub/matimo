@@ -12,7 +12,7 @@
 
 > The First AI SDK with Meta-Tools, Policy Engine, and Human-in-the-Loop Control
 
-Give your agents **137+ production-ready tools** to start. Then activate **10 meta-tools** that let them create, validate, and approve new capabilities at runtime — governed by your **policy engine** with **human approval workflows** for critical actions.
+Give your agents **146+ production-ready tools** to start. Then activate **10 meta-tools** that let them create, validate, and approve new capabilities at runtime — governed by your **policy engine** with **human approval workflows** for critical actions.
 
 **Self-extending agents with enterprise-grade control:**
 - 🔧 **Meta-Tools** — Agents write new tool definitions in YAML, validate schemas, approve for production, and hot-reload — all mid-conversation
@@ -20,7 +20,7 @@ Give your agents **137+ production-ready tools** to start. Then activate **10 me
 - 🤝 **Human-in-the-Loop (HITL)** — Critical tools require human approval before execution with configurable timeouts and audit trails
 - 🌐 **Universal Integration** — One YAML definition works across TypeScript, Python, LangChain, CrewAI, Claude MCP, OpenAI
 
-Complete documentation for Matimo **v0.1.0** (TypeScript & Python).
+Complete documentation for Matimo **v0.1.4** (TypeScript & Python).
 
 ---
 
@@ -486,4 +486,4 @@ See [Contributing Guidelines](https://github.com/tallclub/matimo/blob/main/CONTR
 
 ---
 
-Last updated: February 2026
+Last updated: June 2026

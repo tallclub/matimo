@@ -116,7 +116,7 @@ All guides include **equal coverage** of TypeScript and Python implementations.
 
 ✅ **MCP Server**
 - HTTP server on port 3101
-- 137+ Matimo tools available via MCP
+- 146+ Matimo tools available via MCP
 - Environment configuration
 - Health checks
 

@@ -8,8 +8,12 @@
  * Site pages always store web part bodies as HTML, so plain-text content is
  * HTML-escaped and wrapped in a single <p> before being placed in a textWebPart.
  */
-import { MatimoError, ErrorCode } from '@matimo/core';
-import { getAccessToken, requireParams, graphRequest, type ToolContext } from '../graph-client';
+import { MatimoError, ErrorCode } from '@matimo/core/runtime';
+import { getAccessToken, requireParams, graphRequest } from '../graph-client.js';
+
+interface ToolContext {
+  credentials?: Record<string, string>;
+}
 
 const VALID_CONTENT_TYPES = ['html', 'text'];
 

@@ -1,9 +1,9 @@
-import { getGlobalMatimoLogger } from '@matimo/core';
+import { getGlobalMatimoLogger } from '@matimo/core/runtime';
 import { execFileSync } from 'child_process';
 import { promises as fs } from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { checkBruVersion } from '../bru-utils';
+import { checkBruVersion } from '../bru-utils.js';
 
 const logger = getGlobalMatimoLogger();
 

@@ -129,7 +129,7 @@ describe('Microsoft Graph Tools Integration', () => {
       msTools.forEach((tool) => {
         expect(tool.execution.type).toBe('function');
         if (tool.execution.type === 'function') {
-          expect(tool.execution.code).toBe(`${tool.name}.ts`);
+          expect(tool.execution.code).toBe(`${tool.name}.js`);
         }
       });
     });

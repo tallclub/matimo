@@ -2,8 +2,12 @@
  * ms_search_knowledge — POST /search/query
  * https://learn.microsoft.com/en-us/graph/api/search-query
  */
-import { MatimoError, ErrorCode } from '@matimo/core';
-import { getAccessToken, requireParams, graphRequest, type ToolContext } from '../graph-client';
+import { MatimoError, ErrorCode } from '@matimo/core/runtime';
+import { getAccessToken, requireParams, graphRequest } from '../graph-client.js';
+
+interface ToolContext {
+  credentials?: Record<string, string>;
+}
 
 const VALID_ENTITY_TYPES = ['driveItem', 'listItem', 'site', 'list', 'drive'];
 const DEFAULT_ENTITY_TYPES = ['driveItem', 'listItem', 'site'];

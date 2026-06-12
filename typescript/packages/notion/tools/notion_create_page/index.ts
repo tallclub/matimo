@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { MatimoError, ErrorCode } from '@matimo/core';
+import { MatimoError, ErrorCode } from '@matimo/core/runtime';
 
 interface Params {
   parent?: Record<string, unknown>;

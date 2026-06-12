@@ -19,7 +19,7 @@ parameters:
 
 execution:
   type: function
-  code: './matimo_get_tool_status.ts'
+  code: './matimo_get_tool_status.js'
 
 output_schema:
   type: object

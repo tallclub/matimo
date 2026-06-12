@@ -23,7 +23,7 @@ parameters:
 
 execution:
   type: function
-  code: ms_read_file.ts
+  code: ms_read_file.js
   timeout: 30000
 
 authentication:

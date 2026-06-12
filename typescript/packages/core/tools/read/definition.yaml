@@ -37,7 +37,7 @@ parameters:
 
 execution:
   type: function
-  code: './read.ts'
+  code: './read.js'
 
 output_schema:
   type: object

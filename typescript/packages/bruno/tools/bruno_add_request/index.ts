@@ -1,4 +1,4 @@
-import { getGlobalMatimoLogger } from '@matimo/core';
+import { getGlobalMatimoLogger } from '@matimo/core/runtime';
 import { promises as fs } from 'fs';
 import * as path from 'path';
 

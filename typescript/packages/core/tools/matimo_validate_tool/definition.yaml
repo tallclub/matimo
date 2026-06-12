@@ -15,7 +15,7 @@ parameters:
 
 execution:
   type: function
-  code: './matimo_validate_tool.ts'
+  code: './matimo_validate_tool.js'
 
 output_schema:
   type: object

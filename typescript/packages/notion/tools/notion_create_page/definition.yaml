@@ -47,7 +47,7 @@ parameters:
 
 execution:
   type: function
-  code: './index.ts'
+  code: './index.js'
 
 authentication:
   type: bearer

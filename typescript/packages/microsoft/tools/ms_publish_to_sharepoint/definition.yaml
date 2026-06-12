@@ -43,7 +43,7 @@ parameters:
 
 execution:
   type: function
-  code: ms_publish_to_sharepoint.ts
+  code: ms_publish_to_sharepoint.js
   timeout: 30000
 
 authentication:

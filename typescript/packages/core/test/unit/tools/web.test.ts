@@ -33,7 +33,7 @@ describe('Web Tool', () => {
 
       expect(webTool!.execution.type).toBe('function');
       expect(webTool!.execution).toHaveProperty('code');
-      expect((webTool!.execution as Record<string, unknown>).code).toBe('./web.ts');
+      expect((webTool!.execution as Record<string, unknown>).code).toBe('./web.js');
     });
   });
 

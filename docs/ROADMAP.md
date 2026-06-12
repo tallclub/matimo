@@ -2,11 +2,11 @@
 
 ## Current Status
 
-**Latest Release**: **v0.1.0** (May 1, 2026) — **🎉 First Stable Release — Production-Ready GA**
+**Latest Release**: **v0.1.4** (June 11, 2026) — **🪟 Microsoft Graph Provider + Stability Patches**
 
 ### 🏆 Production Launch — General Availability
 
-Matimo v0.1.0 stable is now **production-ready** with full TypeScript and Python SDK support, 137+ tools, enterprise-grade security, and comprehensive framework integrations.
+Matimo v0.1.4 stable is now **production-ready** with full TypeScript and Python SDK support, 146+ tools across 11 providers, enterprise-grade security, and comprehensive framework integrations.
 
 ✅ **v0.1.0 Stable — Completed Features**:
 
@@ -22,10 +22,10 @@ Matimo v0.1.0 stable is now **production-ready** with full TypeScript and Python
 - Policy engine with risk classification + HITL workflows
 - Secret management (Env, Dotenv, Vault, AWS Secrets Manager)
 
-**Provider Ecosystem** (137+ tools across 10 providers)
+**Provider Ecosystem** (146+ tools across 11 providers)
 - **Slack** (16+), **GitHub** (10+), **Gmail** (5+), **Notion** (7+)
 - **HubSpot** (50+), **Mailchimp** (8+), **Postgres** (6+), **Twilio** (4+)
-- **Bruno CLI** (7) — NEW in v0.1.0: Complete API testing lifecycle
+- **Bruno CLI** (7), **Microsoft Graph** (9) — Mail, Teams, calendar, SharePoint, OneDrive search
 - All providers ship with TypeScript + Python SDKs, LangChain/CrewAI examples
 
 **Bruno CLI Provider** (v0.1.0 — NEW)
@@ -69,7 +69,7 @@ Matimo v0.1.0 stable is now **production-ready** with full TypeScript and Python
 - ✅ pnpm workspaces, Jest, TypeScript strict mode
 - ✅ 40+ production examples
 
-**See [RELEASES.md](./RELEASES.md)** for complete v0.1.0 changelog and migration guide.
+**See [RELEASES.md](./RELEASES.md)** for the complete changelog and migration guides across all releases.
 
 ---
 
@@ -96,7 +96,7 @@ Matimo v0.1.0 stable is now **production-ready** with full TypeScript and Python
 
 ### Context Window Tooling (Planned)
 
-- [ ] **Dynamic tool filtering** — When `autoDiscover` loads 137+ tools (at model API limits):
+- [ ] **Dynamic tool filtering** — When `autoDiscover` loads 146+ tools (at model API limits):
   - Provide utility: `selectToolsByProvider(tools, providers)` to filter by provider/tag
   - Prevents silent tool drops at API limit
   - Example: `selectToolsByProvider(allTools, ['slack', 'github'])` returns only those provider tools

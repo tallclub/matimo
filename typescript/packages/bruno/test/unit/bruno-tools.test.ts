@@ -108,9 +108,9 @@ describe('bruno tool YAML definitions', () => {
         expect((def.examples ?? []).length).toBeGreaterThanOrEqual(1);
       });
 
-      it('has execution type function with code = index.ts', () => {
+      it('has execution type function with code = index.js', () => {
         expect(def.execution?.type).toBe('function');
-        expect(def.execution?.code).toBe('index.ts');
+        expect(def.execution?.code).toBe('index.js');
       });
     });
   });

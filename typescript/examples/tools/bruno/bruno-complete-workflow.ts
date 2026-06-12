@@ -294,10 +294,10 @@ test("Todo updated", function() {
     });
 
     console.info(`   ✅ Collection Execution Summary:`);
-    console.info(`      Total: ${runResult.summary.total}`);
+    console.info(`      Total: ${runResult.summary.total_requests}`);
     console.info(`      Passed: ${runResult.summary.passed}`);
     console.info(`      Failed: ${runResult.summary.failed}`);
-    console.info(`      Duration: ${runResult.summary.duration}ms`);
+    console.info(`      Duration: ${runResult.summary.execution_time_ms}ms`);
     console.info(`      Success: ${runResult.success ? 'YES ✅' : 'NO ❌'}`);
 
     if (runResult.results && runResult.results.length > 0) {
@@ -341,8 +341,8 @@ test("Todo updated", function() {
       workspace_path: workspaceDir,
     });
 
-    console.info(`   ✅ Found ${listResult.length} collection(s):`);
-    listResult.forEach((collection: any) => {
+    console.info(`   ✅ Found ${listResult.collections.length} collection(s):`);
+    listResult.collections.forEach((collection: any) => {
       console.info(`      📁 ${collection.name}`);
       console.info(`         Path: ${collection.path}`);
       console.info(`         Requests: ${collection.request_count}`);
@@ -366,7 +366,7 @@ test("Todo updated", function() {
     console.info(`   ✅ OpenAPI Import Complete:`);
     console.info(`      Collection: ${importResult.collection_name}`);
     console.info(`      Path: ${importResult.collection_path}`);
-    console.info(`      Requests Generated: ${importResult.requests_generated}`);
+    console.info(`      Requests Generated: ${importResult.requests_created}`);
     console.info();
 
     // ========================================

@@ -43,7 +43,6 @@ members = [
     "packages/slack",
     "packages/twilio",
     "examples",
-    "examples/mcp",
 ]
 
 [tool.uv.sources]

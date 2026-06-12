@@ -33,7 +33,7 @@ describe('Search Tool', () => {
 
       expect(searchTool!.execution.type).toBe('function');
       expect(searchTool!.execution).toHaveProperty('code');
-      expect((searchTool!.execution as Record<string, unknown>).code).toBe('./search.ts');
+      expect((searchTool!.execution as Record<string, unknown>).code).toBe('./search.js');
     });
   });
 

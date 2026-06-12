@@ -55,7 +55,7 @@ parameters:
 
 execution:
   type: function
-  code: './web.ts'
+  code: './web.js'
 
 output_schema:
   type: object

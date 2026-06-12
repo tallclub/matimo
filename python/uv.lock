@@ -21,7 +21,6 @@ members = [
     "matimo-microsoft",
     "matimo-notion",
     "matimo-postgres",
-    "matimo-py-mcp",
     "matimo-slack",
     "matimo-twilio",
     "matimo-workspace",
@@ -2075,98 +2074,6 @@ requires-dist = [
     { name = "asyncpg", specifier = ">=0.29" },
     { name = "matimo-core", editable = "packages/core" },
 ]
-
-[[package]]
-name = "matimo-py-mcp"
-version = "0.1.0"
-source = { virtual = "examples/mcp" }
-dependencies = [
-    { name = "matimo-bruno" },
-    { name = "matimo-cli" },
-    { name = "matimo-core" },
-    { name = "matimo-github" },
-    { name = "matimo-gmail" },
-    { name = "matimo-hubspot" },
-    { name = "matimo-mailchimp" },
-    { name = "matimo-notion" },
-    { name = "matimo-postgres" },
-    { name = "matimo-slack" },
-    { name = "matimo-twilio" },
-    { name = "mcp" },
-    { name = "python-dotenv" },
-]
-
-[package.optional-dependencies]
-all = [
-    { name = "matimo-github" },
-    { name = "matimo-gmail" },
-    { name = "matimo-hubspot" },
-    { name = "matimo-mailchimp" },
-    { name = "matimo-notion" },
-    { name = "matimo-postgres" },
-    { name = "matimo-slack" },
-    { name = "matimo-twilio" },
-    { name = "sse-starlette" },
-    { name = "starlette" },
-    { name = "uvicorn" },
-]
-dev = [
-    { name = "langchain-mcp-adapters" },
-    { name = "langchain-openai" },
-    { name = "langgraph" },
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-]
-http = [
-    { name = "sse-starlette" },
-    { name = "starlette" },
-    { name = "uvicorn" },
-]
-slack = [
-    { name = "matimo-slack" },
-    { name = "starlette" },
-    { name = "uvicorn" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "langchain-mcp-adapters", marker = "extra == 'dev'", specifier = ">=0.1.0" },
-    { name = "langchain-openai", marker = "extra == 'dev'", specifier = ">=1.1.14" },
-    { name = "langgraph", marker = "extra == 'dev'", specifier = ">=0.1.0" },
-    { name = "matimo-bruno", editable = "packages/bruno" },
-    { name = "matimo-cli", editable = "packages/cli" },
-    { name = "matimo-core", editable = "packages/core" },
-    { name = "matimo-github", editable = "packages/github" },
-    { name = "matimo-github", marker = "extra == 'all'", editable = "packages/github" },
-    { name = "matimo-gmail", editable = "packages/gmail" },
-    { name = "matimo-gmail", marker = "extra == 'all'", editable = "packages/gmail" },
-    { name = "matimo-hubspot", editable = "packages/hubspot" },
-    { name = "matimo-hubspot", marker = "extra == 'all'", editable = "packages/hubspot" },
-    { name = "matimo-mailchimp", editable = "packages/mailchimp" },
-    { name = "matimo-mailchimp", marker = "extra == 'all'", editable = "packages/mailchimp" },
-    { name = "matimo-notion", editable = "packages/notion" },
-    { name = "matimo-notion", marker = "extra == 'all'", editable = "packages/notion" },
-    { name = "matimo-postgres", editable = "packages/postgres" },
-    { name = "matimo-postgres", marker = "extra == 'all'", editable = "packages/postgres" },
-    { name = "matimo-slack", editable = "packages/slack" },
-    { name = "matimo-slack", marker = "extra == 'all'", editable = "packages/slack" },
-    { name = "matimo-slack", marker = "extra == 'slack'", editable = "packages/slack" },
-    { name = "matimo-twilio", editable = "packages/twilio" },
-    { name = "matimo-twilio", marker = "extra == 'all'", editable = "packages/twilio" },
-    { name = "mcp", specifier = ">=1.27.0" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
-    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.24" },
-    { name = "python-dotenv", specifier = ">=1.2.2" },
-    { name = "sse-starlette", marker = "extra == 'all'", specifier = ">=3.3.4" },
-    { name = "sse-starlette", marker = "extra == 'http'", specifier = ">=3.3.4" },
-    { name = "starlette", marker = "extra == 'all'", specifier = ">=1.0.1" },
-    { name = "starlette", marker = "extra == 'http'", specifier = ">=1.0.1" },
-    { name = "starlette", marker = "extra == 'slack'", specifier = ">=1.0.1" },
-    { name = "uvicorn", marker = "extra == 'all'", specifier = ">=0.44.0" },
-    { name = "uvicorn", marker = "extra == 'http'", specifier = ">=0.44.0" },
-    { name = "uvicorn", marker = "extra == 'slack'", specifier = ">=0.44.0" },
-]
-provides-extras = ["slack", "http", "all", "dev"]
 
 [[package]]
 name = "matimo-slack"

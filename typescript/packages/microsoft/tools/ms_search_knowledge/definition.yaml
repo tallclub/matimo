@@ -44,7 +44,7 @@ parameters:
 
 execution:
   type: function
-  code: ms_search_knowledge.ts
+  code: ms_search_knowledge.js
   timeout: 20000
 
 authentication:

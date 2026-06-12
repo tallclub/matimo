@@ -2,6 +2,9 @@ import { MatimoInstance } from '../../src/matimo-instance';
 import { getGlobalApprovalHandler } from '../../src/approval/approval-handler';
 import path from 'path';
 
+// Increase timeout for HTTP-based tests (httpbin.org calls can be slow)
+jest.setTimeout(60000);
+
 describe('MatimoInstance - Core Functionality', () => {
   let instance: MatimoInstance;
   const toolsPath = path.join(__dirname, '../fixtures/tools');

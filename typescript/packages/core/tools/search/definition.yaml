@@ -54,7 +54,7 @@ parameters:
 
 execution:
   type: function
-  code: './search.ts'
+  code: './search.js'
 
 output_schema:
   type: object

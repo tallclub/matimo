@@ -27,7 +27,7 @@ parameters:
 
 execution:
   type: function
-  code: ms_list_files.ts
+  code: ms_list_files.js
   timeout: 20000
 
 authentication:

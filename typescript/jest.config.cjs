@@ -36,8 +36,9 @@ module.exports = {
   ],
   setupFiles: ['<rootDir>/jest.setup.js'],
   transform: {
-    '^.+\\.ts$': ['ts-jest', {
+    '^.+\\.[tj]s$': ['ts-jest', {
       tsconfig: {
+        allowJs: true,
         esModuleInterop: true,
         experimentalDecorators: true,
         emitDecoratorMetadata: true,
@@ -51,5 +52,9 @@ module.exports = {
         }
       }
     }]
-  }
+  },
+  transformIgnorePatterns: [
+    '/node_modules/',
+    '/dist/'
+  ]
 };

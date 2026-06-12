@@ -16,7 +16,7 @@ parameters: {}
 
 execution:
   type: function
-  code: './matimo_reload_tools.ts'
+  code: './matimo_reload_tools.js'
 
 output_schema:
   type: object

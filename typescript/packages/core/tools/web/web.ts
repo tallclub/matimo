@@ -92,7 +92,8 @@ export default async function webTool(params: WebParams): Promise<WebResult> {
     let content: unknown = response.data;
 
     // Try to parse JSON if requested and content-type suggests JSON
-    if (parseJson && response.headers['content-type']?.includes('application/json')) {
+    const contentType = response.headers['content-type'];
+    if (parseJson && typeof contentType === 'string' && contentType.includes('application/json')) {
       try {
         if (typeof response.data === 'string') {
           content = JSON.parse(response.data);

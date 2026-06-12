@@ -37,7 +37,7 @@ parameters:
 
 execution:
   type: function
-  code: './matimo_list_skills.ts'
+  code: './matimo_list_skills.js'
 
 output_schema:
   type: object

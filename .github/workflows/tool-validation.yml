@@ -44,6 +44,10 @@ jobs:
         run: pnpm validate-tools
         working-directory: typescript
 
+      - name: Build
+        run: pnpm build
+        working-directory: typescript
+
       - name: Run full test suite
         run: pnpm test
         working-directory: typescript

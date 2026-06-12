@@ -35,7 +35,7 @@ parameters:
 
 execution:
   type: function
-  code: ms_get_email.ts
+  code: ms_get_email.js
   timeout: 20000
 
 authentication:
