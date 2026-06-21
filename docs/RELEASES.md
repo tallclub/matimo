@@ -20,6 +20,16 @@ No code changes were required — axios 1.18 is backward-compatible with 1.15 fo
 
 ---
 
+### 🐛 **Fix: `pnpm test` could run against stale/missing compiled tool files**
+
+`type: function` tools (e.g. `@matimo/microsoft`'s `ms_search_knowledge`, `ms_read_file`, `ms_list_files`, `ms_create_document`) ship as colocated `.ts` sources that `tsc` compiles in place to `.js` — the `.js` outputs are gitignored (`typescript/packages/*/tools/**/*.js`) and only exist after `pnpm build`. Running `pnpm test` without building first causes `FunctionExecutor`'s dynamic `import()` to fail to find those files, producing a generic (non-`MatimoError`) failure with `result.code: undefined` instead of `'VALIDATION_FAILED'` — this is what surfaced as recurring, hard-to-pin-down microsoft integration test failures across releases.
+
+CI already guarded against this with an explicit `Build` step (added after the v0.1.4 release for the same reason), but local `pnpm test` runs had no equivalent guard. Root-caused by reproducing directly: removing the compiled `.js` files locally reproduced the exact failure (4 failing assertions, `code: undefined`); rebuilding fixed it immediately.
+
+**Fix**: added `pretest`/`pretest:coverage` scripts (`pnpm build`) to `typescript/package.json`, and set `enable-pre-post-scripts=true` in `typescript/.npmrc` — pnpm defaults this to `false`, so the lifecycle hooks were silently never firing. Verified the fix by reproducing the failure, confirming `pnpm test` now auto-rebuilds and passes without a manual `pnpm build` step first; full suite re-run clean (2185/2185) afterward.
+
+---
+
 ### 🆕 **New Package: `@matimo/composio`**
 
 `@matimo/composio` wraps [Composio](https://composio.dev)'s REST execute endpoint with Matimo's full governance stack. Every Composio action becomes a schema-valid Matimo tool with explicit risk classification, policy-gated execution, and optional HITL approval — all without custom executor code.
