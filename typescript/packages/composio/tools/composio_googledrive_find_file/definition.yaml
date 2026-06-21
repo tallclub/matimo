@@ -1,0 +1,135 @@
+name: composio_googledrive_find_file
+description: >-
+  Tool to list or search for files and folders in google drive. use when you need to find specific
+  files based on query criteria or list contents of a drive/folder.
+version: 1.0.0
+risk: low
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the GOOGLEDRIVE toolkit, scoped to the calling tenant.
+      The "Connect GOOGLEDRIVE" flow must be completed before this tool will succeed.
+    required: true
+  q:
+    type: string
+    description: >-
+      A query for filtering the file results. See Google Drive API documentation for query syntax.
+      Example: \"name contains 'report' and mimeType = 'application/pdf'\"
+    default: null
+  fields:
+    type: string
+    description: >-
+      Selector specifying which fields to include in a partial response. Use '*' for all fields or a
+      comma-separated list, e.g., 'nextPageToken,files(id,name,mimeType)'.
+    default: '*'
+  spaces:
+    type: string
+    description: >-
+      A comma-separated list of spaces to query. Supported values are 'drive', 'appDataFolder' and
+      'photos'.
+    default: drive
+  corpora:
+    type: string
+    description: >-
+      Corpora to query. 'user' for user's personal files, 'drive' for files in a specific shared
+      drive (requires 'driveId'), 'domain' for files shared with the domain, 'allDrives' for all
+      drives the user has access to.
+    enum:
+      - user
+      - drive
+      - domain
+      - allDrives
+    default: null
+  driveId:
+    type: string
+    description: ID of the shared drive to search. Required if 'corpora' is 'drive'.
+    default: null
+  orderBy:
+    type: string
+    description: >-
+      A comma-separated list of sort keys. Valid keys are 'createdTime', 'folder',
+      'modifiedByMeTime', 'modifiedTime', 'name', 'name_natural', 'quotaBytesUsed', 'recency',
+      'sharedWithMeTime', 'starred', and 'viewedByMeTime'. Each key sorts ascending by default, but
+      may be reversed with the 'desc' modifier. Example: 'modifiedTime desc,name'.
+    default: null
+  pageSize:
+    type: number
+    description: The maximum number of files to return per page.
+    default: 100
+  pageToken:
+    type: string
+    description: The token for continuing a previous list request on the next page.
+    default: null
+  supportsAllDrives:
+    type: boolean
+    description: >-
+      Whether the requesting application supports both My Drives and shared drives. If
+      'includeItemsFromAllDrives' is true, this must also be true.
+    default: true
+  includeItemsFromAllDrives:
+    type: boolean
+    description: >-
+      Whether both My Drive and shared drive items should be included in results. If true,
+      'supportsAllDrives' should also be true.
+    default: false
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/GOOGLEDRIVE_FIND_FILE
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_googledrive_find_file
+      q: '{q}'
+      fields: '{fields}'
+      spaces: '{spaces}'
+      corpora: '{corpora}'
+      driveId: '{driveId}'
+      orderBy: '{orderBy}'
+      pageSize: '{pageSize}'
+      pageToken: '{pageToken}'
+      supportsAllDrives: '{supportsAllDrives}'
+      includeItemsFromAllDrives: '{includeItemsFromAllDrives}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - googledrive
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: googledrive
+  composio_slug: GOOGLEDRIVE_FIND_FILE

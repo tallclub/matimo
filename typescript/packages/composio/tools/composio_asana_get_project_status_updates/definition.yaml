@@ -1,0 +1,100 @@
+name: composio_asana_get_project_status_updates
+description: >-
+  Tool to get status updates for a specific project. use when you need to retrieve the latest or
+  historical status reports associated with an asana project.
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the ASANA toolkit, scoped to the calling tenant. The
+      "Connect ASANA" flow must be completed before this tool will succeed.
+    required: true
+  limit:
+    type: number
+    description: >-
+      Results per page. The number of objects to return per page. The value must be between 1 and
+      100.
+    default: 50
+  offset:
+    type: string
+    description: >-
+      Offset token. An offset to paginate from. This can be retrieved from the 'next_page' field in
+      a previous response.
+    default: null
+  opt_fields:
+    type: array
+    description: >-
+      Defines fields to return. Some requests return compact representations of objects in order to
+      conserve resources and complete the request more efficiently. Other times requests return more
+      information than you may need. This option allows you to list the exact set of fields that the
+      API should be sure to return for the objects. The field names should be provided as paths,
+      described below. The id of included objects will always be returned, regardless of the field
+      options.
+    default: null
+  opt_pretty:
+    type: boolean
+    description: >-
+      Provides “pretty” output. Adds indentation and newlines to the response. This can be useful
+      when debugging but increases the response size.
+    default: null
+  project_gid:
+    type: string
+    description: Globally unique identifier for the project.
+    required: true
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/ASANA_GET_PROJECT_STATUS_UPDATES
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_asana_get_project_status_updates
+      limit: '{limit}'
+      offset: '{offset}'
+      opt_fields: '{opt_fields}'
+      opt_pretty: '{opt_pretty}'
+      project_gid: '{project_gid}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - asana
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: asana
+  composio_slug: ASANA_GET_PROJECT_STATUS_UPDATES

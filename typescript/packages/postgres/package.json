@@ -1,6 +1,6 @@
 {
   "name": "@matimo/postgres",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Postgres tools for Matimo",
   "type": "module",
   "files": [

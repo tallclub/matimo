@@ -1,0 +1,109 @@
+name: composio_googledrive_update_drive
+description: >-
+  Tool to update the metadata for a shared drive. use when you need to modify properties like the
+  name, theme, background image, or restrictions of a shared drive.
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the GOOGLEDRIVE toolkit, scoped to the calling tenant.
+      The "Connect GOOGLEDRIVE" flow must be completed before this tool will succeed.
+    required: true
+  name:
+    type: string
+    description: The new name for the shared drive.
+    default: null
+  hidden:
+    type: boolean
+    description: Whether the shared drive is hidden from the default view.
+    default: null
+  driveId:
+    type: string
+    description: The ID of the shared drive to update.
+    required: true
+  themeId:
+    type: string
+    description: >-
+      The ID of a theme to apply to the shared drive. Cannot be set if colorRgb or
+      backgroundImageFile are set.
+    default: null
+  colorRgb:
+    type: string
+    description: >-
+      The color of this shared drive as an RGB hex string (e.g., "#FF0000"). Cannot be set if
+      themeId is set.
+    default: null
+  restrictions:
+    type: object
+    description: A set of restrictions to apply to the shared drive.
+    default: null
+  backgroundImageFile:
+    type: object
+    description: >-
+      An image file and cropping parameters for the shared drive's background. Cannot be set if
+      themeId is set.
+    default: null
+  useDomainAdminAccess:
+    type: boolean
+    description: If set to true, the request is issued as a domain administrator.
+    default: null
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/GOOGLEDRIVE_UPDATE_DRIVE
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_googledrive_update_drive
+      name: '{name}'
+      hidden: '{hidden}'
+      driveId: '{driveId}'
+      themeId: '{themeId}'
+      colorRgb: '{colorRgb}'
+      restrictions: '{restrictions}'
+      backgroundImageFile: '{backgroundImageFile}'
+      useDomainAdminAccess: '{useDomainAdminAccess}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - googledrive
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: googledrive
+  composio_slug: GOOGLEDRIVE_UPDATE_DRIVE

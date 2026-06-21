@@ -1,0 +1,113 @@
+name: composio_asana_create_subtask
+description: >-
+  Creates a new asana subtask under an existing parent task (`task gid`); `due on` and `due at` are
+  mutually exclusive and cannot be set simultaneously.
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the ASANA toolkit, scoped to the calling tenant. The
+      "Connect ASANA" flow must be completed before this tool will succeed.
+    required: true
+  name:
+    type: string
+    description: The name of the subtask to be created.
+    required: true
+  notes:
+    type: string
+    description: Optional descriptive text for the subtask.
+    default: null
+  due_at:
+    type: string
+    description: >-
+      Optional due date and time for the subtask in ISO 8601 format (e.g., YYYY-MM-DDTHH:mm:ssZ),
+      which is more specific than `due_on`.
+    default: null
+  due_on:
+    type: string
+    description: >-
+      Optional due date for the subtask in YYYY-MM-DD format, representing the end of the day for
+      the task.
+    default: null
+  assignee:
+    type: string
+    description: >-
+      Optional Global ID (GID) of the user to whom the subtask will be assigned. If not provided,
+      the subtask will be unassigned.
+    default: null
+  task_gid:
+    type: string
+    description: The Global ID (GID) of the parent task under which the subtask will be created.
+    required: true
+  completed:
+    type: boolean
+    description: >-
+      Optional flag to mark the subtask as completed upon creation. Defaults to false if not
+      specified.
+    default: null
+  followers:
+    type: array
+    description: >-
+      Optional array of user Global IDs (GIDs) to add as followers to the subtask. Followers receive
+      notifications about subtask updates.
+    default: null
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/ASANA_CREATE_SUBTASK
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_asana_create_subtask
+      name: '{name}'
+      notes: '{notes}'
+      due_at: '{due_at}'
+      due_on: '{due_on}'
+      assignee: '{assignee}'
+      task_gid: '{task_gid}'
+      completed: '{completed}'
+      followers: '{followers}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - asana
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: asana
+  composio_slug: ASANA_CREATE_SUBTASK

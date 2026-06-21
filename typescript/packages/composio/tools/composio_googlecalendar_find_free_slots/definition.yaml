@@ -1,0 +1,103 @@
+name: composio_googlecalendar_find_free_slots
+description: >-
+  Finds free/busy time slots in google calendars for specified calendars within a defined time range
+  (defaults to the current day utc if `time min`/`time max` are omitted), enhancing busy intervals
+  with event details; `time min` must precede `time max` if both are provided.
+version: 1.0.0
+risk: low
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the GOOGLECALENDAR toolkit, scoped to the calling
+      tenant. The "Connect GOOGLECALENDAR" flow must be completed before this tool will succeed.
+    required: true
+  items:
+    type: array
+    description: >-
+      List of calendar identifiers (primary ID 'primary', user/calendar email, or unique calendar
+      ID) to query for free/busy information.
+    default:
+      - primary
+  time_max:
+    type: string
+    description: End datetime for the query interval. Accepts ISO, comma-separated, or simple datetime formats.
+    default: null
+  time_min:
+    type: string
+    description: >-
+      Start datetime for the query interval. Accepts ISO, comma-separated, or simple datetime
+      formats.
+    default: null
+  timezone:
+    type: string
+    description: >-
+      IANA timezone identifier (e.g., 'America/New_York', 'Europe/London') for interpreting
+      `time_min` and `time_max` if they lack timezone info, and for expanding recurring events.
+    default: UTC
+  group_expansion_max:
+    type: number
+    description: >-
+      Maximum calendar identifiers to return for a single group; exceeding this causes an error. Max
+      allowed: 100.
+    default: 100
+  calendar_expansion_max:
+    type: number
+    description: 'Maximum calendars for which FreeBusy information is provided. Max allowed: 50.'
+    default: 50
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/GOOGLECALENDAR_FIND_FREE_SLOTS
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_googlecalendar_find_free_slots
+      items: '{items}'
+      time_max: '{time_max}'
+      time_min: '{time_min}'
+      timezone: '{timezone}'
+      group_expansion_max: '{group_expansion_max}'
+      calendar_expansion_max: '{calendar_expansion_max}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - googlecalendar
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: googlecalendar
+  composio_slug: GOOGLECALENDAR_FIND_FREE_SLOTS

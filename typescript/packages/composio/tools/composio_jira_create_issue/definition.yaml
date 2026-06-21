@@ -1,0 +1,152 @@
+name: composio_jira_create_issue
+description: Creates a new jira issue (e.g., bug, task, story) in a specified project.
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the JIRA toolkit, scoped to the calling tenant. The
+      "Connect JIRA" flow must be completed before this tool will succeed.
+    required: true
+  labels:
+    type: array
+    description: List of labels to categorize the issue; new labels are created if they don't exist.
+    default: null
+  summary:
+    type: string
+    description: Brief, descriptive title for the issue.
+    required: true
+  assignee:
+    type: string
+    description: >-
+      Account ID of the user to assign the issue to. If unspecified, the project's default assignee
+      may be used. Takes precedence over assignee_name if both are provided.
+    default: null
+  due_date:
+    type: string
+    description: Expected resolution date in YYYY-MM-DD format.
+    default: null
+  priority:
+    type: string
+    description: >-
+      Priority level for the issue. Can be either a priority ID (e.g., '1', '2') or priority name
+      (e.g., 'High', 'Medium', 'Low'). Only set if the priority field is available on the project's
+      create screen.
+    default: null
+  reporter:
+    type: string
+    description: Account ID of the user reporting the issue. Defaults to the API request user if unspecified.
+    default: null
+  versions:
+    type: array
+    description: List of IDs for versions affected by this issue; versions must exist in the project.
+    default: null
+  sprint_id:
+    type: number
+    description: >-
+      ID of the sprint to assign this issue to. The issue will be added to the specified sprint if
+      provided.
+    default: null
+  components:
+    type: array
+    description: List of component IDs (e.g., '10000'); components must already exist in the project.
+    default: null
+  issue_type:
+    type: string
+    description: >-
+      Type of the issue (e.g., 'Bug', 'Task'); must be a valid type name for the project and is
+      case-sensitive. Defaults to 'Task'.
+    default: Task
+  description:
+    type: string
+    description: >-
+      Detailed description of the issue. Supports Markdown formatting including **bold**, *italic*,
+      `code`, links [text](url), and lists.
+    default: null
+  environment:
+    type: string
+    description: >-
+      Environment details. Supports Markdown formatting including **bold**, *italic*, `code`, links
+      [text](url), and lists.
+    default: null
+  project_key:
+    type: string
+    description: Key of the Jira project (e.g., 'PROJ').
+    required: true
+  fix_versions:
+    type: array
+    description: List of IDs for versions where the issue is/will be fixed; versions must exist in the project.
+    default: null
+  assignee_name:
+    type: string
+    description: >-
+      Name or email of the user to assign the issue to. Can be either an email address (e.g.,
+      'john@company.com') or display name (e.g., 'John Doe'). The system will auto-detect the type
+      and search accordingly. Ignored if assignee (account ID) is also provided.
+    default: null
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/JIRA_CREATE_ISSUE
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_jira_create_issue
+      labels: '{labels}'
+      summary: '{summary}'
+      assignee: '{assignee}'
+      due_date: '{due_date}'
+      priority: '{priority}'
+      reporter: '{reporter}'
+      versions: '{versions}'
+      sprint_id: '{sprint_id}'
+      components: '{components}'
+      issue_type: '{issue_type}'
+      description: '{description}'
+      environment: '{environment}'
+      project_key: '{project_key}'
+      fix_versions: '{fix_versions}'
+      assignee_name: '{assignee_name}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - jira
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: jira
+  composio_slug: JIRA_CREATE_ISSUE

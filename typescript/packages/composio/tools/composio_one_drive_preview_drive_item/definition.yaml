@@ -1,0 +1,107 @@
+name: composio_one_drive_preview_drive_item
+description: >-
+  Generates or retrieves a short-lived embeddable url for a preview of a specific item. use when you
+  need to display a temporary preview of a file.
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the ONE_DRIVE toolkit, scoped to the calling tenant. The
+      "Connect ONE_DRIVE" flow must be completed before this tool will succeed.
+    required: true
+  page:
+    type: string
+    description: >-
+      Optional. Page number of document to start at, if applicable. Specified as string for future
+      use cases around file types such as ZIP.
+    default: null
+  zoom:
+    type: number
+    description: Optional. Zoom level to start at, if applicable.
+    default: null
+  item_id:
+    type: string
+    description: The unique identifier of the DriveItem.
+    required: true
+  site_id:
+    type: string
+    description: The unique identifier of the Site. Provide if the item is in a SharePoint site.
+    default: null
+  user_id:
+    type: string
+    description: The unique identifier of the User. Provide if the item is in another user's drive.
+    default: null
+  drive_id:
+    type: string
+    description: >-
+      The unique identifier of the Drive. If not provided, the request will be made to the current
+      user's drive.
+    default: null
+  group_id:
+    type: string
+    description: The unique identifier of the Group. Provide if the item is in a group drive.
+    default: null
+  share_id:
+    type: string
+    description: The unique identifier of the shared item. Provide if the item is accessed via a share link.
+    default: null
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/ONE_DRIVE_PREVIEW_DRIVE_ITEM
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_one_drive_preview_drive_item
+      page: '{page}'
+      zoom: '{zoom}'
+      item_id: '{item_id}'
+      site_id: '{site_id}'
+      user_id: '{user_id}'
+      drive_id: '{drive_id}'
+      group_id: '{group_id}'
+      share_id: '{share_id}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - one_drive
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: one_drive
+  composio_slug: ONE_DRIVE_PREVIEW_DRIVE_ITEM

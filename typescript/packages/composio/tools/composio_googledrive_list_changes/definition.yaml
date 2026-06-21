@@ -1,0 +1,137 @@
+name: composio_googledrive_list_changes
+description: >-
+  Tool to list the changes for a user or shared drive. use when you need to track modifications to
+  files and folders, such as creations, deletions, or permission changes. this action requires a
+  `pagetoken` which can be initially obtained using the `get changes start page token` action or
+  from a previous `list changes` response.
+version: 1.0.0
+risk: low
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the GOOGLEDRIVE toolkit, scoped to the calling tenant.
+      The "Connect GOOGLEDRIVE" flow must be completed before this tool will succeed.
+    required: true
+  spaces:
+    type: string
+    description: >-
+      A comma-separated list of spaces to query within the corpora. Supported values are 'drive' and
+      'appDataFolder'.
+    default: drive
+  driveId:
+    type: string
+    description: >-
+      The shared drive from which changes will be returned. If specified the change IDs will be
+      reflective of the shared drive; use the combined drive ID and change ID as an identifier.
+    default: null
+  pageSize:
+    type: number
+    description: The maximum number of changes to return per page.
+    default: 100
+  pageToken:
+    type: string
+    description: >-
+      The token for continuing a previous list request on the next page. This should be set to the
+      value of 'nextPageToken' from the previous response or to the response from the
+      getStartPageToken method.
+    required: true
+  includeLabels:
+    type: string
+    description: A comma-separated list of IDs of labels to include in the `labelInfo` part of the response.
+    default: null
+  includeRemoved:
+    type: boolean
+    description: >-
+      Whether to include changes indicating that items have been removed from the list of changes,
+      for example by deletion or loss of access.
+    default: true
+  restrictToMyDrive:
+    type: boolean
+    description: >-
+      Whether to restrict the results to changes inside the My Drive hierarchy. This omits changes
+      to files such as those in the Application Data folder or shared files which have not been
+      added to My Drive.
+    default: null
+  supportsAllDrives:
+    type: boolean
+    description: Whether the requesting application supports both My Drives and shared drives.
+    default: null
+  includeCorpusRemovals:
+    type: boolean
+    description: >-
+      Whether changes should include the file resource if the file is still accessible by the user
+      at the time of the request, even when a file was removed from the list of changes and there
+      will be no further change entries for this file.
+    default: null
+  includeItemsFromAllDrives:
+    type: boolean
+    description: Whether both My Drive and shared drive items should be included in results.
+    default: null
+  includePermissionsForView:
+    type: string
+    description: >-
+      Specifies which additional view's permissions to include in the response. Only 'published' is
+      supported.
+    default: null
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/GOOGLEDRIVE_LIST_CHANGES
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_googledrive_list_changes
+      spaces: '{spaces}'
+      driveId: '{driveId}'
+      pageSize: '{pageSize}'
+      pageToken: '{pageToken}'
+      includeLabels: '{includeLabels}'
+      includeRemoved: '{includeRemoved}'
+      restrictToMyDrive: '{restrictToMyDrive}'
+      supportsAllDrives: '{supportsAllDrives}'
+      includeCorpusRemovals: '{includeCorpusRemovals}'
+      includeItemsFromAllDrives: '{includeItemsFromAllDrives}'
+      includePermissionsForView: '{includePermissionsForView}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - googledrive
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: googledrive
+  composio_slug: GOOGLEDRIVE_LIST_CHANGES

@@ -13,3 +13,4 @@ packages:
   - "examples/tools"
   - "examples/mcp"
   - "packages/postgres"
+  - "packages/composio"

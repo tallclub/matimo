@@ -1,6 +1,6 @@
 {
   "name": "matimo",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "A framework-agnostic SDK with pre-built providers, a skills knowledge layer, MCP out of the box, and agents that autonomously build new capabilities — governed by a policy engine you control.",
   "main": "packages/core/dist/index.js",
   "types": "packages/core/dist/index.d.ts",
@@ -33,6 +33,7 @@
     "format:check": "prettier --check \"packages/*/src/**/*.ts\" \"packages/*/test/**/*.ts\" \"examples/**/*.ts\"",
     "commitlint": "commitlint --from HEAD~1 --to HEAD",
     "validate-tools": "tsx scripts/validate-tool.ts",
+    "generate:composio": "tsx packages/composio/scripts/generate-tools.ts",
     "test-tools": "jest packages/core/test/fixtures/tools",
     "dev": "tsx packages/core/src/index.ts",
     "clean": "rm -rf dist coverage && find packages -type f \\( -name '*.js' -o -name '*.d.ts' -o -name '*.js.map' -o -name '*.d.ts.map' \\) -not -path '*/dist/*' -not -path '*/node_modules/*' -delete"
@@ -79,7 +80,7 @@
   },
   "pnpm": {
     "overrides": {
-      "axios": "^1.15.2",
+      "axios": "^1.18.0",
       "uuid": "^10.0.0",
       "fast-xml-parser": "^5.7.0"
     }

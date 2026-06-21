@@ -1,0 +1,102 @@
+name: composio_jira_send_notification_for_issue
+description: Sends a customized email notification for a jira issue.
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the JIRA toolkit, scoped to the calling tenant. The
+      "Connect JIRA" flow must be completed before this tool will succeed.
+    required: true
+  to:
+    type: object
+    description: >-
+      A `NotificationRecipients` object specifying who should receive the notification. At least one
+      recipient category (e.g., reporter, assignee, a user, or a group) within this object must be
+      configured.
+    required: true
+  subject:
+    type: string
+    description: The subject line for the email notification.
+    required: true
+  restrict:
+    type: object
+    description: >-
+      Optional restrictions defining who can receive the notification. If specified, notifications
+      are sent only to users who meet the criteria in `groups` (if provided) AND `permissions` (if
+      provided), AND also have general permission to view the issue.
+    default: null
+  html_body:
+    type: string
+    description: >-
+      The HTML content of the email notification. This field is optional unless `restrict` is used,
+      in which case it becomes mandatory. It is recommended to also provide `text_body` for email
+      clients that do not support HTML.
+    default: null
+  text_body:
+    type: string
+    description: The plain text content of the email notification. This field is always mandatory.
+    required: true
+  issue_id_or_key:
+    type: string
+    description: >-
+      The ID (e.g., '10000') or key (e.g., 'PROJ-123') of the Jira issue for which the notification
+      will be sent.
+    required: true
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/JIRA_SEND_NOTIFICATION_FOR_ISSUE
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_jira_send_notification_for_issue
+      to: '{to}'
+      subject: '{subject}'
+      restrict: '{restrict}'
+      html_body: '{html_body}'
+      text_body: '{text_body}'
+      issue_id_or_key: '{issue_id_or_key}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - jira
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: jira
+  composio_slug: JIRA_SEND_NOTIFICATION_FOR_ISSUE

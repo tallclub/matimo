@@ -1,0 +1,148 @@
+name: composio_jira_search_issues
+description: Advanced jira issue search supporting structured filters and raw jql.
+version: 1.0.0
+risk: low
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the JIRA toolkit, scoped to the calling tenant. The
+      "Connect JIRA" flow must be completed before this tool will succeed.
+    required: true
+  jql:
+    type: string
+    description: Raw JQL query for advanced users. Takes precedence over filters.
+    default: null
+  labels:
+    type: array
+    description: Filter by labels (all labels must match).
+    default: null
+  assignee:
+    type: string
+    description: >-
+      Filter by assignee. Can be account ID (e.g., '712020:abc...'), email (e.g.,
+      'john@company.com'), display name (e.g., 'John Doe'), or 'unassigned'.
+    default: null
+  start_at:
+    type: number
+    description: 0-based index of the first issue to return (for pagination).
+    default: 0
+  max_results:
+    type: number
+    description: Maximum number of issues to return.
+    default: 20
+  project_key:
+    type: string
+    description: Filter by project key (e.g., 'PROJ').
+    default: null
+  text_search:
+    type: string
+    description: Search in summary and description text.
+    default: null
+  created_after:
+    type: string
+    description: >-
+      Filter issues created after this date. Supports YYYY-MM-DD format or relative dates like
+      '-30m' (last 30 minutes), '-7d' (last 7 days), '-1w' (last week), '-1M' (last month).
+    default: null
+  updated_after:
+    type: string
+    description: >-
+      Filter issues updated after this date. Supports YYYY-MM-DD format or relative dates like
+      '-30m' (last 30 minutes), '-7d' (last 7 days), '-1w' (last week), '-1M' (last month).
+    default: null
+  created_before:
+    type: string
+    description: Filter issues created before this date (YYYY-MM-DD format).
+    default: null
+  updated_before:
+    type: string
+    description: Filter issues updated before this date (YYYY-MM-DD format).
+    default: null
+  sprint_id_or_name:
+    type: string
+    description: Filter by sprint. Can be sprint ID (e.g., '123') or name (e.g., 'Sprint 1', 'Release Sprint').
+    default: null
+  status_id_or_name:
+    type: string
+    description: >-
+      Filter by status. Can be either a status ID (e.g., '10001') or name (e.g., 'To Do', 'In
+      Progress', 'Done').
+    default: null
+  priority_id_or_name:
+    type: string
+    description: >-
+      Filter by priority. Can be either a priority ID (e.g., '1', '2') or name (e.g., 'High',
+      'Medium', 'Low').
+    default: null
+  issue_type_id_or_name:
+    type: string
+    description: >-
+      Filter by issue type. Can be either an issue type ID (e.g., '10001') or name (e.g., 'Bug',
+      'Task', 'Story').
+    default: null
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/JIRA_SEARCH_ISSUES
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_jira_search_issues
+      jql: '{jql}'
+      labels: '{labels}'
+      assignee: '{assignee}'
+      start_at: '{start_at}'
+      max_results: '{max_results}'
+      project_key: '{project_key}'
+      text_search: '{text_search}'
+      created_after: '{created_after}'
+      updated_after: '{updated_after}'
+      created_before: '{created_before}'
+      updated_before: '{updated_before}'
+      sprint_id_or_name: '{sprint_id_or_name}'
+      status_id_or_name: '{status_id_or_name}'
+      priority_id_or_name: '{priority_id_or_name}'
+      issue_type_id_or_name: '{issue_type_id_or_name}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - jira
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: jira
+  composio_slug: JIRA_SEARCH_ISSUES

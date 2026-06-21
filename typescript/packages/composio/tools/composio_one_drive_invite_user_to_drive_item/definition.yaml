@@ -1,0 +1,146 @@
+name: composio_one_drive_invite_user_to_drive_item
+description: >-
+  Tool to invite users or grant permissions to a specific item in a onedrive drive. use when you
+  need to share a file or folder with other users and define their access level (e.g., read or
+  write).
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the ONE_DRIVE toolkit, scoped to the calling tenant. The
+      "Connect ONE_DRIVE" flow must be completed before this tool will succeed.
+    required: true
+  roles:
+    type: array
+    description: Specifies the roles to be granted to the recipients.
+    required: true
+  item_id:
+    type: string
+    description: The unique identifier of the drive item (file or folder).
+    required: true
+  message:
+    type: string
+    description: >-
+      A plain text formatted message that is included in the sharing invitation. Maximum length 2000
+      characters.
+    default: null
+  site_id:
+    type: string
+    description: >-
+      The unique identifier of a SharePoint site. Use this if the item is in a SharePoint site's
+      drive.
+    default: null
+  user_id:
+    type: string
+    description: >-
+      The unique identifier of a user. Use this if the item is in another user's drive that you have
+      access to.
+    default: null
+  drive_id:
+    type: string
+    description: >-
+      The unique identifier of the drive. If not provided, the authenticated user's personal drive
+      (me/drive) will be used.
+    default: null
+  group_id:
+    type: string
+    description: The unique identifier of a Microsoft 365 group. Use this if the item is in a group's drive.
+    default: null
+  password:
+    type: string
+    description: The password set on the invite by the creator. Optional and OneDrive Personal only.
+    default: null
+  recipients:
+    type: array
+    description: A collection of recipients who will receive access and the sharing invitation.
+    required: true
+  require_sign_in:
+    type: boolean
+    description: >-
+      Specifies whether the recipient of the invitation is required to sign-in to view the shared
+      item.
+    default: false
+  send_invitation:
+    type: boolean
+    description: >-
+      If true, a sharing link is sent to the recipient. Otherwise, a permission is granted directly
+      without sending a notification.
+    default: false
+  expiration_date_time:
+    type: string
+    description: >-
+      Specifies the dateTime after which the permission expires. ISO 8601 format. Example:
+      "2023-12-31T23:59:59.000Z"
+    default: null
+  retain_inherited_permissions:
+    type: boolean
+    description: >-
+      Optional. If true (default), any existing inherited permissions are retained on the shared
+      item when sharing this item for the first time. If false, all existing permissions are removed
+      when sharing for the first time.
+    default: true
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/ONE_DRIVE_INVITE_USER_TO_DRIVE_ITEM
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_one_drive_invite_user_to_drive_item
+      roles: '{roles}'
+      item_id: '{item_id}'
+      message: '{message}'
+      site_id: '{site_id}'
+      user_id: '{user_id}'
+      drive_id: '{drive_id}'
+      group_id: '{group_id}'
+      password: '{password}'
+      recipients: '{recipients}'
+      require_sign_in: '{require_sign_in}'
+      send_invitation: '{send_invitation}'
+      expiration_date_time: '{expiration_date_time}'
+      retain_inherited_permissions: '{retain_inherited_permissions}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - one_drive
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: one_drive
+  composio_slug: ONE_DRIVE_INVITE_USER_TO_DRIVE_ITEM

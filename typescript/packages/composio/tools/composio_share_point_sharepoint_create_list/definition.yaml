@@ -1,0 +1,76 @@
+name: composio_share_point_sharepoint_create_list
+description: Creates a new list in sharepoint using the rest api.
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the SHARE_POINT toolkit, scoped to the calling tenant.
+      The "Connect SHARE_POINT" flow must be completed before this tool will succeed.
+    required: true
+  name:
+    type: string
+    description: The name of the list to create.
+    required: true
+  template:
+    type: string
+    description: The template type for the list (e.g., 'genericList', 'documentLibrary', 'tasks', etc.).
+    required: true
+  description:
+    type: string
+    description: Description of the list (optional).
+    default: ''
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/SHARE_POINT_SHAREPOINT_CREATE_LIST
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_share_point_sharepoint_create_list
+      name: '{name}'
+      template: '{template}'
+      description: '{description}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - share_point
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: share_point
+  composio_slug: SHARE_POINT_SHAREPOINT_CREATE_LIST

@@ -1,0 +1,73 @@
+name: composio_outlook_get_supported_time_zones
+description: >-
+  Tool to retrieve supported time zones in the user's mailbox. use when you need a list of time
+  zones to display or choose from for event scheduling.
+version: 1.0.0
+risk: low
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the OUTLOOK toolkit, scoped to the calling tenant. The
+      "Connect OUTLOOK" flow must be completed before this tool will succeed.
+    required: true
+  timeZoneStandard:
+    type: string
+    description: >-
+      Specifies the time zone format to return. Supported values: 'Windows' or 'Iana'. Default is
+      'Windows' if not specified.
+    enum:
+      - Windows
+      - Iana
+    default: null
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/OUTLOOK_GET_SUPPORTED_TIME_ZONES
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_outlook_get_supported_time_zones
+      timeZoneStandard: '{timeZoneStandard}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - outlook
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: outlook
+  composio_slug: OUTLOOK_GET_SUPPORTED_TIME_ZONES

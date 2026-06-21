@@ -1,0 +1,89 @@
+name: composio_asana_get_multiple_workspaces
+description: >-
+  Retrieves all workspaces accessible by the authenticated user, returning an empty list if the user
+  has no accessible workspaces.
+version: 1.0.0
+risk: low
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the ASANA toolkit, scoped to the calling tenant. The
+      "Connect ASANA" flow must be completed before this tool will succeed.
+    required: true
+  limit:
+    type: number
+    description: >-
+      The maximum number of workspace objects to return per page. Must be an integer between 1 and
+      100, inclusive.
+  offset:
+    type: string
+    description: >-
+      An opaque token used for pagination, obtained from the 'next_page' object in a previous
+      response. If not provided, the first page of results is returned. Note: Pass only an offset
+      token from a previous paginated request for this endpoint.
+  opt_fields:
+    type: array
+    description: >-
+      A comma-separated list of optional properties to include in the response. By default, only a
+      compact representation of the resource is returned. Available options: 'email_domains',
+      'is_organization', 'name', 'offset', 'path', 'uri'.
+  opt_pretty:
+    type: boolean
+    description: >-
+      Set to true to receive the response in a human-readable JSON format with proper line breaking
+      and indentation. Useful for debugging, but may increase response time and size.
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/ASANA_GET_MULTIPLE_WORKSPACES
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_asana_get_multiple_workspaces
+      limit: '{limit}'
+      offset: '{offset}'
+      opt_fields: '{opt_fields}'
+      opt_pretty: '{opt_pretty}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - asana
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: asana
+  composio_slug: ASANA_GET_MULTIPLE_WORKSPACES

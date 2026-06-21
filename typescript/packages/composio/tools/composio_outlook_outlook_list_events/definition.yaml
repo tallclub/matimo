@@ -1,0 +1,117 @@
+name: composio_outlook_outlook_list_events
+description: >-
+  Retrieves events from a user's outlook calendar via microsoft graph api, supporting pagination,
+  filtering, property selection, sorting, and timezone specification.
+version: 1.0.0
+risk: low
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the OUTLOOK toolkit, scoped to the calling tenant. The
+      "Connect OUTLOOK" flow must be completed before this tool will succeed.
+    required: true
+  top:
+    type: number
+    description: Maximum number of events to retrieve per page for pagination.
+    default: 10
+  skip:
+    type: number
+    description: Number of initial events to bypass, used for pagination.
+    default: 0
+  filter:
+    type: string
+    description: >-
+      OData query string to filter events (e.g., "start/dateTime ge 'YYYY-MM-DDTHH:MM:SSZ'"); string
+      literals use single quotes.
+    default: ''
+  select:
+    type: array
+    description: >-
+      List of specific event property names to return. Each item is a property name like 'subject'
+      or 'start'. MUST be provided as a list. If omitted, a default set of properties is returned.
+    default: null
+  orderby:
+    type: array
+    description: >-
+      List of properties to sort results by. Each item is a string like 'start/dateTime desc' or
+      'subject asc'. MUST be provided as a list, even for single sort criteria. Use 'asc' (default)
+      or 'desc' for order.
+    default: null
+  user_id:
+    type: string
+    description: >-
+      Email address of the target user (or 'me' for authenticated user), identifying the calendar
+      for event listing.
+    default: me
+  timezone:
+    type: string
+    description: >-
+      Preferred IANA or Windows timezone for event start/end times (e.g., 'America/New_York');
+      defaults to UTC if unspecified/invalid.
+    default: UTC
+  expand_recurring_events:
+    type: boolean
+    description: >-
+      When true, automatically expands recurring events to show actual occurrences within the
+      filtered date range instead of series masters. When false (default), returns series masters as
+      before.
+    default: false
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/OUTLOOK_OUTLOOK_LIST_EVENTS
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_outlook_outlook_list_events
+      top: '{top}'
+      skip: '{skip}'
+      filter: '{filter}'
+      select: '{select}'
+      orderby: '{orderby}'
+      user_id: '{user_id}'
+      timezone: '{timezone}'
+      expand_recurring_events: '{expand_recurring_events}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - outlook
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: outlook
+  composio_slug: OUTLOOK_OUTLOOK_LIST_EVENTS

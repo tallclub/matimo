@@ -1,0 +1,129 @@
+name: composio_one_drive_create_link
+description: >-
+  Tool to create a sharing link for a driveitem (file or folder) by its unique id. use when you need
+  to generate a shareable link for an item in onedrive or sharepoint.
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the ONE_DRIVE toolkit, scoped to the calling tenant. The
+      "Connect ONE_DRIVE" flow must be completed before this tool will succeed.
+    required: true
+  type:
+    type: string
+    description: The type of sharing link to create.
+    required: true
+    enum:
+      - view
+      - edit
+      - embed
+  scope:
+    type: string
+    description: >-
+      The scope of the link to create. If not specified, the default link type for the organization
+      is created.
+    enum:
+      - anonymous
+      - organization
+      - users
+    default: null
+  item_id:
+    type: string
+    description: The unique identifier of the drive item (file or folder) for which to create the link.
+    required: true
+  site_id:
+    type: string
+    description: The unique identifier of the site. Use this if the item is in a SharePoint site's drive.
+    default: null
+  user_id:
+    type: string
+    description: The unique identifier of the user. Use this if the item is in another user's drive.
+    default: null
+  drive_id:
+    type: string
+    description: >-
+      The unique identifier of the drive. If not provided, the link will be created in the current
+      user's drive (me/drive).
+    default: null
+  group_id:
+    type: string
+    description: The unique identifier of the group. Use this if the item is in a group's drive.
+    default: null
+  password:
+    type: string
+    description: The password for the sharing link. Optional and OneDrive Personal only.
+    default: null
+  expiration_date_time:
+    type: string
+    description: >-
+      The expiration date and time for the permission, in yyyy-MM-ddTHH:mm:ssZ format. Example:
+      2023-12-31T23:59:59Z
+    default: null
+  retain_inherited_permissions:
+    type: boolean
+    description: >-
+      If true (default), existing inherited permissions are retained. If false, all existing
+      permissions are removed when sharing for the first time.
+    default: null
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/ONE_DRIVE_CREATE_LINK
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_one_drive_create_link
+      type: '{type}'
+      scope: '{scope}'
+      item_id: '{item_id}'
+      site_id: '{site_id}'
+      user_id: '{user_id}'
+      drive_id: '{drive_id}'
+      group_id: '{group_id}'
+      password: '{password}'
+      expiration_date_time: '{expiration_date_time}'
+      retain_inherited_permissions: '{retain_inherited_permissions}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - one_drive
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: one_drive
+  composio_slug: ONE_DRIVE_CREATE_LINK

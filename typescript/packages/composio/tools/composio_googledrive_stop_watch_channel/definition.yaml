@@ -1,0 +1,119 @@
+name: composio_googledrive_stop_watch_channel
+description: >-
+  Tool to stop watching resources through a specified channel. use this when you want to stop
+  receiving notifications for a previously established watch.
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the GOOGLEDRIVE toolkit, scoped to the calling tenant.
+      The "Connect GOOGLEDRIVE" flow must be completed before this tool will succeed.
+    required: true
+  id:
+    type: string
+    description: The ID of the channel to stop.
+    required: true
+  kind:
+    type: string
+    description: Identifies this as a notification channel used to watch for changes to a resource.
+    default: api#channel
+  token:
+    type: string
+    description: >-
+      An arbitrary string delivered to the target address with each notification delivered over this
+      channel.
+    default: null
+  params:
+    type: object
+    description: Additional parameters controlling delivery channel behavior.
+    default: null
+  address:
+    type: string
+    description: The address where notifications are delivered for this channel.
+    default: null
+  payload:
+    type: boolean
+    description: A Boolean value to indicate whether payload is wanted.
+    default: null
+  expiration:
+    type: string
+    description: >-
+      Date and time of notification channel expiration, expressed as a Unix timestamp, in
+      milliseconds.
+    default: null
+  resourceId:
+    type: string
+    description: The ID of the resource being watched.
+    required: true
+  channelType:
+    type: string
+    description: >-
+      The type of delivery mechanism used for this channel. Valid values are "web_hook" or
+      "webhook".
+    default: null
+  resourceUri:
+    type: string
+    description: A version-specific identifier for the watched resource.
+    default: null
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/GOOGLEDRIVE_STOP_WATCH_CHANNEL
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_googledrive_stop_watch_channel
+      id: '{id}'
+      kind: '{kind}'
+      token: '{token}'
+      params: '{params}'
+      address: '{address}'
+      payload: '{payload}'
+      expiration: '{expiration}'
+      resourceId: '{resourceId}'
+      channelType: '{channelType}'
+      resourceUri: '{resourceUri}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - googledrive
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: googledrive
+  composio_slug: GOOGLEDRIVE_STOP_WATCH_CHANNEL

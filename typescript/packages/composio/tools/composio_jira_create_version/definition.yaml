@@ -1,0 +1,98 @@
+name: composio_jira_create_version
+description: Creates a new version for releases or milestones in a jira project.
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the JIRA toolkit, scoped to the calling tenant. The
+      "Connect JIRA" flow must be completed before this tool will succeed.
+    required: true
+  name:
+    type: string
+    description: Name for the new version. It is recommended that version names be unique within a project.
+    required: true
+  archived:
+    type: boolean
+    description: Indicates if the version is marked as archived.
+    default: false
+  released:
+    type: boolean
+    description: Indicates if the version is marked as released.
+    default: false
+  projectId:
+    type: number
+    description: Numeric ID of the Jira project to which this version will be added. The project must exist.
+    required: true
+  startDate:
+    type: string
+    description: Start date for work on the version (YYYY-MM-DD format).
+    default: null
+  description:
+    type: string
+    description: Textual description for the version, providing more context about its purpose or content.
+    default: null
+  releaseDate:
+    type: string
+    description: >-
+      Release date for the version (YYYY-MM-DD format). Relevant if the version is marked as
+      released or has a planned release.
+    default: null
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/JIRA_CREATE_VERSION
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_jira_create_version
+      name: '{name}'
+      archived: '{archived}'
+      released: '{released}'
+      projectId: '{projectId}'
+      startDate: '{startDate}'
+      description: '{description}'
+      releaseDate: '{releaseDate}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - jira
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: jira
+  composio_slug: JIRA_CREATE_VERSION

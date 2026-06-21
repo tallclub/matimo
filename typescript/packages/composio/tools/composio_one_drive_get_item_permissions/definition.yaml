@@ -1,0 +1,107 @@
+name: composio_one_drive_get_item_permissions
+description: >-
+  Retrieves the permissions of a driveitem by its unique id or path within a specific drive. use
+  when you need to check who has access to a file or folder and what level of access they have.
+version: 1.0.0
+risk: low
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the ONE_DRIVE toolkit, scoped to the calling tenant. The
+      "Connect ONE_DRIVE" flow must be completed before this tool will succeed.
+    required: true
+  select:
+    type: string
+    description: A comma-separated list of properties to include in the response. For example, 'id,roles,link'.
+    default: null
+  item_id:
+    type: string
+    description: The unique identifier of the drive item.
+    required: true
+  site_id:
+    type: string
+    description: >-
+      The unique identifier of a SharePoint site. Use this if the item is in a SharePoint site's
+      drive.
+    default: null
+  user_id:
+    type: string
+    description: >-
+      The unique identifier of a user. Use this if the item is in a specific user's drive (other
+      than 'me').
+    default: null
+  drive_id:
+    type: string
+    description: >-
+      The unique identifier of the drive. Required if not using other identifiers like group_id,
+      site_id, or user_id in the path.
+    default: null
+  group_id:
+    type: string
+    description: The unique identifier of a group. Use this if the item is in a group's drive.
+    default: null
+  item_path:
+    type: string
+    description: >-
+      The path to the item relative to the drive's root. Use this if item_id is not known. Must
+      start with ':/' and end with ':/'. Example: ':/FolderA/FileB.txt:/'. Only applicable when
+      accessing items in the current user's drive (me/drive/root).
+    default: null
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/ONE_DRIVE_GET_ITEM_PERMISSIONS
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_one_drive_get_item_permissions
+      select: '{select}'
+      item_id: '{item_id}'
+      site_id: '{site_id}'
+      user_id: '{user_id}'
+      drive_id: '{drive_id}'
+      group_id: '{group_id}'
+      item_path: '{item_path}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - one_drive
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: one_drive
+  composio_slug: ONE_DRIVE_GET_ITEM_PERMISSIONS

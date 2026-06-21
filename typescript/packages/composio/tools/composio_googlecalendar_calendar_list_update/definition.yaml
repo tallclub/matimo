@@ -1,0 +1,111 @@
+name: composio_googlecalendar_calendar_list_update
+description: Updates an existing entry on the user\'s calendar list.
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the GOOGLECALENDAR toolkit, scoped to the calling
+      tenant. The "Connect GOOGLECALENDAR" flow must be completed before this tool will succeed.
+    required: true
+  hidden:
+    type: boolean
+    description: Whether calendar is hidden.
+    default: null
+  colorId:
+    type: string
+    description: ID for calendar color from colors endpoint.
+    default: null
+  selected:
+    type: boolean
+    description: Whether calendar content shows in UI.
+    default: null
+  calendar_id:
+    type: string
+    description: Calendar identifier. Use "primary" for the primary calendar.
+    required: true
+  colorRgbFormat:
+    type: boolean
+    description: Whether to use RGB for foreground/background colors.
+    default: null
+  backgroundColor:
+    type: string
+    description: Hex color for calendar background.
+    default: null
+  foregroundColor:
+    type: string
+    description: Hex color for calendar foreground.
+    default: null
+  summaryOverride:
+    type: string
+    description: User-set summary for the calendar.
+    default: null
+  defaultReminders:
+    type: array
+    description: List of default reminders.
+    default: null
+  notificationSettings:
+    type: object
+    description: Notification settings for the calendar.
+    default: null
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/GOOGLECALENDAR_CALENDAR_LIST_UPDATE
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_googlecalendar_calendar_list_update
+      hidden: '{hidden}'
+      colorId: '{colorId}'
+      selected: '{selected}'
+      calendar_id: '{calendar_id}'
+      colorRgbFormat: '{colorRgbFormat}'
+      backgroundColor: '{backgroundColor}'
+      foregroundColor: '{foregroundColor}'
+      summaryOverride: '{summaryOverride}'
+      defaultReminders: '{defaultReminders}'
+      notificationSettings: '{notificationSettings}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - googlecalendar
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: googlecalendar
+  composio_slug: GOOGLECALENDAR_CALENDAR_LIST_UPDATE

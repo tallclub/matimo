@@ -1,0 +1,130 @@
+name: composio_jira_get_all_projects
+description: >-
+  Retrieves all visible projects using the modern paginated jira api with server-side filtering and
+  pagination support.
+version: 1.0.0
+risk: low
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the JIRA toolkit, scoped to the calling tenant. The
+      "Connect JIRA" flow must be completed before this tool will succeed.
+    required: true
+  name:
+    type: string
+    description: >-
+      DEPRECATED: Use 'query' parameter instead. The project name (or part of it) to filter the
+      results. This will be mapped to the 'query' parameter.
+    default: null
+  query:
+    type: string
+    description: >-
+      Filter the results using a query string. Projects with a name or key that contains the query
+      string are returned. The search is case-insensitive.
+    default: null
+  action:
+    type: string
+    description: >-
+      Filter results by projects for which the user can: 'view' (default), 'browse', 'edit', or
+      'admin'.
+    default: view
+  expand:
+    type: string
+    description: >-
+      A comma-separated list of entities to expand in the response for additional project details.
+      Valid options include: `description` (to include the project description), `issueTypes` (to
+      include all issue types associated with the project), `lead` (to include information about the
+      project lead), and `projectKeys` (to include all project keys associated with the project).
+    default: null
+  status:
+    type: array
+    description: 'EXPERIMENTAL. Filter results by project status. Valid values: ''live'', ''archived'', ''deleted''.'
+    default: null
+  orderBy:
+    type: string
+    description: >-
+      Order the results by a field. Valid values: 'category', 'issueCount', 'key',
+      'lastIssueUpdatedTime', 'name', 'owner', 'archivedDate', 'deletedDate'. Prefix with '-' for
+      descending order.
+    default: name
+  startAt:
+    type: number
+    description: The index of the first item to return in a page of results (page offset). The base index is 0.
+    default: 0
+  categoryId:
+    type: number
+    description: The ID of the project category to filter by.
+    default: null
+  maxResults:
+    type: number
+    description: The maximum number of projects to return per page. Maximum allowed value is 100.
+    default: 50
+  properties:
+    type: array
+    description: >-
+      A list of project property keys to include in the response for each project, allowing
+      retrieval of custom project entity properties. For example, if a project has a property with
+      key 'com.example.property', including this key here as part of the list will return its value.
+      Provide as a list of strings, e.g., `['property1', 'property2']`.
+    default: null
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/JIRA_GET_ALL_PROJECTS
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_jira_get_all_projects
+      name: '{name}'
+      query: '{query}'
+      action: '{action}'
+      expand: '{expand}'
+      status: '{status}'
+      orderBy: '{orderBy}'
+      startAt: '{startAt}'
+      categoryId: '{categoryId}'
+      maxResults: '{maxResults}'
+      properties: '{properties}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - jira
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: jira
+  composio_slug: JIRA_GET_ALL_PROJECTS

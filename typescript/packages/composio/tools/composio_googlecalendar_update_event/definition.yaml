@@ -1,0 +1,189 @@
+name: composio_googlecalendar_update_event
+description: >-
+  Updates an existing event by `event id` in a google calendar; this is a full put replacement, so
+  provide all desired fields as unspecified ones may be cleared or reset.
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the GOOGLECALENDAR toolkit, scoped to the calling
+      tenant. The "Connect GOOGLECALENDAR" flow must be completed before this tool will succeed.
+    required: true
+  summary:
+    type: string
+    description: Summary (title) of the event.
+    default: null
+  event_id:
+    type: string
+    description: The unique identifier of the event to be updated.
+    required: true
+  location:
+    type: string
+    description: Geographic location of the event as free-form text.
+    default: null
+  timezone:
+    type: string
+    description: >-
+      IANA timezone name (e.g., 'America/New_York'). Required if datetime is naive. If datetime
+      includes timezone info (Z or offset), this field is optional and defaults to UTC.
+    default: null
+  attendees:
+    type: array
+    description: List of attendee emails (strings).
+    default: null
+  eventType:
+    type: string
+    description: >-
+      Type of the event, immutable post-creation. Supported types: 'birthday' (all-day with annual
+      recurrence), 'default' (regular event), 'focusTime' (focus-time event), 'outOfOffice'
+      (out-of-office event), 'workingLocation' (working location event). Note: 'fromGmail' events
+      cannot be created via API.
+    enum:
+      - birthday
+      - default
+      - focusTime
+      - outOfOffice
+      - workingLocation
+    default: default
+  recurrence:
+    type: array
+    description: >-
+      List of RRULE, EXRULE, RDATE, EXDATE lines for recurring events. Supported frequencies are
+      DAILY, WEEKLY, MONTHLY, YEARLY.
+    default: null
+  visibility:
+    type: string
+    description: 'Event visibility: ''default'', ''public'', ''private'', or ''confidential''.'
+    enum:
+      - default
+      - public
+      - private
+      - confidential
+    default: default
+  calendar_id:
+    type: string
+    description: >-
+      Identifier of the Google Calendar where the event resides. The value 'primary' targets the
+      user's primary calendar.
+    default: primary
+  description:
+    type: string
+    description: Description of the event. Can contain HTML. Optional.
+    default: null
+  send_updates:
+    type: boolean
+    description: Defaults to True. Whether to send updates to the attendees.
+    default: null
+  transparency:
+    type: string
+    description: '''opaque'' (busy) or ''transparent'' (available).'
+    enum:
+      - opaque
+      - transparent
+    default: opaque
+  start_datetime:
+    type: string
+    description: Naive date/time (YYYY-MM-DDTHH:MM:SS) with NO offsets or Z. e.g. '2025-01-16T13:00:00'
+    required: true
+  guests_can_modify:
+    type: boolean
+    description: If True, guests can modify the event.
+    default: false
+  create_meeting_room:
+    type: boolean
+    description: >-
+      If true, a Google Meet link is created and added to the event. CRITICAL: As of 2024, this
+      REQUIRES a paid Google Workspace account ($13+/month). Personal Gmail accounts will fail with
+      'Invalid conference type value' error. Solutions: 1) Upgrade to Workspace, 2) Use domain-wide
+      delegation with Workspace user, 3) Use the new Google Meet REST API, or 4) Create events
+      without conferences. See https://github.com/googleapis/google-api-nodejs-client/issues/3234
+    default: null
+  event_duration_hour:
+    type: number
+    description: Number of hours (0-24). Increase by 1 here rather than passing 60 in `event_duration_minutes`
+    default: 0
+  guestsCanInviteOthers:
+    type: boolean
+    description: Whether attendees other than the organizer can invite others to the event.
+    default: null
+  event_duration_minutes:
+    type: number
+    description: >-
+      Duration in minutes (0-59 ONLY). NEVER use 60+ minutes - use event_duration_hour=1 instead.
+      Maximum value is 59.
+    default: 30
+  guestsCanSeeOtherGuests:
+    type: boolean
+    description: Whether attendees other than the organizer can see who the event's attendees are.
+    default: null
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/GOOGLECALENDAR_UPDATE_EVENT
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_googlecalendar_update_event
+      summary: '{summary}'
+      event_id: '{event_id}'
+      location: '{location}'
+      timezone: '{timezone}'
+      attendees: '{attendees}'
+      eventType: '{eventType}'
+      recurrence: '{recurrence}'
+      visibility: '{visibility}'
+      calendar_id: '{calendar_id}'
+      description: '{description}'
+      send_updates: '{send_updates}'
+      transparency: '{transparency}'
+      start_datetime: '{start_datetime}'
+      guests_can_modify: '{guests_can_modify}'
+      create_meeting_room: '{create_meeting_room}'
+      event_duration_hour: '{event_duration_hour}'
+      guestsCanInviteOthers: '{guestsCanInviteOthers}'
+      event_duration_minutes: '{event_duration_minutes}'
+      guestsCanSeeOtherGuests: '{guestsCanSeeOtherGuests}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - googlecalendar
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: googlecalendar
+  composio_slug: GOOGLECALENDAR_UPDATE_EVENT

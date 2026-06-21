@@ -1,0 +1,118 @@
+name: composio_googledrive_move_file
+description: >-
+  Tool to move a file from one folder to another in google drive. use when you need to reorganize
+  files by changing their parent folder(s).
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the GOOGLEDRIVE toolkit, scoped to the calling tenant.
+      The "Connect GOOGLEDRIVE" flow must be completed before this tool will succeed.
+    required: true
+  file_id:
+    type: string
+    description: The ID of the file to move.
+    required: true
+  add_parents:
+    type: string
+    description: >-
+      A comma-separated list of parent folder IDs to add the file to. Use this to specify the
+      destination folder.
+    default: null
+  ocr_language:
+    type: string
+    description: A language hint for OCR processing during image import (ISO 639-1 code).
+    default: null
+  include_labels:
+    type: string
+    description: A comma-separated list of IDs of labels to include in the `labelInfo` part of the response.
+    default: null
+  remove_parents:
+    type: string
+    description: >-
+      A comma-separated list of parent folder IDs to remove the file from. Use this to specify the
+      source folder.
+    default: null
+  supports_all_drives:
+    type: boolean
+    description: >-
+      Whether the requesting application supports both My Drives and shared drives. Set to true if
+      moving files to or from a shared drive.
+    default: null
+  keep_revision_forever:
+    type: boolean
+    description: >-
+      Whether to set the 'keepForever' field in the new head revision. This is only applicable to
+      files with binary content in Google Drive.
+    default: null
+  include_permissions_for_view:
+    type: string
+    description: >-
+      Specifies which additional view's permissions to include in the response. Only 'published' is
+      supported.
+    default: null
+  use_content_as_indexable_text:
+    type: boolean
+    description: Whether to use the uploaded content as indexable text.
+    default: null
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/GOOGLEDRIVE_MOVE_FILE
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_googledrive_move_file
+      file_id: '{file_id}'
+      add_parents: '{add_parents}'
+      ocr_language: '{ocr_language}'
+      include_labels: '{include_labels}'
+      remove_parents: '{remove_parents}'
+      supports_all_drives: '{supports_all_drives}'
+      keep_revision_forever: '{keep_revision_forever}'
+      include_permissions_for_view: '{include_permissions_for_view}'
+      use_content_as_indexable_text: '{use_content_as_indexable_text}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - googledrive
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: googledrive
+  composio_slug: GOOGLEDRIVE_MOVE_FILE
