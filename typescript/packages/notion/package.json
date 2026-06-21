@@ -1,6 +1,6 @@
 {
   "name": "@matimo/notion",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Notion workspace tools for Matimo",
   "type": "module",
   "files": [
@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@matimo/core": "workspace:*",
-    "axios": "^1.15.2"
+    "axios": "^1.18.0"
   },
   "peerDependencies": {
     "matimo": "workspace:*"

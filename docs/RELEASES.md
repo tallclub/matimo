@@ -4,9 +4,19 @@
 
 > **Release**: Introduces `@matimo/composio` — a policy-governed, risk-classified wrapper around Composio's integration catalog. Agents now get governed, auditable, human-approvable access to Jira, Google Workspace, Microsoft 365, Asana, Linear, and more without losing Matimo's policy engine.
 
-**Released**: June 16, 2026
-**Scope**: `typescript/packages/composio/` (3rd-party integration package — separate versioning from root workspace)
-**Severity**: 🟢 **Additive** — new package, no changes to existing packages or their APIs
+**Released**: June 21, 2026
+**Scope**: `typescript/` workspace — all 13 packages (`core`, `cli`, `bruno`, `slack`, `gmail`, `github`, `hubspot`, `notion`, `mailchimp`, `microsoft`, `postgres`, `twilio`, `composio`) bumped to `0.1.5` in lockstep
+**Severity**: 🟢 **Additive** — new package + dependency maintenance, no breaking changes to existing package APIs
+
+---
+
+### ⬆️ **Dependency Upgrade: axios `^1.15.2` → `^1.18.0`**
+
+Bumped axios workspace-wide ahead of this release — applied via the `pnpm.overrides` block in `typescript/package.json` plus the direct `axios` dependency in `core`, `composio`, `gmail`, `notion`, `microsoft`, and `slack`. Verified `axios@1.18.0` resolves consistently across every package in the workspace (including transitive consumers like `cli`, `bruno`, `postgres`, `twilio`, `hubspot`, `github`, `mailchimp`, and `examples/tools`) via the lockfile and `node_modules` resolution.
+
+No code changes were required — axios 1.18 is backward-compatible with 1.15 for Matimo's usage. Verified via:
+- Full test suite: 2185/2185 tests passing, including HTTP-executor and secrets-resolver suites that exercise axios-based requests
+- All 4 composio examples re-run live against a real Jira connected account, making real HTTP calls through the upgraded axios — all behaved identically to pre-upgrade
 
 ---
 
@@ -103,6 +113,8 @@ const matimo = await MatimoInstance.init({
   - `canCreate()` returned `pending_approval` for medium-risk tools in prod context; `classifyRisk()` honored explicit YAML risk fields + overrides
 
 **Known Composio catalog issue**: As of March 2026, Jira deprecated `/rest/api/3/search`. Composio's `JIRA_SEARCH_ISSUES` and `JIRA_SEARCH_FOR_ISSUES_USING_JQL_POST` actions return HTTP 410 until Composio updates their catalog to use `/rest/api/3/search/jql`. All other Jira actions are unaffected.
+
+**Full workspace gate** (post version bump to `0.1.5`, all 13 packages): `pnpm install`, `pnpm build`, `pnpm validate-tools` (488/488 valid), `pnpm lint` (clean), `pnpm test` / `test:coverage` (2185/2185 passing, 95.24% lines / 97.53% functions) — all green.
 
 ---
 

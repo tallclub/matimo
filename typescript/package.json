@@ -1,6 +1,6 @@
 {
   "name": "matimo",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "A framework-agnostic SDK with pre-built providers, a skills knowledge layer, MCP out of the box, and agents that autonomously build new capabilities — governed by a policy engine you control.",
   "main": "packages/core/dist/index.js",
   "types": "packages/core/dist/index.d.ts",
@@ -80,7 +80,7 @@
   },
   "pnpm": {
     "overrides": {
-      "axios": "^1.15.2",
+      "axios": "^1.18.0",
       "uuid": "^10.0.0",
       "fast-xml-parser": "^5.7.0"
     }
