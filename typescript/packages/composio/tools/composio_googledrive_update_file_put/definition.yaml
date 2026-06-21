@@ -1,0 +1,141 @@
+name: composio_googledrive_update_file_put
+description: >-
+  Updates file metadata. uses patch semantics (partial update) as per google drive api v3. use this
+  tool to modify attributes of an existing file like its name, description, or parent folders. note:
+  this action currently supports metadata updates only. file content updates require
+  multipart/related upload and are not yet implemented.
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the GOOGLEDRIVE toolkit, scoped to the calling tenant.
+      The "Connect GOOGLEDRIVE" flow must be completed before this tool will succeed.
+    required: true
+  name:
+    type: string
+    description: The name of the file.
+    default: null
+  file_id:
+    type: string
+    description: The ID of the file to update.
+    required: true
+  starred:
+    type: boolean
+    description: Whether the user has starred the file.
+    default: null
+  mime_type:
+    type: string
+    description: >-
+      The MIME type of the file. Google Drive will attempt to automatically detect an appropriate
+      value from uploaded content if no value is provided. The value cannot be changed unless a new
+      revision is uploaded.
+    default: null
+  add_parents:
+    type: string
+    description: A comma-separated list of parent IDs to add.
+    default: null
+  description:
+    type: string
+    description: A short description of the file.
+    default: null
+  ocr_language:
+    type: string
+    description: A language hint for OCR processing during image import (ISO 639-1 code).
+    default: null
+  remove_parents:
+    type: string
+    description: A comma-separated list of parent IDs to remove.
+    default: null
+  writers_can_share:
+    type: boolean
+    description: Whether writers can share the document with other users.
+    default: null
+  supports_all_drives:
+    type: boolean
+    description: >-
+      Whether the requesting application supports both My Drives and shared drives. This parameter
+      will always be true by default if the application is configured to support shared drives.
+    default: null
+  keep_revision_forever:
+    type: boolean
+    description: >-
+      Whether to set this revision of the file to be kept forever. This is only applicable to files
+      with binary content in Google Drive. Only 200 revisions for the file can be kept forever. If
+      the limit is reached, try deleting pinned revisions.
+    default: null
+  use_domain_admin_access:
+    type: boolean
+    description: >-
+      Whether the requesting application is using domain-wide delegation to access content belonging
+      to a user in a different domain. This is only applicable to files with binary content in
+      Google Drive.
+    default: null
+  viewers_can_copy_content:
+    type: boolean
+    description: Whether viewers are prevented from copying content of the file.
+    default: null
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/GOOGLEDRIVE_UPDATE_FILE_PUT
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_googledrive_update_file_put
+      name: '{name}'
+      file_id: '{file_id}'
+      starred: '{starred}'
+      mime_type: '{mime_type}'
+      add_parents: '{add_parents}'
+      description: '{description}'
+      ocr_language: '{ocr_language}'
+      remove_parents: '{remove_parents}'
+      writers_can_share: '{writers_can_share}'
+      supports_all_drives: '{supports_all_drives}'
+      keep_revision_forever: '{keep_revision_forever}'
+      use_domain_admin_access: '{use_domain_admin_access}'
+      viewers_can_copy_content: '{viewers_can_copy_content}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - googledrive
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: googledrive
+  composio_slug: GOOGLEDRIVE_UPDATE_FILE_PUT

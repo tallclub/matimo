@@ -1,0 +1,5 @@
+{
+  "_comment": "Per-action risk overrides for the @matimo/composio generator. Keys are Composio tool slugs (e.g. JIRA_DELETE_ISSUE_LINK), values are 'low' | 'medium' | 'high'. Entries here win over generate-tools.ts's name-pattern heuristic. Run `pnpm generate:composio --toolkits=... --force-refresh` after editing to re-apply.",
+  "GOOGLEDRIVE_EMPTY_TRASH": "high",
+  "GOOGLECALENDAR_CLEAR_CALENDAR": "high"
+}

@@ -1,0 +1,140 @@
+name: composio_asana_update_project
+description: Update a project.
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the ASANA toolkit, scoped to the calling tenant. The
+      "Connect ASANA" flow must be completed before this tool will succeed.
+    required: true
+  name:
+    type: string
+    description: The name of the project.
+    default: null
+  team:
+    type: string
+    description: The GID of the team that this project is shared with.
+    default: null
+  color:
+    type: string
+    description: Color of the project.
+    default: null
+  notes:
+    type: string
+    description: Free-form textual information associated with the project (its description).
+    default: null
+  owner:
+    type: string
+    description: The GID of the new owner of the project. May be null.
+    default: null
+  due_on:
+    type: string
+    description: The day on which this project is due. This takes a date with format YYYY-MM-DD.
+    default: null
+  public:
+    type: boolean
+    description: True if the project is public to its team.
+    default: null
+  archived:
+    type: boolean
+    description: True if the project is archived, false if not.
+    default: null
+  due_date:
+    type: string
+    description: The localized day on which this project is due. This takes a date with format YYYY-MM-DD.
+    default: null
+  start_on:
+    type: string
+    description: >-
+      The day on which work for this project begins, or null if the project has no start date. This
+      takes a date with YYYY-MM-DD format.
+    default: null
+  html_notes:
+    type: string
+    description: '[Opt In](/docs/input-output-options). The notes of the project with formatting as HTML.'
+    default: null
+  is_template:
+    type: boolean
+    description: '[Opt In](/docs/input-output-options). True if the project is a template.'
+    default: null
+  project_gid:
+    type: string
+    description: The GID of the project to update.
+    required: true
+  default_view:
+    type: string
+    description: The default view (list, board, calendar, or timeline) of a project.
+    default: null
+  custom_fields:
+    type: object
+    description: >-
+      An object where each key is the GID of a custom field and its corresponding value is the new
+      value for that custom field.
+    default: null
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/ASANA_UPDATE_PROJECT
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_asana_update_project
+      name: '{name}'
+      team: '{team}'
+      color: '{color}'
+      notes: '{notes}'
+      owner: '{owner}'
+      due_on: '{due_on}'
+      public: '{public}'
+      archived: '{archived}'
+      due_date: '{due_date}'
+      start_on: '{start_on}'
+      html_notes: '{html_notes}'
+      is_template: '{is_template}'
+      project_gid: '{project_gid}'
+      default_view: '{default_view}'
+      custom_fields: '{custom_fields}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - asana
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: asana
+  composio_slug: ASANA_UPDATE_PROJECT

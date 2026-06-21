@@ -1,0 +1,90 @@
+name: composio_googledrive_create_comment
+description: >-
+  Tool to create a comment on a file. use when you need to add a new comment to a specific file in
+  google drive.
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the GOOGLEDRIVE toolkit, scoped to the calling tenant.
+      The "Connect GOOGLEDRIVE" flow must be completed before this tool will succeed.
+    required: true
+  anchor:
+    type: string
+    description: >-
+      A JSON string representing the region of the document to which the comment is anchored (e.g.,
+      {'type': 'line', 'line': 12}).
+    default: null
+  content:
+    type: string
+    description: The plain text content of the comment.
+    required: true
+  file_id:
+    type: string
+    description: The ID of the file.
+    required: true
+  quoted_file_content_value:
+    type: string
+    description: The quoted content itself.
+    default: null
+  quoted_file_content_mime_type:
+    type: string
+    description: The MIME type of the quoted content.
+    default: null
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/GOOGLEDRIVE_CREATE_COMMENT
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_googledrive_create_comment
+      anchor: '{anchor}'
+      content: '{content}'
+      file_id: '{file_id}'
+      quoted_file_content_value: '{quoted_file_content_value}'
+      quoted_file_content_mime_type: '{quoted_file_content_mime_type}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - googledrive
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: googledrive
+  composio_slug: GOOGLEDRIVE_CREATE_COMMENT

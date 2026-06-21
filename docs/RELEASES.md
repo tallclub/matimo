@@ -1,5 +1,111 @@
 ---
 
+## v0.1.5 — @matimo/composio: Governed Access to 342 Composio Tools 🔌
+
+> **Release**: Introduces `@matimo/composio` — a policy-governed, risk-classified wrapper around Composio's integration catalog. Agents now get governed, auditable, human-approvable access to Jira, Google Workspace, Microsoft 365, Asana, Linear, and more without losing Matimo's policy engine.
+
+**Released**: June 16, 2026
+**Scope**: `typescript/packages/composio/` (3rd-party integration package — separate versioning from root workspace)
+**Severity**: 🟢 **Additive** — new package, no changes to existing packages or their APIs
+
+---
+
+### 🆕 **New Package: `@matimo/composio`**
+
+`@matimo/composio` wraps [Composio](https://composio.dev)'s REST execute endpoint with Matimo's full governance stack. Every Composio action becomes a schema-valid Matimo tool with explicit risk classification, policy-gated execution, and optional HITL approval — all without custom executor code.
+
+**342 generated tools across 9 toolkits:**
+
+| Toolkit | Tools | Key actions |
+|---------|-------|-------------|
+| `jira` | 46 | get/create/update/delete issue, search JQL, manage projects |
+| `asana` | 84 | tasks, projects, teams, portfolios, goals |
+| `linear` | 21 | issues, cycles, projects, roadmaps |
+| `googledrive` | 51 | upload/download/search files, manage permissions, shared drives |
+| `googlecalendar` | 28 | create/find/list events, free/busy query, multi-calendar |
+| `outlook` | 43 | email rules, folders, contacts, calendar, attachments |
+| `one_drive` | 35 | files, folders, SharePoint lists, site contents, subscriptions |
+| `share_point` | 6 | folders, lists, list items, user management |
+| `microsoft_teams` | 28 | teams, channels, chats, messages, meetings |
+
+---
+
+### 🏗 **Generator: `scripts/generate-tools.ts`**
+
+A typed TypeScript script (`pnpm generate:composio`) that fetches a toolkit's action catalog from Composio's REST API and writes one `definition.yaml` per action — idempotent, paginated, and schema-validated on every write.
+
+Key generator behaviors:
+- **Risk heuristic**: derives `risk: low | medium | high` from the action slug (`GET_*` → low, `CREATE_*` → medium, `DELETE_*` → high; destructive patterns win over read patterns)
+- **`risk-overrides.json`**: per-action overrides for actions the heuristic misclassifies (e.g. `GOOGLEDRIVE_EMPTY_TRASH` → `high`, `GOOGLECALENDAR_CLEAR_CALENDAR` → `high`)
+- **`_matimo_tool` marker**: every generated tool bakes its own name into `execution.body.arguments._matimo_tool` as a literal (not a `{param}` placeholder) — this is the fix for Composio's API requirement that `arguments` always be present in the request body even when empty, which would otherwise be stripped by Matimo's HTTP executor after parameter templating
+- **`--force-refresh`**: regenerates all files for a toolkit even if they already exist (use after editing `risk-overrides.json`)
+
+```bash
+cd typescript/
+pnpm generate:composio --toolkits=JIRA,LINEAR,GOOGLEDRIVE
+pnpm generate:composio --toolkits=GOOGLEDRIVE,GOOGLECALENDAR --force-refresh
+pnpm validate-tools   # 488 valid, 0 invalid
+```
+
+---
+
+### 🛡 **Governance Layer**
+
+`DefaultPolicyEngine.canExecute()` does not gate on `risk:` (it handles deprecation/draft/`requires_approval`). To enforce human approval for composio write/delete operations, applications supply a custom `PolicyEngine`:
+
+```typescript
+class ComposioRiskPolicy implements PolicyEngine {
+  canExecute(ctx, tool): PolicyDecision {
+    const base = new DefaultPolicyEngine().canExecute(ctx, tool);
+    if (base.allowed !== true) return base;
+    const risk = classifyRisk(tool);
+    if (tool.name.startsWith('composio_') && (risk === 'medium' || risk === 'high')) {
+      return { allowed: 'pending_approval', riskLevel: risk, reason: '...', toolName: tool.name };
+    }
+    return { allowed: true };
+  }
+  canCreate(ctx, tool) { return new DefaultPolicyEngine().canCreate(ctx, tool); }
+}
+
+const matimo = await MatimoInstance.init({
+  toolPaths: [COMPOSIO_TOOLS_DIR],
+  policy: new ComposioRiskPolicy(),
+  onHITL: async (req) => promptForApproval(req),
+});
+```
+
+---
+
+### 📚 **Documentation & Examples**
+
+- **[`docs/COMPOSIO.md`](COMPOSIO.md)** — full integration guide (architecture, toolkit catalog, governance, LangChain 128-tool limit, naming conventions, response structure)
+- **[`typescript/packages/composio/README.md`](../typescript/packages/composio/README.md)** — package-level README (generator usage, what gets generated, `_matimo_tool` marker explanation, risk overrides, testing strategy)
+- **[`typescript/packages/composio/skills/composio/SKILL.md`](../typescript/packages/composio/skills/composio/SKILL.md)** — agent knowledge document (how composio_* calls work, three required inputs, risk levels, missing connected account handling, reading the response envelope)
+
+**4 TypeScript examples** in `typescript/examples/tools/composio/`:
+- `composio-factory.ts` — direct execute() across Jira, Drive, Calendar, Teams
+- `composio-decorator.ts` — `@tool` class-method decorators with pre-filled tenant credentials
+- `composio-langchain.ts` — LangChain agent with curated toolkit subset (solves 128-tool limit)
+- `composio-with-approval.ts` — custom PolicyEngine that quarantines medium/high risk tools at execute() time
+
+---
+
+### 🧪 **Testing**
+
+`@matimo/composio` follows the "generated tools" testing exception (no per-tool tests or examples required):
+- `packages/composio/test/unit/generator.test.ts` — 29 tests covering the generator, risk classification, parameter mapping, schema validation, pagination, idempotency
+- `pnpm validate-tools` — all 488 tools (342 composio + 146 existing) schema-valid
+- Live smoke test + full example run, all confirmed against a real Jira connected account:
+  - `composio_jira_get_current_user` (factory + decorator + approval examples) → real Jira user data (displayName, accountId, timeZone)
+  - `composio_jira_get_issue_types` (decorator) → real Jira issue type list (`Epic`, etc.)
+  - LangChain agent (GPT-4o-mini) → loaded 342 tools, filtered to 46 Jira tools, made real Composio API call, returned natural language response
+  - HITL approval flow → low-risk executed immediately; medium (`create_issue`) and high (`delete_issue`) both triggered approval prompt with correct risk labels before proceeding
+  - `canCreate()` returned `pending_approval` for medium-risk tools in prod context; `classifyRisk()` honored explicit YAML risk fields + overrides
+
+**Known Composio catalog issue**: As of March 2026, Jira deprecated `/rest/api/3/search`. Composio's `JIRA_SEARCH_ISSUES` and `JIRA_SEARCH_FOR_ISSUES_USING_JQL_POST` actions return HTTP 410 until Composio updates their catalog to use `/rest/api/3/search/jql`. All other Jira actions are unaffected.
+
+---
+
 ## v0.1.4 — Function-Type Tool Runtime Loading Fix & Microsoft Provider Fixes 🔧
 
 > **Release**: Closes the remaining "function-type tools crash at runtime for npm consumers" gap from v0.1.3 across `@matimo/core`, `@matimo/bruno`, `@matimo/notion`, `@matimo/postgres`, and `@matimo/microsoft` — plus Microsoft Graph bug fixes and example corrections

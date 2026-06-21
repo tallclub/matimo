@@ -1,0 +1,85 @@
+name: composio_asana_update_a_task
+description: Updates attributes of an existing asana task identified by its task gid.
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the ASANA toolkit, scoped to the calling tenant. The
+      "Connect ASANA" flow must be completed before this tool will succeed.
+    required: true
+  data:
+    type: object
+    description: An object containing the fields of the task to update.
+    required: true
+  task_gid:
+    type: string
+    description: The GID of the task to update.
+    required: true
+  opt_fields:
+    type: array
+    description: >-
+      A list of optional properties to include in the response object. By default, a compact
+      representation of the task is returned. Use this to retrieve additional fields. The elements
+      of this list should be valid field names for the task resource.
+  opt_pretty:
+    type: boolean
+    description: >-
+      If true, the response JSON will be 'pretty-printed' with indentation and line breaks, making
+      it more readable. This is useful for debugging but may increase response time and size.
+    default: true
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/ASANA_UPDATE_A_TASK
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_asana_update_a_task
+      data: '{data}'
+      task_gid: '{task_gid}'
+      opt_fields: '{opt_fields}'
+      opt_pretty: '{opt_pretty}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - asana
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: asana
+  composio_slug: ASANA_UPDATE_A_TASK

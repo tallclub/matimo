@@ -1,0 +1,95 @@
+name: composio_one_drive_get_sharepoint_list_items
+description: >-
+  Tool to get the items (list items) within a specific sharepoint list on a site. use when you need
+  to retrieve data from a sharepoint list.
+version: 1.0.0
+risk: low
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the ONE_DRIVE toolkit, scoped to the calling tenant. The
+      "Connect ONE_DRIVE" flow must be completed before this tool will succeed.
+    required: true
+  expand:
+    type: string
+    description: >-
+      A comma-separated list of relationships to expand, or 'fields(select=columnName1,columnName2)'
+      to retrieve specific fields. For example, to get specific columns 'Name' and 'Color', use
+      'fields(select=Name,Color)'.
+    default: null
+  filter:
+    type: string
+    description: >-
+      An OData filter query to restrict the results. For example, to filter items where 'Quantity'
+      is less than 600, use 'fields/Quantity lt 600'.
+    default: null
+  select:
+    type: string
+    description: >-
+      A comma-separated list of properties to include in the response. Often used in conjunction
+      with '$expand=fields(select=...)'. For example, 'id,name,fields'.
+    default: null
+  list_id:
+    type: string
+    description: The unique identifier of the list within the SharePoint site.
+    required: true
+  site_id:
+    type: string
+    description: The unique identifier of the SharePoint site.
+    required: true
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/ONE_DRIVE_GET_SHAREPOINT_LIST_ITEMS
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_one_drive_get_sharepoint_list_items
+      expand: '{expand}'
+      filter: '{filter}'
+      select: '{select}'
+      list_id: '{list_id}'
+      site_id: '{site_id}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - one_drive
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: one_drive
+  composio_slug: ONE_DRIVE_GET_SHAREPOINT_LIST_ITEMS

@@ -1,0 +1,103 @@
+name: composio_asana_create_attachment_for_task
+description: >-
+  Tool to upload an attachment to a task. use when you need to attach a file to a specific task in
+  asana.
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the ASANA toolkit, scoped to the calling tenant. The
+      "Connect ASANA" flow must be completed before this tool will succeed.
+    required: true
+  file_name:
+    type: string
+    description: The name of the file.
+    required: true
+  parent_gid:
+    type: string
+    description: Globally unique identifier for the parent task or comment.
+    required: true
+  file_content:
+    type: string
+    description: The file content to be uploaded.
+    required: true
+  connect_to_app:
+    type: boolean
+    description: >-
+      Whether to connect the attachment to the app. If true, the attachment will be displayed in the
+      Asana UI as an app attachment. If false, the attachment will be displayed as a regular file
+      attachment. Defaults to true.
+    default: null
+  resource_subtype:
+    type: string
+    description: >-
+      The type of the attachment. Must be one of the given values. If not specified, a regular file
+      attachment will be created. If 'asana' is specified, the attachment will be a link to another
+      Asana task. If 'external' is specified, the attachment will be a link to an external resource.
+      If 'gdrive' is specified, the attachment will be a link to a Google Drive file. If 'box' is
+      specified, the attachment will be a link to a Box file. If 'dropbox' is specified, the
+      attachment will be a link to a Dropbox file. If 'vimeo' is specified, the attachment will be a
+      link to a Vimeo video.
+    default: null
+  file_content_type:
+    type: string
+    description: The content type of the file. E.g. 'application/pdf' or 'image/jpeg'.
+    required: true
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/ASANA_CREATE_ATTACHMENT_FOR_TASK
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_asana_create_attachment_for_task
+      file_name: '{file_name}'
+      parent_gid: '{parent_gid}'
+      file_content: '{file_content}'
+      connect_to_app: '{connect_to_app}'
+      resource_subtype: '{resource_subtype}'
+      file_content_type: '{file_content_type}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - asana
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: asana
+  composio_slug: ASANA_CREATE_ATTACHMENT_FOR_TASK

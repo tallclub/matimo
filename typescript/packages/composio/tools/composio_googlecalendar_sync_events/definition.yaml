@@ -1,0 +1,100 @@
+name: composio_googlecalendar_sync_events
+description: >-
+  Synchronizes google calendar events, performing a full sync if no `sync token` is provided or if a
+  410 gone error (due to an expired token) necessitates it, otherwise performs an incremental sync
+  for events changed since the `sync token` was issued.
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the GOOGLECALENDAR toolkit, scoped to the calling
+      tenant. The "Connect GOOGLECALENDAR" flow must be completed before this tool will succeed.
+    required: true
+  pageToken:
+    type: string
+    description: Token for paginating results, from a previous response's `nextPageToken`.
+    default: null
+  sync_token:
+    type: string
+    description: >-
+      Token for incremental sync, retrieving only changes since issued. A 410 GONE response
+      indicates an expired token, requiring a full sync.
+    default: null
+  calendar_id:
+    type: string
+    description: Google Calendar identifier; 'primary' refers to the authenticated user's main calendar.
+    default: primary
+  event_types:
+    type: array
+    description: >-
+      Filters events by specified types (e.g., 'default', 'focusTime', 'outOfOffice',
+      'workingLocation'). All types returned if omitted.
+    default: null
+  max_results:
+    type: number
+    description: Max events per page (max 2500); Google Calendar's default is used if unspecified.
+    default: null
+  single_events:
+    type: boolean
+    description: >-
+      If True, expands recurring events into individual instances (excluding master event);
+      otherwise, Google's default handling applies.
+    default: null
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/GOOGLECALENDAR_SYNC_EVENTS
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_googlecalendar_sync_events
+      pageToken: '{pageToken}'
+      sync_token: '{sync_token}'
+      calendar_id: '{calendar_id}'
+      event_types: '{event_types}'
+      max_results: '{max_results}'
+      single_events: '{single_events}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - googlecalendar
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: googlecalendar
+  composio_slug: GOOGLECALENDAR_SYNC_EVENTS

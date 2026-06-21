@@ -1,0 +1,66 @@
+name: composio_microsoft_teams_get_team
+description: Tool to get a specific team. use when full details of one team by id are needed.
+version: 1.0.0
+risk: low
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the MICROSOFT_TEAMS toolkit, scoped to the calling
+      tenant. The "Connect MICROSOFT_TEAMS" flow must be completed before this tool will succeed.
+    required: true
+  team_id:
+    type: string
+    description: GUID of the Microsoft Teams team to retrieve.
+    required: true
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/MICROSOFT_TEAMS_GET_TEAM
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_microsoft_teams_get_team
+      team_id: '{team_id}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - microsoft_teams
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: microsoft_teams
+  composio_slug: MICROSOFT_TEAMS_GET_TEAM

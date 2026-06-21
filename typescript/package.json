@@ -33,6 +33,7 @@
     "format:check": "prettier --check \"packages/*/src/**/*.ts\" \"packages/*/test/**/*.ts\" \"examples/**/*.ts\"",
     "commitlint": "commitlint --from HEAD~1 --to HEAD",
     "validate-tools": "tsx scripts/validate-tool.ts",
+    "generate:composio": "tsx packages/composio/scripts/generate-tools.ts",
     "test-tools": "jest packages/core/test/fixtures/tools",
     "dev": "tsx packages/core/src/index.ts",
     "clean": "rm -rf dist coverage && find packages -type f \\( -name '*.js' -o -name '*.d.ts' -o -name '*.js.map' -o -name '*.d.ts.map' \\) -not -path '*/dist/*' -not -path '*/node_modules/*' -delete"

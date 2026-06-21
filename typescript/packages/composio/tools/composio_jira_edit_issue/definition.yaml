@@ -1,0 +1,152 @@
+name: composio_jira_edit_issue
+description: >-
+  Updates an existing jira issue with field values and operations. supports direct field parameters
+  (summary, description, assignee, priority, etc.) that are merged with the fields parameter. direct
+  parameters take precedence.
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the JIRA toolkit, scoped to the calling tenant. The
+      "Connect JIRA" flow must be completed before this tool will succeed.
+    required: true
+  fields:
+    type: object
+    description: >-
+      Dictionary of fields for direct updates (e.g., summary, description). See Jira's 'edit issue
+      metadata' for available fields. Provide complex data as a JSON string. Use `update` for more
+      complex operations like list modifications.
+    default: null
+  labels:
+    type: array
+    description: >-
+      List of labels to set for the issue (replaces existing labels). New labels are created if they
+      don't exist.
+    default: null
+  update:
+    type: object
+    description: >-
+      Dictionary for granular field operations (e.g., adding/removing labels, modifying list items).
+      See Jira documentation for operation structure. Provide complex data as a JSON string.
+    default: null
+  summary:
+    type: string
+    description: Brief, descriptive title for the issue.
+    default: null
+  assignee:
+    type: string
+    description: >-
+      User to assign the issue to. Can be either an account ID (e.g., '5b10a2844c20165700ede21g') or
+      name/email (e.g., 'john@company.com', 'John Doe'). The system will auto-detect the type and
+      search accordingly. Use null to unassign.
+    default: null
+  due_date:
+    type: string
+    description: Expected resolution date in YYYY-MM-DD format. Use null to remove due date.
+    default: null
+  description:
+    type: string
+    description: >-
+      Detailed description of the issue. Supports Markdown formatting including **bold**, *italic*,
+      `code`, links [text](url), and lists.
+    default: null
+  notify_users:
+    type: boolean
+    description: >-
+      If true, sends notification email to watchers. Setting to `False` requires admin or project
+      admin permissions.
+    default: true
+  return_issue:
+    type: boolean
+    description: If true, response includes full updated issue details; if false, response is minimal.
+    default: false
+  issue_id_or_key:
+    type: string
+    description: ID or key of the Jira issue to be edited.
+    required: true
+  sprint_id_or_name:
+    type: string
+    description: >-
+      Sprint to assign this issue to. Can be either a sprint ID (e.g., '123', '456') or sprint name
+      (e.g., 'Sprint 1', 'Release Sprint').
+    default: null
+  priority_id_or_name:
+    type: string
+    description: >-
+      Priority level for the issue. Can be either a priority ID (e.g., '1', '2') or priority name
+      (e.g., 'High', 'Medium', 'Low').
+    default: null
+  override_editable_flag:
+    type: boolean
+    description: If true, bypasses editable flag restrictions. Requires admin permissions.
+    default: false
+  override_screen_security:
+    type: boolean
+    description: If true, bypasses screen security restrictions. Requires admin permissions.
+    default: false
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/JIRA_EDIT_ISSUE
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_jira_edit_issue
+      fields: '{fields}'
+      labels: '{labels}'
+      update: '{update}'
+      summary: '{summary}'
+      assignee: '{assignee}'
+      due_date: '{due_date}'
+      description: '{description}'
+      notify_users: '{notify_users}'
+      return_issue: '{return_issue}'
+      issue_id_or_key: '{issue_id_or_key}'
+      sprint_id_or_name: '{sprint_id_or_name}'
+      priority_id_or_name: '{priority_id_or_name}'
+      override_editable_flag: '{override_editable_flag}'
+      override_screen_security: '{override_screen_security}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - jira
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: jira
+  composio_slug: JIRA_EDIT_ISSUE

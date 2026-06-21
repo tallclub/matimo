@@ -1,0 +1,77 @@
+name: composio_googledrive_google_drive_delete_folder_or_file_action
+description: >-
+  Tool to delete a file or folder in google drive. use when you need to permanently remove a
+  specific file or folder using its id. note: this action is irreversible.
+version: 1.0.0
+risk: high
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the GOOGLEDRIVE toolkit, scoped to the calling tenant.
+      The "Connect GOOGLEDRIVE" flow must be completed before this tool will succeed.
+    required: true
+  fileId:
+    type: string
+    description: The ID of the file or folder to delete. This is a required field.
+    required: true
+  supportsAllDrives:
+    type: boolean
+    description: >-
+      Whether the application supports both My Drives and shared drives. If false or unspecified,
+      the file is attempted to be deleted from the user's My Drive. If true, the item will be
+      deleted from shared drives as well if necessary.
+    default: null
+execution:
+  type: http
+  method: POST
+  url: >-
+    https://backend.composio.dev/api/v3/tools/execute/GOOGLEDRIVE_GOOGLE_DRIVE_DELETE_FOLDER_OR_FILE_ACTION
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_googledrive_google_drive_delete_folder_or_file_action
+      fileId: '{fileId}'
+      supportsAllDrives: '{supportsAllDrives}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - googledrive
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: googledrive
+  composio_slug: GOOGLEDRIVE_GOOGLE_DRIVE_DELETE_FOLDER_OR_FILE_ACTION

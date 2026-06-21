@@ -1,0 +1,125 @@
+name: composio_outlook_get_mail_delta
+description: >-
+  Tool to retrieve incremental changes (delta) of messages in a mailbox. use when syncing mailbox
+  updates since last checkpoint.
+version: 1.0.0
+risk: low
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the OUTLOOK toolkit, scoped to the calling tenant. The
+      "Connect OUTLOOK" flow must be completed before this tool will succeed.
+    required: true
+  top:
+    type: number
+    description: Maximum number of items to return per page.
+    default: null
+  skip:
+    type: number
+    description: Number of items to skip for pagination.
+    default: null
+  count:
+    type: boolean
+    description: Include count of total items in the response.
+    default: null
+  expand:
+    type: array
+    description: List of related entities to expand (e.g. ['attachments']).
+    default: null
+  filter:
+    type: string
+    description: OData filter string to filter messages (e.g. 'isRead eq false').
+    default: null
+  search:
+    type: string
+    description: Search phrase to filter messages (e.g. 'project update').
+    default: null
+  select:
+    type: array
+    description: List of message properties to include (e.g. ['subject','receivedDateTime']).
+    default: null
+  orderby:
+    type: array
+    description: List of properties to sort by with direction (e.g. ['receivedDateTime desc']).
+    default: null
+  user_id:
+    type: string
+    description: 'User identifier: ''me'' for the signed-in user or the user''s email/UPN.'
+    default: me
+  folder_id:
+    type: string
+    description: >-
+      Mail folder identifier to scope the delta query to that folder (e.g., 'Inbox' or folder ID
+      GUID).
+    default: null
+  skip_token:
+    type: string
+    description: Skip token for paging through large result sets.
+    default: null
+  delta_token:
+    type: string
+    description: Delta token from a previous call to get only changes since that state.
+    default: null
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/OUTLOOK_GET_MAIL_DELTA
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_outlook_get_mail_delta
+      top: '{top}'
+      skip: '{skip}'
+      count: '{count}'
+      expand: '{expand}'
+      filter: '{filter}'
+      search: '{search}'
+      select: '{select}'
+      orderby: '{orderby}'
+      user_id: '{user_id}'
+      folder_id: '{folder_id}'
+      skip_token: '{skip_token}'
+      delta_token: '{delta_token}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - outlook
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: outlook
+  composio_slug: OUTLOOK_GET_MAIL_DELTA

@@ -1,0 +1,108 @@
+name: composio_one_drive_list_drives
+description: >-
+  Tool to retrieve a list of drive resources available to the authenticated user, or for a specific
+  user, group, or site. use when you need to find out what drives are accessible.
+version: 1.0.0
+risk: low
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the ONE_DRIVE toolkit, scoped to the calling tenant. The
+      "Connect ONE_DRIVE" flow must be completed before this tool will succeed.
+    required: true
+  top:
+    type: number
+    description: The maximum number of items to return in a single page. Must be between 1 and 999.
+    default: null
+  expand:
+    type: string
+    description: Comma-separated list of relationships to expand (e.g., "root,list").
+    default: null
+  select:
+    type: string
+    description: Comma-separated list of properties to include in the response (e.g., "id,name,driveType").
+    default: null
+  orderby:
+    type: string
+    description: >-
+      A comma-separated list of properties to order the results by, optionally followed by "asc" or
+      "desc" (e.g., "name desc").
+    default: null
+  site_id:
+    type: string
+    description: The ID of the site to list drives for. If provided, group_id and user_id should not be used.
+    default: null
+  user_id:
+    type: string
+    description: >-
+      The ID of the user to list drives for. If provided, group_id and site_id should not be used.
+      If none of group_id, site_id, or user_id are provided, the drives for the current
+      authenticated user (/me/drives) will be listed.
+    default: null
+  group_id:
+    type: string
+    description: The ID of the group to list drives for. If provided, site_id and user_id should not be used.
+    default: null
+  skip_token:
+    type: string
+    description: A token used to retrieve the next page of results.
+    default: null
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/ONE_DRIVE_LIST_DRIVES
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_one_drive_list_drives
+      top: '{top}'
+      expand: '{expand}'
+      select: '{select}'
+      orderby: '{orderby}'
+      site_id: '{site_id}'
+      user_id: '{user_id}'
+      group_id: '{group_id}'
+      skip_token: '{skip_token}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - one_drive
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: one_drive
+  composio_slug: ONE_DRIVE_LIST_DRIVES

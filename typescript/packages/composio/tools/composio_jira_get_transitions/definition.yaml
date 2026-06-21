@@ -1,0 +1,104 @@
+name: composio_jira_get_transitions
+description: Retrieves available workflow transitions for a jira issue.
+version: 1.0.0
+risk: low
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the JIRA toolkit, scoped to the calling tenant. The
+      "Connect JIRA" flow must be completed before this tool will succeed.
+    required: true
+  expand:
+    type: string
+    description: >-
+      A comma-separated list of properties to expand in the response. Use 'transitions.fields' to
+      include the fields associated with each transition, providing details on what input is
+      expected or allowed.
+    default: null
+  transition_id:
+    type: string
+    description: >-
+      The ID of a specific transition to retrieve. If provided, only details for this transition are
+      returned.
+    default: null
+  issue_id_or_key:
+    type: string
+    description: >-
+      The ID (e.g., '10000') or key (e.g., 'PROJ-123') of the Jira issue for which to retrieve
+      transitions.
+    required: true
+  skip_remote_only_condition:
+    type: boolean
+    description: >-
+      If true, conditions defined by remote apps that only run remotely will be skipped during
+      evaluation.
+    default: null
+  sort_by_ops_bar_and_status:
+    type: boolean
+    description: >-
+      If true, sorts the returned transitions by their order in the operations bar and then by
+      status category.
+    default: null
+  include_unavailable_transitions:
+    type: boolean
+    description: >-
+      If true, transitions that are not currently available for the issue (e.g., due to unmet
+      conditions) will be included in the response.
+    default: null
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/JIRA_GET_TRANSITIONS
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_jira_get_transitions
+      expand: '{expand}'
+      transition_id: '{transition_id}'
+      issue_id_or_key: '{issue_id_or_key}'
+      skip_remote_only_condition: '{skip_remote_only_condition}'
+      sort_by_ops_bar_and_status: '{sort_by_ops_bar_and_status}'
+      include_unavailable_transitions: '{include_unavailable_transitions}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - jira
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: jira
+  composio_slug: JIRA_GET_TRANSITIONS

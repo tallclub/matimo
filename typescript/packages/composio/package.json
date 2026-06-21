@@ -1,0 +1,21 @@
+{
+  "name": "@matimo/composio",
+  "version": "0.1.0",
+  "description": "Governed access to Composio's tool catalog for Matimo — policy engine, risk classification, and HITL approval on top of Composio's 250+ integrations",
+  "type": "module",
+  "files": [
+    "tools",
+    "skills",
+    "README.md",
+    "definition.yaml"
+  ],
+  "peerDependencies": {
+    "matimo": "workspace:*"
+  },
+  "devDependencies": {
+    "@matimo/core": "workspace:*",
+    "axios": "^1.15.2",
+    "js-yaml": "^4.1.1",
+    "@types/js-yaml": "^4.0.9"
+  }
+}

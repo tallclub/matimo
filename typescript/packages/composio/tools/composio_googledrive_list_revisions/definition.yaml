@@ -1,0 +1,87 @@
+name: composio_googledrive_list_revisions
+description: >-
+  Tool to list a file's revisions. use when you need to retrieve the revision history of a specific
+  file in google drive.
+version: 1.0.0
+risk: low
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the GOOGLEDRIVE toolkit, scoped to the calling tenant.
+      The "Connect GOOGLEDRIVE" flow must be completed before this tool will succeed.
+    required: true
+  fileId:
+    type: string
+    description: The ID of the file.
+    required: true
+  pageSize:
+    type: number
+    description: The maximum number of revisions to return per page.
+    default: null
+  pageToken:
+    type: string
+    description: >-
+      The token for continuing a previous list request on the next page. This should be set to the
+      value of 'nextPageToken' from the previous response.
+    default: null
+  supportsAllDrives:
+    type: boolean
+    description: >-
+      Whether the requesting application supports both My Drives and shared drives. Defaults to
+      false.
+    default: null
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/GOOGLEDRIVE_LIST_REVISIONS
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_googledrive_list_revisions
+      fileId: '{fileId}'
+      pageSize: '{pageSize}'
+      pageToken: '{pageToken}'
+      supportsAllDrives: '{supportsAllDrives}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - googledrive
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: googledrive
+  composio_slug: GOOGLEDRIVE_LIST_REVISIONS

@@ -1,0 +1,113 @@
+name: composio_outlook_add_mail_attachment
+description: >-
+  Tool to add an attachment to an email message. use when you have a message id and need to attach a
+  small (<3 mb) file or reference.
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the OUTLOOK toolkit, scoped to the calling tenant. The
+      "Connect OUTLOOK" flow must be completed before this tool will succeed.
+    required: true
+  item:
+    type: object
+    description: Embedded item (e.g., message, event) for itemAttachment; must include its own '@odata.type'.
+    default: null
+  name:
+    type: string
+    description: Display name of the attachment (e.g., file name).
+    required: true
+  user_id:
+    type: string
+    description: The user's principal name or 'me' for the authenticated user.
+    default: me
+  isInline:
+    type: boolean
+    description: Set to true if the attachment should appear inline in the message body.
+    default: null
+  contentId:
+    type: string
+    description: Content ID for inline attachments, used in HTML body references.
+    default: null
+  message_id:
+    type: string
+    description: Unique identifier of the email message to attach to.
+    required: true
+  odata_type:
+    type: string
+    description: The OData type of the attachment. For file attachments, use '#microsoft.graph.fileAttachment'.
+    required: true
+  contentType:
+    type: string
+    description: MIME type of the attachment (e.g., 'application/pdf').
+    default: null
+  contentBytes:
+    type: string
+    description: Base64-encoded content of the file attachment (max size 3 MB).
+    required: true
+  contentLocation:
+    type: string
+    description: URL location or path for reference attachments.
+    default: null
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/OUTLOOK_ADD_MAIL_ATTACHMENT
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_outlook_add_mail_attachment
+      item: '{item}'
+      name: '{name}'
+      user_id: '{user_id}'
+      isInline: '{isInline}'
+      contentId: '{contentId}'
+      message_id: '{message_id}'
+      odata_type: '{odata_type}'
+      contentType: '{contentType}'
+      contentBytes: '{contentBytes}'
+      contentLocation: '{contentLocation}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - outlook
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: outlook
+  composio_slug: OUTLOOK_ADD_MAIL_ATTACHMENT

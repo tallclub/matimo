@@ -1,0 +1,135 @@
+name: composio_outlook_outlook_update_calendar_event
+description: Updates specified fields of an existing outlook calendar event.
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the OUTLOOK toolkit, scoped to the calling tenant. The
+      "Connect OUTLOOK" flow must be completed before this tool will succeed.
+    required: true
+  body:
+    type: object
+    description: The body of the event, specifying content type ('Text' or 'HTML') and the content itself.
+    default: null
+  show_as:
+    type: string
+    description: >-
+      The availability status to show for the event. Valid values: 'free', 'tentative', 'busy',
+      'oof' (out of office).
+    default: busy
+  subject:
+    type: string
+    description: >-
+      The new subject for the event. If explicitly set to an empty string, the event's subject will
+      be cleared.
+    default: ''
+  user_id:
+    type: string
+    description: >-
+      The identifier of the user whose calendar event is to be updated. Accepts the user's principal
+      name, ID, or 'me' for the currently authenticated user.
+    default: me
+  event_id:
+    type: string
+    description: >-
+      The unique identifier of the calendar event to be updated. This ID can be obtained from the
+      OUTLOOK_LIST_EVENTS action.
+    required: true
+  location:
+    type: object
+    description: The location of the event, represented as a dictionary.
+    default: {}
+  attendees:
+    type: array
+    description: >-
+      A list of attendees for the event. Providing this list (even if empty) will replace all
+      existing attendees on the event.
+    default: []
+  time_zone:
+    type: string
+    description: >-
+      The time zone for the `start_datetime` and `end_datetime` of the event. Uses IANA time zone
+      database names (e.g., 'America/Los_Angeles', 'UTC').
+    default: UTC
+  categories:
+    type: array
+    description: >-
+      A list of categories to associate with the event. Providing this list (even if empty) will
+      replace all existing categories of the event.
+    default: []
+  end_datetime:
+    type: string
+    description: >-
+      The new end date and time for the event. Expects a datetime object or an ISO 8601 formatted
+      string. Must be chronologically after `start_datetime`. The time zone for this datetime is
+      specified by the `time_zone` field.
+    default: null
+  start_datetime:
+    type: string
+    description: >-
+      The new start date and time for the event. Expects a datetime object or an ISO 8601 formatted
+      string. The time zone for this datetime is specified by the `time_zone` field.
+    default: null
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/OUTLOOK_OUTLOOK_UPDATE_CALENDAR_EVENT
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_outlook_outlook_update_calendar_event
+      body: '{body}'
+      show_as: '{show_as}'
+      subject: '{subject}'
+      user_id: '{user_id}'
+      event_id: '{event_id}'
+      location: '{location}'
+      attendees: '{attendees}'
+      time_zone: '{time_zone}'
+      categories: '{categories}'
+      end_datetime: '{end_datetime}'
+      start_datetime: '{start_datetime}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - outlook
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: outlook
+  composio_slug: OUTLOOK_OUTLOOK_UPDATE_CALENDAR_EVENT

@@ -1,0 +1,137 @@
+name: composio_linear_create_linear_issue
+description: >-
+  Creates a new issue in a specified linear project and team, requiring a title and description, and
+  allowing for optional properties like assignee, state, priority, cycle, and due date.
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the LINEAR toolkit, scoped to the calling tenant. The
+      "Connect LINEAR" flow must be completed before this tool will succeed.
+    required: true
+  title:
+    type: string
+    description: The title of the new issue.
+    required: true
+  team_id:
+    type: string
+    description: Identifier of the team responsible for this issue.
+    required: true
+  cycle_id:
+    type: string
+    description: >-
+      Identifier of the cycle (sprint) to assign this issue to. Cycles are time-bound periods used
+      to organize and prioritize work. Only applicable if the team has cycles feature enabled.
+    default: null
+  due_date:
+    type: string
+    description: >-
+      The target completion date for the issue, formatted as 'YYYY,MM,DD,hh,mm,ss'. For example:
+      '2024,10,27,12,58,00'.
+    default: null
+  estimate:
+    type: number
+    description: >-
+      The estimated complexity or effort for the issue, represented as a numerical point value
+      (e.g., 1, 2, 3, 5, 8). The specific scale used (e.g., Fibonacci, Linear, T-shirt sizes mapped
+      to numbers) is defined by the team's settings. This field only applies if the estimates
+      feature is enabled for the team. A value of 0 typically means no estimate has been set.
+    default: 0
+  priority:
+    type: number
+    description: >-
+      Priority of the issue. 0 indicates no priority, 1 is Urgent, 2 is High, 3 is Normal, and 4 is
+      Low.
+    default: 0
+  state_id:
+    type: string
+    description: >-
+      Identifier of the workflow state to assign to the issue (e.g., backlog, to do, in progress,
+      done).
+    default: null
+  label_ids:
+    type: array
+    description: A list of identifiers for labels to be added to this issue.
+    default: []
+  parent_id:
+    type: string
+    description: >-
+      Identifier of an existing issue to set as the parent of this new issue, creating a sub-issue
+      relationship.
+    default: null
+  project_id:
+    type: string
+    description: Identifier of the project to which this issue will be associated.
+    default: null
+  assignee_id:
+    type: string
+    description: Identifier of the user to assign to this issue.
+    default: null
+  description:
+    type: string
+    description: A detailed description of the issue, which can include markdown formatting.
+    default: null
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/LINEAR_CREATE_LINEAR_ISSUE
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_linear_create_linear_issue
+      title: '{title}'
+      team_id: '{team_id}'
+      cycle_id: '{cycle_id}'
+      due_date: '{due_date}'
+      estimate: '{estimate}'
+      priority: '{priority}'
+      state_id: '{state_id}'
+      label_ids: '{label_ids}'
+      parent_id: '{parent_id}'
+      project_id: '{project_id}'
+      assignee_id: '{assignee_id}'
+      description: '{description}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - linear
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: linear
+  composio_slug: LINEAR_CREATE_LINEAR_ISSUE

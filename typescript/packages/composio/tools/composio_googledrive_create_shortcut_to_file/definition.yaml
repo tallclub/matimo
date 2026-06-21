@@ -1,0 +1,107 @@
+name: composio_googledrive_create_shortcut_to_file
+description: >-
+  Tool to create a shortcut to a file or folder in google drive. use when you need to link to an
+  existing drive item from another location without duplicating it.
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the GOOGLEDRIVE toolkit, scoped to the calling tenant.
+      The "Connect GOOGLEDRIVE" flow must be completed before this tool will succeed.
+    required: true
+  name:
+    type: string
+    description: The name of the shortcut.
+    required: true
+  target_id:
+    type: string
+    description: The ID of the file or folder that this shortcut points to.
+    required: true
+  includeLabels:
+    type: string
+    description: A comma-separated list of IDs of labels to include in the labelInfo part of the response.
+    default: null
+  target_mime_type:
+    type: string
+    description: The MIME type of the target file or folder. While optional, providing it can be helpful.
+    default: null
+  supportsAllDrives:
+    type: boolean
+    description: >-
+      Whether the requesting application supports both My Drives and shared drives. Recommended to
+      set to true if interacting with shared drives.
+    default: null
+  keepRevisionForever:
+    type: boolean
+    description: Whether to set the 'keepForever' field in the new head revision.
+    default: null
+  ignoreDefaultVisibility:
+    type: boolean
+    description: Whether to ignore the domain's default visibility settings for the created file.
+    default: null
+  includePermissionsForView:
+    type: string
+    description: >-
+      Specifies which additional view's permissions to include in the response. Only 'published' is
+      supported.
+    default: null
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/GOOGLEDRIVE_CREATE_SHORTCUT_TO_FILE
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_googledrive_create_shortcut_to_file
+      name: '{name}'
+      target_id: '{target_id}'
+      includeLabels: '{includeLabels}'
+      target_mime_type: '{target_mime_type}'
+      supportsAllDrives: '{supportsAllDrives}'
+      keepRevisionForever: '{keepRevisionForever}'
+      ignoreDefaultVisibility: '{ignoreDefaultVisibility}'
+      includePermissionsForView: '{includePermissionsForView}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - googledrive
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: googledrive
+  composio_slug: GOOGLEDRIVE_CREATE_SHORTCUT_TO_FILE

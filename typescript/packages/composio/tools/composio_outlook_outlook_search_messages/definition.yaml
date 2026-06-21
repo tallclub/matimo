@@ -1,0 +1,104 @@
+name: composio_outlook_outlook_search_messages
+description: >-
+  Searches messages in a microsoft 365 or enterprise outlook account mailbox, supporting filters for
+  sender, subject, attachments, pagination, and sorting by relevance or date.
+version: 1.0.0
+risk: low
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the OUTLOOK toolkit, scoped to the calling tenant. The
+      "Connect OUTLOOK" flow must be completed before this tool will succeed.
+    required: true
+  size:
+    type: number
+    description: The maximum number of search results to return in a single response for pagination.
+    default: 25
+  query:
+    type: string
+    description: >-
+      The free-text search string. Can include terms from the message body, attachments, sender,
+      subject, or other properties.
+    required: true
+  subject:
+    type: string
+    description: Text to search for within the message subject line.
+    default: null
+  fromEmail:
+    type: string
+    description: >-
+      The sender's email address to filter messages; only Microsoft 365/Enterprise domains are
+      supported.
+    default: null
+  from_index:
+    type: number
+    description: The 0-based starting index for the returned search results for pagination.
+    default: 0
+  hasAttachments:
+    type: boolean
+    description: Filters messages based on the presence of attachments.
+    default: null
+  enable_top_results:
+    type: boolean
+    description: >-
+      If `true`, sorts results by relevance; otherwise, sorts by date in descending order (newest
+      first).
+    default: false
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/OUTLOOK_OUTLOOK_SEARCH_MESSAGES
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_outlook_outlook_search_messages
+      size: '{size}'
+      query: '{query}'
+      subject: '{subject}'
+      fromEmail: '{fromEmail}'
+      from_index: '{from_index}'
+      hasAttachments: '{hasAttachments}'
+      enable_top_results: '{enable_top_results}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - outlook
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: outlook
+  composio_slug: OUTLOOK_OUTLOOK_SEARCH_MESSAGES
