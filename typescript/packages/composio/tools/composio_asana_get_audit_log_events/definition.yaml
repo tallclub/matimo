@@ -1,0 +1,117 @@
+name: composio_asana_get_audit_log_events
+description: >-
+  Tool to get audit log events for a workspace. use when you need to retrieve a log of actions
+  performed within a specific asana workspace.
+version: 1.0.0
+risk: low
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the ASANA toolkit, scoped to the calling tenant. The
+      "Connect ASANA" flow must be completed before this tool will succeed.
+    required: true
+  limit:
+    type: number
+    description: >-
+      Results per page. The number of objects to return per page. The value must be between 1 and
+      100.
+    default: null
+  end_at:
+    type: string
+    description: Filter to events created before this time (exclusive).
+    default: null
+  offset:
+    type: string
+    description: >-
+      Offset token. An offset to the next page returned by the API. A pagination request will return
+      an offset token, which can be used as an input parameter to the next request. If an offset is
+      not passed in, the API will return the first page of results.
+    default: null
+  start_at:
+    type: string
+    description: Filter to events created after this time (inclusive).
+    default: null
+  actor_gid:
+    type: string
+    description: Filter to events triggered by the actor with this ID.
+    default: null
+  actor_type:
+    type: string
+    description: >-
+      Filter to events with an actor of this type. This only needs to be included if querying for
+      actor types without an ID. If actor_gid is included, this should be excluded.
+    default: null
+  event_type:
+    type: string
+    description: >-
+      Filter to events of this type. Refer to the supported audit log events for a full list of
+      values.
+    default: null
+  resource_gid:
+    type: string
+    description: Filter to events with this resource ID.
+    default: null
+  workspace_gid:
+    type: string
+    description: Globally unique identifier for the workspace or organization.
+    required: true
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/ASANA_GET_AUDIT_LOG_EVENTS
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_asana_get_audit_log_events
+      limit: '{limit}'
+      end_at: '{end_at}'
+      offset: '{offset}'
+      start_at: '{start_at}'
+      actor_gid: '{actor_gid}'
+      actor_type: '{actor_type}'
+      event_type: '{event_type}'
+      resource_gid: '{resource_gid}'
+      workspace_gid: '{workspace_gid}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - asana
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: asana
+  composio_slug: ASANA_GET_AUDIT_LOG_EVENTS

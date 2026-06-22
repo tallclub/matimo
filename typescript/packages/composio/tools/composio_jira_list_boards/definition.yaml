@@ -1,0 +1,103 @@
+name: composio_jira_list_boards
+description: Retrieves paginated jira boards with filtering and sorting options.
+version: 1.0.0
+risk: low
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the JIRA toolkit, scoped to the calling tenant. The
+      "Connect JIRA" flow must be completed before this tool will succeed.
+    required: true
+  name:
+    type: string
+    description: Filters results to boards whose name contains the string (case-insensitive).
+    default: null
+  type:
+    type: string
+    description: Filters results to boards of the specified type.
+    enum:
+      - scrum
+      - kanban
+    default: null
+  orderBy:
+    type: string
+    description: >-
+      Field to order boards by (e.g., 'name', '-name' for descending). Refer to Jira API docs for
+      all sortable fields.
+    default: null
+  start_at:
+    type: number
+    description: Index of the first board to return (0-based) for pagination.
+    default: null
+  max_results:
+    type: number
+    description: Maximum number of boards to return per page.
+    default: null
+  includePrivate:
+    type: boolean
+    description: Include private boards in the results.
+    default: null
+  projectKeyOrId:
+    type: string
+    description: >-
+      Filters results to boards for the specified project, by its key (e.g., 'PROJECTKEY') or ID
+      (e.g., '10000').
+    default: null
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/JIRA_LIST_BOARDS
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_jira_list_boards
+      name: '{name}'
+      type: '{type}'
+      orderBy: '{orderBy}'
+      start_at: '{start_at}'
+      max_results: '{max_results}'
+      includePrivate: '{includePrivate}'
+      projectKeyOrId: '{projectKeyOrId}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - jira
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: jira
+  composio_slug: JIRA_LIST_BOARDS

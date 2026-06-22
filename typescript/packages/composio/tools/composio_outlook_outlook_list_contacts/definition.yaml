@@ -1,0 +1,98 @@
+name: composio_outlook_outlook_list_contacts
+description: Retrieves a user's microsoft outlook contacts, from the default or a specified contact folder.
+version: 1.0.0
+risk: low
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the OUTLOOK toolkit, scoped to the calling tenant. The
+      "Connect OUTLOOK" flow must be completed before this tool will succeed.
+    required: true
+  top:
+    type: number
+    description: Maximum number of contacts to retrieve.
+    default: 10
+  filter:
+    type: string
+    description: OData V4 filter expression for targeted retrieval.
+    default: null
+  select:
+    type: array
+    description: >-
+      List of specific contact properties to retrieve. Each item is a property name. MUST be
+      provided as a list. If empty, a default set of properties is returned.
+    default: []
+  orderby:
+    type: array
+    description: >-
+      List of properties to sort results by. Each item is a string like 'displayName asc' or
+      'createdDateTime desc'. MUST be provided as a list, even for single sort criteria. 'asc' is
+      default.
+    default: []
+  user_id:
+    type: string
+    description: User Principal Name (UPN) or ID of the user. 'me' refers to the authenticated user.
+    default: me
+  contact_folder_id:
+    type: string
+    description: >-
+      ID of a specific contact folder. If omitted, contacts are retrieved from the default contact
+      folder.
+    default: null
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/OUTLOOK_OUTLOOK_LIST_CONTACTS
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_outlook_outlook_list_contacts
+      top: '{top}'
+      filter: '{filter}'
+      select: '{select}'
+      orderby: '{orderby}'
+      user_id: '{user_id}'
+      contact_folder_id: '{contact_folder_id}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - outlook
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: outlook
+  composio_slug: OUTLOOK_OUTLOOK_LIST_CONTACTS

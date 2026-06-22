@@ -1,0 +1,149 @@
+name: composio_outlook_outlook_calendar_create_event
+description: >-
+  Creates a new outlook calendar event, ensuring `start datetime` is chronologically before `end
+  datetime`.
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the OUTLOOK toolkit, scoped to the calling tenant. The
+      "Connect OUTLOOK" flow must be completed before this tool will succeed.
+    required: true
+  body:
+    type: string
+    description: >-
+      The body of the event. This can be in plain text or HTML format, as specified by the 'is_html'
+      field.
+    required: true
+  is_html:
+    type: boolean
+    description: >-
+      Specifies whether the 'body' content is HTML. Set to true for HTML content; otherwise, it's
+      treated as plain text.
+    default: false
+  show_as:
+    type: string
+    description: >-
+      The status to show on the calendar for the duration of the event. Valid values are: 'free',
+      'tentative', 'busy', 'oof' (out of office), 'workingElsewhere', 'unknown'.
+    default: busy
+  subject:
+    type: string
+    description: The subject of the calendar event.
+    required: true
+  user_id:
+    type: string
+    description: >-
+      The UPN (User Principal Name) or object ID of the user whose calendar the event will be
+      created in. Use 'me' for the currently authenticated user.
+    default: me
+  location:
+    type: string
+    description: The physical location of the event.
+    default: ''
+  time_zone:
+    type: string
+    description: >-
+      The time zone for the start and end times of the event. Uses Windows time zone names (e.g.,
+      'Pacific Standard Time') or IANA time zone names (e.g., 'America/Los_Angeles'). UTC is also a
+      valid input.
+    required: true
+  categories:
+    type: array
+    description: >-
+      A list of categories associated with the event. These categories must already exist in the
+      user's mailbox.
+    default: []
+  end_datetime:
+    type: string
+    description: The end date and time of the event in ISO 8601 format. Time zone is specified in 'time_zone'.
+    required: true
+  attendees_info:
+    type: array
+    description: >-
+      A list of attendees for the event. Each attendee object requires an 'email'. 'name' and 'type'
+      ('required', 'optional', 'resource') are optional.
+    default: []
+  start_datetime:
+    type: string
+    description: >-
+      The start date and time of the event in ISO 8601 format. Time zone is specified in
+      'time_zone'.
+    required: true
+  is_online_meeting:
+    type: boolean
+    description: >-
+      Set to true to indicate that the event is an online meeting. This will automatically generate
+      an online meeting link if 'online_meeting_provider' is set (e.g., a Microsoft Teams link).
+    default: false
+  online_meeting_provider:
+    type: string
+    description: >-
+      Specifies the online meeting provider. Currently, only 'teamsForBusiness' is supported. If
+      'is_online_meeting' is true and this is set, a meeting link for the provider will be created.
+    default: null
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/OUTLOOK_OUTLOOK_CALENDAR_CREATE_EVENT
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_outlook_outlook_calendar_create_event
+      body: '{body}'
+      is_html: '{is_html}'
+      show_as: '{show_as}'
+      subject: '{subject}'
+      user_id: '{user_id}'
+      location: '{location}'
+      time_zone: '{time_zone}'
+      categories: '{categories}'
+      end_datetime: '{end_datetime}'
+      attendees_info: '{attendees_info}'
+      start_datetime: '{start_datetime}'
+      is_online_meeting: '{is_online_meeting}'
+      online_meeting_provider: '{online_meeting_provider}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - outlook
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: outlook
+  composio_slug: OUTLOOK_OUTLOOK_CALENDAR_CREATE_EVENT

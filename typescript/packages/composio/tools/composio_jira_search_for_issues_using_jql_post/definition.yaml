@@ -1,0 +1,121 @@
+name: composio_jira_search_for_issues_using_jql_post
+description: >-
+  Searches for jira issues using jql via post request for complex queries; ideal for lengthy jql
+  queries that might exceed url character limits
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the JIRA toolkit, scoped to the calling tenant. The
+      "Connect JIRA" flow must be completed before this tool will succeed.
+    required: true
+  jql:
+    type: string
+    description: >-
+      The JQL (Jira Query Language) query string to use for the search. For example, 'project = HSP
+      AND issuetype = Bug'.
+    required: true
+  expand:
+    type: string
+    description: >-
+      A comma-separated list of entities to expand in the response. Options include:
+      'renderedFields' (HTML values), 'names' (display name of fields), 'schema' (field type
+      schema), 'transitions' (possible issue transitions), 'operations' (possible issue operations),
+      'editmeta' (field editability info), 'changelog' (recent updates), 'versionedRepresentations'
+      (field version history).
+    default: null
+  fields:
+    type: array
+    description: >-
+      A list of fields to return for each issue. By default, all fields are returned. Specify 'none'
+      to return no fields. Examples: 'summary', 'status', 'assignee'. Use '*navigable' to return all
+      navigable fields.
+    default: null
+  start_at:
+    type: number
+    description: The 0-based index of the first issue to return from the query results. Used for pagination.
+    default: 0
+  properties:
+    type: array
+    description: >-
+      A list of issue property keys to return for each issue. Issue properties are key-value pairs
+      on the issue that can be set and read by apps (e.g., 'jira.issue.tools',
+      'com.example.application:properties').
+    default: null
+  max_results:
+    type: number
+    description: The maximum number of issues to return per page. Used for pagination.
+    default: 50
+  fields_by_keys:
+    type: boolean
+    description: >-
+      If true, returns field values referenced by their keys (e.g., 'customfield_10000') instead of
+      their IDs.
+    default: false
+  validate_query:
+    type: string
+    description: >-
+      Controls how the JQL query is validated. 'strict' throws an error for invalid JQL. 'warn'
+      returns a warning for invalid JQL but still executes the query if possible. 'none' performs no
+      JQL validation.
+    default: strict
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/JIRA_SEARCH_FOR_ISSUES_USING_JQL_POST
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_jira_search_for_issues_using_jql_post
+      jql: '{jql}'
+      expand: '{expand}'
+      fields: '{fields}'
+      start_at: '{start_at}'
+      properties: '{properties}'
+      max_results: '{max_results}'
+      fields_by_keys: '{fields_by_keys}'
+      validate_query: '{validate_query}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - jira
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: jira
+  composio_slug: JIRA_SEARCH_FOR_ISSUES_USING_JQL_POST

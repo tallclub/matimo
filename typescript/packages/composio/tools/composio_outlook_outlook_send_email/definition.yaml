@@ -1,0 +1,115 @@
+name: composio_outlook_outlook_send_email
+description: >-
+  Sends an email with subject, body, recipients, and an optional attachment via microsoft graph api;
+  attachments require a non-empty file with valid name and mimetype.
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the OUTLOOK toolkit, scoped to the calling tenant. The
+      "Connect OUTLOOK" flow must be completed before this tool will succeed.
+    required: true
+  body:
+    type: string
+    description: The content of the email body, plain text or HTML based on `is_html`.
+    required: true
+  is_html:
+    type: boolean
+    description: Specifies if the email body is HTML; `True` for HTML, `False` for plain text.
+    default: false
+  subject:
+    type: string
+    description: The subject line of the email.
+    required: true
+  to_name:
+    type: string
+    description: The display name of the primary recipient.
+    default: null
+  user_id:
+    type: string
+    description: The user's email address or the alias 'me' to represent the authenticated user.
+    default: me
+  to_email:
+    type: string
+    description: The primary recipient's email address.
+    required: true
+  cc_emails:
+    type: array
+    description: List of email addresses for CC recipients.
+    default: []
+  attachment:
+    type: object
+    description: >-
+      Optional file to attach. If provided, its name, mimetype, and content must be valid and
+      non-empty.
+    default: null
+  bcc_emails:
+    type: array
+    description: List of email addresses for BCC recipients.
+    default: []
+  save_to_sent_items:
+    type: boolean
+    description: Indicates if the email should be saved in 'Sent Items'.
+    default: true
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/OUTLOOK_OUTLOOK_SEND_EMAIL
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_outlook_outlook_send_email
+      body: '{body}'
+      is_html: '{is_html}'
+      subject: '{subject}'
+      to_name: '{to_name}'
+      user_id: '{user_id}'
+      to_email: '{to_email}'
+      cc_emails: '{cc_emails}'
+      attachment: '{attachment}'
+      bcc_emails: '{bcc_emails}'
+      save_to_sent_items: '{save_to_sent_items}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - outlook
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: outlook
+  composio_slug: OUTLOOK_OUTLOOK_SEND_EMAIL

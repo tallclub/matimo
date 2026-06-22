@@ -1,6 +1,6 @@
 {
   "name": "@matimo/gmail",
-  "version": "0.1.3",
+  "version": "0.1.5",
   "description": "Gmail tools for Matimo",
   "type": "module",
   "files": [
@@ -13,6 +13,6 @@
   },
   "devDependencies": {
     "@matimo/core": "workspace:*",
-    "axios": "^1.15.2"
+    "axios": "^1.18.0"
   }
 }

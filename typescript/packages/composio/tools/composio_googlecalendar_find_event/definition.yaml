@@ -1,0 +1,159 @@
+name: composio_googlecalendar_find_event
+description: >-
+  Finds events in a specified google calendar using text query, time ranges (event start/end, last
+  modification), and event types; ensure `timemin` is not chronologically after `timemax` if both
+  are provided.
+version: 1.0.0
+risk: low
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the GOOGLECALENDAR toolkit, scoped to the calling
+      tenant. The "Connect GOOGLECALENDAR" flow must be completed before this tool will succeed.
+    required: true
+  query:
+    type: string
+    description: >-
+      Free-text search terms to find events. This query is matched against various event fields
+      including summary, description, location, attendees' details (displayName, email), and
+      organizer's details.
+    default: null
+  timeMax:
+    type: string
+    description: >-
+      Upper bound (exclusive) for an event's start time to filter by. Only events starting before
+      this time are included. Accepts multiple formats:
+
+      1. RFC3339 timestamp (e.g., '2024-12-06T13:00:00Z')
+
+      2. Comma-separated date/time parts (e.g., '2024,12,06,13,00,00')
+
+      3. Simple datetime string (e.g., '2024-12-06 13:00:00')
+    default: null
+  timeMin:
+    type: string
+    description: >-
+      Lower bound (exclusive) for an event's end time to filter by. Only events ending after this
+      time are included. Accepts multiple formats:
+
+      1. RFC3339 timestamp (e.g., '2024-12-06T13:00:00Z')
+
+      2. Comma-separated date/time parts (e.g., '2024,12,06,13,00,00')
+
+      3. Simple datetime string (e.g., '2024-12-06 13:00:00')
+    default: null
+  order_by:
+    type: string
+    description: >-
+      Order of events: 'startTime' (ascending by start time) or 'updated' (ascending by last
+      modification time).
+    default: null
+  page_token:
+    type: string
+    description: Token from a previous response's `nextPageToken` to fetch the subsequent page of results.
+    default: null
+  calendar_id:
+    type: string
+    description: >-
+      Identifier of the Google Calendar to query. Use 'primary' for the primary calendar of the
+      authenticated user, an email address for a specific user's calendar, or a calendar ID for
+      other calendars.
+    default: primary
+  event_types:
+    type: array
+    description: >-
+      Event types to include: 'default' (regular event), 'focusTime' (focused work time),
+      'outOfOffice' (out-of-office time).
+    default:
+      - birthday
+      - default
+      - focusTime
+      - outOfOffice
+      - workingLocation
+  max_results:
+    type: number
+    description: Maximum number of events per page (1-2500).
+    default: 10
+  updated_min:
+    type: string
+    description: >-
+      Lower bound (exclusive) for an event's last modification time to filter by. Only events
+      updated after this time are included. When specified, events deleted since this time are also
+      included, regardless of the `show_deleted` parameter. Accepts multiple formats:
+
+      1. RFC3339 timestamp (e.g., '2024-12-06T13:00:00Z')
+
+      2. Comma-separated date/time parts (e.g., '2024,12,06,13,00,00')
+
+      3. Simple datetime string (e.g., '2024-12-06 13:00:00')
+    default: null
+  show_deleted:
+    type: boolean
+    description: Include deleted events (status 'cancelled') in the result.
+    default: null
+  single_events:
+    type: boolean
+    description: Expand recurring events into individual instances. If false, returns master recurring events.
+    default: true
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/GOOGLECALENDAR_FIND_EVENT
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_googlecalendar_find_event
+      query: '{query}'
+      timeMax: '{timeMax}'
+      timeMin: '{timeMin}'
+      order_by: '{order_by}'
+      page_token: '{page_token}'
+      calendar_id: '{calendar_id}'
+      event_types: '{event_types}'
+      max_results: '{max_results}'
+      updated_min: '{updated_min}'
+      show_deleted: '{show_deleted}'
+      single_events: '{single_events}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - googlecalendar
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: googlecalendar
+  composio_slug: GOOGLECALENDAR_FIND_EVENT

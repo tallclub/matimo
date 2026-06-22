@@ -1,0 +1,98 @@
+name: composio_microsoft_teams_list_users
+description: >-
+  Tool to list all users in the organization. use when you need to retrieve directory users with
+  filtering, pagination, and field selection.
+version: 1.0.0
+risk: low
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the MICROSOFT_TEAMS toolkit, scoped to the calling
+      tenant. The "Connect MICROSOFT_TEAMS" flow must be completed before this tool will succeed.
+    required: true
+  $top:
+    type: number
+    description: Maximum number of users to return per page (1-999).
+    default: null
+  $skip:
+    type: number
+    description: Number of users to skip for pagination.
+    default: null
+  $expand:
+    type: string
+    description: OData expand related entities (e.g., `manager`).
+    default: null
+  $filter:
+    type: string
+    description: OData filter to refine results by property values (e.g., `startswith(displayName,'A')`).
+    default: null
+  $select:
+    type: string
+    description: Comma-separated list of user properties to include (e.g., `id,displayName,mail`).
+    default: null
+  $orderby:
+    type: string
+    description: OData orderby clause to sort results (e.g., `displayName desc`).
+    default: null
+  consistencyLevel:
+    type: string
+    description: Set to 'eventual' when using advanced queries with $count.
+    default: null
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/MICROSOFT_TEAMS_LIST_USERS
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_microsoft_teams_list_users
+      $top: '{$top}'
+      $skip: '{$skip}'
+      $expand: '{$expand}'
+      $filter: '{$filter}'
+      $select: '{$select}'
+      $orderby: '{$orderby}'
+      consistencyLevel: '{consistencyLevel}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - microsoft_teams
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: microsoft_teams
+  composio_slug: MICROSOFT_TEAMS_LIST_USERS

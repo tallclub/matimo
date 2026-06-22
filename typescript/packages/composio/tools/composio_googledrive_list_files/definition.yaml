@@ -1,0 +1,160 @@
+name: composio_googledrive_list_files
+description: >-
+  Tool to list a user's files and folders in google drive. use this to search or browse for files
+  and folders based on various criteria.
+version: 1.0.0
+risk: low
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the GOOGLEDRIVE toolkit, scoped to the calling tenant.
+      The "Connect GOOGLEDRIVE" flow must be completed before this tool will succeed.
+    required: true
+  q:
+    type: string
+    description: >-
+      A query string for filtering the file results. Supports operators like 'and', 'or', 'not', and
+      can filter on fields like 'name', 'mimeType', 'modifiedTime', 'starred', 'trashed'. Example:
+      "name contains 'important' and mimeType = 'application/vnd.google-apps.folder'".
+    default: null
+  fields:
+    type: string
+    description: >-
+      Selector specifying which fields to include in a partial response. This can be used to
+      retrieve only specific file metadata, improving performance. Example: 'nextPageToken,
+      files(id, name, mimeType, modifiedTime)'
+    default: null
+  spaces:
+    type: string
+    description: >-
+      A comma-separated list of spaces to query within the corpora. Supported values are 'drive' and
+      'appDataFolder'. 'drive' represents files in My Drive and shared drives, while 'appDataFolder'
+      represents the application's private data folder.
+    default: null
+  corpora:
+    type: string
+    description: >-
+      Specifies the bodies of items (files/documents) to which the query applies. Supported values
+      are 'user', 'domain', 'drive', and 'allDrives'. It's generally more efficient to use 'user' or
+      'drive' instead of 'allDrives'. Defaults to 'user'.
+    default: null
+  driveId:
+    type: string
+    description: The ID of the shared drive to search. This is used when `corpora` is set to 'drive'.
+    default: null
+  orderBy:
+    type: string
+    description: >-
+      A comma-separated list of sort keys. Valid keys include 'createdTime', 'folder',
+      'modifiedByMeTime', 'modifiedTime', 'name', 'name_natural', 'quotaBytesUsed', 'recency',
+      'sharedWithMeTime', 'starred', 'viewedByMeTime'. Each key sorts in ascending order by default,
+      but can be reversed with the 'desc' modifier (e.g., 'modifiedTime desc').
+    default: null
+  folderId:
+    type: string
+    description: >-
+      ID of a specific folder to list files from. This is a convenience parameter that automatically
+      adds "'folder_id' in parents" to the query. Cannot be used together with a custom 'q'
+      parameter.
+    default: null
+  pageSize:
+    type: number
+    description: >-
+      The maximum number of files to return per page. The value must be between 1 and 1000,
+      inclusive. Defaults to 100.
+    default: 100
+  pageToken:
+    type: string
+    description: >-
+      The token for continuing a previous list request on the next page. This should be set to the
+      value of 'nextPageToken' from the previous response.
+    default: null
+  includeLabels:
+    type: string
+    description: >-
+      A comma-separated list of label IDs to include in the `labelInfo` part of the response for
+      each file.
+    default: null
+  supportsAllDrives:
+    type: boolean
+    description: >-
+      Whether the requesting application supports both My Drives and shared drives. Defaults to
+      false. If true, then `includeItemsFromAllDrives` can be used to extend the search to all
+      drives.
+    default: null
+  includeItemsFromAllDrives:
+    type: boolean
+    description: >-
+      Whether to include items from both My Drive and shared drives. This is relevant when `corpora`
+      is 'user' or 'domain'. Defaults to false.
+    default: null
+  includePermissionsForView:
+    type: string
+    description: >-
+      Specifies which additional view's permissions to include in the response. Currently, only
+      'published' is supported, which includes permissions for files with published content.
+    default: null
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/GOOGLEDRIVE_LIST_FILES
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_googledrive_list_files
+      q: '{q}'
+      fields: '{fields}'
+      spaces: '{spaces}'
+      corpora: '{corpora}'
+      driveId: '{driveId}'
+      orderBy: '{orderBy}'
+      folderId: '{folderId}'
+      pageSize: '{pageSize}'
+      pageToken: '{pageToken}'
+      includeLabels: '{includeLabels}'
+      supportsAllDrives: '{supportsAllDrives}'
+      includeItemsFromAllDrives: '{includeItemsFromAllDrives}'
+      includePermissionsForView: '{includePermissionsForView}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - googledrive
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: googledrive
+  composio_slug: GOOGLEDRIVE_LIST_FILES

@@ -1,0 +1,96 @@
+name: composio_one_drive_list_sharepoint_list_items_delta
+description: >-
+  Tool to track changes to items in a sharepoint list using a delta query. use when you need to get
+  newly created, updated, or deleted list items without performing a full read of the entire item
+  collection.
+version: 1.0.0
+risk: low
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the ONE_DRIVE toolkit, scoped to the calling tenant. The
+      "Connect ONE_DRIVE" flow must be completed before this tool will succeed.
+    required: true
+  top:
+    type: number
+    description: Maximum number of items to return in a single response.
+    default: null
+  token:
+    type: string
+    description: >-
+      If unspecified or empty, enumerates the current state. If 'latest', returns an empty response
+      with the latest delta token. If a previous delta token, returns changes since that token.
+    default: null
+  expand:
+    type: string
+    description: Comma-separated list of relationships to expand.
+    default: null
+  select:
+    type: string
+    description: Comma-separated list of listItem properties to return.
+    default: null
+  list_id:
+    type: string
+    description: The unique identifier of the list within the site.
+    required: true
+  site_id:
+    type: string
+    description: The unique identifier of the SharePoint site.
+    required: true
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/ONE_DRIVE_LIST_SHAREPOINT_LIST_ITEMS_DELTA
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_one_drive_list_sharepoint_list_items_delta
+      top: '{top}'
+      token: '{token}'
+      expand: '{expand}'
+      select: '{select}'
+      list_id: '{list_id}'
+      site_id: '{site_id}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - one_drive
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: one_drive
+  composio_slug: ONE_DRIVE_LIST_SHAREPOINT_LIST_ITEMS_DELTA

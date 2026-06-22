@@ -1,0 +1,102 @@
+name: composio_jira_delete_worklog
+description: Deletes a worklog from a jira issue with estimate adjustment options.
+version: 1.0.0
+risk: high
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the JIRA toolkit, scoped to the calling tenant. The
+      "Connect JIRA" flow must be completed before this tool will succeed.
+    required: true
+  worklog_id:
+    type: string
+    description: The ID of the specific worklog entry to be deleted from the issue.
+    required: true
+  increase_by:
+    type: string
+    description: >-
+      Amount to increase the remaining estimate if `adjust_estimate` is 'manual' (e.g., '1h 30m',
+      '5d').
+    default: null
+  new_estimate:
+    type: string
+    description: Value for the new remaining estimate if `adjust_estimate` is 'new' (e.g., '2h', '3d 4h').
+    default: null
+  notify_users:
+    type: boolean
+    description: If users watching the issue should be notified by email about the worklog deletion.
+    default: true
+  adjust_estimate:
+    type: string
+    description: >-
+      How to update the issue's remaining estimate: 'new' (set to `new_estimate`), 'leave'
+      (unchanged), 'manual' (reduce by `increase_by`), or 'auto' (reduce by deleted worklog time).
+    default: auto
+  issue_id_or_key:
+    type: string
+    description: The ID or key of the Jira issue from which the worklog will be deleted.
+    required: true
+  override_editable_flag:
+    type: boolean
+    description: >-
+      If true, allows deletion of the worklog even if the issue is in a closed status, potentially
+      bypassing workflow restrictions.
+    default: false
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/JIRA_DELETE_WORKLOG
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_jira_delete_worklog
+      worklog_id: '{worklog_id}'
+      increase_by: '{increase_by}'
+      new_estimate: '{new_estimate}'
+      notify_users: '{notify_users}'
+      adjust_estimate: '{adjust_estimate}'
+      issue_id_or_key: '{issue_id_or_key}'
+      override_editable_flag: '{override_editable_flag}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - jira
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: jira
+  composio_slug: JIRA_DELETE_WORKLOG

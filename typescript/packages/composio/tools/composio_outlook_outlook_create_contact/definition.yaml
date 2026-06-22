@@ -1,0 +1,141 @@
+name: composio_outlook_outlook_create_contact
+description: Creates a new contact in a microsoft outlook user's contacts folder.
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the OUTLOOK toolkit, scoped to the calling tenant. The
+      "Connect OUTLOOK" flow must be completed before this tool will succeed.
+    required: true
+  notes:
+    type: string
+    description: >-
+      Personal notes about the contact. These notes are stored as 'personalNotes' in the Outlook
+      contact details.
+    default: ''
+  surname:
+    type: string
+    description: The contact's surname (last name).
+    default: ''
+  user_id:
+    type: string
+    description: >-
+      Identifier for the user whose contact list will be modified. Use 'me' for the authenticated
+      user, or provide the user's principal name (e.g., 'user@example.com').
+    default: me
+  birthday:
+    type: string
+    description: >-
+      The contact's birthday in 'YYYY-MM-DD' format. The time component will be set to midnight UTC
+      (e.g., '1990-01-01' becomes '1990-01-01T00:00:00Z' in the API request).
+    default: ''
+  jobTitle:
+    type: string
+    description: The contact's job title.
+    default: ''
+  givenName:
+    type: string
+    description: The contact's given (first) name.
+    default: ''
+  homePhone:
+    type: string
+    description: >-
+      The contact's home phone number. If provided, this will be stored in Outlook as a list
+      containing this single number.
+    default: ''
+  categories:
+    type: array
+    description: A list of categories to assign to the contact.
+  department:
+    type: string
+    description: The department the contact belongs to within their company.
+    default: ''
+  companyName:
+    type: string
+    description: The name of the company the contact is associated with.
+    default: ''
+  displayName:
+    type: string
+    description: The contact's display name, typically their full name.
+    default: ''
+  mobilePhone:
+    type: string
+    description: The contact's mobile phone number.
+    default: ''
+  businessPhones:
+    type: array
+    description: A list of business phone numbers for the contact. Each number should be a string.
+  emailAddresses:
+    type: array
+    description: A list of email addresses for the contact.
+  officeLocation:
+    type: string
+    description: The contact's office location.
+    default: ''
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/OUTLOOK_OUTLOOK_CREATE_CONTACT
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_outlook_outlook_create_contact
+      notes: '{notes}'
+      surname: '{surname}'
+      user_id: '{user_id}'
+      birthday: '{birthday}'
+      jobTitle: '{jobTitle}'
+      givenName: '{givenName}'
+      homePhone: '{homePhone}'
+      categories: '{categories}'
+      department: '{department}'
+      companyName: '{companyName}'
+      displayName: '{displayName}'
+      mobilePhone: '{mobilePhone}'
+      businessPhones: '{businessPhones}'
+      emailAddresses: '{emailAddresses}'
+      officeLocation: '{officeLocation}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - outlook
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: outlook
+  composio_slug: OUTLOOK_OUTLOOK_CREATE_CONTACT

@@ -1,0 +1,107 @@
+name: composio_outlook_outlook_create_draft
+description: >-
+  Creates an outlook email draft with subject, body, recipients, and an optional attachment.
+  supports creating drafts as part of existing conversation threads by specifying a conversationid;
+  attachments require a name, mimetype, and content.
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the OUTLOOK toolkit, scoped to the calling tenant. The
+      "Connect OUTLOOK" flow must be completed before this tool will succeed.
+    required: true
+  body:
+    type: string
+    description: Content of the email draft; use `is_html` to specify if HTML or plain text.
+    required: true
+  is_html:
+    type: boolean
+    description: Specifies if the `body` is HTML. If `False`, `body` is plain text.
+    default: false
+  subject:
+    type: string
+    description: Subject line for the email draft.
+    required: true
+  attachment:
+    type: object
+    description: Optional file to attach. If provided, must include the file's content, name, and mimetype.
+    default: null
+  cc_recipients:
+    type: array
+    description: Optional list of CC (carbon copy) recipient email addresses.
+    default: []
+  to_recipients:
+    type: array
+    description: List of primary 'To' recipient email addresses.
+    required: true
+  bcc_recipients:
+    type: array
+    description: Optional list of BCC (blind carbon copy) recipient email addresses.
+    default: []
+  conversation_id:
+    type: string
+    description: >-
+      Optional conversation ID to create the draft as part of an existing email conversation thread.
+      If provided, the draft will be part of the specified conversation instead of starting a new
+      one.
+    default: null
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/OUTLOOK_OUTLOOK_CREATE_DRAFT
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_outlook_outlook_create_draft
+      body: '{body}'
+      is_html: '{is_html}'
+      subject: '{subject}'
+      attachment: '{attachment}'
+      cc_recipients: '{cc_recipients}'
+      to_recipients: '{to_recipients}'
+      bcc_recipients: '{bcc_recipients}'
+      conversation_id: '{conversation_id}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - outlook
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: outlook
+  composio_slug: OUTLOOK_OUTLOOK_CREATE_DRAFT

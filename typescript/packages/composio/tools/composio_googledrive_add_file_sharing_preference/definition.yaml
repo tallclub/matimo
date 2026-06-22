@@ -1,0 +1,88 @@
+name: composio_googledrive_add_file_sharing_preference
+description: >-
+  Modifies sharing permissions for an existing google drive file, granting a specified role to a
+  user, group, domain, or 'anyone'.
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the GOOGLEDRIVE toolkit, scoped to the calling tenant.
+      The "Connect GOOGLEDRIVE" flow must be completed before this tool will succeed.
+    required: true
+  role:
+    type: string
+    description: Permission role to grant.
+    required: true
+  type:
+    type: string
+    description: Type of grantee for the permission.
+    required: true
+  domain:
+    type: string
+    description: Domain to grant permission to (e.g., 'example.com'). Required if 'type' is 'domain'.
+    default: null
+  file_id:
+    type: string
+    description: Unique identifier of the file to update sharing settings for.
+    required: true
+  email_address:
+    type: string
+    description: Email address of the user or group. Required if 'type' is 'user' or 'group'.
+    default: null
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/GOOGLEDRIVE_ADD_FILE_SHARING_PREFERENCE
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_googledrive_add_file_sharing_preference
+      role: '{role}'
+      type: '{type}'
+      domain: '{domain}'
+      file_id: '{file_id}'
+      email_address: '{email_address}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - googledrive
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: googledrive
+  composio_slug: GOOGLEDRIVE_ADD_FILE_SHARING_PREFERENCE

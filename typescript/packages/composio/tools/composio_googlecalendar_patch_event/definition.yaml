@@ -1,0 +1,153 @@
+name: composio_googlecalendar_patch_event
+description: >-
+  Updates specified fields of an existing event in a google calendar using patch semantics (array
+  fields like `attendees` are fully replaced if provided); ensure the `calendar id` and `event id`
+  are valid and the user has write access to the calendar.
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the GOOGLECALENDAR toolkit, scoped to the calling
+      tenant. The "Connect GOOGLECALENDAR" flow must be completed before this tool will succeed.
+    required: true
+  summary:
+    type: string
+    description: New title for the event.
+    default: null
+  end_time:
+    type: string
+    description: >-
+      New end time (RFC3339 timestamp, e.g., '2024-07-01T11:00:00-07:00'). Uses `timezone` if
+      provided, otherwise UTC. For all-day events, use YYYY-MM-DD format (exclusive end date).
+    default: null
+  event_id:
+    type: string
+    description: Identifier of the event to update.
+    required: true
+  location:
+    type: string
+    description: New geographic location (physical address or virtual meeting link).
+    default: null
+  timezone:
+    type: string
+    description: >-
+      IANA Time Zone Database name for start/end times (e.g., 'America/Los_Angeles'). Used if
+      `start_time` and `end_time` are provided and not all-day dates; defaults to UTC if unset.
+    default: null
+  attendees:
+    type: array
+    description: >-
+      List of email addresses for attendees. Replaces existing attendees. Provide an empty list to
+      remove all.
+    default: null
+  start_time:
+    type: string
+    description: >-
+      New start time (RFC3339 timestamp, e.g., '2024-07-01T10:00:00-07:00'). Uses `timezone` if
+      provided, otherwise UTC. For all-day events, use YYYY-MM-DD format.
+    default: null
+  calendar_id:
+    type: string
+    description: >-
+      Identifier of the calendar. Use 'primary' for the primary calendar of the logged-in user. To
+      find other calendar IDs, use the `calendarList.list` method.
+    required: true
+  description:
+    type: string
+    description: New description for the event; can include HTML.
+    default: null
+  send_updates:
+    type: string
+    description: >-
+      Whether to send update notifications to attendees: 'all', 'externalOnly', or 'none'. Uses
+      default user behavior if unspecified.
+    default: null
+  max_attendees:
+    type: number
+    description: >-
+      Maximum attendees in response; does not affect invited count. If more, response includes
+      organizer only. Must be positive.
+    default: null
+  rsvp_response:
+    type: string
+    description: >-
+      RSVP response status for the authenticated user. Updates only the current user's response
+      status without affecting other attendees. Possible values: 'needsAction', 'declined',
+      'tentative', 'accepted'.
+    default: null
+  supports_attachments:
+    type: boolean
+    description: Client application supports event attachments. Set to `True` if so.
+    default: null
+  conference_data_version:
+    type: number
+    description: >-
+      API client's conference data support version. Set to 1 to manage conference details (e.g.,
+      Google Meet links); 0 (default) ignores conference data.
+    default: null
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/GOOGLECALENDAR_PATCH_EVENT
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_googlecalendar_patch_event
+      summary: '{summary}'
+      end_time: '{end_time}'
+      event_id: '{event_id}'
+      location: '{location}'
+      timezone: '{timezone}'
+      attendees: '{attendees}'
+      start_time: '{start_time}'
+      calendar_id: '{calendar_id}'
+      description: '{description}'
+      send_updates: '{send_updates}'
+      max_attendees: '{max_attendees}'
+      rsvp_response: '{rsvp_response}'
+      supports_attachments: '{supports_attachments}'
+      conference_data_version: '{conference_data_version}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - googlecalendar
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: googlecalendar
+  composio_slug: GOOGLECALENDAR_PATCH_EVENT

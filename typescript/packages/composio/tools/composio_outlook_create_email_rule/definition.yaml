@@ -1,0 +1,86 @@
+name: composio_outlook_create_email_rule
+description: Create email rule filter with conditions and actions
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the OUTLOOK toolkit, scoped to the calling tenant. The
+      "Connect OUTLOOK" flow must be completed before this tool will succeed.
+    required: true
+  actions:
+    type: object
+    description: Actions to take when the rule conditions are met.
+    required: true
+  sequence:
+    type: number
+    description: Order in which the rule is executed (lower numbers execute first).
+    default: 1
+  isEnabled:
+    type: boolean
+    description: Whether the rule is enabled.
+    default: true
+  conditions:
+    type: object
+    description: Conditions that must be met for the rule to apply.
+    required: true
+  displayName:
+    type: string
+    description: Display name for the email rule.
+    required: true
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/OUTLOOK_CREATE_EMAIL_RULE
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_outlook_create_email_rule
+      actions: '{actions}'
+      sequence: '{sequence}'
+      isEnabled: '{isEnabled}'
+      conditions: '{conditions}'
+      displayName: '{displayName}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - outlook
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: outlook
+  composio_slug: OUTLOOK_CREATE_EMAIL_RULE

@@ -1,0 +1,18 @@
+{
+  "version": "1",
+  "approvals": [
+    {
+      "name": "composio_jira_create_issue",
+      "hash": "a2c00a4af9be2a6f93a8d874d27902af2ee13d556b35cc236abde10909e306a5",
+      "signature": "1fd631efbbea9c7d65dacf16b78a8b974b3235d85f30f49e83485b49b686aa3c",
+      "approvedAt": "2026-06-16T12:47:50.269Z"
+    },
+    {
+      "name": "composio_jira_delete_issue",
+      "hash": "e5593a8f3b908546d4cc7d5276d8aa6161a8c3e41f2082441e8e455541227fea",
+      "signature": "6e63c82ab5a2de2dfcfc31ade33211a4c8c0ebca29f6b327cb9002429b08ba28",
+      "approvedAt": "2026-06-16T12:47:51.566Z"
+    }
+  ],
+  "pending": []
+}

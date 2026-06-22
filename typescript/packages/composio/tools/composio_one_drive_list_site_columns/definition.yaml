@@ -1,0 +1,100 @@
+name: composio_one_drive_list_site_columns
+description: >-
+  Tool to list all column definitions for a sharepoint site. use this when you need to retrieve the
+  schema or structure of columns within a specific sharepoint site.
+version: 1.0.0
+risk: low
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the ONE_DRIVE toolkit, scoped to the calling tenant. The
+      "Connect ONE_DRIVE" flow must be completed before this tool will succeed.
+    required: true
+  top:
+    type: number
+    description: The maximum number of items to return.
+    default: null
+  skip:
+    type: number
+    description: The number of items to skip before starting to collect the result set.
+    default: null
+  expand:
+    type: string
+    description: Comma-separated list of related resources to expand in the response.
+    default: null
+  filter:
+    type: string
+    description: OData filter expression to apply to the results.
+    default: null
+  select:
+    type: string
+    description: Comma-separated list of properties to include in the response.
+    default: null
+  orderby:
+    type: string
+    description: Comma-separated list of properties used to sort the results.
+    default: null
+  site_id:
+    type: string
+    description: >-
+      The unique identifier of the SharePoint site. Example:
+      `contoso.sharepoint.com,2C712604-133D-4A7C-9194-F53CE4C952A2,A704AEF5-C2C0-43C3-A3D8-9F55A73A02E2`
+    required: true
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/ONE_DRIVE_LIST_SITE_COLUMNS
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_one_drive_list_site_columns
+      top: '{top}'
+      skip: '{skip}'
+      expand: '{expand}'
+      filter: '{filter}'
+      select: '{select}'
+      orderby: '{orderby}'
+      site_id: '{site_id}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - one_drive
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: one_drive
+  composio_slug: ONE_DRIVE_LIST_SITE_COLUMNS

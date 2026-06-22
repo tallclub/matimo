@@ -1,0 +1,102 @@
+name: composio_asana_create_allocation
+description: >-
+  Creates a new allocation. use when you need to schedule or assign a specific amount of a user's
+  time per week to a task or project within a defined period.
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the ASANA toolkit, scoped to the calling tenant. The
+      "Connect ASANA" flow must be completed before this tool will succeed.
+    required: true
+  notes:
+    type: string
+    description: Any additional notes related to the allocation.
+    default: null
+  end_on:
+    type: string
+    description: The end date of the allocation. The format is YYYY-MM-DD.
+    required: true
+  start_on:
+    type: string
+    description: The start date of the allocation. The format is YYYY-MM-DD.
+    required: true
+  project_gid:
+    type: string
+    description: >-
+      The project GID for which this allocation is being made. If provided, the allocation will be
+      linked to this project.
+    default: null
+  assignee_gid:
+    type: string
+    description: >-
+      The ID of the user to whom the allocation is assigned. This can be the user's GID or the
+      string 'me' to refer to the authenticated user.
+    required: true
+  workspace_gid:
+    type: string
+    description: The ID of the workspace where the allocation will be created.
+    required: true
+  minutes_per_week:
+    type: number
+    description: The number of minutes per week the user is allocated for. Must be greater than 0.
+    required: true
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/ASANA_CREATE_ALLOCATION
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_asana_create_allocation
+      notes: '{notes}'
+      end_on: '{end_on}'
+      start_on: '{start_on}'
+      project_gid: '{project_gid}'
+      assignee_gid: '{assignee_gid}'
+      workspace_gid: '{workspace_gid}'
+      minutes_per_week: '{minutes_per_week}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - asana
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: asana
+  composio_slug: ASANA_CREATE_ALLOCATION

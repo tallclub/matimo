@@ -1,0 +1,138 @@
+name: composio_jira_create_project
+description: Creates a new jira project with required lead, template, and type configuration.
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the JIRA toolkit, scoped to the calling tenant. The
+      "Connect JIRA" flow must be completed before this tool will succeed.
+    required: true
+  key:
+    type: string
+    description: Unique key for the project. Must be unique across all Jira projects.
+    required: true
+  url:
+    type: string
+    description: Optional URL for the project, like a Confluence space link or external website.
+    default: null
+  name:
+    type: string
+    description: Human-readable name for the project.
+    required: true
+  avatar_id:
+    type: number
+    description: Optional ID of an existing avatar for the project.
+    default: null
+  category_id:
+    type: number
+    description: Optional ID of an existing project category.
+    default: null
+  description:
+    type: string
+    description: Optional detailed textual description of the project.
+    default: null
+  assignee_type:
+    type: string
+    description: >-
+      Default assignee for new issues: 'PROJECT_LEAD' (assigns to project lead) or 'UNASSIGNED'
+      (issues remain unassigned).
+    enum:
+      - PROJECT_LEAD
+      - UNASSIGNED
+    default: null
+  lead_account_id:
+    type: string
+    description: Atlassian Account ID (not username or email) of the project lead.
+    required: true
+  project_type_key:
+    type: string
+    description: >-
+      Type of project: 'business' for Jira Core type projects or 'software' for Jira Software type
+      projects.
+    required: true
+    enum:
+      - business
+      - software
+  permission_scheme:
+    type: number
+    description: Optional ID of an existing permission scheme.
+    default: null
+  notification_scheme:
+    type: number
+    description: Optional ID of an existing notification scheme.
+    default: null
+  project_template_key:
+    type: string
+    description: >-
+      Key of the project template, compatible with 'project_type_key'. Consult Jira documentation
+      for available template keys for the chosen project type and Jira version.
+    required: true
+  issue_security_scheme:
+    type: number
+    description: Optional ID of an existing issue security scheme.
+    default: null
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/JIRA_CREATE_PROJECT
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_jira_create_project
+      key: '{key}'
+      url: '{url}'
+      name: '{name}'
+      avatar_id: '{avatar_id}'
+      category_id: '{category_id}'
+      description: '{description}'
+      assignee_type: '{assignee_type}'
+      lead_account_id: '{lead_account_id}'
+      project_type_key: '{project_type_key}'
+      permission_scheme: '{permission_scheme}'
+      notification_scheme: '{notification_scheme}'
+      project_template_key: '{project_template_key}'
+      issue_security_scheme: '{issue_security_scheme}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - jira
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: jira
+  composio_slug: JIRA_CREATE_PROJECT

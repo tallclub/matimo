@@ -1,0 +1,171 @@
+name: composio_googledrive_watch_changes
+description: >-
+  Tool to subscribe to changes for a user or shared drive in google drive. use when you need to
+  monitor a google drive for modifications and receive notifications at a specified webhook url.
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the GOOGLEDRIVE toolkit, scoped to the calling tenant.
+      The "Connect GOOGLEDRIVE" flow must be completed before this tool will succeed.
+    required: true
+  id:
+    type: string
+    description: A unique string that identifies this channel. UUIDs are recommended.
+    required: true
+  type:
+    type: string
+    description: The type of delivery mechanism for notifications (e.g., 'web_hook').
+    required: true
+  token:
+    type: string
+    description: >-
+      An arbitrary string that will be delivered with each notification. Can be used for
+      verification.
+    default: null
+  params:
+    type: object
+    description: |-
+      Optional parameters for the notification channel.
+      Example: {"ttl": "3600"} for a 1-hour time-to-live (actual support depends on Google API).
+    default: null
+  spaces:
+    type: string
+    description: >-
+      A comma-separated list of spaces to query within the corpora. Supported values are 'drive' and
+      'appDataFolder'.
+    default: drive
+  address:
+    type: string
+    description: The URL where notifications are to be delivered.
+    required: true
+  drive_id:
+    type: string
+    description: >-
+      The shared drive from which changes will be returned. If specified, change IDs will be
+      specific to the shared drive.
+    default: null
+  page_size:
+    type: number
+    description: The maximum number of changes to return per page.
+    default: 100
+  expiration:
+    type: number
+    description: >-
+      Timestamp in milliseconds since the epoch for when the channel should expire. If not set,
+      channel may not expire or have a default expiration.
+    default: null
+  page_token:
+    type: string
+    description: >-
+      The token for continuing a previous list request on the next page. This should be set to the
+      value of 'nextPageToken' from the previous response or to the response from the
+      getStartPageToken method.
+    default: null
+  include_labels:
+    type: string
+    description: A comma-separated list of IDs of labels to include in the labelInfo part of the response.
+    default: null
+  include_removed:
+    type: boolean
+    description: >-
+      Whether to include changes indicating that items have been removed from the list of changes
+      (e.g., by deletion or loss of access).
+    default: true
+  supports_all_drives:
+    type: boolean
+    description: >-
+      Whether the requesting application supports both My Drives and shared drives. Recommended to
+      set to true if driveId is used or if interactions with shared drives are expected.
+    default: false
+  restrict_to_my_drive:
+    type: boolean
+    description: >-
+      Whether to restrict the results to changes inside the My Drive hierarchy. This omits changes
+      to files like those in the Application Data folder or shared files not added to My Drive.
+    default: false
+  include_corpus_removals:
+    type: boolean
+    description: >-
+      Whether changes should include the file resource if the file is still accessible by the user
+      at the time of the request, even when a file was removed from the list of changes.
+    default: null
+  include_permissions_for_view:
+    type: string
+    description: >-
+      Specifies which additional view's permissions to include in the response. Only 'published' is
+      supported.
+    default: null
+  include_items_from_all_drives:
+    type: boolean
+    description: Whether both My Drive and shared drive items should be included in results.
+    default: null
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/GOOGLEDRIVE_WATCH_CHANGES
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_googledrive_watch_changes
+      id: '{id}'
+      type: '{type}'
+      token: '{token}'
+      params: '{params}'
+      spaces: '{spaces}'
+      address: '{address}'
+      drive_id: '{drive_id}'
+      page_size: '{page_size}'
+      expiration: '{expiration}'
+      page_token: '{page_token}'
+      include_labels: '{include_labels}'
+      include_removed: '{include_removed}'
+      supports_all_drives: '{supports_all_drives}'
+      restrict_to_my_drive: '{restrict_to_my_drive}'
+      include_corpus_removals: '{include_corpus_removals}'
+      include_permissions_for_view: '{include_permissions_for_view}'
+      include_items_from_all_drives: '{include_items_from_all_drives}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - googledrive
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: googledrive
+  composio_slug: GOOGLEDRIVE_WATCH_CHANGES

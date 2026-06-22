@@ -1,0 +1,100 @@
+name: composio_jira_transition_issue
+description: >-
+  Transitions a jira issue to a different workflow state, with support for transition name lookup
+  and user assignment by email.
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the JIRA toolkit, scoped to the calling tenant. The
+      "Connect JIRA" flow must be completed before this tool will succeed.
+    required: true
+  comment:
+    type: string
+    description: >-
+      Optional comment to add during the transition. Supports Markdown formatting including
+      **bold**, *italic*, `code`, links [text](url), and lists.
+    default: null
+  assignee:
+    type: string
+    description: >-
+      Account ID of the user to assign the issue to during transition. Takes precedence over
+      assignee_name.
+    default: null
+  resolution:
+    type: string
+    description: Optional resolution to set (e.g., 'Done', 'Fixed', 'Won't Do').
+    default: null
+  assignee_name:
+    type: string
+    description: >-
+      Name of the user to assign the issue to during transition. Can be either an email address
+      (e.g., 'john@company.com') or display name (e.g., 'John Doe'). The system will auto-detect the
+      type and search accordingly. Ignored if assignee (account ID) is provided.
+    default: null
+  issue_id_or_key:
+    type: string
+    description: The ID or key of the issue to transition.
+    required: true
+  transition_id_or_name:
+    type: string
+    description: The ID or name of the transition to apply.
+    required: true
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/JIRA_TRANSITION_ISSUE
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_jira_transition_issue
+      comment: '{comment}'
+      assignee: '{assignee}'
+      resolution: '{resolution}'
+      assignee_name: '{assignee_name}'
+      issue_id_or_key: '{issue_id_or_key}'
+      transition_id_or_name: '{transition_id_or_name}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - jira
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: jira
+  composio_slug: JIRA_TRANSITION_ISSUE

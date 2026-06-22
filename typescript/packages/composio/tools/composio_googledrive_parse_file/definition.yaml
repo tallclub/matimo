@@ -1,0 +1,96 @@
+name: composio_googledrive_parse_file
+description: >-
+  Deprecated: exports google workspace files (max 10mb) to a specified format using `mime type`, or
+  downloads other file types; use `googledrive download file` instead.
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the GOOGLEDRIVE toolkit, scoped to the calling tenant.
+      The "Connect GOOGLEDRIVE" flow must be completed before this tool will succeed.
+    required: true
+  file_id:
+    type: string
+    description: The unique ID of the file stored in Google Drive that you want to export or download.
+    required: true
+  mime_type:
+    type: string
+    description: >-
+      Target MIME type for exporting Google Workspace documents (e.g., Docs, Sheets) to a different
+      format (e.g., PDF, DOCX). Omit for direct download of non-Workspace files or if no conversion
+      is needed for Workspace files.
+    enum:
+      - application/vnd.openxmlformats-officedocument.wordprocessingml.document
+      - application/vnd.oasis.opendocument.text
+      - application/rtf
+      - application/pdf
+      - text/plain
+      - application/zip
+      - application/epub+zip
+      - text/markdown
+      - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      - application/x-vnd.oasis.opendocument.spreadsheet
+      - text/csv
+      - text/tab-separated-values
+      - application/vnd.openxmlformats-officedocument.presentationml.presentation
+      - application/vnd.oasis.opendocument.presentation
+      - image/jpeg
+      - image/png
+      - image/svg+xml
+      - application/vnd.google-apps.script+json
+      - application/vnd.google-apps.vid
+    default: null
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/GOOGLEDRIVE_PARSE_FILE
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_googledrive_parse_file
+      file_id: '{file_id}'
+      mime_type: '{mime_type}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - googledrive
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: googledrive
+  composio_slug: GOOGLEDRIVE_PARSE_FILE

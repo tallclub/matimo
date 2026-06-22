@@ -1,0 +1,107 @@
+name: composio_googledrive_create_drive
+description: >-
+  Tool to create a new shared drive. use when you need to programmatically create a new shared drive
+  for collaboration or storage.
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the GOOGLEDRIVE toolkit, scoped to the calling tenant.
+      The "Connect GOOGLEDRIVE" flow must be completed before this tool will succeed.
+    required: true
+  name:
+    type: string
+    description: The name of this shared drive.
+    required: true
+  hidden:
+    type: boolean
+    description: Whether the shared drive is hidden from default view.
+    default: false
+  themeId:
+    type: string
+    description: >-
+      The ID of the theme from which the background image and color will be set. The set of possible
+      driveThemes can be retrieved from a drive.about.get response. When not specified on a
+      drive.drives.create request, a random theme is chosen from which the background image and
+      color are set. This is a write-only field; it can only be set on requests that don't set
+      colorRgb or backgroundImageFile.
+    default: null
+  colorRgb:
+    type: string
+    description: >-
+      The color of this shared drive as an RGB hex string. It can only be set on a
+      drive.drives.update request that does not set themeId.
+    default: null
+  requestId:
+    type: string
+    description: >-
+      An ID, such as a random UUID, which uniquely identifies this user's request for idempotent
+      creation of a shared drive. A repeated request by the same user and with the same request ID
+      will avoid creating duplicates by attempting to create the same shared drive. If the shared
+      drive already exists a 409 error will be returned.
+    required: true
+  backgroundImageFile:
+    type: object
+    description: >-
+      An image file and cropping parameters from which a background image for this shared drive is
+      set. This is a write only field; it can only be set on drive.drives.update requests that don't
+      set themeId. When specified, all fields of the backgroundImageFile must be set.
+    default: null
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/GOOGLEDRIVE_CREATE_DRIVE
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_googledrive_create_drive
+      name: '{name}'
+      hidden: '{hidden}'
+      themeId: '{themeId}'
+      colorRgb: '{colorRgb}'
+      requestId: '{requestId}'
+      backgroundImageFile: '{backgroundImageFile}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - googledrive
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: googledrive
+  composio_slug: GOOGLEDRIVE_CREATE_DRIVE
