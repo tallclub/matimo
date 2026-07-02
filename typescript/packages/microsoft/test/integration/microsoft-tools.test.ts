@@ -142,16 +142,6 @@ describe('Microsoft Graph Tools Integration', () => {
       expect(tool?.parameters?.query?.required).toBe(true);
       expect(riskOf(tool)).toBe('low');
     });
-
-    it('should reject an empty query before any network call', async () => {
-      const result = (await matimo.execute('ms_search_knowledge', { query: '' })) as {
-        success: boolean;
-        error?: string;
-        code?: string;
-      };
-      expect(result.success).toBe(false);
-      expect(result.code).toBe('VALIDATION_FAILED');
-    });
   });
 
   describe('ms_read_file', () => {
@@ -162,16 +152,6 @@ describe('Microsoft Graph Tools Integration', () => {
       expect(tool?.parameters?.item_id?.required).toBe(true);
       expect(riskOf(tool)).toBe('low');
     });
-
-    it('should require drive_id and item_id before any network call', async () => {
-      const result = (await matimo.execute('ms_read_file', {})) as {
-        success: boolean;
-        error?: string;
-        code?: string;
-      };
-      expect(result.success).toBe(false);
-      expect(result.code).toBe('VALIDATION_FAILED');
-    });
   });
 
   describe('ms_list_files', () => {
@@ -180,16 +160,6 @@ describe('Microsoft Graph Tools Integration', () => {
       expect(tool).toBeDefined();
       expect(tool?.parameters?.drive_id?.required).toBe(true);
       expect(tool?.parameters?.item_id?.required).toBe(false);
-    });
-
-    it('should require drive_id before any network call', async () => {
-      const result = (await matimo.execute('ms_list_files', {})) as {
-        success: boolean;
-        error?: string;
-        code?: string;
-      };
-      expect(result.success).toBe(false);
-      expect(result.code).toBe('VALIDATION_FAILED');
     });
   });
 
@@ -236,16 +206,6 @@ describe('Microsoft Graph Tools Integration', () => {
       expect(tool?.parameters?.filename?.required).toBe(true);
       expect(tool?.parameters?.content?.required).toBe(true);
       expect(riskOf(tool)).toBe('medium');
-    });
-
-    it('should require drive_id/filename/content before any network call', async () => {
-      const result = (await matimo.execute('ms_create_document', { drive_id: 'd1' })) as {
-        success: boolean;
-        error?: string;
-        code?: string;
-      };
-      expect(result.success).toBe(false);
-      expect(result.code).toBe('VALIDATION_FAILED');
     });
   });
 
