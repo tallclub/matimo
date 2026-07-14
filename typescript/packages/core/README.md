@@ -49,7 +49,7 @@ await matimo.execute('calculator', { operation: 'add', a: 1, b: 2 });
 
 ## 🛠 Included Core Tools
 
-`@matimo/core` includes 15 built-in tools:
+`@matimo/core` includes 18 built-in tools:
 
 ### Utility Tools
 - **`execute`** — Run shell commands with output capture, timeout, and working directory control
@@ -57,7 +57,10 @@ await matimo.execute('calculator', { operation: 'add', a: 1, b: 2 });
 - **`edit`** — Edit/replace content in files with backup
 - **`search`** — Search files with grep patterns and context
 - **`web`** — Fetch and parse web content
-- **`calculator`** — Basic arithmetic operations
+- **`web_scraper`** — Crawl and extract readable content from web pages, with SSRF/robots.txt-aware multi-page support
+- **`calculator`** — Arithmetic operations, including a sandboxed expression mode (`sqrt(16) + 2^3`)
+- **`convert_to_file`** — Convert content between formats (JSON/CSV/Markdown/text to PDF/DOCX/etc.)
+- **`extract_from_file`** — Extract text/structured content from local or remote PDF, DOCX, CSV, and text files
 
 ### Meta-Tools (Tool Lifecycle Management)
 - **`matimo_validate_tool`** — Validate YAML against schema + policy rules, returns risk level

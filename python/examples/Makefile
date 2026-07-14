@@ -13,6 +13,9 @@
   search-factory search-decorator search-langchain \
   web-factory web-decorator web-langchain \
   edit-factory edit-decorator edit-langchain \
+  extract-from-file-factory extract-from-file-decorator extract-from-file-langchain extract-from-file-crewai \
+  convert-to-file-factory convert-to-file-decorator convert-to-file-langchain convert-to-file-crewai \
+  web-scraper-factory web-scraper-decorator web-scraper-langchain web-scraper-crewai \
   credentials policy skills meta-flow \
   mcp-server-stdio mcp-server-http \
   mcp-agent-stdio mcp-agent-http mcp-agent mcp-agent-http-mode mcp-agent-multi mcp-diagnose mcp-test \
@@ -109,6 +112,21 @@ help:
 	@echo "  make edit-factory"
 	@echo "  make edit-decorator"
 	@echo "  make edit-langchain"
+	@echo ""
+	@echo "  make extract-from-file-factory"
+	@echo "  make extract-from-file-decorator"
+	@echo "  make extract-from-file-langchain"
+	@echo "  make extract-from-file-crewai"
+	@echo ""
+	@echo "  make convert-to-file-factory"
+	@echo "  make convert-to-file-decorator"
+	@echo "  make convert-to-file-langchain"
+	@echo "  make convert-to-file-crewai"
+	@echo ""
+	@echo "  make web-scraper-factory"
+	@echo "  make web-scraper-decorator"
+	@echo "  make web-scraper-langchain"
+	@echo "  make web-scraper-crewai"
 	@echo ""
 	@echo "  ─ Advanced Features ───────────────────────"
 	@echo "  make credentials          Credential management demo"
@@ -275,6 +293,36 @@ edit-decorator:
 	$(PYTHON) native/edit/edit_decorator.py
 edit-langchain:
 	$(PYTHON) langchain/edit/edit_langchain.py
+
+# ── Extract From File Tool ──────────────────────────────────────────────────────
+extract-from-file-factory:
+	$(PYTHON) native/extract_from_file/extract_from_file_factory.py
+extract-from-file-decorator:
+	$(PYTHON) native/extract_from_file/extract_from_file_decorator.py
+extract-from-file-langchain:
+	$(PYTHON) langchain/extract_from_file/extract_from_file_langchain.py
+extract-from-file-crewai:
+	$(PYTHON) crewai/extract_from_file/extract_from_file_crewai.py
+
+# ── Convert To File Tool ─────────────────────────────────────────────────────────
+convert-to-file-factory:
+	$(PYTHON) native/convert_to_file/convert_to_file_factory.py
+convert-to-file-decorator:
+	$(PYTHON) native/convert_to_file/convert_to_file_decorator.py
+convert-to-file-langchain:
+	$(PYTHON) langchain/convert_to_file/convert_to_file_langchain.py
+convert-to-file-crewai:
+	$(PYTHON) crewai/convert_to_file/convert_to_file_crewai.py
+
+# ── Web Scraper Tool ─────────────────────────────────────────────────────────────
+web-scraper-factory:
+	$(PYTHON) native/web_scraper/web_scraper_factory.py
+web-scraper-decorator:
+	$(PYTHON) native/web_scraper/web_scraper_decorator.py
+web-scraper-langchain:
+	$(PYTHON) langchain/web_scraper/web_scraper_langchain.py
+web-scraper-crewai:
+	$(PYTHON) crewai/web_scraper/web_scraper_crewai.py
 
 # ── MCP ───────────────────────────────────────────────────────────────────────
 # MCP Servers
