@@ -1,20 +1,52 @@
 name: calculator
-version: '1.0.0'
-description: 'Perform basic arithmetic operations'
+version: '1.1.0'
+description: >
+  Perform arithmetic operations. Two mutually exclusive modes are supported: (1) binary/unary
+  mode using `operation` + `a` (+ `b`) for add, subtract, multiply, divide, power, sqrt, modulo,
+  sin, cos, tan, log, and log10; (2) expression mode using a single `expression` string that
+  supports full precedence, parentheses, and the constants `pi`/`e`, e.g.
+  "sqrt(16) + 2^3 - sin(pi/2)". Exactly one of `expression` OR (`operation` + `a`) must be
+  provided — supplying both, or neither, is an error. An optional `precision` rounds the final
+  numeric result to a given number of decimal places.
 
 parameters:
   operation:
     type: string
-    description: 'The operation to perform. Accepts: add (addition, sum, plus), subtract (subtraction, minus), multiply (multiplication, times, product), divide (division)'
-    required: true
+    description: >
+      The operation to perform (binary/unary mode only — omit when using `expression`).
+      Binary (require `a` and `b`): add (addition, sum, plus, +), subtract (subtraction, minus,
+      -), multiply (multiplication, times, product, *), divide (division, /), power (pow,
+      exponent, ^, **), modulo (mod, remainder, %). Unary (require only `a`; `b` is optional and
+      ignored): sqrt (square root), sin (sine), cos (cosine), tan (tangent), log (natural
+      logarithm, ln), log10 (base-10 logarithm).
+    required: false
   a:
     type: number
-    description: 'First operand'
-    required: true
+    description: >
+      First (or only, for unary operations) operand. Required in binary/unary mode; omit when
+      using `expression`.
+    required: false
   b:
     type: number
-    description: 'Second operand'
-    required: true
+    description: >
+      Second operand. Required in binary/unary mode for add/subtract/multiply/divide/power/
+      modulo; optional and ignored for unary operations (sqrt, sin, cos, tan, log, log10). Omit
+      when using `expression`.
+    required: false
+  expression:
+    type: string
+    description: >
+      A full math expression to evaluate instead of `operation`/`a`/`b`, e.g.
+      "sqrt(16) + 2^3 - sin(pi/2)". Supports +, -, *, /, ^ (power), % (modulo), parentheses, the
+      functions sqrt/sin/cos/tan/log/log10, and the constants pi and e. Maximum length: 500
+      characters. Evaluated using a sandboxed expression parser — never raw eval.
+    required: false
+  precision:
+    type: number
+    description: >
+      Number of decimal places (0-15) to round the final numeric result to. When omitted, the
+      result is returned unrounded.
+    required: false
 
 execution:
   type: function
@@ -25,16 +57,29 @@ output_schema:
   properties:
     result:
       type: number
-      description: 'Result of the operation'
+      description: 'Result of the operation, optionally rounded to `precision` decimal places'
     operation:
       type: string
+      description: >
+        The normalized/canonical operation name (e.g. "add", "sqrt", "power"), or "expression"
+        when `expression` mode was used.
+    original_operation:
+      type: string
+      description: >
+        The raw operation string as passed by the caller (before alias normalization), or
+        "expression" when `expression` mode was used.
     operands:
       type: object
+      description: >
+        For binary mode: { a, b } (add/subtract/multiply/divide/power/modulo). For unary mode:
+        { a } only (sqrt/sin/cos/tan/log/log10). For expression mode: { expression }.
       properties:
         a:
           type: number
         b:
           type: number
+        expression:
+          type: string
 
 error_handling:
   retry: 2
@@ -66,5 +111,34 @@ examples:
       operation: 'multiply'
       a: 4
       b: 7
+  - name: 'Power'
+    description: '2 raised to the 10th power'
+    params:
+      operation: 'power'
+      a: 2
+      b: 10
+  - name: 'Square root'
+    description: 'Square root of 144 (unary — `b` omitted)'
+    params:
+      operation: 'sqrt'
+      a: 144
+  - name: 'Rounded division'
+    description: 'Divide 10 by 3 and round to 2 decimal places'
+    params:
+      operation: 'divide'
+      a: 10
+      b: 3
+      precision: 2
+  - name: 'Expression with constants and functions'
+    description: 'Evaluate a full expression using sqrt, power, and sin with the pi constant'
+    params:
+      expression: 'sqrt(16) + 2^3 - sin(pi/2)'
 
-tags: [math, arithmetic, basic]
+tags: [math, arithmetic, expression, trigonometry, basic]
+
+notes:
+  caution: >
+    Expression mode is evaluated with a sandboxed math expression parser (mathjs `evaluate`),
+    never raw eval/Function. Expressions are capped at 500 characters. Results that are not
+    finite real numbers (e.g. division by zero, sqrt/log of an invalid domain, complex results)
+    raise a clear error instead of silently returning NaN/Infinity.

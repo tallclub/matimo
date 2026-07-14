@@ -601,15 +601,19 @@ describe('Decorator Helper Functions', () => {
       const spyExecute = jest.spyOn(matimo, 'execute');
 
       const thisArg = { matimo };
-      const args = ['add', 2, 3, 'extra', 'args'];
+      // calculator declares 5 parameters (operation, a, b, expression, precision) —
+      // pass more than that to verify the trailing args are dropped.
+      const args = ['add', 2, 3, 'unused-expression', 0, 'extra', 'args'];
 
       await executeToolViaDecorator('calculator', thisArg, args);
 
-      // Should only use first 3 args
+      // Should only use first 5 args (one per declared parameter)
       expect(spyExecute).toHaveBeenCalledWith('calculator', {
         operation: 'add',
         a: 2,
         b: 3,
+        expression: 'unused-expression',
+        precision: 0,
       });
 
       spyExecute.mockRestore();

@@ -15,7 +15,7 @@ describe('ToolLoader', () => {
 
       expect(tool).toBeDefined();
       expect(tool.name).toBe('calculator');
-      expect(tool.version).toBe('1.0.0');
+      expect(tool.version).toBe('1.1.0');
       expect(tool.parameters).toBeDefined();
     });
 
