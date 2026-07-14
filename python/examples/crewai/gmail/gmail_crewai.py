@@ -29,6 +29,11 @@ USAGE:
   make gmail-crewai
   # or with a custom task:
   uv run python gmail/gmail_crewai.py "Find unread emails from last 24h and summarise them"
+  uv run python gmail/gmail_crewai.py "Check my most recent email with an attachment and report its size"
+
+The Gmail toolset is converted wholesale via convert_tools_to_crewai(), so
+gmail-get-attachment is available to the agent alongside every other Gmail
+tool without any additional wiring.
 
 ============================================================================
 """

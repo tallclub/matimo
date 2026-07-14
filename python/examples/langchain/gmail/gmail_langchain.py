@@ -9,6 +9,11 @@ SETUP:  Set OPENAI_API_KEY and GMAIL_ACCESS_TOKEN in .env
 USAGE:
   make gmail-langchain
   uv run python gmail/gmail_langchain.py "How many emails are in my inbox?"
+  uv run python gmail/gmail_langchain.py "Does my latest email have an attachment? If so, what size is it?"
+
+All Gmail tools — including gmail-get-attachment — are discovered dynamically
+via the "gmail" name prefix, so the agent can call it without any code changes
+here whenever a task requires reading an attachment.
 ============================================================================
 """
 

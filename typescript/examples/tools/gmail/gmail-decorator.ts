@@ -33,9 +33,25 @@
 import 'dotenv/config';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { MatimoInstance, tool, setGlobalMatimoInstance } from 'matimo';
+import { MatimoInstance, MatimoError, tool, setGlobalMatimoInstance } from 'matimo';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+/**
+ * Render a MatimoError with its underlying HTTP status/body, not just the
+ * generic wrapper message — e.g. surfaces "401 Unauthorized: token expired"
+ * instead of just "HTTP error executing tool 'gmail-list-messages'".
+ */
+function describeError(error: unknown): string {
+  if (error instanceof MatimoError && error.details) {
+    const status = error.details.statusCode;
+    const body = error.details.details;
+    let extra = status ? ` (status ${status})` : '';
+    if (body) extra += `\n   → ${JSON.stringify(body)}`;
+    return `${error.message}${extra}`;
+  }
+  return error instanceof Error ? error.message : String(error);
+}
 
 /**
  * Decorator Pattern Agent - Uses @tool decorators for Gmail operations
@@ -89,6 +105,16 @@ class DecoratorPatternAgent {
   @tool('gmail-delete-message')
   async deleteMessage(messageId: string): Promise<unknown> {
     // Decorator automatically calls: matimo.execute('gmail-delete-message', { messageId })
+    // Matimo automatically injects GMAIL_ACCESS_TOKEN from env vars
+    return undefined;
+  }
+
+  /**
+   * Gmail get-attachment tool - automatically executes via @tool decorator
+   */
+  @tool('gmail-get-attachment')
+  async getAttachment(messageId: string, attachmentId: string): Promise<unknown> {
+    // Decorator automatically calls: matimo.execute('gmail-get-attachment', { messageId, attachmentId })
     // Matimo automatically injects GMAIL_ACCESS_TOKEN from env vars
     return undefined;
   }
@@ -162,7 +188,7 @@ async function runDecoratorPatternExamples() {
         }
       }
     } catch (error) {
-      console.info(`⚠️  List failed: ${error instanceof Error ? error.message : String(error)}`);
+      console.info(`⚠️  List failed: ${describeError(error)}`);
     }
 
     // Example 2: Send Email via decorator
@@ -180,7 +206,7 @@ async function runDecoratorPatternExamples() {
         if (data.id) console.info(`   Message ID: ${data.id}`);
       }
     } catch (error) {
-      console.info(`⚠️  Send failed: ${error instanceof Error ? error.message : String(error)}`);
+      console.info(`⚠️  Send failed: ${describeError(error)}`);
     }
 
     // Example 3: Create Draft via decorator
@@ -198,7 +224,46 @@ async function runDecoratorPatternExamples() {
         if (data.id) console.info(`   Draft ID: ${data.id}`);
       }
     } catch (error) {
-      console.info(`⚠️  Draft failed: ${error instanceof Error ? error.message : String(error)}`);
+      console.info(`⚠️  Draft failed: ${describeError(error)}`);
+    }
+
+    // Example 4: Get Attachment via decorator
+    console.info('\n📎 Example 4: Get Attachment via @tool Decorator');
+    console.info('─'.repeat(60));
+    try {
+      // NOTE: no `query: 'has:attachment'` here — Gmail's `q` search param
+      // requires a Google-verified OAuth app; unverified apps get a 403
+      // even with gmail.readonly granted. Scan recent messages client-side.
+      const listResult = await agent.listMessages(undefined, 10);
+      const listData = (listResult as any).data ?? listResult;
+      const candidates: any[] = listData?.messages ?? [];
+
+      let found: { messageId: string; attachmentId: string } | null = null;
+
+      for (const candidate of candidates) {
+        const messageResult = await agent.getMessage(candidate.id, 'full');
+        const messageData = (messageResult as any).data ?? messageResult;
+        const parts: any[] = messageData?.payload?.parts ?? [];
+        const attachmentPart = parts.find((p) => p?.body?.attachmentId);
+
+        if (attachmentPart) {
+          found = { messageId: candidate.id, attachmentId: attachmentPart.body.attachmentId };
+          break;
+        }
+      }
+
+      if (!found) {
+        console.info(
+          `ℹ️  Scanned ${candidates.length} recent messages — none had an attachment. Skipping.`
+        );
+      } else {
+        const attachmentResult = await agent.getAttachment(found.messageId, found.attachmentId);
+        const attachmentData = (attachmentResult as any).data ?? attachmentResult;
+        console.info('✅ Attachment retrieved successfully!');
+        console.info(`   Size: ${attachmentData.size} bytes`);
+      }
+    } catch (error) {
+      console.info(`⚠️  Get attachment failed: ${describeError(error)}`);
     }
 
     console.info('\n' + '═'.repeat(60));
@@ -207,7 +272,7 @@ async function runDecoratorPatternExamples() {
     console.info('  npm run gmail:decorator');
     console.info('  npm run gmail:decorator -- --email:your-email@gmail.com\n');
   } catch (error) {
-    console.error('❌ Error:', error instanceof Error ? error.message : String(error));
+    console.error('❌ Error:', describeError(error));
     process.exit(1);
   }
 }

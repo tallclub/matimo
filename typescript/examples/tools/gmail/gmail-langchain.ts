@@ -41,7 +41,8 @@
  * 1. Check your recent emails
  * 2. Send emails to you based on LLM reasoning
  * 3. Create draft emails with AI-generated content
- * 4. Respond naturally in conversation style
+ * 4. Fetch message attachments (gmail-get-attachment) when asked
+ * 5. Respond naturally in conversation style
  *
  * Example conversation:
  *   User: "Send me a test email"
@@ -144,6 +145,11 @@ async function runGmailAIAgent() {
       {
         title: 'Example 3: Create an automated draft',
         request: `Create a draft email to ${userEmail} about "Weekly Summary" with a professional greeting and a summary of what this example demonstrated.`,
+      },
+      {
+        title: 'Example 4: Inspect an attachment',
+        request:
+          'Look through my most recent emails that have an attachment. If you find one, fetch the attachment and tell me its size in bytes. If none have attachments, say so.',
       },
     ];
 
