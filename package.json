@@ -7,6 +7,11 @@
     "changelog": "git-cliff --config cliff.toml --output CHANGELOG.md && echo 'CHANGELOG.md generated ✨'",
     "changelog:preview": "git-cliff --config cliff.toml --unreleased | head -50"
   },
+  "pnpm": {
+    "overrides": {
+      "js-yaml": ">=5.2.1"
+    }
+  },
   "devDependencies": {
     "@commitlint/cli": "^20.5.0",
     "@commitlint/config-conventional": "^20.5.0",
