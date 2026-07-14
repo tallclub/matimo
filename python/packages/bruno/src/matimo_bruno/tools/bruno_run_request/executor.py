@@ -78,9 +78,9 @@ def execute(params: dict[str, Any]) -> dict[str, Any]:
         duration_ms = int((time.time() - start_time) * 1000)
         
         # Combine stdout and stderr for output
-        output = result.stdout or ""
-        if result.stderr:
-            output += "\n" + result.stderr
+        stdout = (result.stdout or "").strip()
+        stderr = (result.stderr or "").strip()
+        output = f"{stdout}\n{stderr}" if stdout and stderr else (stdout or stderr)
         
         # Parse status code from bru run output (e.g. "200 OK")
         status_match = re.search(r"\b([1-5]\d{2})\b", output)
