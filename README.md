@@ -1,10 +1,10 @@
-# Matimo — Enable AI Agents To Build Themselves
+# Matimo — The Governance Layer for AI Agent Tools
 
 <p align="center">
   <img src="./docs/assets/logo.png" alt="Matimo Logo" width="300" />
 </p>
 <p align="center">
-    <strong>Self-extending agents with enterprise-grade control</strong>
+    <strong>Policy-governed tool execution for any agent framework — plus a toolkit and meta-tools for agents that build their own capabilities</strong>
 </p>
 
 <p align="center">
@@ -27,19 +27,19 @@
   </a>
 </p>
 
-## The AI SDK with Meta-Tools, Policy Engine, Governance and Human-in-the-Loop Control
+## Governance First — Then Tools, Meta-Tools, and Universal Integration
 
-Give your agents **137+ production-ready tools** to start. Then activate **10 meta-tools** that let them create, validate, and approve new capabilities at runtime — governed by your **policy engine** with **human approval workflows** for critical actions.
+Every tool call — built-in, third-party, or agent-created — passes through Matimo's **policy engine** before it executes. On top of that governance layer, agents get **137+ production-ready tools**, **10 meta-tools** to create/validate/approve new capabilities at runtime, and **one YAML definition** that runs across every framework you use.
 
 **Why this matters:**
 
-- 🔧 **Meta-Tools**: Agents write new tool definitions in YAML, validate schemas, approve for production, and hot-reload — all mid-conversation. No restart. No redeployment.
+- 🛡️ **Policy Engine (Governance)**: Every execution — not just agent-created tools — is classified by risk level (low/medium/high/critical), checked against deterministic security rules, and logged to an audit trail. This is the layer everything else sits on top of.
 
-- 🛡️ **Policy Engine**: Classify every action by risk level (low/medium/high/critical). Block dangerous operations. Quarantine draft tools. Enforce your rules automatically.
+- 🤝 **Human-in-the-Loop (HITL)**: Critical or high-risk actions pause for human approval before execution. Configurable timeouts, HMAC-signed approval manifests, full audit trails. You stay in control even as agents gain autonomy.
 
-- 🤝 **Human-in-the-Loop (HITL)**: Critical tools require human approval before execution. Configurable timeouts, approval manifests, audit trails. You stay in control.
+- 🔧 **Meta-Tools & Self-Extension**: Agents write new tool definitions in YAML, submit them for policy validation, get human approval when required, and hot-reload — all mid-conversation. No restart. No redeployment. Every agent-created tool is governed the same way as your built-in ones.
 
-- 🌐 **Universal Integration**: One YAML definition works across TypeScript, Python, LangChain, CrewAI, Claude MCP, OpenAI. Write once, run everywhere.
+- 🌐 **Universal Integration**: One YAML definition works across TypeScript, Python, LangChain, CrewAI, Claude MCP, OpenAI. Write once, run everywhere — with the same policy enforcement everywhere.
 
 ---
 
@@ -66,7 +66,7 @@ payment = await agent.execute('stripe_create_payment', {
 
 **Other SDKs give agents a toolbox. Matimo gives them a workshop — with safety guardrails.**
 
-🎯 **v0.1.0 Stable** (May 1, 2026) — 2,996 tests · 95%+ coverage · Production-ready
+🎯 **Production-ready** — 3,700+ tests across TypeScript and Python · 95%+ coverage · see [CHANGELOG](./CHANGELOG.md) for release history
 
 [📖 Documentation](./docs) · [🚀 Quick Start](./docs/getting-started/QUICK_START.md) · [📚 API Reference](./docs/api-reference/SDK.md) · [🛠️ Add Tools](./docs/tool-development/ADDING_TOOLS.md) · [🤖 Examples](./examples)
 
@@ -147,20 +147,21 @@ Matimo ships with built-in support for:
 
 ## Why Matimo?
 
-**The Problem:** Every AI framework (LangChain, CrewAI, custom agents, etc.) defines tools differently. You duplicate tool logic across frameworks. And most SDKs can't handle agents that need to build new tools at runtime.
+**The Problem:** Every AI framework (LangChain, CrewAI, custom agents, etc.) defines tools differently, with no shared layer to govern what an agent is actually allowed to do. You duplicate tool logic across frameworks, bolt on approval checks per-project, and most SDKs can't safely handle agents that build new tools at runtime.
 
-**The Solution:** 
+**The Solution:** Matimo is, first, a **governance layer** — a policy engine that classifies risk and gates execution for every tool call, agent-created or not. Everything else builds on that foundation:
 
-1. **Write Once, Use Everywhere** — Define tools in clean YAML, deploy to SDK, LangChain, MCP, or custom agents without duplication.
-2. **Agent Self-Extension** — Agents autonomously build new tools and skills at runtime without restarting:
+1. **Governance by Default** — Every tool execution is classified by risk (low/medium/high/critical), checked against deterministic security rules (SSRF detection, namespace protection, credential allowlists), and can require human approval before running. This applies uniformly to built-in tools, third-party providers, and anything an agent creates itself.
+2. **Write Once, Use Everywhere** — Define tools in clean YAML, deploy to SDK, LangChain, MCP, or custom agents without duplication — with the same policy enforcement in every context.
+3. **Agent Self-Extension, Safely** — Agents autonomously build new tools and skills at runtime without restarting, and every new capability is policy-gated:
    - **Tool Creation**: `matimo_create_tool` — agents write YAML definitions, submit for approval, and use instantly
    - **Skill Creation**: `matimo_create_skill` — agents author domain knowledge (SKILL.md) directly into the system
    - **Hot-Reload**: `matimo_reload_tools` — updated capabilities live immediately without server restart
    - **Policy-Gated**: All agent-created tools validated against security rules; HITL approval for high-risk changes
-3. **Pre-built Ecosystem** — 9 providers (Slack, Gmail, GitHub, Notion, HubSpot, Postgres, Twilio, Mailchimp, etc.) ready to go.
-4. **Skills + Policies** — Teach agents domain knowledge via SKILL.md files. Control what agents can do with deterministic security rules and HITL quarantine.
+4. **Pre-built Ecosystem** — 9 providers (Slack, Gmail, GitHub, Notion, HubSpot, Postgres, Twilio, Mailchimp, etc.) ready to go, all governed by the same policy engine.
 
 Included:
+- **Policy Engine** — 9 security rules, risk classification, HITL quarantine, HMAC approval manifests, audit events
 - TypeScript SDK (factory & decorator patterns)
 - **Python SDK** (factory, decorator, LangChain, CrewAI, MCP — full parity)
 - LangChain integration (with examples)
@@ -168,7 +169,6 @@ Included:
 - MCP Server (Claude Desktop, Cursor, Windsurf, any MCP client)
 - Auto-discovery from npm packages
 - OAuth2 support + parameter validation
-- 9 security rules + HITL approval system
 
 See [Contributing](./CONTRIBUTING.md) for details.
 
@@ -301,9 +301,9 @@ const results = await matimo.semanticSearchSkills('How do I handle rate limiting
 
 See [Skills Documentation](./docs/skills/SKILLS.md) for the full guide.
 
-## Policy Engine & HITL
+## Policy Engine & HITL (The Governance Layer)
 
-Matimo includes a defense-in-depth policy engine for agent tool usage:
+This is Matimo's core: a defense-in-depth policy engine that governs every tool execution, not just agent-created ones.
 
 ```typescript
 const matimo = await MatimoInstance.init({
