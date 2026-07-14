@@ -2,11 +2,11 @@
 
 ## Current Status
 
-**Latest Release**: **v0.1.4** (June 11, 2026) — **🪟 Microsoft Graph Provider + Stability Patches**
+**Latest Release**: **v0.1.5** — **🔌 @matimo/composio: Governed Access to 342 Composio Tools**
 
 ### 🏆 Production Launch — General Availability
 
-Matimo v0.1.4 stable is now **production-ready** with full TypeScript and Python SDK support, 146+ tools across 11 providers, enterprise-grade security, and comprehensive framework integrations.
+Matimo v0.1.5 stable is now **production-ready** with full TypeScript and Python SDK support, 488+ tools across 12 providers (146+ native + 342 via `@matimo/composio`), enterprise-grade security, and comprehensive framework integrations.
 
 ✅ **v0.1.0 Stable — Completed Features**:
 
@@ -15,17 +15,18 @@ Matimo v0.1.4 stable is now **production-ready** with full TypeScript and Python
 - Tool execution (function, command, and HTTP types)
 - YAML-based tool definitions + Zod (TS) / Pydantic v2 (Python) validation
 - **4 SDK patterns**: Factory, Decorator, LangChain, CrewAI
-- **10 meta-tools** for runtime tool and skill management
+- **12 meta-tools** for runtime tool and skill management
 - CLI: list, search, install, help, doctor, review, validate, mcp
 - MCP Server (stdio + HTTP on port 3101, Claude Desktop compatible)
 - Skills system with TF-IDF semantic search
 - Policy engine with risk classification + HITL workflows
 - Secret management (Env, Dotenv, Vault, AWS Secrets Manager)
 
-**Provider Ecosystem** (146+ tools across 11 providers)
-- **Slack** (16+), **GitHub** (10+), **Gmail** (5+), **Notion** (7+)
+**Provider Ecosystem** (488+ tools across 12 providers)
+- **Slack** (16+), **GitHub** (10+), **Gmail** (6+), **Notion** (7+)
 - **HubSpot** (50+), **Mailchimp** (8+), **Postgres** (6+), **Twilio** (4+)
 - **Bruno CLI** (7), **Microsoft Graph** (9) — Mail, Teams, calendar, SharePoint, OneDrive search
+- **Composio** (342) — Jira, Google Workspace, Microsoft 365, Asana, Linear, and more via a policy-governed proxy
 - All providers ship with TypeScript + Python SDKs, LangChain/CrewAI examples
 
 **Bruno CLI Provider** (v0.1.0 — NEW)
@@ -34,9 +35,9 @@ Matimo v0.1.4 stable is now **production-ready** with full TypeScript and Python
 - ✅ JSON reporter integration
 - ✅ Collection and request-level execution
 
-**Meta-Tools** (10 total — 2 new in v0.1.0)
-- ✅ Tool lifecycle: `create`, `validate`, `approve`, `reload`, `list`
-- ✅ Tool discovery: **`get_tool`** (NEW), **`search_tools`** (NEW)
+**Meta-Tools** (12 total)
+- ✅ Tool lifecycle: `create`, `validate`, `approve`, `reload`, `list_user_tools`, `get_tool_status`
+- ✅ Tool discovery: `get_tool`, `search_tools`
 - ✅ Skill management: `create_skill`, `get_skill`, `list_skills`, `validate_skill`
 - ✅ Full MCP + LangChain agent integration
 
@@ -46,14 +47,14 @@ Matimo v0.1.4 stable is now **production-ready** with full TypeScript and Python
 - ✅ Production fail-fast if HITL handler not provided
 
 **Quality & Security** (v0.1.0 stable)
-- ✅ **2996 total tests** (2001 TypeScript + 995 Python)
+- ✅ **3,789 total tests** (2,412 TypeScript + 1,377 Python)
 - ✅ **95%+ test coverage** (both SDKs)
 - ✅ **Zero test pollution** (pytest-asyncio markers fixed)
 - ✅ **5 critical security patches** applied
 - ✅ **MCP 1.0 standards compliance**
 
 **Python SDK** (v0.1.0 stable)
-- ✅ 995 tests, 95%+ coverage
+- ✅ 1,377 tests, 95%+ coverage
 - ✅ Python 3.11+ (asyncio-based)
 - ✅ `convert_tools_to_langchain()` — LangChain integration
 - ✅ `convert_tools_to_crewai()` — CrewAI integration
@@ -62,7 +63,7 @@ Matimo v0.1.4 stable is now **production-ready** with full TypeScript and Python
 - ✅ Complete type hints + documentation
 
 **TypeScript SDK** (v0.1.0 stable)
-- ✅ 2001 tests, 95%+ coverage (branches: 87%, functions: 97%, lines: 95%)
+- ✅ 2,412 tests, 95%+ coverage (branches: 87%, functions: 97%, lines: 95%)
 - ✅ Node.js 18+, 20+, 22+
 - ✅ `convertToolsToLangChain()` — LangChain integration
 - ✅ `MCPServer` — MCP stdio + HTTP server
