@@ -1,9 +1,17 @@
 import { MatimoInstance } from '../../src/matimo-instance';
 import { getGlobalApprovalHandler } from '../../src/approval/approval-handler';
 import path from 'path';
+import axios from 'axios';
 
-// Increase timeout for HTTP-based tests (httpbin.org calls can be slow)
-jest.setTimeout(60000);
+// These tests execute fixture tools that point at real endpoints
+// (httpbin.org, api.example.com). Mock axios so the suite never depends on
+// real network access - live calls were slow/hanging in CI.
+jest.mock('axios');
+const mockedAxios = axios as jest.Mocked<typeof axios>;
+
+beforeEach(() => {
+  mockedAxios.request.mockRejectedValue(new Error('mocked network call'));
+});
 
 describe('MatimoInstance - Core Functionality', () => {
   let instance: MatimoInstance;

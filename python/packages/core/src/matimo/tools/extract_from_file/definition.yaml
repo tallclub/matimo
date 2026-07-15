@@ -1,0 +1,139 @@
+name: extract_from_file
+version: '1.0.0'
+description: >-
+  Extract text content from a local or remote file. Supports PDF (text extraction),
+  DOCX (raw text extraction), and plain text/CSV files. Format is auto-detected from
+  the file extension and magic bytes unless explicitly specified. Exactly one of
+  `filePath` or `fileUrl` must be provided.
+requires_approval: true
+
+parameters:
+  filePath:
+    type: string
+    description: >-
+      Absolute or relative path to a local file to extract from (supports ~ for home
+      directory). Mutually exclusive with fileUrl — provide exactly one.
+    required: false
+    example: './documents/report.pdf'
+
+  fileUrl:
+    type: string
+    description: >-
+      HTTP(S) URL of a remote file to download and extract from. Mutually exclusive
+      with filePath — provide exactly one. Requests to localhost/private/link-local
+      addresses are blocked.
+    required: false
+    example: 'https://example.com/files/report.docx'
+
+  format:
+    type: string
+    description: >-
+      Source file format. Use "auto" (default) to detect the format from the file
+      extension, falling back to magic-byte sniffing when the extension is missing
+      or ambiguous.
+    required: false
+    default: 'auto'
+    enum: ['auto', 'pdf', 'docx', 'txt', 'csv']
+    example: 'auto'
+
+  encoding:
+    type: string
+    description: Text encoding used to decode txt/csv content. Defaults to utf8.
+    required: false
+    default: 'utf8'
+    example: 'utf8'
+
+  maxSizeBytes:
+    type: number
+    description: >-
+      Maximum accepted file size in bytes, checked before parsing (default 26214400 =
+      25MB). Prevents memory exhaustion from oversized local or remote files.
+    required: false
+    default: 26214400
+    example: 26214400
+
+  timeout:
+    type: number
+    description: Request timeout in milliseconds when fetching a remote fileUrl (default 30000).
+    required: false
+    default: 30000
+    example: 30000
+
+execution:
+  type: function
+  code: './extract_from_file.py'
+
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+      description: Whether extraction succeeded
+    extracted_text:
+      type: string
+      description: Extracted plain-text content of the file
+    format_detected:
+      type: string
+      description: 'The format that was used to parse the file: pdf, docx, txt, or csv'
+    source:
+      type: string
+      description: 'Which input was used: filePath or fileUrl'
+    sourceLocation:
+      type: string
+      description: Resolved local path or the remote URL that was read
+    size:
+      type: number
+      description: Size in bytes of the file that was read
+    metadata:
+      type: object
+      description: Format-specific metadata about the extracted content
+      properties:
+        page_count:
+          type: number
+          description: Number of pages (PDF only)
+        word_count:
+          type: number
+          description: Approximate word count of the extracted text
+        char_count:
+          type: number
+          description: Character count of the extracted text
+        row_count:
+          type: number
+          description: Number of data rows (CSV only, excludes header row)
+        column_count:
+          type: number
+          description: Number of columns detected in the first row (CSV only)
+  required: [success, extracted_text, format_detected, source, metadata]
+
+error_handling:
+  retry: 1
+  backoff_type: exponential
+  initial_delay_ms: 500
+
+examples:
+  - name: 'Extract text from a local PDF'
+    description: 'Read and extract all text from a PDF file on disk'
+    params:
+      filePath: './documents/report.pdf'
+  - name: 'Extract text from a local DOCX'
+    description: 'Read and extract raw text from a Word document'
+    params:
+      filePath: './documents/proposal.docx'
+      format: 'docx'
+  - name: 'Extract text from a plain text file'
+    description: 'Read a .txt file with explicit encoding'
+    params:
+      filePath: './notes/todo.txt'
+      encoding: 'utf8'
+  - name: 'Extract data from a CSV file'
+    description: 'Read a CSV file and return its raw text plus row/column metadata'
+    params:
+      filePath: './data/records.csv'
+      format: 'csv'
+  - name: 'Extract text from a remote DOCX'
+    description: 'Download a DOCX file over HTTPS and extract its text'
+    params:
+      fileUrl: 'https://example.com/files/report.docx'
+      maxSizeBytes: 10485760
+
+tags: [file-io, extract, parsing, pdf, docx, csv, text, filesystem, web]

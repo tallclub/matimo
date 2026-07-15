@@ -161,7 +161,7 @@ console.log('Message sent!', result);
 > **Recommended:** Use `snake_case` for new tools following `{provider}_{action}`.
 
 ✅ Great for: Using existing integrations in your app
-📖 **[See All Available Tools →](../user-guide/AVAILABLE_TOOLS.md)**
+📖 **[See All Available Tools →](../../README.md#whats-included)**
 
 ---
 

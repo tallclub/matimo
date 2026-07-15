@@ -1,0 +1,56 @@
+name: gmail-get-attachment
+description: Fetch a Gmail message attachment by ID, returning its size and base64url-encoded raw data
+version: '1.0.0'
+
+parameters:
+  messageId:
+    type: string
+    description: ID of the message that contains the attachment
+    required: true
+    example: '187a65b7f3f2f11e'
+
+  attachmentId:
+    type: string
+    description: ID of the attachment to retrieve (returned in the message body part's attachmentId field)
+    required: true
+    example: 'ANGjdJ_xyz123'
+
+execution:
+  type: http
+  method: GET
+  url: 'https://www.googleapis.com/gmail/v1/users/me/messages/{messageId}/attachments/{attachmentId}'
+  headers:
+    Authorization: 'Bearer {GMAIL_ACCESS_TOKEN}'
+    Accept: 'application/json'
+
+authentication:
+  type: oauth2
+  provider: google
+  scopes:
+    - 'https://www.googleapis.com/auth/gmail.readonly'
+
+output_schema:
+  type: object
+  properties:
+    attachmentId:
+      type: string
+      description: The attachment identifier
+    size:
+      type: number
+      description: Size of the attachment in bytes
+    data:
+      type: string
+      description: Base64url-encoded raw attachment data
+    error:
+      type: string
+      description: Error message if request failed
+
+error_handling:
+  retry: 3
+  backoff_type: exponential
+  initial_delay_ms: 1000
+  retryable_status_codes:
+    - 429
+    - 500
+    - 502
+    - 503

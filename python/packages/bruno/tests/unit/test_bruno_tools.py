@@ -303,7 +303,7 @@ class TestGetCollectionInfo:
         (tmp_path / "req.bru").write_text("GET {\n  url: https://example.com\n}")
         result = self._exec({"collection_path": str(tmp_path)})
         assert result["success"] is True
-        assert result["collection"]["name"] is None
+        assert result["collection"]["name"] == tmp_path.name
 
     def test_invalid_bruno_json_handled(self, tmp_path: Path) -> None:
         (tmp_path / "bruno.json").write_text("NOT JSON {{{{")

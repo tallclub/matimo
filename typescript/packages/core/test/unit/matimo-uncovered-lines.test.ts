@@ -1,9 +1,13 @@
 import { MatimoInstance } from '../../src/matimo-instance';
 import { Parameter } from '../../src/core/types';
 import path from 'path';
+import axios from 'axios';
 
-// Increase timeout for HTTP-based tests (httpbin.org calls can be slow)
-jest.setTimeout(60000);
+// These fixture tools point at https://httpbin.org - mock axios so the suite
+// never depends on real network access (was flaky/slow in CI, see GitHub Actions
+// timeouts hitting the live endpoint).
+jest.mock('axios');
+const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 describe('MatimoInstance - Uncovered Lines Deep Coverage', () => {
   let instance: MatimoInstance;
@@ -11,6 +15,10 @@ describe('MatimoInstance - Uncovered Lines Deep Coverage', () => {
 
   beforeAll(async () => {
     instance = await MatimoInstance.init(toolsPath);
+  });
+
+  beforeEach(() => {
+    mockedAxios.request.mockRejectedValue(new Error('mocked network call'));
   });
 
   describe('injectAuthParameters - All auth patterns', () => {
