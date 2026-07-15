@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "matimo-slack"
-version = "0.1.0"
+version = "0.1.2"
 description = "Matimo provider — Slack tools (send messages, manage channels, users)"
 readme = "README.md"
 license = { text = "MIT" }

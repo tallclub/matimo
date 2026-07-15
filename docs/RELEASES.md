@@ -1,3 +1,96 @@
+## v0.1.6 — Document & Web Tooling: web_scraper, convert_to_file, extract_from_file 🛠️
+
+> **Release**: Three new core tools for pulling content into an agent's context and turning agent output into shippable files, plus expression-mode calculator, a Gmail attachment tool, a Bruno bug fix, and a round of dependency security patches.
+
+**Released**: July 15, 2026
+**Scope**: `typescript/` workspace — all 13 packages (`core`, `cli`, `bruno`, `slack`, `gmail`, `github`, `hubspot`, `notion`, `mailchimp`, `microsoft`, `postgres`, `twilio`, `composio`) bumped to `0.1.6` in lockstep. Corresponding Python changes land in Python v0.1.2, immediately below.
+**Severity**: 🟢 **Additive** — three new tools, one new tool parameter mode, one bug fix, no breaking changes to existing package APIs
+
+---
+
+### ✨ **New Core Tool: `web_scraper`**
+
+Crawls a website starting from a given URL and extracts the main readable content of every page discovered within the same domain (child/sibling pages reachable via same-domain links), bounded by `maxPages`/`maxDepth`. No headless browser — fetches HTML directly and extracts readable content via `@mozilla/readability` + `jsdom` (TypeScript) / `readability-lxml` + `markdownify` (Python).
+
+### ✨ **New Core Tool: `convert_to_file`**
+
+Converts structured content between JSON, CSV, Markdown, and plain text into a target file format: JSON↔CSV round-tripping, Markdown→PDF, Markdown→DOCX, plain text→DOCX/TXT. Markdown is parsed into headings/paragraphs/lists before being re-rendered into the target format, rather than dumped as raw text. TypeScript: `marked` + `pdfkit` + `docx`. Python: `mistune` + `reportlab` + `python-docx`.
+
+### ✨ **New Core Tool: `extract_from_file`**
+
+Extracts text content from a local or remote file — PDF (text extraction), DOCX (raw text extraction), plain text/CSV. Format is auto-detected from the file extension and magic bytes unless explicitly specified. TypeScript: `pdf-parse` + `mammoth`. Python: `pypdf` + `python-docx`.
+
+### ✨ **Calculator: expression mode**
+
+`calculator` now supports two mutually exclusive modes: the existing binary/unary `operation` + `a`/`b` mode, and a new `expression` string mode with full operator precedence, parentheses, and the constants `pi`/`e` (e.g. `"sqrt(16) + 2^3 - sin(pi/2)"`). An optional `precision` rounds the final result. Expressions are evaluated in a sandboxed parser — `mathjs` in TypeScript, `simpleeval` in Python — never raw `eval()`/`Function()`.
+
+### ✨ **Gmail: `get-attachment` tool**
+
+Fetches a Gmail message attachment by ID, returning its size and base64url-encoded raw data.
+
+### 🐛 **Fix: Bruno tools silently discarded subprocess errors**
+
+`bruno_run_collection` and `bruno_run_request` always returned an empty `errors` array on subprocess failure, discarding `bru`'s stderr output — making failures undebuggable. Both now capture stderr into `errors` when the process exits non-zero. `bruno_run_request` also concatenated stdout/stderr with a stray leading newline when stdout was empty; now joins only the parts that are present.
+
+### 🔐 **Security: dependency bumps**
+
+- `js-yaml` `^4.1.1` → `^5.2.1` (TypeScript) — `YAML.load()` now throws on empty/comment-only input instead of returning `undefined`; `skill-loader.ts` and `policy-loader.ts` updated to use `YAML.loadAll()` and treat a zero-document result as "no content"
+- `uuid` `^10.0.0` → `^11.1.1` (TypeScript)
+- `fast-uri` → `3.1.3` (root devDependency chain via `ajv`/commitlint) — fixes two chained high-severity advisories (path traversal via percent-encoded dot segments; host confusion via percent-encoded authority delimiters)
+- Seven transitive TypeScript dependencies bumped via `pnpm.overrides` (Dependabot-flagged, several levels deep: `grpc`/`proto-loader` and others)
+- Python: `starlette`, `cryptography`, `aiohttp`, `langsmith` bumped across `python/uv.lock` and `python/examples/mcp/uv.lock`
+- Python: `langgraph-sdk`, `langgraph-checkpoint`, `pyjwt`, `python-multipart`, `pydantic-settings` bumped (root + `examples/mcp`)
+
+### 📚 **Documentation**
+
+- Root `README.md` repositioned to lead with Matimo's governance-layer identity ahead of feature listing
+- `docs/api-reference/META_TOOLS.md` — added full reference sections for `matimo_get_tool` and `matimo_search_tools` (previously undocumented despite being implemented), corrected an inflated claim about Python example coverage
+- `docs/architecture/OVERVIEW.md` — removed a reference to a nonexistent "echo" tool, corrected the built-in tool list and counts, fixed the ASCII architecture diagram
+- `docs/index.md`, `docs/getting-started/QUICK_START.md` — corrected meta-tool counts and a dead link
+
+### 🧪 **Verification**
+
+- `pnpm validate-tools`: 492/492 valid
+- `pnpm lint`: clean
+- `pnpm test:coverage`: 2412/2412 tests passing, 95.24% lines / 87.90% branches / 97.53% functions / 95.95% statements
+
+---
+
+## Python v0.1.2 — Document Tooling Parity, Calculator Expressions & Bruno Fix 🐍
+
+> **Release**: Python-side parity with the TypeScript v0.1.6 release above — same three new core tools, same calculator expression mode, same Bruno fix.
+
+**Released**: July 15, 2026
+**Scope**: `python/` workspace — all 13 packages (`matimo-core`, `matimo-cli`, `matimo` meta-package, `matimo-bruno`, `matimo-slack`, `matimo-gmail`, `matimo-github`, `matimo-hubspot`, `matimo-notion`, `matimo-mailchimp`, `matimo-microsoft`, `matimo-postgres`, `matimo-twilio`) bumped to `0.1.2` in lockstep, matching the versioning strategy TypeScript already uses. Previously, only the `matimo` meta-package (last at `0.1.1.post1`) and `matimo-core` (last at `0.1.0`) had diverged; this release re-synchronizes every package.
+**Severity**: 🟢 **Additive** — no breaking changes; `matimo-core`'s dependency bound (`>=0.1.0,<0.2.0`) on every provider package already covers `0.1.2`, so no constraint changes were needed
+
+---
+
+### ✨ **New `matimo-core` tools**: `web_scraper`, `convert_to_file`, `extract_from_file`
+
+Same behavior as the TypeScript versions (see v0.1.6 above). New dependencies added to `matimo-core`: `pypdf`, `python-docx`, `mistune`, `reportlab`, `readability-lxml`, `markdownify`, `lxml-html-clean`.
+
+### ✨ **Calculator: expression mode**
+
+Same `expression` parameter mode as TypeScript, evaluated via `simpleeval` (never raw `eval()`). New dependency: `simpleeval`.
+
+### ✨ **Gmail: `get-attachment` tool**
+
+Python executor added alongside the TypeScript one.
+
+### 🐛 **Fix: Bruno tools silently discarded subprocess errors**
+
+Same root cause and fix as the TypeScript side — `bruno_run_collection`/`bruno_run_request` now populate `errors` from stderr on non-zero exit, and `bruno_run_request` no longer prepends a stray newline when stdout is empty. Also fixed a test assertion in `test_bruno_tools.py` that expected `collection.name` to be `None` when no `bruno.json` is present — the tool correctly falls back to the directory name, matching the TypeScript implementation.
+
+### 🧪 **Verification**
+
+- `ruff check packages/ scripts/`: clean
+- `python scripts/validate_tools.py`: 155/155 valid
+- `matimo-core` tests: 97% line coverage (`pytest packages/core/tests/`)
+- `matimo-bruno` tests: 107/107 passing (`uv run --package matimo-bruno pytest packages/bruno/tests/`)
+- `matimo-gmail` tests: 12/12 passing
+- `matimo-microsoft` tests: 146/146 passing (unaffected, re-run as part of the lockstep bump)
+
 ---
 
 ## v0.1.5 — @matimo/composio: Governed Access to 342 Composio Tools 🔌

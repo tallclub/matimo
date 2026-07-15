@@ -2,11 +2,11 @@
 
 ## Current Status
 
-**Latest Release**: **v0.1.5** — **🔌 @matimo/composio: Governed Access to 342 Composio Tools**
+**Latest Release**: **v0.1.6** — **🛠️ Document & Web Tooling: web_scraper, convert_to_file, extract_from_file** (Python: v0.1.2)
 
 ### 🏆 Production Launch — General Availability
 
-Matimo v0.1.5 stable is now **production-ready** with full TypeScript and Python SDK support, 488+ tools across 12 providers (146+ native + 342 via `@matimo/composio`), enterprise-grade security, and comprehensive framework integrations.
+Matimo v0.1.6 stable (Python: v0.1.2) is now **production-ready** with full TypeScript and Python SDK support, 492+ tools across 12 providers (150+ native + 342 via `@matimo/composio`), enterprise-grade security, and comprehensive framework integrations.
 
 ✅ **v0.1.0 Stable — Completed Features**:
 
@@ -22,8 +22,8 @@ Matimo v0.1.5 stable is now **production-ready** with full TypeScript and Python
 - Policy engine with risk classification + HITL workflows
 - Secret management (Env, Dotenv, Vault, AWS Secrets Manager)
 
-**Provider Ecosystem** (488+ tools across 12 providers)
-- **Slack** (16+), **GitHub** (10+), **Gmail** (6+), **Notion** (7+)
+**Provider Ecosystem** (492+ tools across 12 providers)
+- **Slack** (16+), **GitHub** (10+), **Gmail** (7+), **Notion** (7+)
 - **HubSpot** (50+), **Mailchimp** (8+), **Postgres** (6+), **Twilio** (4+)
 - **Bruno CLI** (7), **Microsoft Graph** (9) — Mail, Teams, calendar, SharePoint, OneDrive search
 - **Composio** (342) — Jira, Google Workspace, Microsoft 365, Asana, Linear, and more via a policy-governed proxy

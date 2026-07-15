@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "matimo-core"
-version = "0.1.0"
+version = "0.1.2"
 description = "Matimo core — framework-agnostic SDK: pre-built providers, skills layer, MCP, and a policy engine you control"
 readme = "README.md"
 license = { text = "MIT" }

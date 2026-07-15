@@ -1,6 +1,6 @@
 {
   "name": "@matimo/cli",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "CLI tools for managing Matimo tool installations",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
