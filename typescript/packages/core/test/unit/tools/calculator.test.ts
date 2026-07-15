@@ -3,21 +3,7 @@ import fs from 'fs';
 import { ToolLoader } from '../../../src/core/tool-loader';
 import type { Parameter } from '../../../src/core/types';
 import { MatimoError } from '../../../src/errors/matimo-error';
-
-type CalculatorParams = {
-  operation?: string;
-  a?: number;
-  b?: number;
-  expression?: string;
-  precision?: number;
-};
-
-type CalculatorResult = {
-  result: number;
-  operation: string;
-  original_operation: string;
-  operands: Record<string, unknown>;
-};
+import calculator from '../../../tools/calculator/calculator';
 
 describe('Calculator Tool', () => {
   const coreToolsPath = path.join(__dirname, '../../../tools');
@@ -148,13 +134,6 @@ describe('Calculator Tool', () => {
 });
 
 describe('Calculator Implementation', () => {
-  let calculator: (params: CalculatorParams) => Promise<CalculatorResult>;
-
-  beforeAll(async () => {
-    const calculatorModule = await import('../../../tools/calculator/calculator');
-    calculator = calculatorModule.default;
-  });
-
   describe('Binary mode — backward-compatible core operations', () => {
     it('adds two numbers (canonical operation name)', async () => {
       const result = await calculator({ operation: 'add', a: 5, b: 3 });
