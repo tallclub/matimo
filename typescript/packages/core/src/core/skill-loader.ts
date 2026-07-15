@@ -8,7 +8,7 @@
 
 import fs from 'fs';
 import path from 'path';
-import YAML from 'js-yaml';
+import * as YAML from 'js-yaml';
 import { z } from 'zod';
 import {
   SkillDefinition,
@@ -93,7 +93,12 @@ function extractFrontmatter(content: string): {
 
   let parsed: Record<string, unknown>;
   try {
-    parsed = (YAML.load(frontmatterBlock) as Record<string, unknown>) || {};
+    // js-yaml 5.x throws on empty input instead of returning undefined (as 4.x
+    // did) -- including comment-only frontmatter, which a plain length check
+    // can't detect. loadAll() still returns [] for an empty document (per the
+    // v4->v5 migration guide), so use that to recover the old behavior.
+    const documents = YAML.loadAll(frontmatterBlock);
+    parsed = (documents.length === 0 ? undefined : (documents[0] as Record<string, unknown>)) || {};
   } catch (e) {
     return { error: `Failed to parse YAML frontmatter: ${(e as Error).message}` };
   }

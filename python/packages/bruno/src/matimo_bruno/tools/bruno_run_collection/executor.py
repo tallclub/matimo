@@ -75,9 +75,12 @@ def execute(params: dict[str, Any]) -> dict[str, Any]:
         )
         
         exit_code = result.returncode
+        run_errors = []
         if exit_code != 0:
             logger.warning(f"bru run exited with non-zero status: {result.stderr}")
-        
+            if result.stderr:
+                run_errors.append(result.stderr.strip())
+
         # Read JSON report
         report_data = {}
         try:
@@ -113,7 +116,7 @@ def execute(params: dict[str, Any]) -> dict[str, Any]:
             },
             "results": results,
             "report_path": report_path,
-            "errors": []
+            "errors": run_errors
         }
     except subprocess.TimeoutExpired:
         logger.error("Collection execution timed out")

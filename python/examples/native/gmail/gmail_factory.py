@@ -58,6 +58,11 @@ AVAILABLE TOOLS:
    Returns: { success }
    Note: Permanently deletes the message
 
+6. gmail-get-attachment
+   Parameters: messageId (required), attachmentId (required)
+   Returns: { attachmentId, size, data } — data is base64url-encoded raw bytes
+   Example: Fetch the raw bytes of an attachment found on a message
+
 ============================================================================
 """
 
@@ -70,12 +75,26 @@ from dotenv import load_dotenv
 
 try:
     from matimo_gmail import get_tools_path
-    from matimo import Matimo
+    from matimo import Matimo, MatimoError
 except ImportError:
-    from matimo import Matimo
+    from matimo import Matimo, MatimoError
     get_tools_path = None
 
 load_dotenv(Path(__file__).parent.parent.parent / ".env")
+
+
+def describe_error(error: Exception) -> str:
+    """Render a MatimoError with its underlying HTTP status/body, not just the
+    generic wrapper message — e.g. surfaces "401 Unauthorized: token expired"
+    instead of just "HTTP error executing tool 'gmail-list-messages'"."""
+    if isinstance(error, MatimoError) and error.details:
+        status = error.details.get("status_code")
+        body = error.details.get("body")
+        extra = f" (status {status})" if status else ""
+        if body:
+            extra += f"\n   → {body}"
+        return f"{error}{extra}"
+    return str(error)
 
 
 async def run_factory_pattern_examples() -> None:
@@ -143,7 +162,7 @@ async def run_factory_pattern_examples() -> None:
                 else:
                     print("⚠️  No messages found or unexpected format")
         except Exception as error:
-            print(f"❌ List failed: {str(error)}")
+            print(f"❌ List failed: {describe_error(error)}")
 
         # Example 2: Send Email
         print("\n2️⃣  Send Email")
@@ -178,7 +197,7 @@ async def run_factory_pattern_examples() -> None:
                 else:
                     print("⚠️  Unexpected response format")
         except Exception as error:
-            print(f"❌ Send failed: {str(error)}")
+            print(f"❌ Send failed: {describe_error(error)}")
 
         # Example 3: Create Draft
         print("\n3️⃣  Create Draft")
@@ -212,7 +231,71 @@ async def run_factory_pattern_examples() -> None:
                 else:
                     print("⚠️  Unexpected response format")
         except Exception as error:
-            print(f"❌ Draft failed: {str(error)}")
+            print(f"❌ Draft failed: {describe_error(error)}")
+
+        # Example 4: Get Attachment
+        print("\n4️⃣  Get Attachment")
+        print("─" * 60)
+        try:
+            # NOTE: we deliberately do NOT use query="has:attachment" here.
+            # Gmail's `q` search param requires an app that has completed
+            # Google's OAuth verification review — unverified apps get a 403
+            # ("Metadata scope does not support 'q' parameter") even with
+            # gmail.readonly granted. Instead, scan recent messages
+            # client-side for one that has an attachment.
+            list_result = await matimo.execute(
+                "gmail-list-messages",
+                {"maxResults": 10, "GMAIL_ACCESS_TOKEN": access_token},
+            )
+            list_data = list_result.get("data", list_result) if isinstance(list_result, dict) else {}
+            candidates = list_data.get("messages") if isinstance(list_data, dict) else None or []
+
+            found = None
+            for candidate in candidates:
+                message_result = await matimo.execute(
+                    "gmail-get-message",
+                    {
+                        "messageId": candidate["id"],
+                        "format": "full",
+                        "GMAIL_ACCESS_TOKEN": access_token,
+                    },
+                )
+                message_data = (
+                    message_result.get("data", message_result)
+                    if isinstance(message_result, dict)
+                    else {}
+                )
+                parts = (message_data.get("payload") or {}).get("parts") or []
+                attachment_part = next(
+                    (p for p in parts if (p.get("body") or {}).get("attachmentId")), None
+                )
+                if attachment_part:
+                    found = (candidate["id"], attachment_part)
+                    break
+
+            if not found:
+                print(f"ℹ️  Scanned {len(candidates)} recent messages — none had an attachment. Skipping.")
+            else:
+                message_id, attachment_part = found
+                attachment_result = await matimo.execute(
+                    "gmail-get-attachment",
+                    {
+                        "messageId": message_id,
+                        "attachmentId": attachment_part["body"]["attachmentId"],
+                        "GMAIL_ACCESS_TOKEN": access_token,
+                    },
+                )
+                attachment_data = (
+                    attachment_result.get("data", attachment_result)
+                    if isinstance(attachment_result, dict)
+                    else {}
+                )
+                print("✅ Attachment retrieved successfully!")
+                print(f"   Filename: {attachment_part.get('filename') or '(unnamed)'}")
+                print(f"   Size: {attachment_data.get('size')} bytes")
+                print(f"   Base64url data length: {len(attachment_data.get('data') or '')} chars")
+        except Exception as error:
+            print(f"❌ Get attachment failed: {describe_error(error)}")
 
         print("\n" + "═" * 60)
         print("✨ Factory Pattern Examples Complete!\n")
@@ -221,7 +304,7 @@ async def run_factory_pattern_examples() -> None:
         print("  make gmail-factory -- --email:your-email@gmail.com\n")
 
     except Exception as error:
-        print(f"❌ Error: {str(error)}")
+        print(f"❌ Error: {describe_error(error)}")
         sys.exit(1)
 
 

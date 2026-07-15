@@ -14,6 +14,8 @@ Meta-tools are built-in tools that live in `packages/core/tools/` and provide to
 | [`matimo_reload_tools`](#matimo_reload_tools) | Hot-reload all tools into the live registry | Yes |
 | [`matimo_list_user_tools`](#matimo_list_user_tools) | List tools in a directory with metadata | No |
 | [`matimo_get_tool_status`](#matimo_get_tool_status) | Get status, risk level, and approval state of a tool | Yes |
+| [`matimo_get_tool`](#matimo_get_tool) | Retrieve a tool's full YAML + parsed definition | No |
+| [`matimo_search_tools`](#matimo_search_tools) | Search the loaded tool registry by keyword | No |
 | [`matimo_create_skill`](#matimo_create_skill) | Create a SKILL.md file with validated frontmatter | Yes |
 | [`matimo_list_skills`](#matimo_list_skills) | List skills in a directory with metadata | No |
 | [`matimo_get_skill`](#matimo_get_skill) | Read a skill's full content by name | No |
@@ -38,7 +40,9 @@ I want to...
   ├─ Promote a draft to production-ready             →  matimo_approve_tool
   ├─ Make newly created/approved tools available     →  matimo_reload_tools
   ├─ See what tools an agent has created             →  matimo_list_user_tools
-  └─ Check a specific tool's approval state          →  matimo_get_tool_status
+  ├─ Check a specific tool's approval state          →  matimo_get_tool_status
+  ├─ Read a tool's full YAML before editing/cloning  →  matimo_get_tool
+  └─ Find a tool by keyword without listing everything → matimo_search_tools
 ```
 
 ### Decision Guide: Skills Lifecycle
@@ -61,6 +65,8 @@ I want to...
 | `matimo_reload_tools` | After create+approve — make new tools available without restart | Agent can't call the new tool until the process is restarted |
 | `matimo_list_user_tools` | Agent wants to audit what it has created this session | Agent re-creates duplicates, wastes tool slots |
 | `matimo_get_tool_status` | Before using a tool the agent created — verify it's approved | Agent calls a draft tool and hits an approval gate error |
+| `matimo_get_tool` | Before editing or cloning an existing tool — inspect its full YAML | Agent guesses at the schema and may overwrite/duplicate incompatibly |
+| `matimo_search_tools` | Agent needs to find a relevant tool without listing the entire registry | Agent misses an existing tool and creates a redundant duplicate |
 | `matimo_list_skills` | At session start or when agent needs domain knowledge | Agent misses available expertise, gives generic responses |
 | `matimo_get_skill` | When agent needs specific domain knowledge for a task | Agent works without guidelines, prone to API misuse |
 | `matimo_create_skill` | Team wants to package reusable agent expertise | Knowledge scattered in system prompts, not reusable |
@@ -89,6 +95,13 @@ I want to...
 1. matimo_list_user_tools  → List all tools created this session
 2. matimo_get_tool_status  → Check approval state for each tool
 3. matimo_reload_tools     → Ensure approved tools are live
+```
+
+**Workflow D — Agent discovers before creating (avoid duplicates)**
+```
+1. matimo_search_tools     → Check if a similar tool already exists (free — no approval)
+2. matimo_get_tool         → Inspect the full YAML if a close match is found (free — no approval)
+3. matimo_create_tool      → Only create if nothing suitable exists (needs human ✅)
 ```
 
 ---
@@ -519,6 +532,115 @@ if (result.found) {
 
 ---
 
+## matimo_get_tool
+
+Retrieve the full definition of a tool — both the raw YAML source and its parsed, schema-validated fields. Use this before editing or cloning a tool, so the agent works from the actual definition rather than guessing at its shape.
+
+**Does not require approval** — read-only operation.
+
+### Parameters
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|:--------:|---------|-------------|
+| `name` | string | Yes | — | Name of the tool to retrieve |
+| `tool_dir` | string | No | `./matimo-tools` | Directory containing the tool |
+
+### Response
+
+```typescript
+// Found, valid YAML
+{
+  found: true,
+  name: 'weather_fetch',
+  yaml_content: 'name: weather_fetch\ndescription: ...\n...',
+  definition: { name: 'weather_fetch', description: '...', parameters: { ... }, execution: { ... } },
+  message: 'Tool "weather_fetch" retrieved successfully'
+}
+
+// Found, but the YAML fails schema validation
+{
+  found: true,
+  name: 'broken_tool',
+  yaml_content: 'name: broken_tool\n...',
+  message: 'Tool YAML is invalid: <validation error message>'
+}
+
+// Not found
+{
+  found: false,
+  message: 'Tool "nonexistent" not found at ./matimo-tools/nonexistent/definition.yaml'
+}
+```
+
+### Example
+
+```typescript
+const result = await matimo.execute('matimo_get_tool', {
+  name: 'weather_fetch',
+  tool_dir: './agent-tools',
+});
+
+if (result.found && result.definition) {
+  console.log(result.definition.parameters);
+}
+```
+
+### Notes
+
+- `definition` is only present when the on-disk YAML parses and passes schema validation; the internal `_definitionPath` field is stripped from the returned object.
+- `yaml_content` is always returned when the tool is found, even if the definition itself is invalid — useful for surfacing the raw source to fix errors.
+
+---
+
+## matimo_search_tools
+
+Search the loaded tool registry by keyword. Matches against tool names, descriptions, and tags, and returns each match's risk level. Use this to discover whether a suitable tool already exists before creating a new one.
+
+**Does not require approval** — read-only operation.
+
+### Parameters
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|:--------:|---------|-------------|
+| `query` | string | Yes | — | Search keyword — matched against tool names, descriptions, and tags |
+| `limit` | number | No | `20` | Maximum number of results to return |
+
+### Response
+
+```typescript
+{
+  results: [
+    {
+      name: 'gmail-send-email',
+      description: 'Send an email via the Gmail API',
+      version: '1.0.0',
+      tags: ['gmail', 'email'],
+      riskLevel: 'medium'
+    }
+  ],
+  total: 1,
+  query: 'email'
+}
+```
+
+### Example
+
+```typescript
+const result = await matimo.execute('matimo_search_tools', {
+  query: 'email',
+  limit: 5,
+});
+// result.results → matching tools with name, description, version, tags, riskLevel
+```
+
+### Internal Flow
+
+1. If a global Matimo instance is registered (normal runtime case), search its in-memory tool registry directly — covers every loaded tool across all packages.
+2. If no global instance is available (e.g. called standalone), fall back to scanning `./matimo-tools` on disk the same way `matimo_list_user_tools` does, matching each tool's `definition.yaml` against the query.
+3. Results are capped at `limit` in both paths.
+
+---
+
 ## matimo_list_user_tools
 
 List all user-created tools in a directory with risk classification, approval status, and metadata.
@@ -870,7 +992,7 @@ reload    = await matimo.execute('matimo_reload_tools',   {})
 status    = await matimo.execute('matimo_get_tool_status',{'name': 'my_tool', 'tool_dir': './agent-tools'})
 ```
 
-> See [`python/examples/native/meta_flow/meta_tools_integration.py`](../../python/examples/native/meta_flow/meta_tools_integration.py) for a complete end-to-end Python demo covering all 10 meta-tools.
+> See [`python/examples/native/meta_flow/meta_tools_integration.py`](../../python/examples/native/meta_flow/meta_tools_integration.py) for an end-to-end Python demo of the tool-creation lifecycle (`matimo_validate_tool`/`matimo_doctor` → `matimo_create_tool` → `matimo_reload_tools` → `matimo_list_user_tools`).
 > Run it with: `cd python && make meta-flow`
 
 ### LangChain
@@ -943,6 +1065,15 @@ packages/core/tools/
   matimo_list_user_tools/
     definition.yaml
     matimo_list_user_tools.ts
+  matimo_get_tool_status/
+    definition.yaml
+    matimo_get_tool_status.ts
+  matimo_get_tool/
+    definition.yaml
+    matimo_get_tool.ts
+  matimo_search_tools/
+    definition.yaml
+    matimo_search_tools.ts
   matimo_create_skill/
     definition.yaml
     matimo_create_skill.ts

@@ -1,6 +1,6 @@
 {
   "name": "@matimo/notion",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Notion workspace tools for Matimo",
   "type": "module",
   "files": [

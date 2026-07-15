@@ -26,6 +26,7 @@ typescript/packages/*/tools/**/*.js
 # Test coverage
 **/coverage/
 **/.nyc_output/
+**/.coverage
 
 # IDE
 .vscode/
@@ -54,6 +55,9 @@ Thumbs.db
 tmp/
 temp/
 *.tmp
+
+# Personal scratch notes / working docs — not part of the shipped repo
+.local-notes/
 typescript/examples/mcp/matimo-tools/.matimo-approvals.json
 typescript/examples/mcp/matimo-tools/fetch-weather/definition.yaml
 typescript/examples/mcp/matimo-tools/npm_downloads/definition.yaml

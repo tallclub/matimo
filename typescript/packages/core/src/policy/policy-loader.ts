@@ -32,7 +32,7 @@
  */
 
 import fs from 'fs';
-import yaml from 'js-yaml';
+import * as yaml from 'js-yaml';
 import { z } from 'zod';
 import { DefaultPolicyEngine } from './default-policy.js';
 import type { PolicyEngine, PolicyConfig } from './types.js';
@@ -103,7 +103,12 @@ export function loadPolicyFromFile(filePath: string): PolicyEngine {
 
   let parsed: unknown;
   try {
-    parsed = yaml.load(raw);
+    // js-yaml 5.x throws on empty input instead of returning undefined (as 4.x
+    // did) -- including comment-only files, which `raw.trim()` can't detect.
+    // loadAll() still returns [] for an empty document (per the v4->v5
+    // migration guide), so use that to recover the old "no policy" behavior.
+    const documents = yaml.loadAll(raw);
+    parsed = documents.length === 0 ? undefined : documents[0];
   } catch (err) {
     throw new MatimoError(
       `Policy file "${filePath}" contains invalid YAML: ${(err as Error).message}`,
@@ -146,7 +151,12 @@ export function parsePolicyFile(filePath: string): PolicyConfig {
 
   let parsed: unknown;
   try {
-    parsed = yaml.load(raw);
+    // js-yaml 5.x throws on empty input instead of returning undefined (as 4.x
+    // did) -- including comment-only files, which `raw.trim()` can't detect.
+    // loadAll() still returns [] for an empty document (per the v4->v5
+    // migration guide), so use that to recover the old "no policy" behavior.
+    const documents = yaml.loadAll(raw);
+    parsed = documents.length === 0 ? undefined : documents[0];
   } catch (err) {
     throw new MatimoError(
       `Policy file "${filePath}" contains invalid YAML: ${(err as Error).message}`,

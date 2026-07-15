@@ -12,10 +12,11 @@ packages/core              # Core SDK (matimo on npm)
 ├── Executors
 ├── Policy engine (allowCommand, allowHttp, protectedNamespaces)
 ├── Type definitions
-├── Built-in tools (calculator, echo)
+├── Built-in tools (calculator, web, web_scraper, convert_to_file, extract_from_file, execute, read, edit, search)
 ├── Meta-tools (packages/core/tools/matimo_*/)
 │   ├── matimo_validate_tool / matimo_create_tool / matimo_approve_tool
 │   ├── matimo_reload_tools / matimo_list_user_tools / matimo_get_tool_status
+│   ├── matimo_get_tool / matimo_search_tools
 │   └── matimo_create_skill / matimo_list_skills / matimo_get_skill / matimo_validate_skill
 └── skills/ (built-in SKILL.md domain knowledge)
     ├── tool-creation/
@@ -112,7 +113,7 @@ examples/tools             # Working examples
      │                                  │    │                                         │
      │   packages/core/tools/           │    │   packages/core/tools/matimo_*/         │
      │   ├─ calculator/                 │    │   ├─ matimo_validate_tool               │
-     │   ├─ echo-tool/                  │    │   ├─ matimo_create_tool                 │
+     │   ├─ web/, web_scraper/, +6 more │    │   ├─ matimo_create_tool                 │
      │                                  │    │   ├─ matimo_approve_tool                │
      │   packages/slack/tools/          │    │   ├─ matimo_reload_tools                │
      │   ├─ send-message/               │    │   ├─ matimo_list_user_tools             │
@@ -120,8 +121,8 @@ examples/tools             # Working examples
      │                                  │    │   ├─ matimo_list_skills                 │
      │   packages/{provider}/           │    │   ├─ matimo_get_skill                   │
      │   ├─ definition.yaml (OAuth2)    │    │   ├─ matimo_create_skill                │
-     │   └─ tools/{tool}/def.yaml       │    │   └─ matimo_validate_skill              │
-     │                                  │    │                                         │
+     │   └─ tools/{tool}/def.yaml       │    │   ├─ matimo_validate_skill              │
+     │                                  │    │   └─ matimo_get_tool / search_tools     │
      │                                  │    │   packages/core/skills/                 │
      │                                  │    │   ├─ tool-creation/SKILL.md             │
      │                                  │    │   ├─ meta-tools-lifecycle/SKILL.md      │
@@ -227,7 +228,7 @@ Process: Import and call function directly (no subprocess)
 Output: { result }
 ```
 
-Used by all 6 core tools: `execute`, `read`, `edit`, `search`, `web`, `calculator`
+Used by all 9 core tools: `execute`, `read`, `edit`, `search`, `web`, `calculator`, `web_scraper`, `convert_to_file`, `extract_from_file`
 
 **HttpExecutor**: Makes HTTP requests with automatic validation
 

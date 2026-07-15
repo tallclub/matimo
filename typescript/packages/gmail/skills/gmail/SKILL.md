@@ -1,38 +1,40 @@
 ---
 name: gmail
-description: "Complete guide to all Gmail tools — inbox management, email sending, labels, search, and threads."
-version: "1.0.0"
+description: "Complete guide to all Gmail tools — inbox management, search, sending, drafts, and attachments."
+version: "1.1.0"
 license: "MIT"
 metadata:
   category: "Communication"
   difficulty: "beginner"
-  apply-to: "gmail-send-email gmail-list-emails gmail-get-email gmail-search-emails gmail-list-labels"
+  apply-to: "gmail-send-email gmail-list-messages gmail-get-message gmail-get-attachment gmail-create-draft gmail-delete-message"
   author: "Matimo"
   tags: "gmail,email,inbox,google"
 ---
 
 # Gmail
 
-Complete guide to using Matimo's Gmail tools for sending emails, inbox management, search, and labels.
+Complete guide to using Matimo's Gmail tools for sending emails, inbox management, search, drafts, and attachments.
 
 ## All Available Tools
 
 | Tool | Purpose |
 |------|---------|
 | `gmail-send-email` | Send a new email |
-| `gmail-list-emails` | List emails with optional filters |
-| `gmail-get-email` | Get full details of an email |
-| `gmail-search-emails` | Advanced search with Gmail query syntax |
-| `gmail-list-labels` | List all labels (system + user) |
+| `gmail-list-messages` | List/search messages with Gmail query syntax and label filters |
+| `gmail-get-message` | Get full details of a message (headers, body, attachment metadata) |
+| `gmail-get-attachment` | Fetch a message attachment's raw data by ID |
+| `gmail-create-draft` | Create a draft email without sending it |
+| `gmail-delete-message` | Permanently delete a message |
 
 ## Authentication
 
 Gmail tools use OAuth2. Required scopes:
-- `https://www.googleapis.com/auth/gmail.readonly` — for reading
+- `https://www.googleapis.com/auth/gmail.readonly` — for listing/reading messages and attachments
 - `https://www.googleapis.com/auth/gmail.send` — for sending
-- `https://www.googleapis.com/auth/gmail.labels` — for labels
+- `https://www.googleapis.com/auth/gmail.compose` — for drafts
+- `https://www.googleapis.com/auth/gmail.modify` — for deleting messages
 
-Environment variables: `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN`.
+Environment variable: `GMAIL_ACCESS_TOKEN` (or `GMAIL_CLIENT_ID` / `GMAIL_CLIENT_SECRET` / `GMAIL_REFRESH_TOKEN` when using the OAuth2 provider flow).
 
 ---
 
@@ -41,7 +43,7 @@ Environment variables: `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_
 Use `gmail-send-email` with:
 - `to` (required) — recipient email or comma-separated list
 - `subject` (required) — email subject
-- `body` (required) — email body (supports HTML)
+- `body` (required) — email body (supports HTML via `isHtml`)
 - `cc`, `bcc` — optional recipients
 
 **Best practices:**
@@ -51,21 +53,17 @@ Use `gmail-send-email` with:
 
 ---
 
-## Inbox Management
+## Drafts
 
-### Listing Emails
-
-Use `gmail-list-emails` with optional `labelIds` (e.g., `INBOX`, `UNREAD`, `STARRED`), `maxResults`, and `pageToken`.
-
-### Getting Email Details
-
-Use `gmail-get-email` with `messageId` to retrieve full headers, body, and attachments metadata.
+Use `gmail-create-draft` with the same parameters as `gmail-send-email` (`to`, `subject`, `body`, `cc`, `bcc`, `isHtml`) to stage an email for manual review before sending.
 
 ---
 
-## Search
+## Inbox Management
 
-Use `gmail-search-emails` with Gmail's advanced query syntax:
+### Listing and Searching Messages
+
+`gmail-list-messages` handles both listing and search — pass Gmail's advanced query syntax via `query`, plus `labelIds`, `maxResults`, `pageToken`, and `includeSpamTrash`.
 
 | Operator | Example | Purpose |
 |----------|---------|---------|
@@ -81,26 +79,29 @@ Use `gmail-search-emails` with Gmail's advanced query syntax:
 | `filename:` | `filename:pdf` | Attachment type |
 | `-` | `-from:noreply` | Exclude results |
 
-Combine operators: `from:alice has:attachment after:2024/01/01`.
+Combine operators: `from:alice has:attachment after:2024/01/01`. Common label IDs for `labelIds`: `INBOX`, `SENT`, `TRASH`, `SPAM`, `DRAFT`, `STARRED`, `UNREAD` (system labels) or custom user labels.
 
----
+### Getting Message Details
 
-## Labels
+Use `gmail-get-message` with `messageId` to retrieve full headers, body, and attachment metadata (`payload.parts[].body.attachmentId`).
 
-Use `gmail-list-labels` to retrieve all labels. System labels include `INBOX`, `SENT`, `TRASH`, `SPAM`, `DRAFT`, `STARRED`, `UNREAD`. User labels are custom.
+### Fetching Attachments
+
+Use `gmail-get-attachment` with `messageId` and `attachmentId` (from `gmail-get-message`'s payload parts) to retrieve the attachment's `size` and base64url-encoded `data`.
 
 ---
 
 ## Common Workflows
 
 ### Daily Inbox Triage
-1. List unread emails: `gmail-list-emails` with `labelIds: ["UNREAD"]`
-2. Search for priority: `gmail-search-emails` with `is:important`
-3. Get details on flagged items: `gmail-get-email` for each
+1. List unread emails: `gmail-list-messages` with `labelIds: "UNREAD"`
+2. Search for priority: `gmail-list-messages` with `query: "is:important"`
+3. Get details on flagged items: `gmail-get-message` for each
+4. Pull any attachments: `gmail-get-attachment` using `attachmentId` values from step 3
 
 ### Email Notification
 1. Send email: `gmail-send-email` with formatted body
-2. Verify delivery by searching: `gmail-search-emails` with `in:sent subject:...`
+2. Verify delivery by searching: `gmail-list-messages` with `query: "in:sent subject:..."`
 
 ---
 

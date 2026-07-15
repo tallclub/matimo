@@ -22,6 +22,7 @@ pip install matimo matimo-gmail
 | `send-email` | Send an email (to, subject, body, cc, bcc, html) |
 | `list-messages` | List messages with optional query/label filters |
 | `get-message` | Get full message content by ID |
+| `get-attachment` | Fetch a message attachment by ID (base64url-encoded) |
 | `create-draft` | Create a draft email |
 | `delete-message` | Move message to trash |
 

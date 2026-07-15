@@ -1,0 +1,133 @@
+name: convert_to_file
+version: '1.0.0'
+description: >-
+  Convert structured content between JSON, CSV, Markdown, and plain text into a
+  target file format. Supports JSON<->CSV round-tripping, Markdown->PDF,
+  Markdown->DOCX, and plain text->DOCX/TXT. Markdown is parsed into headings,
+  paragraphs, and bullet lists before being rendered into the target file — no
+  headless browser is used, so complex CommonMark features (tables, nested
+  lists, images) are not preserved. If `output_path` is provided the generated
+  file is written to disk (parent directories are created as needed);
+  otherwise the file is returned inline as base64. This tool only *produces*
+  files — to extract text from an existing PDF/DOCX/CSV/TXT file or URL, use
+  `extract_from_file` instead.
+requires_approval: true
+
+parameters:
+  content:
+    type: string
+    description: >-
+      The source content to convert, encoded per source_format (raw JSON text,
+      raw CSV text, Markdown source, or plain text).
+    required: true
+    example: '# Report\n\nQuarterly results.\n\n- Q1: strong\n- Q2: flat'
+
+  source_format:
+    type: string
+    description: Format of the input `content`.
+    required: true
+    enum: ['json', 'csv', 'markdown', 'text']
+    example: 'markdown'
+
+  target_format:
+    type: string
+    description: >-
+      Desired output file format. Not every source_format/target_format pair
+      is supported — see the tool description for the valid combinations
+      (json->csv, csv->json, markdown->pdf, markdown->docx, text->docx,
+      text->txt). Unsupported combinations are rejected with an error listing
+      the valid pairs.
+    required: true
+    enum: ['pdf', 'docx', 'csv', 'json', 'txt']
+    example: 'pdf'
+
+  output_path:
+    type: string
+    description: >-
+      Absolute or relative path to write the generated file to (supports ~
+      for home directory). Parent directories are created automatically if
+      missing. When omitted, the generated file is returned inline as
+      base64 in `file_base64` instead of being written to disk.
+    required: false
+    example: './reports/summary.pdf'
+
+  max_content_length:
+    type: number
+    description: >-
+      Maximum accepted length (in UTF-16 code units) of the input `content`
+      string, checked before conversion (default 10485760 = 10MB). Prevents
+      memory exhaustion from oversized input.
+    required: false
+    default: 10485760
+    example: 10485760
+
+execution:
+  type: function
+  code: './convert_to_file.js'
+
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+      description: Whether the conversion succeeded
+    output_path:
+      type: string
+      description: Resolved absolute path the file was written to, or null (JSON) / None (Python) when output_path was omitted
+    file_base64:
+      type: string
+      description: Base64-encoded file content, or null (JSON) / None (Python) when output_path was provided and the file was written to disk
+    mime_type:
+      type: string
+      description: MIME type of the generated file, derived from target_format
+    size_bytes:
+      type: number
+      description: Size in bytes of the generated file
+  required: [success, output_path, file_base64, mime_type, size_bytes]
+
+error_handling:
+  retry: 1
+  backoff_type: exponential
+  initial_delay_ms: 500
+
+examples:
+  - name: 'Convert a JSON array of records to CSV'
+    description: 'Turn a JSON array of objects into CSV text, returned inline as base64'
+    params:
+      content: '[{"name":"Ada","role":"Mathematician"},{"name":"Alan","role":"Computer Scientist"}]'
+      source_format: 'json'
+      target_format: 'csv'
+  - name: 'Convert CSV back to JSON'
+    description: 'Parse a CSV table into a JSON array of row objects'
+    params:
+      content: 'name,role\nAda,Mathematician\nAlan,Computer Scientist\n'
+      source_format: 'csv'
+      target_format: 'json'
+  - name: 'Render a Markdown report as a PDF file on disk'
+    description: 'Convert Markdown (headings, paragraphs, bullet lists) into a PDF written to output_path'
+    params:
+      content: '# Quarterly Report\n\nRevenue grew steadily.\n\n- Q1: strong\n- Q2: flat\n- Q3: recovery'
+      source_format: 'markdown'
+      target_format: 'pdf'
+      output_path: './reports/quarterly.pdf'
+  - name: 'Render Markdown as a DOCX file'
+    description: 'Convert Markdown into a Word document, returned inline as base64'
+    params:
+      content: '## Notes\n\nMeeting summary.\n\n- Decision one\n- Decision two'
+      source_format: 'markdown'
+      target_format: 'docx'
+  - name: 'Convert plain text notes to a DOCX file'
+    description: 'Wrap plain text (no Markdown parsing) into a Word document, one paragraph per line'
+    params:
+      content: 'Line one of the memo.\nLine two of the memo.'
+      source_format: 'text'
+      target_format: 'docx'
+      output_path: '~/documents/memo.docx'
+  - name: 'Round-trip plain text to TXT'
+    description: 'Identity conversion useful for normalizing content returned by another tool into a file'
+    params:
+      content: 'Meeting notes: ship the release on Friday.'
+      source_format: 'text'
+      target_format: 'txt'
+
+tags: [file-io, convert, generate, json, csv, markdown, pdf, docx, text, filesystem]

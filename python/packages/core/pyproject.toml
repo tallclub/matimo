@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "matimo-core"
-version = "0.1.0"
+version = "0.1.2"
 description = "Matimo core — framework-agnostic SDK: pre-built providers, skills layer, MCP, and a policy engine you control"
 readme = "README.md"
 license = { text = "MIT" }
@@ -27,6 +27,14 @@ dependencies = [
     "pyyaml>=6.0",
     "anyio>=4.0",
     "typing-extensions>=4.9",
+    "pypdf>=4.0",
+    "python-docx>=1.1",
+    "mistune>=3.0",
+    "reportlab>=4.0",
+    "simpleeval>=1.0",
+    "readability-lxml>=0.8.4.1",
+    "markdownify>=1.2.3",
+    "lxml-html-clean>=0.4.5",
 ]
 
 [project.optional-dependencies]

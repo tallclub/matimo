@@ -52,14 +52,15 @@ describe('Gmail Tools Integration', () => {
   });
 
   describe('Tool Loading & Availability', () => {
-    it('should load all 5 Gmail tools via MatimoInstance', async () => {
+    it('should load all 6 Gmail tools via MatimoInstance', async () => {
       const tools = matimo.listTools();
       const gmailTools = tools.filter((tool) => tool.name.startsWith('gmail-'));
 
-      expect(gmailTools).toHaveLength(5);
+      expect(gmailTools).toHaveLength(6);
       expect(gmailTools.map((t) => t.name).sort()).toEqual([
         'gmail-create-draft',
         'gmail-delete-message',
+        'gmail-get-attachment',
         'gmail-get-message',
         'gmail-list-messages',
         'gmail-send-email',

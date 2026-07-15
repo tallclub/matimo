@@ -17,6 +17,9 @@ pnpm add @matimo/gmail
 | `gmail-send-email` | Send email to recipients | Gmail API send |
 | `gmail-create-draft` | Create email draft | Gmail API drafts.create |
 | `gmail-list-messages` | List recent messages | Gmail API messages.list |
+| `gmail-get-message` | Get full details of a message | Gmail API messages.get |
+| `gmail-get-attachment` | Fetch a message attachment (base64url) | Gmail API messages.attachments.get |
+| `gmail-delete-message` | Permanently delete a message | Gmail API messages.delete |
 
 ## 🚀 Quick Start
 
@@ -173,6 +176,8 @@ tools/gmail/
 ├── create-draft/
 │   ├── definition.yaml
 ├── get-message/
+│   ├── definition.yaml
+├── get-attachment/
 │   ├── definition.yaml
 └── delete-message/
     ├── definition.yaml
@@ -658,6 +663,7 @@ pnpm run gmail:factory --email:youremail@gmail.com
 | ---------------------- | ---------------------- | ------------------------------------ | -------------------------- |
 | `gmail-list-messages`  | List emails from inbox | `maxResults`, `query`, `labelIds`    | `messages[]`               |
 | `gmail-get-message`    | Get full email details | `messageId`, `format`               | `id`, `payload`, `headers` |
+| `gmail-get-attachment` | Fetch a message attachment | `messageId`, `attachmentId`     | `size`, `data` (base64url) |
 | `gmail-send-email`     | Send email             | `to`, `subject`, `body`, `cc`, `bcc` | `id`                       |
 | `gmail-create-draft`   | Create draft email     | `to`, `subject`, `body`, `cc`, `bcc` | `id`                       |
 | `gmail-delete-message` | Delete email           | `messageId`                         | `success`                  |
@@ -851,7 +857,40 @@ const result = await matimo.execute('gmail-get-message', {
 
 ---
 
-#### 5. gmail-delete-message
+#### 5. gmail-get-attachment
+
+**Description:** Fetch a Gmail message attachment by ID.
+
+**Parameters:**
+
+```typescript
+{
+  messageId: string;    // Required: ID of the message containing the attachment
+  attachmentId: string; // Required: Attachment ID (from get-message payload.parts)
+}
+```
+
+**Returns:**
+
+```typescript
+{
+  size: number;   // Attachment size in bytes
+  data: string;   // Base64url-encoded raw attachment data
+}
+```
+
+**Example:**
+
+```typescript
+const result = await matimo.execute('gmail-get-attachment', {
+  messageId: '18b8f4a2a1c5e3d2',
+  attachmentId: 'ANGjdJ_bE4...',
+});
+```
+
+---
+
+#### 6. gmail-delete-message
 
 **Description:** Delete an email (moves to trash).
 
@@ -1287,6 +1326,25 @@ Creates a draft email.
 ```typescript
 {
   id: string; // Draft ID
+}
+```
+
+### get-attachment
+
+Fetches a message attachment by ID.
+
+**Parameters:**
+
+- `messageId` (required): ID of the message containing the attachment
+- `attachmentId` (required): Attachment ID (from `get-message` payload parts)
+- `GMAIL_ACCESS_TOKEN` (required): OAuth access token
+
+**Response:**
+
+```typescript
+{
+  size: number;   // Attachment size in bytes
+  data: string;   // Base64url-encoded raw attachment data
 }
 ```
 

@@ -58,15 +58,36 @@
  *    Returns: { success }
  *    Note: Permanently deletes the message
  *
+ * 6. gmail-get-attachment
+ *    Parameters: messageId (required), attachmentId (required)
+ *    Returns: { attachmentId, size, data } — data is base64url-encoded raw bytes
+ *    Example: Fetch the raw bytes of an attachment found on a message
+ *
  * ============================================================================
  */
 
 import 'dotenv/config';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { MatimoInstance } from 'matimo';
+import { MatimoInstance, MatimoError } from 'matimo';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+/**
+ * Render a MatimoError with its underlying HTTP status/body, not just the
+ * generic wrapper message — e.g. surfaces "401 Unauthorized: token expired"
+ * instead of just "HTTP error executing tool 'gmail-list-messages'".
+ */
+function describeError(error: unknown): string {
+  if (error instanceof MatimoError && error.details) {
+    const status = error.details.statusCode;
+    const body = error.details.details;
+    let extra = status ? ` (status ${status})` : '';
+    if (body) extra += `\n   → ${JSON.stringify(body)}`;
+    return `${error.message}${extra}`;
+  }
+  return error instanceof Error ? error.message : String(error);
+}
 
 /**
  * Run factory pattern examples
@@ -147,7 +168,7 @@ async function runFactoryPatternExamples() {
         }
       }
     } catch (error) {
-      console.info(`❌ List failed: ${error instanceof Error ? error.message : String(error)}`);
+      console.info(`❌ List failed: ${describeError(error)}`);
       console.info(JSON.stringify(error, null, 2));
     }
 
@@ -180,7 +201,7 @@ async function runFactoryPatternExamples() {
         }
       }
     } catch (error) {
-      console.info(`❌ Send failed: ${error instanceof Error ? error.message : String(error)}`);
+      console.info(`❌ Send failed: ${describeError(error)}`);
       console.info(JSON.stringify(error, null, 2));
     }
 
@@ -212,8 +233,66 @@ async function runFactoryPatternExamples() {
         }
       }
     } catch (error) {
-      console.info(`❌ Draft failed: ${error instanceof Error ? error.message : String(error)}`);
+      console.info(`❌ Draft failed: ${describeError(error)}`);
       console.info(JSON.stringify(error, null, 2));
+    }
+
+    // Example 4: Get Attachment
+    console.info('\n📎 Example 4: Get Attachment');
+    console.info('─'.repeat(60));
+    try {
+      // NOTE: we deliberately do NOT use `query: 'has:attachment'` here.
+      // Gmail's `q` search param requires an app that has completed Google's
+      // OAuth verification review — unverified apps get a 403 ("Metadata
+      // scope does not support 'q' parameter") even with gmail.readonly
+      // granted. Instead, scan recent messages client-side for an attachment.
+      const listResult = await matimo.execute('gmail-list-messages', {
+        maxResults: 10,
+        GMAIL_ACCESS_TOKEN: accessToken,
+      });
+      const listData = (listResult as any).data ?? listResult;
+      const candidates: any[] = listData?.messages ?? [];
+
+      let found: { messageId: string; filename?: string; attachmentId: string } | null = null;
+
+      for (const candidate of candidates) {
+        const messageResult = await matimo.execute('gmail-get-message', {
+          messageId: candidate.id,
+          format: 'full',
+          GMAIL_ACCESS_TOKEN: accessToken,
+        });
+        const messageData = (messageResult as any).data ?? messageResult;
+        const parts: any[] = messageData?.payload?.parts ?? [];
+        const attachmentPart = parts.find((p) => p?.body?.attachmentId);
+
+        if (attachmentPart) {
+          found = {
+            messageId: candidate.id,
+            filename: attachmentPart.filename,
+            attachmentId: attachmentPart.body.attachmentId,
+          };
+          break;
+        }
+      }
+
+      if (!found) {
+        console.info(
+          `ℹ️  Scanned ${candidates.length} recent messages — none had an attachment. Skipping.`
+        );
+      } else {
+        const attachmentResult = await matimo.execute('gmail-get-attachment', {
+          messageId: found.messageId,
+          attachmentId: found.attachmentId,
+          GMAIL_ACCESS_TOKEN: accessToken,
+        });
+        const attachmentData = (attachmentResult as any).data ?? attachmentResult;
+        console.info(`✅ Attachment retrieved successfully!`);
+        console.info(`   Filename: ${found.filename || '(unnamed)'}`);
+        console.info(`   Size: ${attachmentData.size} bytes`);
+        console.info(`   Base64url data length: ${attachmentData.data?.length ?? 0} chars`);
+      }
+    } catch (error) {
+      console.info(`❌ Get attachment failed: ${describeError(error)}`);
     }
 
     console.info('\n' + '═'.repeat(60));
@@ -222,7 +301,7 @@ async function runFactoryPatternExamples() {
     console.info('  npm run gmail:factory');
     console.info('  npm run gmail:factory -- --email:your-email@gmail.com\n');
   } catch (error) {
-    console.error('❌ Error:', error instanceof Error ? error.message : String(error));
+    console.error('❌ Error:', describeError(error));
     process.exit(1);
   }
 }

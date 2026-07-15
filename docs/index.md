@@ -270,7 +270,7 @@ Complete documentation for Matimo **v0.1.4** (TypeScript & Python).
 ### 🤖 For AI Agents (Quick Orientation)
 > If you are an AI agent (LangChain, CrewAI, MCP client) reading this to understand Matimo:
 
-1. **Read first**: [Meta-Tools Reference](./api-reference/META_TOOLS.md) — the 10 built-in tools you can call right now
+1. **Read first**: [Meta-Tools Reference](./api-reference/META_TOOLS.md) — the 12 built-in tools you can call right now
 2. **Tool creation flow**: `matimo_validate_tool` → `matimo_create_tool` → `matimo_approve_tool` → `matimo_reload_tools`
 3. **Skills discovery**: `matimo_list_skills` → `matimo_get_skill` to load domain expertise on-demand
 4. **OpenAI 128-tool limit**: If using `auto_discover=True`, cap your bound tool list — prioritize `matimo_*` tools first
@@ -309,7 +309,7 @@ docs/
 │   ├── SDK.md                    # Complete SDK API (TypeScript + Python)
 │   ├── ERRORS.md                 # Error handling and error codes
 │   ├── TYPES.md                  # TypeScript type definitions
-│   ├── META_TOOLS.md             # Built-in meta-tools reference (10 tools)
+│   ├── META_TOOLS.md             # Built-in meta-tools reference (12 tools)
 │   ├── POLICY_AND_LIFECYCLE.md   # Policy engine and tool lifecycle
 │   ├── APPROVAL-SYSTEM.md        # Approval handler configuration
 │   └── LOGGING.md                # Logger API and formats

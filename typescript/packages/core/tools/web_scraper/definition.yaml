@@ -1,0 +1,239 @@
+name: web_scraper
+version: '2.0.0'
+description: >-
+  Crawl a website starting from a given URL and extract the main readable content of
+  every page discovered within the same domain (child and sibling pages reachable by
+  following same-domain links), bounded by maxPages/maxDepth. No headless browser, so
+  JavaScript-rendered pages will only yield their static HTML. Uses a readability-style
+  algorithm to strip navigation, ads, and boilerplate from each page, returning clean
+  plain text and/or Markdown. Honors robots.txt by default and applies a politeness
+  delay between requests. Requests to localhost/private/link-local addresses are
+  blocked.
+requires_approval: true
+
+parameters:
+  url:
+    type: string
+    description: 'The HTTP(S) starting URL to crawl. Only pages on the same hostname are followed.'
+    required: true
+    example: 'https://example.com/blog'
+
+  maxPages:
+    type: number
+    description: >-
+      Maximum number of pages to fetch during the crawl, including the starting page
+      (default 20, capped at 100).
+    required: false
+    default: 20
+    example: 20
+
+  maxDepth:
+    type: number
+    description: >-
+      Maximum link-following depth from the starting page (0 = only the starting page
+      itself, 1 = the starting page plus pages it directly links to, etc). Default 3,
+      capped at 10.
+    required: false
+    default: 3
+    example: 3
+
+  format:
+    type: string
+    description: >-
+      Output format(s) to return per page: "text" for plain text only, "markdown" for
+      Markdown only, or "both" for both.
+    required: false
+    default: 'text'
+    enum: ['text', 'markdown', 'both']
+    example: 'markdown'
+
+  includeLinks:
+    type: boolean
+    description: >-
+      When true, preserve hyperlinks in each page's Markdown output as [text](href).
+      Ignored when format is "text". Links are always stripped from plain text.
+    required: false
+    default: false
+    example: true
+
+  maxContentLength:
+    type: number
+    description: >-
+      Maximum length in characters of each page's returned text/markdown content;
+      longer output is truncated per page (default 50000).
+    required: false
+    default: 50000
+    example: 50000
+
+  maxSizeBytes:
+    type: number
+    description: >-
+      Maximum accepted response size in bytes per page, enforced during download
+      (default 10485760 = 10MB).
+    required: false
+    default: 10485760
+    example: 10485760
+
+  timeout:
+    type: number
+    description: Per-request timeout in milliseconds (default 15000).
+    required: false
+    default: 15000
+    example: 15000
+
+  requestDelayMs:
+    type: number
+    description: >-
+      Polite delay in milliseconds inserted between consecutive page fetches, to avoid
+      hammering the target site (default 250, capped at 5000).
+    required: false
+    default: 250
+    example: 250
+
+  respectRobotsTxt:
+    type: boolean
+    description: >-
+      When true (default), fetch and honor the site's robots.txt Disallow/Allow rules
+      before crawling each page. The starting URL is rejected if robots.txt disallows
+      it; discovered links that are disallowed are silently skipped.
+    required: false
+    default: true
+    example: true
+
+  maxDurationMs:
+    type: number
+    description: >-
+      Overall wall-clock deadline for the whole crawl in milliseconds (default 120000 =
+      2 minutes, capped at 600000 = 10 minutes). The crawl stops early and returns
+      partial results once this is exceeded.
+    required: false
+    default: 120000
+    example: 120000
+
+execution:
+  type: function
+  code: './web_scraper.js'
+
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+      description: Whether at least one page was fetched and extracted successfully
+    startUrl:
+      type: string
+      description: The URL the crawl was started from
+    domain:
+      type: string
+      description: The hostname the crawl was restricted to
+    pagesCrawled:
+      type: number
+      description: Number of pages successfully fetched and extracted
+    truncatedCrawl:
+      type: boolean
+      description: >-
+        Whether the crawl stopped before exhausting all discoverable same-domain pages
+        (because maxPages, maxDepth, or maxDurationMs was reached)
+    skippedByRobots:
+      type: number
+      description: Number of discovered links skipped because robots.txt disallowed them
+    pages:
+      type: array
+      description: One entry per successfully crawled page
+      items:
+        type: object
+        properties:
+          url:
+            type: string
+            description: The URL that was fetched (pre-redirect)
+          resolvedUrl:
+            type: string
+            description: The final URL after following redirects
+          depth:
+            type: number
+            description: Link-following depth at which this page was discovered (0 = starting page)
+          title:
+            type: string
+            description: The extracted page/article title, or an empty string if none was found
+          text:
+            type: string
+            description: 'Extracted readable content as plain text (present when format is "text" or "both")'
+          markdown:
+            type: string
+            description: 'Extracted readable content as Markdown (present when format is "markdown" or "both")'
+          excerpt:
+            type: string
+            description: A short auto-generated excerpt/summary of the extracted content, when available
+          truncated:
+            type: boolean
+            description: Whether this page's text/markdown was truncated to maxContentLength
+          metadata:
+            type: object
+            description: Additional metadata about the fetched page
+            properties:
+              statusCode:
+                type: number
+                description: HTTP status code of the response
+              contentType:
+                type: string
+                description: Content-Type header of the response
+              byline:
+                type: string
+                description: Author/byline extracted from the page, when available
+              length:
+                type: number
+                description: Character count of the extracted content before truncation
+    errors:
+      type: array
+      description: Pages that were queued but failed to fetch or extract; the crawl continues past these
+      items:
+        type: object
+        properties:
+          url:
+            type: string
+            description: The URL that failed
+          error:
+            type: string
+            description: A short description of the failure
+  required: [success, startUrl, domain, pagesCrawled, truncatedCrawl, pages, errors]
+
+error_handling:
+  retry: 1
+  backoff_type: exponential
+  initial_delay_ms: 500
+
+examples:
+  - name: 'Crawl a small documentation site'
+    description: 'Crawl up to the default 20 pages of a docs site, returning plain text per page'
+    params:
+      url: 'https://example.com/docs'
+  - name: 'Crawl deeper with a larger page budget'
+    description: 'Follow links up to 4 levels deep, capped at 50 pages, returning Markdown'
+    params:
+      url: 'https://example.com/blog'
+      maxPages: 50
+      maxDepth: 4
+      format: 'markdown'
+  - name: 'Crawl only the starting page'
+    description: 'Set maxDepth to 0 to fetch only the given URL without following any links'
+    params:
+      url: 'https://example.com/article'
+      maxDepth: 0
+  - name: 'Fast crawl ignoring robots.txt politeness delay'
+    description: 'Reduce the delay between requests for a small, low-traffic target site'
+    params:
+      url: 'https://example.com/blog'
+      maxPages: 10
+      requestDelayMs: 0
+
+tags: [web, scraping, crawler, extract, readability, html, markdown, text]
+
+notes:
+  caution: >-
+    This tool has no headless-browser rendering: pages that build their content with
+    client-side JavaScript will return little or no extracted text. It crawls only
+    pages on the same hostname as the starting URL, bounded by maxPages/maxDepth/
+    maxDurationMs, and honors robots.txt by default. SSRF protections block requests
+    to localhost, loopback, link-local/cloud-metadata, and RFC1918 private ranges.
+    Crawling a large or slow site can take a long time even within these bounds —
+    tune maxPages/maxDepth/maxDurationMs to the target site.
