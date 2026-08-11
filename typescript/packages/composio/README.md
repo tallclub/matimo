@@ -32,17 +32,10 @@ velocity.
 ## 🔑 Bring Your Own Composio Key — and Non-Affiliation
 
 Every tool in this package requires **your own** `COMPOSIO_API_KEY` and your
-own Composio connected accounts, supplied at runtime — Matimo never holds a
-Composio account or credential of its own, and no request is proxied through
-any Matimo-operated infrastructure other than your own deployment. You are
-responsible for independently reading and complying with
-[Composio's Terms of Service](https://composio.dev/terms) and
-[Privacy Policy](https://composio.dev/privacy) before connecting an account.
+own Composio connected accounts, supplied at runtime — Matimo never holds a Composio account or credential of its own, and no request is proxied through any Matimo-operated infrastructure other than your own deployment. You are responsible for independently reading and complying with [Composio's Terms of Service](https://composio.dev/terms) and [Privacy Policy](https://composio.dev/privacy) before connecting an account.
 This BYOK pattern mirrors how other platforms built on Composio's catalog
 work (e.g. [Langflow](https://docs.langflow.org/bundles-composio),
-[KiloClaw](https://kilo.ai/docs/kiloclaw/development-tools/composio)) — see
-[`docs/compliance/`](../../../docs/compliance/) for dated research on this,
-which is **not legal advice**.
+[KiloClaw](https://kilo.ai/docs/kiloclaw/development-tools/composio)) 
 
 **Matimo is not affiliated with, endorsed by, or sponsored by Composio.**
 "Composio" is used here solely to describe interoperability with their
