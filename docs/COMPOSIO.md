@@ -8,7 +8,7 @@ nav_order: 4
 
 `@matimo/composio` turns [Composio](https://composio.dev)'s 250+ integrations from "agent has raw API access" into "agent has governed, auditable, human-approvable API access" — same breadth, with Matimo's policy engine, risk classification, and human-in-the-loop (HITL) approval layered on top.
 
-> **Bring your own key.** Every tool here requires *your own* `COMPOSIO_API_KEY` and Composio connected accounts, supplied at runtime — Matimo does not hold a Composio account or proxy requests through Matimo-operated infrastructure. You're responsible for complying with [Composio's Terms of Service](https://composio.dev/terms) and [Privacy Policy](https://composio.dev/privacy) independently. Matimo is not affiliated with, endorsed by, or sponsored by Composio. See [`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md) for the full list of third-party providers Matimo can connect to.
+> **Bring your own key.** Every tool here requires *your own* `COMPOSIO_API_KEY` and Composio connected accounts, supplied at runtime — Matimo does not hold a Composio account or route requests through Matimo-operated infrastructure. You're responsible for complying with [Composio's Terms of Service](https://composio.dev/terms) and [Privacy Policy](https://composio.dev/privacy) independently. Matimo is not affiliated with, endorsed by, or sponsored by Composio. See [`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md) for the full list of third-party providers Matimo can connect to.
 
 ---
 
@@ -64,14 +64,19 @@ Every generated tool is `type: http` — no custom executor code. `@matimo/compo
 | `one_drive` | `composio_one_drive_*` | 35 | `list_drives`, `download_file`, `search_items` |
 | `share_point` | `composio_share_point_*` | 6 | `create_folder`, `create_list`, `find_user` |
 | `microsoft_teams` | `composio_microsoft_teams_*` | 28 | `teams_list`, `teams_post_channel_message`, `create_meeting` |
+| `gmail` | `composio_gmail_*` | 23 | `send_email`, `fetch_emails`, `create_email_draft` |
+| `googlesheets` | `composio_googlesheets_*` | 36 | `batch_get`, `create_spreadsheet_row`, `create_chart` |
+| `googledocs` | `composio_googledocs_*` | 32 | `create_document`, `replace_all_text`, `insert_table_action` |
+| `googleforms` | `composio_googleforms_*` | 7 | `create_form`, `get_response`, `list_responses` |
+| `googlemeet` | `composio_googlemeet_*` | 9 | `create_meet`, `list_conference_records`, `get_transcripts_by_conference_record_id` |
 
-**Total: 342 tools** across 9 toolkits (as of v0.1.5). Add more toolkits by running the generator — see [Generating More Toolkits](#generating-more-toolkits).
+**Total: 449 tools** across 14 toolkits (as of v0.1.7). Add more toolkits by running the generator — see [Generating More Toolkits](#generating-more-toolkits).
 
 ---
 
 ## Every Tool Call Needs Three Things
 
-All 342 tools share the same three required inputs:
+All 449 tools share the same three required inputs:
 
 | Input | How it's supplied |
 |-------|-----------------|
@@ -191,7 +196,7 @@ See `typescript/examples/tools/composio/composio-with-approval.ts` for the full 
 
 ## LangChain Integration
 
-With 342 tools, loading all of them into a LangChain agent exceeds OpenAI's 128-tool limit. **Always filter to the toolkits relevant to the agent before binding:**
+With 449 tools, loading all of them into a LangChain agent exceeds OpenAI's 128-tool limit. **Always filter to the toolkits relevant to the agent before binding:**
 
 ```typescript
 import { MatimoInstance, convertToolsToLangChain, type ToolDefinition } from '@matimo/core';
