@@ -1,0 +1,135 @@
+name: composio_googlesheets_format_cell
+description: Applies text and background cell formatting to a specified range in a google sheets worksheet.
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the GOOGLESHEETS toolkit, scoped to the calling tenant.
+      The "Connect GOOGLESHEETS" flow must be completed before this tool will succeed.
+    required: true
+  red:
+    type: number
+    description: Red component of the background color (0.0-1.0).
+    default: 0.9
+  blue:
+    type: number
+    description: Blue component of the background color (0.0-1.0).
+    default: 0.9
+  bold:
+    type: boolean
+    description: Apply bold formatting.
+    default: false
+  green:
+    type: number
+    description: Green component of the background color (0.0-1.0).
+    default: 0.9
+  italic:
+    type: boolean
+    description: Apply italic formatting.
+    default: false
+  fontSize:
+    type: number
+    description: Font size in points.
+    default: 10
+  underline:
+    type: boolean
+    description: Apply underline formatting.
+    default: false
+  worksheet_id:
+    type: number
+    description: ID (sheetId) of the worksheet. Use `GOOGLESHEETS_GET_SPREADSHEET_INFO` to find this ID.
+    required: true
+  end_row_index:
+    type: number
+    description: >-
+      0-based index of the row *after* the last row in the range (exclusive); must be greater than
+      `start_row_index`.
+    required: true
+  strikethrough:
+    type: boolean
+    description: Apply strikethrough formatting.
+    default: false
+  spreadsheet_id:
+    type: string
+    description: Identifier of the Google Sheets spreadsheet.
+    required: true
+  start_row_index:
+    type: number
+    description: 0-based index of the first row in the range.
+    required: true
+  end_column_index:
+    type: number
+    description: >-
+      0-based index of the column *after* the last column in the range (exclusive); must be greater
+      than `start_column_index`.
+    required: true
+  start_column_index:
+    type: number
+    description: 0-based index of the first column in the range.
+    required: true
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/GOOGLESHEETS_FORMAT_CELL
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_googlesheets_format_cell
+      red: '{red}'
+      blue: '{blue}'
+      bold: '{bold}'
+      green: '{green}'
+      italic: '{italic}'
+      fontSize: '{fontSize}'
+      underline: '{underline}'
+      worksheet_id: '{worksheet_id}'
+      end_row_index: '{end_row_index}'
+      strikethrough: '{strikethrough}'
+      spreadsheet_id: '{spreadsheet_id}'
+      start_row_index: '{start_row_index}'
+      end_column_index: '{end_column_index}'
+      start_column_index: '{start_column_index}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - googlesheets
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: googlesheets
+  composio_slug: GOOGLESHEETS_FORMAT_CELL

@@ -1,0 +1,108 @@
+name: composio_googlesheets_search_spreadsheets
+description: >-
+  Search for google spreadsheets using various filters including name, content, date ranges, and
+  more.
+version: 1.0.0
+risk: low
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the GOOGLESHEETS toolkit, scoped to the calling tenant.
+      The "Connect GOOGLESHEETS" flow must be completed before this tool will succeed.
+    required: true
+  query:
+    type: string
+    description: >-
+      Search query to filter spreadsheets. Can search by name (name contains 'budget'), full text
+      content (fullText contains 'sales'), or use complex queries with operators like 'and', 'or',
+      'not'. Leave empty to get all spreadsheets.
+    default: null
+  order_by:
+    type: string
+    description: >-
+      Order results by field. Common options: 'modifiedTime desc', 'modifiedTime asc', 'name',
+      'createdTime desc'
+    default: modifiedTime desc
+  max_results:
+    type: number
+    description: Maximum number of spreadsheets to return (1-1000). Defaults to 10.
+    default: 10
+  starred_only:
+    type: boolean
+    description: Whether to return only starred spreadsheets. Defaults to False.
+    default: false
+  created_after:
+    type: string
+    description: Return spreadsheets created after this date. Use RFC 3339 format like '2024-01-01T00:00:00Z'.
+    default: null
+  modified_after:
+    type: string
+    description: Return spreadsheets modified after this date. Use RFC 3339 format like '2024-01-01T00:00:00Z'.
+    default: null
+  shared_with_me:
+    type: boolean
+    description: Whether to return only spreadsheets shared with the current user. Defaults to False.
+    default: false
+  include_trashed:
+    type: boolean
+    description: Whether to include spreadsheets in trash. Defaults to False.
+    default: false
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/GOOGLESHEETS_SEARCH_SPREADSHEETS
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_googlesheets_search_spreadsheets
+      query: '{query}'
+      order_by: '{order_by}'
+      max_results: '{max_results}'
+      starred_only: '{starred_only}'
+      created_after: '{created_after}'
+      modified_after: '{modified_after}'
+      shared_with_me: '{shared_with_me}'
+      include_trashed: '{include_trashed}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - googlesheets
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: googlesheets
+  composio_slug: GOOGLESHEETS_SEARCH_SPREADSHEETS

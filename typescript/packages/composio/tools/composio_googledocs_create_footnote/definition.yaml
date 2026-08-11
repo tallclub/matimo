@@ -1,0 +1,82 @@
+name: composio_googledocs_create_footnote
+description: >-
+  Tool to create a new footnote in a google document. use this when you need to add a footnote at a
+  specific location or at the end of the document body.
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the GOOGLEDOCS toolkit, scoped to the calling tenant.
+      The "Connect GOOGLEDOCS" flow must be completed before this tool will succeed.
+    required: true
+  location:
+    type: object
+    description: >-
+      Inserts the footnote reference at a specific index in the document. The segmentId within this
+      Location object must be empty as footnotes can only be inserted in the document body.
+    default: null
+  documentId:
+    type: string
+    description: The ID of the document to create the footnote in.
+    required: true
+  endOfSegmentLocation:
+    type: object
+    description: >-
+      Inserts the footnote reference at the end of the document body. The segmentId within this
+      EndOfSegmentLocation object must be empty.
+    default: null
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/GOOGLEDOCS_CREATE_FOOTNOTE
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_googledocs_create_footnote
+      location: '{location}'
+      documentId: '{documentId}'
+      endOfSegmentLocation: '{endOfSegmentLocation}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - googledocs
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: googledocs
+  composio_slug: GOOGLEDOCS_CREATE_FOOTNOTE

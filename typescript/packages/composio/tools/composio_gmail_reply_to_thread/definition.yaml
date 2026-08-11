@@ -1,0 +1,111 @@
+name: composio_gmail_reply_to_thread
+description: >-
+  Sends a reply within a specific gmail thread using the original thread's subject, requiring a
+  valid `thread id` and correctly formatted email addresses. supports attachments via the
+  `attachment` parameter with valid `s3key`, `mimetype`, and `name`.
+version: 1.0.0
+risk: low
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the GMAIL toolkit, scoped to the calling tenant. The
+      "Connect GMAIL" flow must be completed before this tool will succeed.
+    required: true
+  cc:
+    type: array
+    description: CC recipients' email addresses.
+    default: []
+  bcc:
+    type: array
+    description: BCC recipients' email addresses (hidden from other recipients).
+    default: []
+  is_html:
+    type: boolean
+    description: >-
+      Indicates if `message_body` is HTML; if True, body must be valid HTML, if False, body should
+      not contain HTML tags.
+    default: false
+  user_id:
+    type: string
+    description: Identifier for the user sending the reply; 'me' refers to the authenticated user.
+    default: me
+  thread_id:
+    type: string
+    description: Identifier of the Gmail thread for the reply.
+    required: true
+  attachment:
+    type: object
+    description: File to attach to the reply. Just Provide file path here
+    default: null
+  message_body:
+    type: string
+    description: Content of the reply message, either plain text or HTML.
+    required: true
+  recipient_email:
+    type: string
+    description: Primary recipient's email address.
+    required: true
+  extra_recipients:
+    type: array
+    description: Additional 'To' recipients' email addresses.
+    default: []
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/GMAIL_REPLY_TO_THREAD
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_gmail_reply_to_thread
+      cc: '{cc}'
+      bcc: '{bcc}'
+      is_html: '{is_html}'
+      user_id: '{user_id}'
+      thread_id: '{thread_id}'
+      attachment: '{attachment}'
+      message_body: '{message_body}'
+      recipient_email: '{recipient_email}'
+      extra_recipients: '{extra_recipients}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - gmail
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: gmail
+  composio_slug: GMAIL_REPLY_TO_THREAD

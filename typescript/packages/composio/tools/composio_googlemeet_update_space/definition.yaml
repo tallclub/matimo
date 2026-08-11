@@ -1,0 +1,82 @@
+name: composio_googlemeet_update_space
+description: >-
+  Updates a meeting space. use this tool to modify the settings of an existing google meet space.
+  requires the space resource in the request body and the space name in the path.
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the GOOGLEMEET toolkit, scoped to the calling tenant.
+      The "Connect GOOGLEMEET" flow must be completed before this tool will succeed.
+    required: true
+  name:
+    type: string
+    description: 'Immutable. Resource name of the space. Format: `spaces/{space}`.'
+    required: true
+  config:
+    type: object
+    description: Configuration pertaining to the meeting space.
+    default: null
+  updateMask:
+    type: string
+    description: >-
+      Optional. Field mask used to specify the fields to be updated. Comma-separated list of fully
+      qualified field names. Example:
+      "config.accessType,config.moderationRestrictions.chatRestriction". Use "*" to update all
+      fields.
+    default: null
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/GOOGLEMEET_UPDATE_SPACE
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_googlemeet_update_space
+      name: '{name}'
+      config: '{config}'
+      updateMask: '{updateMask}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - googlemeet
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: googlemeet
+  composio_slug: GOOGLEMEET_UPDATE_SPACE

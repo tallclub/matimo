@@ -1,0 +1,90 @@
+name: composio_googlesheets_delete_dimension
+description: >-
+  Tool to delete specified rows or columns from a sheet in a google spreadsheet. use when you need
+  to remove a range of rows or columns.
+version: 1.0.0
+risk: high
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the GOOGLESHEETS toolkit, scoped to the calling tenant.
+      The "Connect GOOGLESHEETS" flow must be completed before this tool will succeed.
+    required: true
+  spreadsheet_id:
+    type: string
+    description: The ID of the spreadsheet.
+    required: true
+  response_ranges:
+    type: array
+    description: Limits the ranges of cells included in the response spreadsheet.
+    default: null
+  delete_dimension_request:
+    type: object
+    description: The details for the delete dimension request object.
+    required: true
+  response_include_grid_data:
+    type: boolean
+    description: >-
+      True if grid data should be returned. This parameter is ignored if a field mask was set in the
+      request.
+    default: null
+  include_spreadsheet_in_response:
+    type: boolean
+    description: Determines if the update response should include the spreadsheet resource.
+    default: null
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/GOOGLESHEETS_DELETE_DIMENSION
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_googlesheets_delete_dimension
+      spreadsheet_id: '{spreadsheet_id}'
+      response_ranges: '{response_ranges}'
+      delete_dimension_request: '{delete_dimension_request}'
+      response_include_grid_data: '{response_include_grid_data}'
+      include_spreadsheet_in_response: '{include_spreadsheet_in_response}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - googlesheets
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: googlesheets
+  composio_slug: GOOGLESHEETS_DELETE_DIMENSION

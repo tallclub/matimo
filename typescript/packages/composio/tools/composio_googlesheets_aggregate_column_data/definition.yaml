@@ -1,0 +1,123 @@
+name: composio_googlesheets_aggregate_column_data
+description: >-
+  Searches for rows where a specific column matches a value and performs mathematical operations on
+  data from another column.
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the GOOGLESHEETS toolkit, scoped to the calling tenant.
+      The "Connect GOOGLESHEETS" flow must be completed before this tool will succeed.
+    required: true
+  operation:
+    type: string
+    description: The mathematical operation to perform on the target column values.
+    required: true
+    enum:
+      - sum
+      - average
+      - count
+      - min
+      - max
+      - percentage
+  sheet_name:
+    type: string
+    description: The name of the specific sheet within the spreadsheet.
+    required: true
+  search_value:
+    type: string
+    description: The exact value to search for in the search column. Case-sensitive by default.
+    required: true
+  search_column:
+    type: string
+    description: >-
+      The column to search in. Can be a letter (e.g., 'A', 'B') or column name from header row
+      (e.g., 'Region', 'Department').
+    required: true
+  target_column:
+    type: string
+    description: >-
+      The column to aggregate data from. Can be a letter (e.g., 'C', 'D') or column name from header
+      row (e.g., 'Sales', 'Revenue').
+    required: true
+  case_sensitive:
+    type: boolean
+    description: Whether the search should be case-sensitive.
+    default: true
+  has_header_row:
+    type: boolean
+    description: >-
+      Whether the first row contains column headers. If True, column names can be used for
+      search_column and target_column.
+    default: true
+  spreadsheet_id:
+    type: string
+    description: The unique identifier of the Google Sheets spreadsheet.
+    required: true
+  percentage_total:
+    type: number
+    description: >-
+      For percentage operation, the total value to calculate percentage against. If not provided,
+      uses sum of all values in target column.
+    default: null
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/GOOGLESHEETS_AGGREGATE_COLUMN_DATA
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_googlesheets_aggregate_column_data
+      operation: '{operation}'
+      sheet_name: '{sheet_name}'
+      search_value: '{search_value}'
+      search_column: '{search_column}'
+      target_column: '{target_column}'
+      case_sensitive: '{case_sensitive}'
+      has_header_row: '{has_header_row}'
+      spreadsheet_id: '{spreadsheet_id}'
+      percentage_total: '{percentage_total}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - googlesheets
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: googlesheets
+  composio_slug: GOOGLESHEETS_AGGREGATE_COLUMN_DATA
