@@ -1,0 +1,123 @@
+name: composio_gmail_fetch_emails
+description: >-
+  Fetches a list of email messages from a gmail account, supporting filtering, pagination, and
+  optional full content retrieval.
+version: 1.0.0
+risk: low
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the GMAIL toolkit, scoped to the calling tenant. The
+      "Connect GMAIL" flow must be completed before this tool will succeed.
+    required: true
+  query:
+    type: string
+    description: >-
+      Gmail advanced search query (e.g., 'from:user subject:meeting'). Supports operators like
+      'from:', 'to:', 'subject:', 'label:', 'has:attachment', 'is:unread', 'after:YYYY/MM/DD',
+      'before:YYYY/MM/DD', AND/OR/NOT. Use quotes for exact phrases. Omit for no query filter.
+    default: null
+  user_id:
+    type: string
+    description: User's email address or 'me' for the authenticated user.
+    default: me
+  verbose:
+    type: boolean
+    description: >-
+      If false, uses optimized concurrent metadata fetching for faster performance (~75%
+      improvement). If true, uses standard detailed message fetching. When false, only essential
+      fields (subject, sender, recipient, time, labels) are guaranteed.
+    default: true
+  ids_only:
+    type: boolean
+    description: >-
+      If true, only returns message IDs from the list API without fetching individual message
+      details. Fastest option for getting just message IDs and thread IDs.
+    default: false
+  label_ids:
+    type: array
+    description: >-
+      Filter by label IDs; only messages with all specified labels are returned. Common IDs:
+      'INBOX', 'SPAM', 'TRASH', 'UNREAD', 'STARRED', 'IMPORTANT', 'CATEGORY_PRIMARY' (alias
+      'CATEGORY_PERSONAL'), 'CATEGORY_SOCIAL', 'CATEGORY_PROMOTIONS', 'CATEGORY_UPDATES',
+      'CATEGORY_FORUMS'. Use 'listLabels' action for custom IDs.
+  page_token:
+    type: string
+    description: >-
+      Token for retrieving a specific page, obtained from a previous response's `nextPageToken`.
+      Omit for the first page.
+    default: null
+  max_results:
+    type: number
+    description: Maximum number of messages to retrieve per page.
+    default: 1
+  include_payload:
+    type: boolean
+    description: >-
+      Set to true to include full message payload (headers, body, attachments); false for metadata
+      only.
+    default: true
+  include_spam_trash:
+    type: boolean
+    description: Set to true to include messages from 'SPAM' and 'TRASH'.
+    default: false
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/GMAIL_FETCH_EMAILS
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_gmail_fetch_emails
+      query: '{query}'
+      user_id: '{user_id}'
+      verbose: '{verbose}'
+      ids_only: '{ids_only}'
+      label_ids: '{label_ids}'
+      page_token: '{page_token}'
+      max_results: '{max_results}'
+      include_payload: '{include_payload}'
+      include_spam_trash: '{include_spam_trash}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - gmail
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: gmail
+  composio_slug: GMAIL_FETCH_EMAILS

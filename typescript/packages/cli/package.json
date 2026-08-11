@@ -2,6 +2,7 @@
   "name": "@matimo/cli",
   "version": "0.1.6",
   "description": "CLI tools for managing Matimo tool installations",
+  "license": "MIT",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",

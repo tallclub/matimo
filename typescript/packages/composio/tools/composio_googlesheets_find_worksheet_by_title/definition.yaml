@@ -1,0 +1,74 @@
+name: composio_googlesheets_find_worksheet_by_title
+description: >-
+  Finds a worksheet by its exact, case-sensitive title within a google spreadsheet; returns a
+  boolean indicating if found and the complete metadata of the entire spreadsheet, regardless of
+  whether the target worksheet is found.
+version: 1.0.0
+risk: low
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the GOOGLESHEETS toolkit, scoped to the calling tenant.
+      The "Connect GOOGLESHEETS" flow must be completed before this tool will succeed.
+    required: true
+  title:
+    type: string
+    description: The exact, case-sensitive title of the worksheet (tab name) to find.
+    required: true
+  spreadsheet_id:
+    type: string
+    description: The unique identifier of the Google Spreadsheet. This ID is part of the spreadsheet's URL.
+    required: true
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/GOOGLESHEETS_FIND_WORKSHEET_BY_TITLE
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_googlesheets_find_worksheet_by_title
+      title: '{title}'
+      spreadsheet_id: '{spreadsheet_id}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - googlesheets
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: googlesheets
+  composio_slug: GOOGLESHEETS_FIND_WORKSHEET_BY_TITLE

@@ -428,6 +428,25 @@ authentication:
   secret_env_var: MATIMO_OAUTH_TOKEN
 ```
 
+### Third-Party Credentials — Always BYOK
+
+All four methods above share one rule: the credential value always comes
+from the deploying application's own environment (`secret_env_var`), never
+from a value baked into a tool definition or shipped in a Matimo package.
+This isn't only a secrets-hygiene rule — it's also how Matimo keeps every
+provider connector on a bring-your-own-key model, so the compliance
+relationship with that provider (their Terms of Service, Fair Usage Policy,
+data handling) stays directly between the end user and the provider, not
+routed through any Matimo-operated account or infrastructure.
+
+`@matimo/composio` is the clearest example: every `composio_*` tool requires
+a caller-supplied `COMPOSIO_API_KEY` plus a `composio_connected_account_id`
+obtained through Composio's own OAuth flow — see
+[`docs/COMPOSIO.md`](./docs/COMPOSIO.md) and
+[`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md). Before adding a new
+third-party connector, see
+[CONTRIBUTING.md § Third-Party Connectors — Credential Policy](./CONTRIBUTING.md#third-party-connectors--credential-policy-byok).
+
 ---
 
 ## Command Execution

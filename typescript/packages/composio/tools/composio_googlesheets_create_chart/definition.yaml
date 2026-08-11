@@ -1,0 +1,127 @@
+name: composio_googlesheets_create_chart
+description: Create a chart in a google sheets spreadsheet using the specified data range and chart type.
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the GOOGLESHEETS toolkit, scoped to the calling tenant.
+      The "Connect GOOGLESHEETS" flow must be completed before this tool will succeed.
+    required: true
+  title:
+    type: string
+    description: Optional title for the chart.
+    default: null
+  sheet_id:
+    type: number
+    description: >-
+      The ID of the sheet within the spreadsheet where the chart will be created. Defaults to 0
+      (first sheet).
+    default: 0
+  subtitle:
+    type: string
+    description: Optional subtitle for the chart.
+    default: null
+  chart_type:
+    type: string
+    description: >-
+      The type of chart to create. Supported types: BAR, LINE, AREA, COLUMN, SCATTER, COMBO,
+      STEPPED_AREA.
+    required: true
+  data_range:
+    type: string
+    description: The range of data to use for the chart in A1 notation (e.g., 'A1:C10').
+    required: true
+  x_axis_title:
+    type: string
+    description: Optional title for the X-axis.
+    default: null
+  y_axis_title:
+    type: string
+    description: Optional title for the Y-axis.
+    default: null
+  background_red:
+    type: number
+    description: Red component of chart background color (0.0-1.0). If not specified, uses default.
+    default: null
+  spreadsheet_id:
+    type: string
+    description: The unique identifier of the Google Sheets spreadsheet where the chart will be created.
+    required: true
+  background_blue:
+    type: number
+    description: Blue component of chart background color (0.0-1.0). If not specified, uses default.
+    default: null
+  legend_position:
+    type: string
+    description: >-
+      Position of the chart legend. Options: BOTTOM_LEGEND, TOP_LEGEND, LEFT_LEGEND, RIGHT_LEGEND,
+      NO_LEGEND.
+    default: BOTTOM_LEGEND
+  background_green:
+    type: number
+    description: Green component of chart background color (0.0-1.0). If not specified, uses default.
+    default: null
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/GOOGLESHEETS_CREATE_CHART
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_googlesheets_create_chart
+      title: '{title}'
+      sheet_id: '{sheet_id}'
+      subtitle: '{subtitle}'
+      chart_type: '{chart_type}'
+      data_range: '{data_range}'
+      x_axis_title: '{x_axis_title}'
+      y_axis_title: '{y_axis_title}'
+      background_red: '{background_red}'
+      spreadsheet_id: '{spreadsheet_id}'
+      background_blue: '{background_blue}'
+      legend_position: '{legend_position}'
+      background_green: '{background_green}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - googlesheets
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: googlesheets
+  composio_slug: GOOGLESHEETS_CREATE_CHART

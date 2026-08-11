@@ -1,0 +1,73 @@
+name: composio_googleforms_list_watches
+description: >-
+  Lists all watches owned by the calling project for a specific Google Form. Use this action to
+  discover existing watches, check their status and expiration times, or audit which notifications
+  are configured for a form. Each project can have a maximum of 2 watches per form (one for each
+  event type: SCHEMA and RESPONSES). The SCHEMA event type monitors changes to form content or
+  settings, while RESPONSES monitors new form submissions.
+version: 1.0.0
+risk: low
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the GOOGLEFORMS toolkit, scoped to the calling tenant.
+      The "Connect GOOGLEFORMS" flow must be completed before this tool will succeed.
+    required: true
+  form_id:
+    type: string
+    description: >-
+      Required. ID of the Form whose watches to list. The form ID can be found in the form URL:
+      https://docs.google.com/forms/d/{formId}/edit
+    required: true
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/GOOGLEFORMS_LIST_WATCHES
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_googleforms_list_watches
+      form_id: '{form_id}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - googleforms
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: googleforms
+  composio_slug: GOOGLEFORMS_LIST_WATCHES

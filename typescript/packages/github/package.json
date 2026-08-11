@@ -2,6 +2,7 @@
   "name": "@matimo/github",
   "version": "0.1.6",
   "description": "GitHub API tools for Matimo - Full-featured GitHub integration with OAuth2 and PAT support",
+  "license": "MIT",
   "type": "module",
   "files": [
     "tools",

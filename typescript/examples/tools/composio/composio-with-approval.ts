@@ -28,13 +28,17 @@
  * • composio_jira_get_current_user (risk: low)  → executes immediately
  * • composio_jira_create_issue     (risk: medium) → pauses for approval
  * • composio_jira_delete_issue     (risk: high)   → pauses for approval
+ * • composio_gmail_get_profile     (risk: low)    → executes immediately
+ * • composio_gmail_send_email      (risk: medium) → pauses for approval
+ * • composio_gmail_delete_message  (risk: high)   → pauses for approval
  *
  * SETUP:
  * ─────────────────────────────────────────────────────────────────────────
  * 1. Set in .env:
  *    COMPOSIO_API_KEY=...
  *    COMPOSIO_USER_ID=...
- *    JIRA_CONNECTED_ACCOUNT_ID=ca_...
+ *    JIRA_CONNECTED_ACCOUNT_ID=ca_...   (optional, enables the Jira demo)
+ *    GMAIL_CONNECTED_ACCOUNT_ID=ca_...  (optional, enables the Gmail demo)
  *
  * 2. Run interactively (prompted for each write/delete):
  *    pnpm composio:approval
@@ -106,6 +110,10 @@ class ComposioRiskPolicyEngine implements PolicyEngine {
   canCreate(context: PolicyContext, tool: ToolDefinition): PolicyDecision {
     return this.base.canCreate(context, tool);
   }
+
+  filterForAgent(context: PolicyContext, tools: ToolDefinition[]): ToolDefinition[] {
+    return this.base.filterForAgent(context, tools);
+  }
 }
 
 function createApprovalCallback(): HITLCallback {
@@ -153,6 +161,8 @@ function createApprovalCallback(): HITLCallback {
 async function main(): Promise<void> {
   const userId = process.env.COMPOSIO_USER_ID || '';
   const jiraAccountId = process.env.JIRA_CONNECTED_ACCOUNT_ID || '';
+  const gmailAccountId = process.env.GMAIL_CONNECTED_ACCOUNT_ID || '';
+  const gmailTestRecipient = process.env.GMAIL_TEST_RECIPIENT_EMAIL || 'test@example.com';
 
   if (!process.env.COMPOSIO_API_KEY || !userId) {
     console.error('\n❌ COMPOSIO_API_KEY and COMPOSIO_USER_ID are required');
@@ -224,6 +234,63 @@ async function main(): Promise<void> {
     const msg = (err as Error).message;
     if (msg.includes('rejected') || msg.includes('denied')) {
       console.info('⛔ Tool execution rejected by approver — no issue deleted');
+    } else {
+      console.info('⚠️  Error:', msg);
+    }
+  }
+
+  // ── Gmail: same three-tier risk demo, different toolkit ────────────────────
+  if (!gmailAccountId) {
+    console.error(
+      '\n⚠️  GMAIL_CONNECTED_ACCOUNT_ID not set — using dummy values to demonstrate policy flow'
+    );
+  }
+
+  const gmailCreds = {
+    composio_user_id: userId,
+    composio_connected_account_id: gmailAccountId || 'ca_not_connected',
+  };
+
+  // ── 4. Low-risk tool: executes immediately, no prompt ─────────────────────
+  console.info('\n─── 4. Low-risk: composio_gmail_get_profile ──────────────────────');
+  try {
+    const result = await matimo.execute('composio_gmail_get_profile', gmailCreds);
+    console.info('✅ Result:', JSON.stringify(result, null, 2));
+  } catch (err) {
+    console.info('⚠️  Error (expected if Gmail is not connected):', (err as Error).message);
+  }
+
+  // ── 5. Medium-risk tool: paused until approved ────────────────────────────
+  console.info('\n─── 5. Medium-risk: composio_gmail_send_email ────────────────────');
+  try {
+    const result = await matimo.execute('composio_gmail_send_email', {
+      ...gmailCreds,
+      recipient_email: gmailTestRecipient,
+      subject: 'Matimo composio HITL demo',
+      body: "Sent via composio_gmail_send_email through Matimo's HITL approval flow.",
+    });
+    console.info('✅ Result:', JSON.stringify(result, null, 2));
+  } catch (err) {
+    const msg = (err as Error).message;
+    if (msg.includes('rejected') || msg.includes('denied')) {
+      console.info('⛔ Tool execution rejected by approver — no email sent');
+    } else {
+      console.info('⚠️  Error:', msg);
+    }
+  }
+
+  // ── 6. High-risk tool: paused until approved ──────────────────────────────
+  console.info('\n─── 6. High-risk: composio_gmail_delete_message ──────────────────');
+  try {
+    const result = await matimo.execute('composio_gmail_delete_message', {
+      ...gmailCreds,
+      message_id: 'test_message_id_placeholder',
+    });
+    console.info('✅ Result:', JSON.stringify(result, null, 2));
+  } catch (err) {
+    const msg = (err as Error).message;
+    if (msg.includes('rejected') || msg.includes('denied')) {
+      console.info('⛔ Tool execution rejected by approver — no message deleted');
     } else {
       console.info('⚠️  Error:', msg);
     }

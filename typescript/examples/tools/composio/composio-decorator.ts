@@ -21,7 +21,8 @@
  * SETUP:
  * ─────────────────────────────────────────────────────────────────────────
  * Same as composio-factory.ts — set COMPOSIO_API_KEY, COMPOSIO_USER_ID,
- * and at least JIRA_CONNECTED_ACCOUNT_ID in your .env file.
+ * and at least one of JIRA_CONNECTED_ACCOUNT_ID, GOOGLEDRIVE_CONNECTED_ACCOUNT_ID,
+ * or GMAIL_CONNECTED_ACCOUNT_ID in your .env file.
  *
  * USAGE:
  * ─────────────────────────────────────────────────────────────────────────
@@ -125,11 +126,49 @@ class DriveAgent {
   }
 }
 
+/**
+ * Tenant-scoped Gmail agent.
+ */
+class GmailAgent {
+  private readonly userId: string;
+  private readonly accountId: string;
+
+  constructor(userId: string, accountId: string) {
+    this.userId = userId;
+    this.accountId = accountId;
+  }
+
+  @tool('composio_gmail_get_profile')
+  async getProfile(
+    composio_user_id: string, // eslint-disable-line @typescript-eslint/no-unused-vars
+    composio_connected_account_id: string // eslint-disable-line @typescript-eslint/no-unused-vars
+  ): Promise<unknown> {
+    return {};
+  }
+
+  @tool('composio_gmail_list_labels')
+  async listLabels(
+    composio_user_id: string, // eslint-disable-line @typescript-eslint/no-unused-vars
+    composio_connected_account_id: string // eslint-disable-line @typescript-eslint/no-unused-vars
+  ): Promise<unknown> {
+    return {};
+  }
+
+  async whoAmI(): Promise<unknown> {
+    return this.getProfile(this.userId, this.accountId);
+  }
+
+  async labels(): Promise<unknown> {
+    return this.listLabels(this.userId, this.accountId);
+  }
+}
+
 async function main(): Promise<void> {
   const apiKey = process.env.COMPOSIO_API_KEY;
   const userId = process.env.COMPOSIO_USER_ID || '';
   const jiraAccountId = process.env.JIRA_CONNECTED_ACCOUNT_ID || '';
   const driveAccountId = process.env.GOOGLEDRIVE_CONNECTED_ACCOUNT_ID || '';
+  const gmailAccountId = process.env.GMAIL_CONNECTED_ACCOUNT_ID || '';
 
   if (!apiKey || !userId) {
     console.error('\n❌ COMPOSIO_API_KEY and COMPOSIO_USER_ID are required');
@@ -166,6 +205,20 @@ async function main(): Promise<void> {
     console.info('✅ list files:', JSON.stringify(files, null, 2));
   } else {
     console.info('\n⚠️  Skipping Google Drive (GOOGLEDRIVE_CONNECTED_ACCOUNT_ID not set)');
+  }
+
+  // ── Gmail agent ────────────────────────────────────────────────────────────
+  if (gmailAccountId) {
+    console.info('\n─── Gmail (via GmailAgent class) ────────────────────────────────');
+    const gmail = new GmailAgent(userId, gmailAccountId);
+
+    const profile = await gmail.whoAmI();
+    console.info('✅ getProfile:', JSON.stringify(profile, null, 2));
+
+    const labels = await gmail.labels();
+    console.info('✅ list labels:', JSON.stringify(labels, null, 2));
+  } else {
+    console.info('\n⚠️  Skipping Gmail (GMAIL_CONNECTED_ACCOUNT_ID not set)');
   }
 
   console.info('\n' + '='.repeat(70));

@@ -1,0 +1,77 @@
+name: composio_googledocs_copy_document
+description: >-
+  Tool to create a copy of an existing google document. use this to duplicate a document, for
+  example, when using an existing document as a template. the copied document will have a default
+  title (e.g., 'copy of [original title]') if no new title is provided, and will be placed in the
+  user's root google drive folder.
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the GOOGLEDOCS toolkit, scoped to the calling tenant.
+      The "Connect GOOGLEDOCS" flow must be completed before this tool will succeed.
+    required: true
+  title:
+    type: string
+    description: >-
+      The title for the new copied document. If not provided, the title will be 'Copy of [original
+      document's title]'.
+    default: null
+  document_id:
+    type: string
+    description: The ID of the Google Document to be copied.
+    required: true
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/GOOGLEDOCS_COPY_DOCUMENT
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_googledocs_copy_document
+      title: '{title}'
+      document_id: '{document_id}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - googledocs
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: googledocs
+  composio_slug: GOOGLEDOCS_COPY_DOCUMENT

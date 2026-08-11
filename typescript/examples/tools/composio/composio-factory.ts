@@ -9,9 +9,9 @@
  * The simplest way to call Composio-backed tools. One line per tool call —
  * no classes, no LLM, no abstraction layer.
  *
- * @matimo/composio wraps Composio's 250+ integrations (Jira, Google Drive,
- * Microsoft Teams, Outlook, SharePoint, and more) with Matimo's policy
- * engine, risk classification, and human-in-the-loop approval layer.
+ * @matimo/composio wraps Composio's 250+ integrations (Jira, Google
+ * Workspace, Microsoft Teams, Outlook, SharePoint, and more) with Matimo's
+ * policy engine, risk classification, and human-in-the-loop approval layer.
  *
  * Use this pattern when:
  * ✅ Writing scripts, one-off data pipelines, or CLI tools
@@ -21,7 +21,8 @@
  * SETUP:
  * ─────────────────────────────────────────────────────────────────────────
  * 1. Obtain a Composio API key at https://app.composio.dev
- *    and connect your accounts (Jira, Google Drive, etc.) via the dashboard.
+ *    and connect your accounts (Jira, Google Drive, Gmail, etc.) via the
+ *    dashboard.
  *
  * 2. Create a .env file at the root of typescript/examples/tools/:
  *    COMPOSIO_API_KEY=your-composio-project-api-key
@@ -29,9 +30,16 @@
  *    JIRA_CONNECTED_ACCOUNT_ID=ca_xxxxxxxxxx
  *    GOOGLEDRIVE_CONNECTED_ACCOUNT_ID=ca_xxxxxxxxxx
  *    MICROSOFT_TEAMS_CONNECTED_ACCOUNT_ID=ca_xxxxxxxxxx
+ *    GMAIL_CONNECTED_ACCOUNT_ID=ca_xxxxxxxxxx
+ *    GOOGLESHEETS_CONNECTED_ACCOUNT_ID=ca_xxxxxxxxxx
+ *    GOOGLEDOCS_CONNECTED_ACCOUNT_ID=ca_xxxxxxxxxx
+ *    GOOGLEFORMS_CONNECTED_ACCOUNT_ID=ca_xxxxxxxxxx
+ *    GOOGLEFORMS_TEST_FORM_ID=your-google-form-id
+ *    GOOGLEMEET_CONNECTED_ACCOUNT_ID=ca_xxxxxxxxxx
  *
  *    Connected account IDs are shown in the Composio dashboard under
- *    Connections → <toolkit> → Connected Account ID.
+ *    Connections → <toolkit> → Connected Account ID. Each section below is
+ *    skipped automatically if its connected account ID is not set.
  *
  * USAGE:
  * ─────────────────────────────────────────────────────────────────────────
@@ -39,10 +47,15 @@
  *
  * TOOLS DEMONSTRATED:
  * ─────────────────────────────────────────────────────────────────────────
- * • composio_jira_get_current_user        (risk: low)
- * • composio_googledrive_list_files       (risk: low)
- * • composio_googlecalendar_list_calendars (risk: low)
- * • composio_microsoft_teams_teams_list   (risk: low)
+ * • composio_jira_get_current_user           (risk: low)
+ * • composio_googledrive_list_files          (risk: low)
+ * • composio_googlecalendar_list_calendars   (risk: low)
+ * • composio_microsoft_teams_teams_list      (risk: low)
+ * • composio_gmail_get_profile               (risk: low)
+ * • composio_googlesheets_search_spreadsheets (risk: low)
+ * • composio_googledocs_search_documents     (risk: low)
+ * • composio_googleforms_get_form            (risk: low)
+ * • composio_googlemeet_list_conference_records (risk: low)
  *
  * ============================================================================
  */
@@ -64,6 +77,12 @@ const JIRA_ACCOUNT_ID = process.env.JIRA_CONNECTED_ACCOUNT_ID || '';
 const DRIVE_ACCOUNT_ID = process.env.GOOGLEDRIVE_CONNECTED_ACCOUNT_ID || '';
 const CALENDAR_ACCOUNT_ID = process.env.GOOGLECALENDAR_CONNECTED_ACCOUNT_ID || '';
 const TEAMS_ACCOUNT_ID = process.env.MICROSOFT_TEAMS_CONNECTED_ACCOUNT_ID || '';
+const GMAIL_ACCOUNT_ID = process.env.GMAIL_CONNECTED_ACCOUNT_ID || '';
+const SHEETS_ACCOUNT_ID = process.env.GOOGLESHEETS_CONNECTED_ACCOUNT_ID || '';
+const DOCS_ACCOUNT_ID = process.env.GOOGLEDOCS_CONNECTED_ACCOUNT_ID || '';
+const FORMS_ACCOUNT_ID = process.env.GOOGLEFORMS_CONNECTED_ACCOUNT_ID || '';
+const FORMS_TEST_FORM_ID = process.env.GOOGLEFORMS_TEST_FORM_ID || '';
+const MEET_ACCOUNT_ID = process.env.GOOGLEMEET_CONNECTED_ACCOUNT_ID || '';
 
 function checkEnv(): void {
   const missing = [
@@ -144,6 +163,71 @@ async function main(): Promise<void> {
     printResult('composio_microsoft_teams_teams_list', teams);
   } else {
     console.info('\n⚠️  Skipping Microsoft Teams (MICROSOFT_TEAMS_CONNECTED_ACCOUNT_ID not set)');
+  }
+
+  // ── 5. Gmail: fetch the authenticated user's profile ──────────────────────
+  if (GMAIL_ACCOUNT_ID) {
+    console.info('\n─── Gmail ───────────────────────────────────────────────────────');
+    const profile = await matimo.execute('composio_gmail_get_profile', {
+      composio_user_id: COMPOSIO_USER_ID,
+      composio_connected_account_id: GMAIL_ACCOUNT_ID,
+    });
+    printResult('composio_gmail_get_profile', profile);
+  } else {
+    console.info('\n⚠️  Skipping Gmail (GMAIL_CONNECTED_ACCOUNT_ID not set)');
+  }
+
+  // ── 6. Google Sheets: search accessible spreadsheets ───────────────────────
+  if (SHEETS_ACCOUNT_ID) {
+    console.info('\n─── Google Sheets ───────────────────────────────────────────────');
+    const spreadsheets = await matimo.execute('composio_googlesheets_search_spreadsheets', {
+      composio_user_id: COMPOSIO_USER_ID,
+      composio_connected_account_id: SHEETS_ACCOUNT_ID,
+    });
+    printResult('composio_googlesheets_search_spreadsheets', spreadsheets);
+  } else {
+    console.info('\n⚠️  Skipping Google Sheets (GOOGLESHEETS_CONNECTED_ACCOUNT_ID not set)');
+  }
+
+  // ── 7. Google Docs: search accessible documents ────────────────────────────
+  if (DOCS_ACCOUNT_ID) {
+    console.info('\n─── Google Docs ─────────────────────────────────────────────────');
+    const documents = await matimo.execute('composio_googledocs_search_documents', {
+      composio_user_id: COMPOSIO_USER_ID,
+      composio_connected_account_id: DOCS_ACCOUNT_ID,
+    });
+    printResult('composio_googledocs_search_documents', documents);
+  } else {
+    console.info('\n⚠️  Skipping Google Docs (GOOGLEDOCS_CONNECTED_ACCOUNT_ID not set)');
+  }
+
+  // ── 8. Google Forms: fetch a known form by ID ───────────────────────────────
+  // The Forms API has no "list my forms" endpoint, so this one needs a form ID
+  // up front (unlike the other read-only calls above).
+  if (FORMS_ACCOUNT_ID && FORMS_TEST_FORM_ID) {
+    console.info('\n─── Google Forms ────────────────────────────────────────────────');
+    const form = await matimo.execute('composio_googleforms_get_form', {
+      composio_user_id: COMPOSIO_USER_ID,
+      composio_connected_account_id: FORMS_ACCOUNT_ID,
+      formId: FORMS_TEST_FORM_ID,
+    });
+    printResult('composio_googleforms_get_form', form);
+  } else {
+    console.info(
+      '\n⚠️  Skipping Google Forms (GOOGLEFORMS_CONNECTED_ACCOUNT_ID or GOOGLEFORMS_TEST_FORM_ID not set)'
+    );
+  }
+
+  // ── 9. Google Meet: list recent conference records ─────────────────────────
+  if (MEET_ACCOUNT_ID) {
+    console.info('\n─── Google Meet ─────────────────────────────────────────────────');
+    const records = await matimo.execute('composio_googlemeet_list_conference_records', {
+      composio_user_id: COMPOSIO_USER_ID,
+      composio_connected_account_id: MEET_ACCOUNT_ID,
+    });
+    printResult('composio_googlemeet_list_conference_records', records);
+  } else {
+    console.info('\n⚠️  Skipping Google Meet (GOOGLEMEET_CONNECTED_ACCOUNT_ID not set)');
   }
 
   console.info('\n' + '='.repeat(70));

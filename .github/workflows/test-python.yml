@@ -40,7 +40,7 @@ jobs:
         run: uv sync --group dev
 
       - name: Lint (ruff)
-        run: uv tool run ruff check packages/
+        run: uv run ruff check packages/
 
       - name: Type check (mypy)
         run: uv run mypy packages/ || true   # non-blocking: union type refinement work in progress

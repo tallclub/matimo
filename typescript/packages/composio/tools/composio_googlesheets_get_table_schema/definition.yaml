@@ -1,0 +1,88 @@
+name: composio_googlesheets_get_table_schema
+description: >-
+  This action is used to get the schema of a table in a google spreadsheet, call this action to get
+  the schema of a table in a spreadsheet before you query the table. analyze table structure and
+  infer column names, types, and constraints. uses statistical analysis of sample data to determine
+  the most likely data type for each column. call this action after calling the list tables action
+  to get the schema of a table in a spreadsheet.
+version: 1.0.0
+risk: low
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the GOOGLESHEETS toolkit, scoped to the calling tenant.
+      The "Connect GOOGLESHEETS" flow must be completed before this tool will succeed.
+    required: true
+  sheet_name:
+    type: string
+    description: Sheet/tab name if table_name is ambiguous across multiple sheets
+    default: null
+  table_name:
+    type: string
+    description: >-
+      Specific table name from LIST_TABLES response (e.g., 'Sales_Data', 'Employee_List'). Use
+      'auto' to analyze the largest/most prominent table.
+    required: true
+  sample_size:
+    type: number
+    description: Number of rows to sample for type inference
+    default: 50
+  spreadsheet_id:
+    type: string
+    description: Google Sheets ID
+    required: true
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/GOOGLESHEETS_GET_TABLE_SCHEMA
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_googlesheets_get_table_schema
+      sheet_name: '{sheet_name}'
+      table_name: '{table_name}'
+      sample_size: '{sample_size}'
+      spreadsheet_id: '{spreadsheet_id}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - googlesheets
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: googlesheets
+  composio_slug: GOOGLESHEETS_GET_TABLE_SCHEMA

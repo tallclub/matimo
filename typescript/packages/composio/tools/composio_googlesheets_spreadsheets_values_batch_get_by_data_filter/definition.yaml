@@ -1,0 +1,108 @@
+name: composio_googlesheets_spreadsheets_values_batch_get_by_data_filter
+description: >-
+  Tool to return one or more ranges of values from a spreadsheet that match the specified data
+  filters. use when you need to retrieve specific data sets based on filtering criteria rather than
+  entire sheets or fixed ranges.
+version: 1.0.0
+risk: low
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the GOOGLESHEETS toolkit, scoped to the calling tenant.
+      The "Connect GOOGLESHEETS" flow must be completed before this tool will succeed.
+    required: true
+  dataFilters:
+    type: array
+    description: >-
+      The data filters used to match the ranges of values to retrieve. Ranges that match any of the
+      specified data filters are included in the response.
+    required: true
+  spreadsheetId:
+    type: string
+    description: The ID of the spreadsheet to retrieve data from.
+    required: true
+  majorDimension:
+    type: string
+    description: >-
+      The major dimension that results should use. For example, if the spreadsheet data is:
+      A1=1,B1=2,A2=3,B2=4, then a request that selects that range and sets majorDimension=ROWS
+      returns [[1,2],[3,4]], whereas a request that sets majorDimension=COLUMNS returns
+      [[1,3],[2,4]].
+    enum:
+      - ROWS
+      - COLUMNS
+    default: null
+  valueRenderOption:
+    type: string
+    description: How values should be represented in the output. The default render option is FORMATTED_VALUE.
+    enum:
+      - FORMATTED_VALUE
+      - UNFORMATTED_VALUE
+      - FORMULA
+    default: null
+  dateTimeRenderOption:
+    type: string
+    description: >-
+      How dates, times, and durations should be represented in the output. This is ignored if
+      valueRenderOption is FORMATTED_VALUE. The default dateTime render option is SERIAL_NUMBER.
+    enum:
+      - SERIAL_NUMBER
+      - FORMATTED_STRING
+    default: null
+execution:
+  type: http
+  method: POST
+  url: >-
+    https://backend.composio.dev/api/v3/tools/execute/GOOGLESHEETS_SPREADSHEETS_VALUES_BATCH_GET_BY_DATA_FILTER
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_googlesheets_spreadsheets_values_batch_get_by_data_filter
+      dataFilters: '{dataFilters}'
+      spreadsheetId: '{spreadsheetId}'
+      majorDimension: '{majorDimension}'
+      valueRenderOption: '{valueRenderOption}'
+      dateTimeRenderOption: '{dateTimeRenderOption}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - googlesheets
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: googlesheets
+  composio_slug: GOOGLESHEETS_SPREADSHEETS_VALUES_BATCH_GET_BY_DATA_FILTER
