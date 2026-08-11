@@ -1,6 +1,6 @@
 {
   "name": "@matimo/microsoft",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Microsoft Graph tools for Matimo (search, files, mail, Teams, calendar, SharePoint)",
   "license": "MIT",
   "type": "module",
