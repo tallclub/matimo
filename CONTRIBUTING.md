@@ -515,6 +515,36 @@ output_schema:
       type: number
 ```
 
+## Third-Party Connectors — Credential Policy (BYOK)
+
+Every provider package that talks to an external API or platform (Slack,
+Composio, HubSpot, a future Stripe/Zendesk/etc. connector) **must** follow a
+bring-your-own-key (BYOK) / bring-your-own-account model:
+
+- The credential (API key, OAuth client ID/secret, connected-account ID,
+  etc.) is always supplied at runtime by whoever deploys or configures
+  Matimo — via an environment variable or tool parameter — never hardcoded,
+  never a Matimo-owned/shared account, and never proxied through
+  Matimo-operated infrastructure.
+- Grep the tool's `definition.yaml` and any executor code for literal
+  secrets before opening a PR; only `{ENV_VAR}` placeholders and
+  `notes.env` references should appear (see
+  [SECURITY.md § Never Hardcode Secrets](./SECURITY.md#2-never-hardcode-secrets)).
+- Add an entry to [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md) for
+  the new provider: package name, credential env var(s), and a link to that
+  provider's own Terms of Service.
+- If the connector is a thin proxy over another platform's catalog (the way
+  `@matimo/composio` proxies Composio), state that plainly in the package
+  README along with a non-affiliation disclaimer — see
+  [`typescript/packages/composio/README.md`](./typescript/packages/composio/README.md)
+  for the pattern to follow.
+
+This exists because Matimo's own MIT license only governs Matimo's source
+code — it says nothing about, and doesn't excuse anyone from, the terms of
+whatever third-party service a tool connects to. Keeping every connector on
+a BYOK model means that compliance relationship stays directly between the
+end user and the provider, where it belongs.
+
 ## AI/Vibe-Coded PRs
 
 Welcome! 🤖 Built with Claude, ChatGPT, or other AI tools? **Awesome!** Just mark it:

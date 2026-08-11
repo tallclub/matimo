@@ -8,6 +8,8 @@ nav_order: 4
 
 `@matimo/composio` turns [Composio](https://composio.dev)'s 250+ integrations from "agent has raw API access" into "agent has governed, auditable, human-approvable API access" — same breadth, with Matimo's policy engine, risk classification, and human-in-the-loop (HITL) approval layered on top.
 
+> **Bring your own key.** Every tool here requires *your own* `COMPOSIO_API_KEY` and Composio connected accounts, supplied at runtime — Matimo does not hold a Composio account or proxy requests through Matimo-operated infrastructure. You're responsible for complying with [Composio's Terms of Service](https://composio.dev/terms) and [Privacy Policy](https://composio.dev/privacy) independently. Matimo is not affiliated with, endorsed by, or sponsored by Composio. See [`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md) for the full list of third-party providers Matimo can connect to.
+
 ---
 
 ## What Is Composio?
