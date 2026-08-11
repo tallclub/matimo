@@ -9,7 +9,7 @@ interoperability.
 
 Every credential below is supplied at runtime by the person or application
 deploying Matimo (bring-your-own-key / bring-your-own-account) — Matimo does
-not embed, proxy through, or hold its own account with any of these
+not embed, route through, or hold its own account with any of these
 providers. **Users are responsible for independently reading and complying
 with each provider's own Terms of Service, Privacy Policy, and API/Fair
 Usage policies before connecting it to Matimo.**
@@ -29,7 +29,7 @@ Usage policies before connecting it to Matimo.**
 
 ## Composio specifically
 
-`@matimo/composio` proxies Composio's `/tools/execute/{slug}` REST endpoint
+`@matimo/composio` calls Composio's `/tools/execute/{slug}` REST endpoint
 to expose 449+ third-party actions (Asana, Jira, Linear, Google Workspace,
 Microsoft 365, and more) under Matimo's policy engine. See:
 

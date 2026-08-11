@@ -524,7 +524,7 @@ bring-your-own-key (BYOK) / bring-your-own-account model:
 - The credential (API key, OAuth client ID/secret, connected-account ID,
   etc.) is always supplied at runtime by whoever deploys or configures
   Matimo — via an environment variable or tool parameter — never hardcoded,
-  never a Matimo-owned/shared account, and never proxied through
+  never a Matimo-owned/shared account, and never routed through
   Matimo-operated infrastructure.
 - Grep the tool's `definition.yaml` and any executor code for literal
   secrets before opening a PR; only `{ENV_VAR}` placeholders and
@@ -533,8 +533,8 @@ bring-your-own-key (BYOK) / bring-your-own-account model:
 - Add an entry to [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md) for
   the new provider: package name, credential env var(s), and a link to that
   provider's own Terms of Service.
-- If the connector is a thin proxy over another platform's catalog (the way
-  `@matimo/composio` proxies Composio), state that plainly in the package
+- If the connector is a thin wrapper over another platform's catalog (the way
+  `@matimo/composio` wraps Composio), state that plainly in the package
   README along with a non-affiliation disclaimer — see
   [`typescript/packages/composio/README.md`](./typescript/packages/composio/README.md)
   for the pattern to follow.

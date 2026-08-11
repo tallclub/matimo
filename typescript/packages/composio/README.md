@@ -23,7 +23,7 @@ Wrapping Composio's catalog with Matimo's policy engine gets users governed
 access to broad integration coverage immediately. Over time, the highest-usage
 toolkits here (Google Workspace, Jira, Linear, Asana are the current
 candidates) are expected to graduate into first-party `@matimo/<provider>`
-packages with native auth, no proxy hop, and the full test/example suite —
+packages with native auth, no extra network hop, and the full test/example suite —
 at which point their `composio_*` equivalents can be deprecated in favor of
 the native ones. Until then, this package is the pragmatic way to give
 agents broad, governed tool access without gating it on our own build
@@ -32,7 +32,7 @@ velocity.
 ## 🔑 Bring Your Own Composio Key — and Non-Affiliation
 
 Every tool in this package requires **your own** `COMPOSIO_API_KEY` and your
-own Composio connected accounts, supplied at runtime — Matimo never holds a Composio account or credential of its own, and no request is proxied through any Matimo-operated infrastructure other than your own deployment. You are responsible for independently reading and complying with [Composio's Terms of Service](https://composio.dev/terms) and [Privacy Policy](https://composio.dev/privacy) before connecting an account.
+own Composio connected accounts, supplied at runtime — Matimo never holds a Composio account or credential of its own, and no request is routed through any Matimo-operated infrastructure other than your own deployment. You are responsible for independently reading and complying with [Composio's Terms of Service](https://composio.dev/terms) and [Privacy Policy](https://composio.dev/privacy) before connecting an account.
 This BYOK pattern mirrors how other platforms built on Composio's catalog
 work (e.g. [Langflow](https://docs.langflow.org/bundles-composio),
 [KiloClaw](https://kilo.ai/docs/kiloclaw/development-tools/composio)) 
@@ -41,7 +41,7 @@ work (e.g. [Langflow](https://docs.langflow.org/bundles-composio),
 "Composio" is used here solely to describe interoperability with their
 public API.
 
-Every tool in this package proxies a single Composio action via Composio's
+Every tool in this package calls a single Composio action via Composio's
 REST execute endpoint:
 
 ```
