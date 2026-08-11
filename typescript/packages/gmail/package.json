@@ -2,6 +2,7 @@
   "name": "@matimo/gmail",
   "version": "0.1.6",
   "description": "Gmail tools for Matimo",
+  "license": "MIT",
   "type": "module",
   "files": [
     "tools",

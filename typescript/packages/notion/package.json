@@ -2,6 +2,7 @@
   "name": "@matimo/notion",
   "version": "0.1.6",
   "description": "Notion workspace tools for Matimo",
+  "license": "MIT",
   "type": "module",
   "files": [
     "tools",
