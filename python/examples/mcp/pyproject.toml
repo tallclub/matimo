@@ -16,7 +16,7 @@ dependencies = [
     "matimo-mailchimp>=0.1.0,<0.2.0",
     "matimo-bruno>=0.1.0,<0.2.0",
     "python-dotenv>=1.2.2",
-    "mcp>=1.27.0",
+    "mcp>=1.28.1",
 ]
 
 [project.optional-dependencies]
