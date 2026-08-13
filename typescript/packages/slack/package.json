@@ -1,7 +1,8 @@
 {
   "name": "@matimo/slack",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Slack workspace tools for Matimo",
+  "license": "MIT",
   "type": "module",
   "files": [
     "tools",

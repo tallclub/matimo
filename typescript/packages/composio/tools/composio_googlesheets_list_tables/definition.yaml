@@ -1,0 +1,85 @@
+name: composio_googlesheets_list_tables
+description: >-
+  This action is used to list all tables in a google spreadsheet, call this action to get the list
+  of tables in a spreadsheet. discover all tables in a google spreadsheet by analyzing sheet
+  structure and detecting data patterns. uses heuristic analysis to find header rows, data
+  boundaries, and table structures.
+version: 1.0.0
+risk: low
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the GOOGLESHEETS toolkit, scoped to the calling tenant.
+      The "Connect GOOGLESHEETS" flow must be completed before this tool will succeed.
+    required: true
+  min_rows:
+    type: number
+    description: Minimum number of data rows to consider a valid table
+    default: 2
+  min_columns:
+    type: number
+    description: Minimum number of columns to consider a valid table
+    default: 1
+  min_confidence:
+    type: number
+    description: Minimum confidence score (0.0-1.0) to consider a valid table
+    default: 0.5
+  spreadsheet_id:
+    type: string
+    description: Google Sheets ID from the URL (e.g., '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms')
+    required: true
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/GOOGLESHEETS_LIST_TABLES
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_googlesheets_list_tables
+      min_rows: '{min_rows}'
+      min_columns: '{min_columns}'
+      min_confidence: '{min_confidence}'
+      spreadsheet_id: '{spreadsheet_id}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - googlesheets
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: googlesheets
+  composio_slug: GOOGLESHEETS_LIST_TABLES

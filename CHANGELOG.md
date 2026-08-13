@@ -6,6 +6,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
+## [v0.1.7] - 2026-08-11
+
+### ✨ Features
+- `@matimo/composio`: 5 new Google Workspace toolkits — Gmail (23 tools), Google Sheets (36), Google Docs (32), Google Forms (7), Google Meet (9) — growing the generated catalog from 342 to 449 tools across 9 to 14 toolkits
+
+### 📚 Documentation
+- Document `@matimo/composio`'s bring-your-own-key (BYOK) credential model, with a non-affiliation disclaimer and links to Composio's Terms of Service and Privacy Policy, in the package README and `docs/COMPOSIO.md`
+- Add `THIRD_PARTY_NOTICES.md` listing every third-party provider Matimo can connect to, its credential env var, and a link to that provider's own terms
+- Mandate the BYOK pattern for all future third-party connectors in `CONTRIBUTING.md` and `SECURITY.md`
+- Update `docs/COMPOSIO.md` toolkit table and tool counts (342 → 449 tools, 9 → 14 toolkits)
+
+### 🧪 Testing
+- Exercise the new Gmail toolkit across all four example patterns (factory, decorator, LangChain, HITL-approval)
+- Give HITL integration tests headroom above Jest's 5000ms default — they drive a real `type: command` child-process spawn plus approval-manifest disk I/O with no prior margin, which could exceed the default under CI load
+
+### 🐛 Bug Fixes
+- Add the missing `license: MIT` field to provider sub-package manifests, silencing an npm/pnpm publish warning
+- Pin CI to `uv run ruff` (locked `0.15.9`) instead of the floating `uv tool run ruff`, which pulled an unpinned version and flagged findings never enforced for these packages
+
+### 📦 Version Bumps
+- All 13 `typescript/` packages (`core`, `cli`, `bruno`, `slack`, `gmail`, `github`, `hubspot`, `notion`, `mailchimp`, `microsoft`, `postgres`, `twilio`, `composio`): `0.1.6` → `0.1.7`
+
+---
 ## [v0.1.1.post1] - 2026-05-12
 
 ### 🐛 Bug Fixes

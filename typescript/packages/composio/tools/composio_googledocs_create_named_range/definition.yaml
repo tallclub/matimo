@@ -1,0 +1,88 @@
+name: composio_googledocs_create_named_range
+description: >-
+  Tool to create a new named range in a google document. use this to assign a name to a specific
+  part of the document for easier reference or programmatic manipulation.
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the GOOGLEDOCS toolkit, scoped to the calling tenant.
+      The "Connect GOOGLEDOCS" flow must be completed before this tool will succeed.
+    required: true
+  name:
+    type: string
+    description: The name for the new named range. Must be 1-256 characters.
+    required: true
+  documentId:
+    type: string
+    description: The ID of the document where the named range will be created.
+    required: true
+  rangeEndIndex:
+    type: number
+    description: The zero-based end index of the range.
+    required: true
+  rangeSegmentId:
+    type: string
+    description: Optional. The ID of the header, footer, or footnote. Empty for document body.
+    default: null
+  rangeStartIndex:
+    type: number
+    description: The zero-based start index of the range.
+    required: true
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/GOOGLEDOCS_CREATE_NAMED_RANGE
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_googledocs_create_named_range
+      name: '{name}'
+      documentId: '{documentId}'
+      rangeEndIndex: '{rangeEndIndex}'
+      rangeSegmentId: '{rangeSegmentId}'
+      rangeStartIndex: '{rangeStartIndex}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - googledocs
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: googledocs
+  composio_slug: GOOGLEDOCS_CREATE_NAMED_RANGE

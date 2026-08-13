@@ -1,0 +1,92 @@
+name: composio_googlesheets_create_spreadsheet_column
+description: >-
+  Creates a new column in a google spreadsheet, requiring a valid `spreadsheet id` and an existing
+  `sheet id`; an out-of-bounds `insert index` may append/prepend the column.
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the GOOGLESHEETS toolkit, scoped to the calling tenant.
+      The "Connect GOOGLESHEETS" flow must be completed before this tool will succeed.
+    required: true
+  sheet_id:
+    type: number
+    description: >-
+      The numeric identifier of the specific sheet (tab) within the spreadsheet where the column
+      will be added.
+    required: true
+  insert_index:
+    type: number
+    description: >-
+      The 0-based index at which the new column will be inserted. For example, an index of 0 inserts
+      the column before the current first column (A), and an index of 1 inserts it between the
+      current columns A and B.
+    default: 0
+  spreadsheet_id:
+    type: string
+    description: The unique identifier of the Google Spreadsheet where the column will be created.
+    required: true
+  inherit_from_before:
+    type: boolean
+    description: >-
+      If true, the new column inherits properties (e.g., formatting, width) from the column
+      immediately to its left (the preceding column). If false (default), it inherits from the
+      column immediately to its right (the succeeding column). This is ignored if there is no
+      respective preceding or succeeding column.
+    default: false
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/GOOGLESHEETS_CREATE_SPREADSHEET_COLUMN
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_googlesheets_create_spreadsheet_column
+      sheet_id: '{sheet_id}'
+      insert_index: '{insert_index}'
+      spreadsheet_id: '{spreadsheet_id}'
+      inherit_from_before: '{inherit_from_before}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - googlesheets
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: googlesheets
+  composio_slug: GOOGLESHEETS_CREATE_SPREADSHEET_COLUMN

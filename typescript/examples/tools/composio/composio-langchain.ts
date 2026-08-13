@@ -17,7 +17,7 @@
  * ✅ Users give high-level instructions, not specific API calls
  *
  * ⚠️  TOOL COUNT — LangChain has a hard limit of 128 tools per call.
- * @matimo/composio currently ships 342 tools across 9 toolkits. This
+ * @matimo/composio currently ships 449 tools across 14 toolkits. This
  * example filters to a curated subset before binding to the LLM. In
  * production, bind only the toolkits relevant to the agent's task.
  *
@@ -30,17 +30,19 @@
  *    JIRA_CONNECTED_ACCOUNT_ID=ca_...    (optional, enables Jira tasks)
  *    GOOGLEDRIVE_CONNECTED_ACCOUNT_ID=ca_...  (optional, enables Drive tasks)
  *    GOOGLECALENDAR_CONNECTED_ACCOUNT_ID=ca_... (optional, enables Calendar tasks)
+ *    GMAIL_CONNECTED_ACCOUNT_ID=ca_...   (optional, enables Gmail tasks)
  *
  * 2. Run:
  *    pnpm composio:langchain
  *
  * WHAT THE AGENT DOES:
  * ─────────────────────────────────────────────────────────────────────────
- * Given a task like "Find my unresolved Jira issues and check my upcoming
- * calendar events", the agent will:
+ * Given a task like "Find my unresolved Jira issues, check my upcoming
+ * calendar events, and summarize my unread Gmail", the agent will:
  *   1. Call composio_jira_search_issues with JQL for unresolved issues
  *   2. Call composio_googlecalendar_events_list for upcoming events
- *   3. Synthesise the results into a natural language response
+ *   3. Call composio_gmail_fetch_emails for unread messages
+ *   4. Synthesise the results into a natural language response
  *
  * ============================================================================
  */
@@ -59,6 +61,7 @@ const COMPOSIO_USER_ID = process.env.COMPOSIO_USER_ID || '';
 const JIRA_ACCOUNT_ID = process.env.JIRA_CONNECTED_ACCOUNT_ID || '';
 const DRIVE_ACCOUNT_ID = process.env.GOOGLEDRIVE_CONNECTED_ACCOUNT_ID || '';
 const CALENDAR_ACCOUNT_ID = process.env.GOOGLECALENDAR_CONNECTED_ACCOUNT_ID || '';
+const GMAIL_ACCOUNT_ID = process.env.GMAIL_CONNECTED_ACCOUNT_ID || '';
 
 async function main(): Promise<void> {
   if (!process.env.COMPOSIO_API_KEY || !COMPOSIO_USER_ID) {
@@ -88,11 +91,12 @@ async function main(): Promise<void> {
   if (JIRA_ACCOUNT_ID) ENABLED_TOOLKITS.add('jira');
   if (DRIVE_ACCOUNT_ID) ENABLED_TOOLKITS.add('googledrive');
   if (CALENDAR_ACCOUNT_ID) ENABLED_TOOLKITS.add('googlecalendar');
+  if (GMAIL_ACCOUNT_ID) ENABLED_TOOLKITS.add('gmail');
 
   if (ENABLED_TOOLKITS.size === 0) {
     console.error('\n❌ No connected accounts configured — set at least one of:');
     console.error('   JIRA_CONNECTED_ACCOUNT_ID, GOOGLEDRIVE_CONNECTED_ACCOUNT_ID,');
-    console.error('   GOOGLECALENDAR_CONNECTED_ACCOUNT_ID');
+    console.error('   GOOGLECALENDAR_CONNECTED_ACCOUNT_ID, GMAIL_CONNECTED_ACCOUNT_ID');
     process.exit(1);
   }
 
@@ -111,6 +115,7 @@ async function main(): Promise<void> {
     jira: JIRA_ACCOUNT_ID,
     googledrive: DRIVE_ACCOUNT_ID,
     googlecalendar: CALENDAR_ACCOUNT_ID,
+    gmail: GMAIL_ACCOUNT_ID,
   };
 
   // convertToolsToLangChain(tools, matimoInstance, envVarsToInject)
@@ -139,6 +144,7 @@ async function main(): Promise<void> {
     );
   if (CALENDAR_ACCOUNT_ID) taskParts.push('list upcoming Google Calendar events for today');
   if (DRIVE_ACCOUNT_ID) taskParts.push('list recent files in Google Drive');
+  if (GMAIL_ACCOUNT_ID) taskParts.push('fetch my 5 most recent Gmail messages');
   const task = `${userContext} Then: ${taskParts.join(', then ')}`;
 
   console.info(`\n🎯 Task: "${taskParts.join(', then ')}"`);

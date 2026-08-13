@@ -136,6 +136,7 @@ Matimo ships with built-in support for:
 - **Postgres Tools**: Query/modify data with safety checks
 - **Twilio Tools**: Send SMS/MMS, manage messages
 - **Mailchimp Tools**: Audiences, subscribers, email campaigns
+- **Composio Catalog (Governed)**: 449 tools across Asana, Jira, Linear, Google Workspace, Microsoft 365, and more — routed through [Composio](https://composio.dev) with Matimo's policy engine and HITL layered on top ([why](./typescript/packages/composio/README.md#-credit-where-its-due))
 - **Auto-Discovery**: Automatic detection of `@matimo/*` providers from npm
 - **Matimo CLI**: Tool discovery, setup wizard, MCP config generation
 - **OAuth2 Support**: Provider-agnostic authorization for Slack, Gmail, GitHub, etc.
@@ -394,6 +395,20 @@ See [Adding Tools to Matimo](./docs/tool-development/ADDING_TOOLS.md) for the co
 - [Contributing](./CONTRIBUTING.md)
 
 ---
+
+## Acknowledgments
+
+Broad integration coverage (Asana, Jira, Linear, Google Workspace, Microsoft
+365, and more — 449 tools total) is made possible today by
+[Composio](https://composio.dev), whose catalog `@matimo/composio` wraps with
+Matimo's policy engine, risk classification, and HITL approval. Building and
+maintaining native, fully-tested first-party tools for that many actions
+ourselves would take far longer than agents should have to wait for governed
+access — so we lean on Composio's integration breadth as a deliberate,
+temporary bridge while we grow native `@matimo/<provider>` packages for the
+highest-usage toolkits over time. See
+[the composio package README](./typescript/packages/composio/README.md#-credit-where-its-due)
+for the full rationale.
 
 ## License
 

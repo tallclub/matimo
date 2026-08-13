@@ -1,0 +1,84 @@
+name: composio_googledocs_create_footer
+description: >-
+  Tool to create a new footer in a google document. use when you need to add a footer, optionally
+  specifying its type and the section it applies to.
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the GOOGLEDOCS toolkit, scoped to the calling tenant.
+      The "Connect GOOGLEDOCS" flow must be completed before this tool will succeed.
+    required: true
+  type:
+    type: string
+    description: The type of footer to create.
+    required: true
+    enum:
+      - HEADER_FOOTER_TYPE_UNSPECIFIED
+      - DEFAULT
+  document_id:
+    type: string
+    description: The ID of the document to create the footer in.
+    required: true
+  section_break_location:
+    type: object
+    description: >-
+      The location of the SectionBreak immediately preceding the section whose SectionStyle this
+      footer should belong to. If this is unset or refers to the first section break in the
+      document, the footer applies to the document style.
+    default: null
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/GOOGLEDOCS_CREATE_FOOTER
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_googledocs_create_footer
+      type: '{type}'
+      document_id: '{document_id}'
+      section_break_location: '{section_break_location}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - googledocs
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: googledocs
+  composio_slug: GOOGLEDOCS_CREATE_FOOTER

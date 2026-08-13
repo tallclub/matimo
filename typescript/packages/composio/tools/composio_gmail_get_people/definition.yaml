@@ -1,0 +1,106 @@
+name: composio_gmail_get_people
+description: >-
+  Retrieves either a specific person's details (using `resource name`) or lists 'other contacts' (if
+  `other contacts` is true), with `person fields` specifying the data to return.
+version: 1.0.0
+risk: low
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the GMAIL toolkit, scoped to the calling tenant. The
+      "Connect GMAIL" flow must be completed before this tool will succeed.
+    required: true
+  page_size:
+    type: number
+    description: >-
+      The number of 'Other Contacts' to return per page. Applicable only when `other_contacts` is
+      true.
+    default: 10
+  page_token:
+    type: string
+    description: >-
+      An opaque token from a previous response to retrieve the next page of 'Other Contacts'
+      results. Applicable only when `other_contacts` is true and paginating.
+    default: ''
+  sync_token:
+    type: string
+    description: >-
+      A token from a previous 'Other Contacts' list call to retrieve only changes since the last
+      sync; leave empty for an initial full sync. Applicable only when `other_contacts` is true.
+    default: ''
+  person_fields:
+    type: string
+    description: >-
+      A comma-separated field mask to restrict which fields on the person (or persons) are returned.
+      Consult the Google People API documentation for a comprehensive list of valid fields.
+    default: emailAddresses,names,birthdays,genders
+  resource_name:
+    type: string
+    description: >-
+      Resource name identifying the person for whom to retrieve information (like the authenticated
+      user or a specific contact). Used only when `other_contacts` is false.
+    default: people/me
+  other_contacts:
+    type: boolean
+    description: >-
+      If true, retrieves 'Other Contacts' (people interacted with but not explicitly saved),
+      ignoring `resource_name` and enabling pagination/sync. If false, retrieves information for the
+      single person specified by `resource_name`.
+    default: false
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/GMAIL_GET_PEOPLE
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_gmail_get_people
+      page_size: '{page_size}'
+      page_token: '{page_token}'
+      sync_token: '{sync_token}'
+      person_fields: '{person_fields}'
+      resource_name: '{resource_name}'
+      other_contacts: '{other_contacts}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - gmail
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: gmail
+  composio_slug: GMAIL_GET_PEOPLE

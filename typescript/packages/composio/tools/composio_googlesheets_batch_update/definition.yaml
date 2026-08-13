@@ -1,0 +1,104 @@
+name: composio_googlesheets_batch_update
+description: >-
+  Updates a specified range in a google sheet with given values, or appends them as new rows if
+  `first cell location` is omitted; ensure the target sheet exists and the spreadsheet contains at
+  least one worksheet.
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the GOOGLESHEETS toolkit, scoped to the calling tenant.
+      The "Connect GOOGLESHEETS" flow must be completed before this tool will succeed.
+    required: true
+  values:
+    type: array
+    description: >-
+      A 2D list of cell values. Each inner list represents a row. Values can be strings, numbers, or
+      booleans. Ensure columns are properly aligned across rows.
+    required: true
+  sheet_name:
+    type: string
+    description: The name of the specific sheet within the spreadsheet to update.
+    required: true
+  spreadsheet_id:
+    type: string
+    description: The unique identifier of the Google Sheets spreadsheet to be updated.
+    required: true
+  valueInputOption:
+    type: string
+    description: >-
+      How input data is interpreted. 'USER_ENTERED': Values parsed as if typed by a user (e.g.,
+      strings may become numbers/dates, formulas are calculated); recommended for formulas. 'RAW':
+      Values stored as-is without parsing (e.g., '123' stays string, '=SUM(A1:B1)' stays string).
+    enum:
+      - RAW
+      - USER_ENTERED
+    default: USER_ENTERED
+  first_cell_location:
+    type: string
+    description: >-
+      The starting cell for the update range, specified in A1 notation (e.g., 'A1', 'B2'). The
+      update will extend from this cell to the right and down, based on the provided values. If
+      omitted, values are appended to the sheet.
+  includeValuesInResponse:
+    type: boolean
+    description: If set to True, the response will include the updated values from the spreadsheet.
+    default: false
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/GOOGLESHEETS_BATCH_UPDATE
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_googlesheets_batch_update
+      values: '{values}'
+      sheet_name: '{sheet_name}'
+      spreadsheet_id: '{spreadsheet_id}'
+      valueInputOption: '{valueInputOption}'
+      first_cell_location: '{first_cell_location}'
+      includeValuesInResponse: '{includeValuesInResponse}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - googlesheets
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: googlesheets
+  composio_slug: GOOGLESHEETS_BATCH_UPDATE

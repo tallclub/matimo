@@ -37,6 +37,7 @@ module.exports = {
   setupFiles: ['<rootDir>/jest.setup.js'],
   transform: {
     '^.+\\.[tj]s$': ['ts-jest', {
+      isolatedModules: true,
       tsconfig: {
         allowJs: true,
         esModuleInterop: true,

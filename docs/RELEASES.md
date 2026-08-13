@@ -1,3 +1,33 @@
+## v0.1.7 — Composio Google Workspace Expansion: Gmail, Sheets, Docs, Forms, Meet 📇
+
+> **Release**: Five new Composio-backed Google Workspace toolkits (Gmail, Sheets, Docs, Forms, Meet) adding 107 governed tools, plus explicit BYOK compliance documentation for the Composio dependency, two small fixes, and a flaky-test timeout fix.
+
+**Released**: August 11, 2026
+**Scope**: `typescript/` workspace — all 13 packages (`core`, `cli`, `bruno`, `slack`, `gmail`, `github`, `hubspot`, `notion`, `mailchimp`, `microsoft`, `postgres`, `twilio`, `composio`) bumped to `0.1.7` in lockstep. Python untouched this release.
+**Severity**: 🟢 **Additive** — new tools and documentation only, no breaking changes to existing package APIs
+
+---
+
+### ✨ **Composio: 5 new Google Workspace toolkits**
+
+`@matimo/composio`'s generated catalog grows from 342 → 449 tools across 9 → 14 toolkits: Gmail (23), Google Sheets (36), Google Docs (32), Google Forms (7), and Google Meet (9). Same governed-access model as every other `composio_*` tool — bring-your-own `COMPOSIO_API_KEY` + `composio_connected_account_id`, risk-classified, policy-gated.
+
+### 🧪 **Gmail: example coverage**
+
+The new Gmail toolkit is exercised across all four example patterns (factory, decorator, LangChain, HITL-approval).
+
+### 📚 **Composio: BYOK & third-party notices**
+
+Documented `@matimo/composio`'s bring-your-own-key credential model explicitly: a non-affiliation disclaimer and links to Composio's Terms of Service and Privacy Policy were added to the package README and `docs/COMPOSIO.md`. Added `THIRD_PARTY_NOTICES.md`, listing every provider Matimo can connect to, its credential env var, and a link to that provider's own terms. `CONTRIBUTING.md` and `SECURITY.md` now mandate the BYOK pattern for all future third-party connectors, not just Composio.
+
+### 🐛 **Fixes**
+
+- Provider sub-package manifests were missing an explicit `license: MIT` field, silently triggering an npm/pnpm publish warning on everything but `core`
+- CI now pins `uv run ruff` (locked `0.15.9`) instead of the floating `uv tool run ruff`, which pulled an unpinned version and flagged findings never enforced for these packages
+- HITL integration tests (`matimo-instance-hitl-paths.test.ts`) given headroom above Jest's 5000ms default — they drive a real `type: command` child-process spawn plus approval-manifest disk I/O with no prior margin, which could exceed the default under CI load even though the logic itself was correct
+
+---
+
 ## v0.1.6 — Document & Web Tooling: web_scraper, convert_to_file, extract_from_file 🛠️
 
 > **Release**: Three new core tools for pulling content into an agent's context and turning agent output into shippable files, plus expression-mode calculator, a Gmail attachment tool, a Bruno bug fix, and a round of dependency security patches.

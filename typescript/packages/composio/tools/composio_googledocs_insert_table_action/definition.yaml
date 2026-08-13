@@ -1,0 +1,106 @@
+name: composio_googledocs_insert_table_action
+description: >-
+  Tool to insert a table into a google document. use when you need to add a new table at a specific
+  location or at the end of a segment (like document body, header, or footer) in a document.
+version: 1.0.0
+risk: medium
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the GOOGLEDOCS toolkit, scoped to the calling tenant.
+      The "Connect GOOGLEDOCS" flow must be completed before this tool will succeed.
+    required: true
+  rows:
+    type: number
+    description: The number of rows in the table.
+    required: true
+  index:
+    type: number
+    description: >-
+      The zero-based index where the table will be inserted. If provided, 'location' will be used.
+      If omitted and 'insertAtEndOfSegment' is false or omitted, 'endOfSegmentLocation' will be used
+      for the document body.
+    default: null
+  tabId:
+    type: string
+    description: The tab that the location is in. When omitted, the request is applied to the first tab.
+    default: null
+  columns:
+    type: number
+    description: The number of columns in the table.
+    required: true
+  segmentId:
+    type: string
+    description: >-
+      The ID of the header, footer or footnote the location is in. An empty segment ID signifies the
+      document's body.
+    default: null
+  documentId:
+    type: string
+    description: The ID of the document to update.
+    required: true
+  insertAtEndOfSegment:
+    type: boolean
+    description: >-
+      If true, inserts the table at the end of the segment (document body, header, or footer
+      specified by segment_id). If false or omitted, and 'index' is not provided, it defaults to
+      inserting at the end of the document body. If 'index' is provided, this field is ignored.
+    default: null
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/GOOGLEDOCS_INSERT_TABLE_ACTION
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_googledocs_insert_table_action
+      rows: '{rows}'
+      index: '{index}'
+      tabId: '{tabId}'
+      columns: '{columns}'
+      segmentId: '{segmentId}'
+      documentId: '{documentId}'
+      insertAtEndOfSegment: '{insertAtEndOfSegment}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - googledocs
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: googledocs
+  composio_slug: GOOGLEDOCS_INSERT_TABLE_ACTION

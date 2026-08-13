@@ -1,0 +1,76 @@
+name: composio_googlesheets_batch_get
+description: >-
+  Retrieves data from specified cell ranges in a google spreadsheet; ensure the spreadsheet has at
+  least one worksheet and any explicitly referenced sheet names in ranges exist.
+version: 1.0.0
+risk: low
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the GOOGLESHEETS toolkit, scoped to the calling tenant.
+      The "Connect GOOGLESHEETS" flow must be completed before this tool will succeed.
+    required: true
+  ranges:
+    type: array
+    description: >-
+      A list of cell ranges in A1 notation (e.g., 'Sheet1!A1:B2', 'A1:C5') from which to retrieve
+      data. If this list is omitted or empty, all data from the first sheet of the spreadsheet will
+      be fetched. A range can specify a sheet name (e.g., 'Sheet2!A:A'); if no sheet name is
+      provided in a range string (e.g., 'A1:B2'), it defaults to the first sheet.
+  spreadsheet_id:
+    type: string
+    description: The unique identifier of the Google Spreadsheet from which data will be retrieved.
+    required: true
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/GOOGLESHEETS_BATCH_GET
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_googlesheets_batch_get
+      ranges: '{ranges}'
+      spreadsheet_id: '{spreadsheet_id}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - googlesheets
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: googlesheets
+  composio_slug: GOOGLESHEETS_BATCH_GET

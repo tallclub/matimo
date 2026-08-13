@@ -1,0 +1,75 @@
+name: composio_googleforms_get_form
+description: >-
+  Retrieves the complete structure and metadata of a Google Form. Returns the full form definition
+  including its title, description, all items (questions, sections, page breaks, images, videos, and
+  display text), form settings (quiz mode, email collection), publishing state, and output-only
+  fields such as the responder submission URL and revision ID. This action is read-only and does not
+  modify the form. Use this action when you need to read the current configuration of a form,
+  display its structure to users, inspect its settings, or check its publishing state before making
+  updates.
+version: 1.0.0
+risk: low
+parameters:
+  composio_user_id:
+    type: string
+    description: The Composio entity/user ID for the calling tenant or user.
+    required: true
+  composio_connected_account_id:
+    type: string
+    description: >-
+      The Composio connected account ID for the GOOGLEFORMS toolkit, scoped to the calling tenant.
+      The "Connect GOOGLEFORMS" flow must be completed before this tool will succeed.
+    required: true
+  formId:
+    type: string
+    description: >-
+      Required. The unique ID of the form to retrieve. The form ID can be found in the URL after
+      'forms/d/' when viewing the form in Google Forms.
+    required: true
+execution:
+  type: http
+  method: POST
+  url: https://backend.composio.dev/api/v3/tools/execute/GOOGLEFORMS_GET_FORM
+  headers:
+    x-api-key: '{COMPOSIO_API_KEY}'
+    Content-Type: application/json
+  body:
+    user_id: '{composio_user_id}'
+    connected_account_id: '{composio_connected_account_id}'
+    arguments:
+      _matimo_tool: composio_googleforms_get_form
+      formId: '{formId}'
+  timeout: 30000
+authentication:
+  type: api_key
+  location: header
+  name: x-api-key
+output_schema:
+  type: object
+  description: Response envelope from Composio's tool execution endpoint.
+  properties:
+    success:
+      type: boolean
+      description: Whether the HTTP request to Composio succeeded (2xx status).
+    data:
+      type: object
+      description: Composio's response body.
+      properties:
+        data:
+          type: object
+          description: The action-specific result payload.
+        error:
+          type:
+            - string
+            - 'null'
+          description: Error message if Composio could not execute the action.
+        successful:
+          type: boolean
+          description: Whether Composio successfully executed the underlying action.
+tags:
+  - composio
+  - googleforms
+notes:
+  env: COMPOSIO_API_KEY
+  toolkit: googleforms
+  composio_slug: GOOGLEFORMS_GET_FORM

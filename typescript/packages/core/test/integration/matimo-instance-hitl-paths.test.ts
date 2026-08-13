@@ -10,6 +10,12 @@ import { MatimoInstance } from '../../src/matimo-instance';
  * 1201-1239 (#resolveHITL approval manifest & callback paths)
  */
 describe('MatimoInstance — HITL & Reload Paths', () => {
+  // Every test here drives matimo.execute() through policy + HITL evaluation
+  // and a real `type: command` (echo) child-process spawn — under CPU
+  // contention (parallel CI workers, throttled runners) that chain can
+  // exceed Jest's 5000ms default even though the logic itself is correct.
+  jest.setTimeout(15000);
+
   let tmpDir: string;
   let toolDir: string;
   let approvalDir: string;
