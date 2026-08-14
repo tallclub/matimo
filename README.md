@@ -29,7 +29,7 @@
 
 ## Governance First — Then Tools, Meta-Tools, and Universal Integration
 
-Every tool call — built-in, third-party, or agent-created — passes through Matimo's **policy engine** before it executes. On top of that governance layer, agents get **137+ production-ready tools**, **10 meta-tools** to create/validate/approve new capabilities at runtime, and **one YAML definition** that runs across every framework you use.
+Every tool call — built-in, third-party, or agent-created — passes through Matimo's **policy engine** before it executes. On top of that governance layer, agents get **139+ production-ready tools** (plus a governed 449-tool Composio catalog), **12 meta-tools** to create/validate/approve new capabilities at runtime, and **one YAML definition** that runs across every framework you use.
 
 **Why this matters:**
 
@@ -40,6 +40,8 @@ Every tool call — built-in, third-party, or agent-created — passes through M
 - 🔧 **Meta-Tools & Self-Extension**: Agents write new tool definitions in YAML, submit them for policy validation, get human approval when required, and hot-reload — all mid-conversation. No restart. No redeployment. Every agent-created tool is governed the same way as your built-in ones.
 
 - 🌐 **Universal Integration**: One YAML definition works across TypeScript, Python, LangChain, CrewAI, Claude MCP, OpenAI. Write once, run everywhere — with the same policy enforcement everywhere.
+
+Want a hosted runtime on top of this governance layer, with a visual builder and 16 reasoning engines included? Take a look at [Matimo Workbench](https://matimo.ai).
 
 ---
 
@@ -136,6 +138,8 @@ Matimo ships with built-in support for:
 - **Postgres Tools**: Query/modify data with safety checks
 - **Twilio Tools**: Send SMS/MMS, manage messages
 - **Mailchimp Tools**: Audiences, subscribers, email campaigns
+- **Microsoft Graph Tools**: Search, files, mail, Teams, calendar, SharePoint
+- **Bruno Tools**: Execute, import, and validate Bruno API collections
 - **Composio Catalog (Governed)**: 449 tools across Asana, Jira, Linear, Google Workspace, Microsoft 365, and more — routed through [Composio](https://composio.dev) with Matimo's policy engine and HITL layered on top ([why](./typescript/packages/composio/README.md#-credit-where-its-due))
 - **Auto-Discovery**: Automatic detection of `@matimo/*` providers from npm
 - **Matimo CLI**: Tool discovery, setup wizard, MCP config generation
@@ -159,7 +163,7 @@ Matimo ships with built-in support for:
    - **Skill Creation**: `matimo_create_skill` — agents author domain knowledge (SKILL.md) directly into the system
    - **Hot-Reload**: `matimo_reload_tools` — updated capabilities live immediately without server restart
    - **Policy-Gated**: All agent-created tools validated against security rules; HITL approval for high-risk changes
-4. **Pre-built Ecosystem** — 9 providers (Slack, Gmail, GitHub, Notion, HubSpot, Postgres, Twilio, Mailchimp, etc.) ready to go, all governed by the same policy engine.
+4. **Pre-built Ecosystem** — 10 providers (Slack, Gmail, GitHub, Notion, HubSpot, Postgres, Twilio, Mailchimp, Microsoft, Bruno) ready to go, all governed by the same policy engine, plus a governed 449-tool Composio catalog for broader coverage.
 
 Included:
 - **Policy Engine** — 9 security rules, risk classification, HITL quarantine, HMAC approval manifests, audit events

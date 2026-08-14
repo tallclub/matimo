@@ -9,6 +9,10 @@ url: 'https://docs.matimo.dev'
 baseurl: ''
 repository: 'tallclub/matimo'
 
+plugins:
+  - jekyll-sitemap
+  - jekyll-seo-tag
+
 # Build settings
 markdown: kramdown
 highlighter: rouge
