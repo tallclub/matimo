@@ -2573,8 +2573,18 @@ name = "matimo-workspace"
 version = "0.1.1"
 source = { virtual = "." }
 dependencies = [
+    { name = "matimo-bruno" },
     { name = "matimo-cli" },
     { name = "matimo-core" },
+    { name = "matimo-github" },
+    { name = "matimo-gmail" },
+    { name = "matimo-hubspot" },
+    { name = "matimo-mailchimp" },
+    { name = "matimo-microsoft" },
+    { name = "matimo-notion" },
+    { name = "matimo-postgres" },
+    { name = "matimo-slack" },
+    { name = "matimo-twilio" },
 ]
 
 [package.dev-dependencies]
@@ -2598,8 +2608,18 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "matimo-bruno", editable = "packages/bruno" },
     { name = "matimo-cli", editable = "packages/cli" },
     { name = "matimo-core", editable = "packages/core" },
+    { name = "matimo-github", editable = "packages/github" },
+    { name = "matimo-gmail", editable = "packages/gmail" },
+    { name = "matimo-hubspot", editable = "packages/hubspot" },
+    { name = "matimo-mailchimp", editable = "packages/mailchimp" },
+    { name = "matimo-microsoft", editable = "packages/microsoft" },
+    { name = "matimo-notion", editable = "packages/notion" },
+    { name = "matimo-postgres", editable = "packages/postgres" },
+    { name = "matimo-slack", editable = "packages/slack" },
+    { name = "matimo-twilio", editable = "packages/twilio" },
 ]
 
 [package.metadata.requires-dev]
