@@ -491,10 +491,28 @@ export class MatimoInstance {
         !skipApprovalPrompt
       ) {
         this.logger.debug(`Approval required for: ${toolName}`, { toolName });
-        await this.approvalHandler.requestApproval({
+        try {
+          await this.approvalHandler.requestApproval({
+            toolName,
+            description: tool.description,
+            params,
+          });
+        } catch (approvalError) {
+          this.#emitEvent({
+            type: 'tool:approval_denied',
+            toolName,
+            reason:
+              approvalError instanceof Error ? approvalError.message : String(approvalError),
+            agentId: options?.context?.agentId,
+            timestamp: new Date().toISOString(),
+          });
+          throw approvalError;
+        }
+        this.#emitEvent({
+          type: 'tool:approval_granted',
           toolName,
-          description: tool.description,
-          params,
+          agentId: options?.context?.agentId,
+          timestamp: new Date().toISOString(),
         });
         this.logger.info(`Destructive operation approved: ${toolName}`, { toolName });
       }
