@@ -2,6 +2,17 @@
   "name": "@matimo/cli",
   "version": "0.1.7",
   "description": "CLI tools for managing Matimo tool installations",
+  "keywords": [
+    "ai",
+    "agent",
+    "mcp",
+    "mcp-server",
+    "cli",
+    "agentic-ai",
+    "ai-governance",
+    "policy-engine",
+    "tool-governance"
+  ],
   "license": "MIT",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

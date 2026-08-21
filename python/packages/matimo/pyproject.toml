@@ -9,7 +9,7 @@ description = "Matimo — framework-agnostic SDK: pre-built providers, skills la
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.11"
-keywords = ["ai", "tools", "agents", "langchain", "crewai", "mcp", "matimo"]
+keywords = ["ai", "tools", "agents", "langchain", "crewai", "mcp", "matimo", "mcp-server", "agentic-ai", "ai-governance", "policy-engine"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
