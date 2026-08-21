@@ -22,8 +22,8 @@
   },
   "scripts": {
     "prepare": "husky install",
-    "build": "pnpm --filter='./packages/**' build",
-    "watch": "pnpm --filter='./packages/**' watch",
+    "build": "pnpm --filter=\"./packages/**\" build",
+    "watch": "pnpm --filter=\"./packages/**\" watch",
     "pretest": "pnpm build",
     "test": "jest",
     "test:watch": "jest --watch",

@@ -4,6 +4,7 @@
   "description": "Matimo monorepo — shared tooling (commitlint, husky)",
   "scripts": {
     "prepare": "husky install",
+    "build": "pnpm --dir typescript build",
     "changelog": "git-cliff --config cliff.toml --output CHANGELOG.md && echo 'CHANGELOG.md generated ✨'",
     "changelog:preview": "git-cliff --config cliff.toml --unreleased | head -50"
   },

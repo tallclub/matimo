@@ -274,7 +274,7 @@ See [CLI Docs](./packages/cli/README.md) for full reference.
 
 ```bash
 git clone https://github.com/tallclub/matimo
-cd matimo && pnpm install && pnpm build
+cd matimo/typescript && pnpm install && pnpm build
 pnpm test
 cd examples/tools && pnpm install && pnpm agent:factory
 ```
