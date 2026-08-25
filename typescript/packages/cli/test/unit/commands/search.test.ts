@@ -185,7 +185,7 @@ describe('Search Command', () => {
       // Simulate pnpm-workspace.yaml not found
       if (String(p).includes('pnpm-workspace.yaml')) return false;
       // But @matimo packages exist
-      if (String(p).includes('node_modules/@matimo')) return true;
+      if (String(p).includes(path.join('node_modules', '@matimo'))) return true;
       return true;
     });
 
@@ -268,7 +268,7 @@ describe('Search Command', () => {
       // Return false for pnpm-workspace.yaml to stay in installed context
       if (String(p).includes('pnpm-workspace.yaml')) return false;
       // Return true for @matimo path to enter that branch
-      if (String(p).includes('node_modules/@matimo')) return true;
+      if (String(p).includes(path.join('node_modules', '@matimo'))) return true;
       return false;
     });
     const readdirSyncSpy = jest.spyOn(fs, 'readdirSync').mockReturnValue([]);

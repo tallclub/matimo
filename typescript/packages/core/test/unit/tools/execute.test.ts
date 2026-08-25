@@ -209,7 +209,10 @@ describe('Injection Detection', () => {
     it('should allow legitimate commands without injection', async () => {
       const result = await executeCommand({ command: 'echo "hello world"' });
       expect(result.success).toBe(true);
-      expect(result.stdout.trim()).toBe('hello world');
+      // cmd.exe's `echo` does not strip quotes the way POSIX sh does, so the
+      // literal quotes survive in stdout on Windows.
+      const expected = process.platform === 'win32' ? '"hello world"' : 'hello world';
+      expect(result.stdout.trim()).toBe(expected);
     });
 
     it('should allow commands with quotes', async () => {
