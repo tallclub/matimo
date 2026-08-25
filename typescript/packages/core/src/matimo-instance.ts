@@ -130,7 +130,7 @@ export class MatimoInstance {
   private approvalHandler: ApprovalHandler;
 
   // Policy engine fields — runtime-enforced encapsulation via ES #private
-  #policy: PolicyEngine | null;
+  #policy: PolicyEngine;
   #integrityTracker: ToolIntegrityTracker;
   #approvalManifest: ApprovalManifest | null;
   #onEvent: MatimoEventHandler | null;
@@ -144,8 +144,8 @@ export class MatimoInstance {
     toolPaths: string[],
     skillPaths: string[],
     logger: MatimoLogger,
-    policyOptions?: {
-      policy?: PolicyEngine | null;
+    policyOptions: {
+      policy: PolicyEngine;
       trustedPaths?: string[];
       untrustedPaths?: string[];
       approvalSecret?: string;
@@ -171,33 +171,28 @@ export class MatimoInstance {
     this.functionExecutor = new FunctionExecutor(toolPaths[0] || '');
     this.approvalHandler = getGlobalApprovalHandler();
 
-    // Policy engine setup
-    this.#policy = policyOptions?.policy ?? null;
-    this.#trustedPaths = policyOptions?.trustedPaths ?? [];
-    this.#untrustedPaths = policyOptions?.untrustedPaths ?? [];
+    // Policy engine setup — always present; static init() defaults to a
+    // DefaultPolicyEngine() when the caller supplies no policy option.
+    this.#policy = policyOptions.policy;
+    this.#trustedPaths = policyOptions.trustedPaths ?? [];
+    this.#untrustedPaths = policyOptions.untrustedPaths ?? [];
     this.#integrityTracker = new ToolIntegrityTracker();
-    this.#onEvent = policyOptions?.onEvent ?? null;
-    this.#hitlCallback = policyOptions?.onHITL ?? null;
-    this.#hitlTimeoutMs = policyOptions?.hitlTimeoutMs ?? null;
-    this.#policyFile = policyOptions?.policyFile ?? null;
+    this.#onEvent = policyOptions.onEvent ?? null;
+    this.#hitlCallback = policyOptions.onHITL ?? null;
+    this.#hitlTimeoutMs = policyOptions.hitlTimeoutMs ?? null;
+    this.#policyFile = policyOptions.policyFile ?? null;
 
     // Approval manifest
-    if (this.#policy) {
-      const approvalDir = policyOptions?.approvalDir ?? process.cwd();
-      this.#approvalManifest = new ApprovalManifest(
-        approvalDir,
-        policyOptions?.approvalSecret,
-        policyOptions?.approvalTtlSeconds
-      );
-    } else {
-      this.#approvalManifest = null;
-    }
+    const approvalDir = policyOptions.approvalDir ?? process.cwd();
+    this.#approvalManifest = new ApprovalManifest(
+      approvalDir,
+      policyOptions.approvalSecret,
+      policyOptions.approvalTtlSeconds
+    );
 
     // Freeze policy to prevent runtime mutation by agents.
     // (The SDK's own reloadPolicy() bypasses the frozen reference by replacing #policy.)
-    if (this.#policy) {
-      Object.freeze(this.#policy);
-    }
+    Object.freeze(this.#policy);
   }
 
   /**
@@ -304,14 +299,18 @@ export class MatimoInstance {
       logger.debug(`Auto-discovered skill paths`, { count: skillPaths.length });
     }
 
-    // Build policy engine
-    let policy: PolicyEngine | null = null;
+    // Build policy engine. Always construct one — a zero-config call gets a
+    // DefaultPolicyEngine() so execute() is never left ungated (matches Python's
+    // Matimo.init(), which cannot reach a "no policy" state either).
+    let policy: PolicyEngine;
     if (finalOptions.policy) {
       policy = finalOptions.policy;
     } else if (finalOptions.policyFile) {
       policy = loadPolicyFromFile(finalOptions.policyFile);
     } else if (finalOptions.policyConfig) {
       policy = new DefaultPolicyEngine(finalOptions.policyConfig);
+    } else {
+      policy = new DefaultPolicyEngine();
     }
 
     const instance = new MatimoInstance(toolPaths, skillPaths, logger, {
@@ -410,45 +409,43 @@ export class MatimoInstance {
 
     try {
       // Policy check: enforce RBAC and tool status before any execution
-      if (this.#policy) {
-        const policyContext: PolicyContext = options?.context ?? {};
-        const decision = this.#policy.canExecute(policyContext, tool);
-        if (decision.allowed === false) {
+      const policyContext: PolicyContext = options?.context ?? {};
+      const decision = this.#policy.canExecute(policyContext, tool);
+      if (decision.allowed === false) {
+        this.#emitEvent({
+          type: 'tool:execution_denied',
+          toolName,
+          reason: decision.reason,
+          agentId: policyContext.agentId,
+          timestamp: new Date().toISOString(),
+        });
+        throw new MatimoError(
+          `Policy denied execution of '${toolName}': ${decision.reason}`,
+          ErrorCode.POLICY_DENIED,
+          { toolName, reason: decision.reason, riskLevel: decision.riskLevel }
+        );
+      }
+
+      // Handle quarantined tools — check approval manifest or invoke HITL callback
+      if (decision.allowed === 'pending_approval') {
+        const approved = await this.#resolveHITL(tool, decision, policyContext);
+        if (!approved) {
           this.#emitEvent({
-            type: 'tool:execution_denied',
+            type: 'tool:quarantine_rejected',
             toolName,
-            reason: decision.reason,
-            agentId: policyContext.agentId,
             timestamp: new Date().toISOString(),
           });
           throw new MatimoError(
-            `Policy denied execution of '${toolName}': ${decision.reason}`,
+            `Tool '${toolName}' is quarantined and was not approved: ${decision.reason}`,
             ErrorCode.POLICY_DENIED,
             { toolName, reason: decision.reason, riskLevel: decision.riskLevel }
           );
         }
-
-        // Handle quarantined tools — check approval manifest or invoke HITL callback
-        if (decision.allowed === 'pending_approval') {
-          const approved = await this.#resolveHITL(tool, decision, policyContext);
-          if (!approved) {
-            this.#emitEvent({
-              type: 'tool:quarantine_rejected',
-              toolName,
-              timestamp: new Date().toISOString(),
-            });
-            throw new MatimoError(
-              `Tool '${toolName}' is quarantined and was not approved: ${decision.reason}`,
-              ErrorCode.POLICY_DENIED,
-              { toolName, reason: decision.reason, riskLevel: decision.riskLevel }
-            );
-          }
-          this.#emitEvent({
-            type: 'tool:quarantine_approved',
-            toolName,
-            timestamp: new Date().toISOString(),
-          });
-        }
+        this.#emitEvent({
+          type: 'tool:quarantine_approved',
+          toolName,
+          timestamp: new Date().toISOString(),
+        });
       }
 
       // Simple approval flow:
@@ -501,8 +498,7 @@ export class MatimoInstance {
           this.#emitEvent({
             type: 'tool:approval_denied',
             toolName,
-            reason:
-              approvalError instanceof Error ? approvalError.message : String(approvalError),
+            reason: approvalError instanceof Error ? approvalError.message : String(approvalError),
             agentId: options?.context?.agentId,
             timestamp: new Date().toISOString(),
           });
@@ -591,7 +587,7 @@ export class MatimoInstance {
    */
   listTools(context?: PolicyContext): ToolDefinition[] {
     const tools = this.registry.getAll();
-    if (this.#policy && context) {
+    if (context) {
       return this.#policy.filterForAgent(context, tools);
     }
     return tools;
@@ -614,10 +610,7 @@ export class MatimoInstance {
    */
   getToolsForAgent(context: PolicyContext): ToolDefinition[] {
     const tools = this.registry.getAll();
-    if (this.#policy) {
-      return this.#policy.filterForAgent(context, tools);
-    }
-    return tools;
+    return this.#policy.filterForAgent(context, tools);
   }
 
   /**
@@ -627,7 +620,7 @@ export class MatimoInstance {
    */
   searchTools(query: string, context?: PolicyContext): ToolDefinition[] {
     const results = this.registry.search(query);
-    if (this.#policy && context) {
+    if (context) {
       return this.#policy.filterForAgent(context, results);
     }
     return results;
@@ -640,7 +633,7 @@ export class MatimoInstance {
    */
   getToolsByTag(tag: string, context?: PolicyContext): ToolDefinition[] {
     const results = this.registry.getByTag(tag);
-    if (this.#policy && context) {
+    if (context) {
       return this.#policy.filterForAgent(context, results);
     }
     return results;
@@ -1064,6 +1057,24 @@ export class MatimoInstance {
   }
 
   /**
+   * Check whether a tool's *current on-disk YAML* matches a signed approval
+   * record — i.e. it was approved via matimo_approve_tool and hasn't been
+   * modified since. Hashes the raw file content the same way
+   * matimo_approve_tool does (not JSON.stringify(tool)), since that's what
+   * the approval record's hash was computed against.
+   */
+  #isLegitimatelyApproved(tool: ToolDefinition, defPath: string): boolean {
+    if (!this.#approvalManifest || !defPath) return false;
+    try {
+      const yamlContent = fs.readFileSync(defPath, 'utf-8');
+      const hash = this.#approvalManifest.computeHash(yamlContent);
+      return this.#approvalManifest.isApproved(tool.name, hash);
+    } catch {
+      return false;
+    }
+  }
+
+  /**
    * Emit an audit event to the registered handler.
    */
   #emitEvent(event: MatimoEvent): void {
@@ -1088,6 +1099,11 @@ export class MatimoInstance {
     const previousNames = new Set(this.registry.getAll().map((t) => t.name));
     // Snapshot the previous registry state for rollback on partial failure
     const snapshot = this.registry.getAll();
+
+    // Approvals are typically granted by matimo_approve_tool, which constructs
+    // its own ApprovalManifest instance per call — refresh so this reload sees
+    // approvals written since this MatimoInstance was created or last reloaded.
+    this.#approvalManifest?.refresh();
 
     this.registry.clear();
 
@@ -1119,9 +1135,21 @@ export class MatimoInstance {
       const isUntrusted =
         untrustedSet.size > 0 && this.#untrustedPaths.some((up) => defPath.startsWith(up));
 
-      if (isUntrusted && this.#policy) {
-        // Run policy validation on untrusted tools
-        const policyDecision = this.#policy.canCreate({}, tool);
+      if (isUntrusted) {
+        // Run policy validation on untrusted tools. If the tool was already
+        // legitimately approved via matimo_approve_tool (its current on-disk YAML
+        // hash matches a signed approval record), use the looser canReload() gate
+        // instead of canCreate() — otherwise the tool's own post-approval
+        // status/requires_approval fields trip the "new proposal" rules on every
+        // reload and it can never actually be used. Falls back to canCreate()'s
+        // stricter gate for anything never legitimately approved (including a
+        // hand-edited `status: approved` that bypassed matimo_approve_tool),
+        // which keeps the anti-self-approval hole closed.
+        const legitimatelyApproved = this.#isLegitimatelyApproved(tool, defPath);
+        const policyDecision =
+          legitimatelyApproved && this.#policy.canReload
+            ? this.#policy.canReload({}, tool)
+            : this.#policy.canCreate({}, tool);
         if (policyDecision.allowed === false) {
           result.rejected.push(tool.name);
           this.#emitEvent({
@@ -1195,10 +1223,58 @@ export class MatimoInstance {
   }
 
   /**
+   * Hot-reload skills from all configured skill paths.
+   * Structural mirror of `reloadTools()`: clears the skill registry and
+   * re-walks `skillPaths` via `skillLoader`, so newly written SKILL.md files
+   * become visible without recreating the whole MatimoInstance.
+   */
+  async reloadSkills(): Promise<{ loaded: number; removed: number }> {
+    const previousNames = new Set(this.skillRegistry.list().map((s) => s.name));
+
+    this.skillRegistry.clear();
+
+    for (const skillPath of this.skillPaths) {
+      try {
+        const skillsFromPath = this.skillLoader.loadSkillsFromDirectory(
+          skillPath,
+          skillPath.includes('core') ? 'builtin' : 'user'
+        );
+        this.skillRegistry.registerAll(skillsFromPath);
+      } catch (err) {
+        this.logger.warn(`reloadSkills: failed to load skills from path: ${skillPath}`, {
+          error: (err as Error).message,
+        });
+      }
+    }
+
+    const currentNames = new Set(this.skillRegistry.list().map((s) => s.name));
+    let loaded = 0;
+    let removed = 0;
+    for (const name of currentNames) {
+      if (!previousNames.has(name)) loaded++;
+    }
+    for (const name of previousNames) {
+      if (!currentNames.has(name)) removed++;
+    }
+
+    this.#emitEvent({
+      type: 'skills:reloaded',
+      loaded,
+      removed,
+      timestamp: new Date().toISOString(),
+    });
+
+    this.logger.info('Skills reloaded', { loaded, removed });
+
+    return { loaded, removed };
+  }
+
+  /**
    * Check if a policy engine is active.
+   * Always true — a zero-config instance still gets a DefaultPolicyEngine().
    */
   hasPolicy(): boolean {
-    return this.#policy !== null;
+    return true;
   }
 
   /**
@@ -1256,7 +1332,7 @@ export class MatimoInstance {
     } else if (this.#policyFile) {
       // Re-read the original policy file
       newPolicy = loadPolicyFromFile(this.#policyFile);
-    } else if (this.#policy && 'updateConfig' in this.#policy) {
+    } else if ('updateConfig' in this.#policy) {
       // No config provided and no file — nothing to reload
       this.logger.warn('reloadPolicy: no config or file provided, nothing to reload');
       return {

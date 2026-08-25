@@ -149,6 +149,19 @@ export class ApprovalManifest {
   }
 
   /**
+   * Re-read the manifest file from disk into the in-memory cache.
+   *
+   * Approvals are normally granted by a separately-constructed ApprovalManifest
+   * instance (matimo_approve_tool creates its own per call), so a long-lived
+   * instance (e.g. the one MatimoInstance holds for its whole lifetime) would
+   * otherwise never see approvals written after it was constructed. Called by
+   * `reloadTools()` before checking approval state.
+   */
+  refresh(): void {
+    this.loadFromDisk();
+  }
+
+  /**
    * List all approved tool names.
    */
   listApproved(): string[] {

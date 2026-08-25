@@ -92,6 +92,12 @@ export type MatimoEvent =
       removed: number;
       rejected: string[];
       timestamp: string;
+    }
+  | {
+      type: 'skills:reloaded';
+      loaded: number;
+      removed: number;
+      timestamp: string;
     };
 
 export type MatimoEventHandler = (event: MatimoEvent) => void;

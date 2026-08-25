@@ -93,6 +93,14 @@ export interface ValidationContext {
   source: 'trusted' | 'untrusted';
   /** Active policy configuration (defaults to empty/permissive) */
   policy?: PolicyConfig;
+  /**
+   * Rule ids to skip during validation (e.g. 'forced-approval', 'forced-draft-status').
+   * Used when re-validating a tool that has already been legitimately approved via
+   * matimo_approve_tool — its `requires_approval`/`status` fields are expected to have
+   * changed from their forced-draft values, so those two rules no longer apply. All
+   * other rules (SSRF, credentials, reserved namespace, HTTP method/domain) still run.
+   */
+  skipRules?: string[];
 }
 
 // ─── Policy Configuration ───────────────────────────────────────────────
@@ -144,6 +152,16 @@ export interface PolicyEngine {
 
   /** Check whether this agent is allowed to create/propose a tool definition. */
   canCreate(context: PolicyContext, toolDef: ToolDefinition): PolicyDecision;
+
+  /**
+   * Check whether an already-legitimately-approved tool may be reloaded.
+   * Unlike `canCreate`, this skips the "cannot self-declare approval/status"
+   * rules (since a real approval already changed those fields), while still
+   * enforcing all other content rules (SSRF, credentials, namespace, etc.).
+   * Optional so third-party PolicyEngine implementations aren't broken;
+   * callers should fall back to `canCreate` when this is not implemented.
+   */
+  canReload?(context: PolicyContext, toolDef: ToolDefinition): PolicyDecision;
 
   /**
    * Update the policy configuration at runtime (hot-reload).
