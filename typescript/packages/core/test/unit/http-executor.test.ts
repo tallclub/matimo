@@ -1236,4 +1236,48 @@ describe('HttpExecutor', () => {
       expect(bodyData.fallback).toBe('default');
     });
   });
+
+  describe('execution-time SSRF re-validation', () => {
+    // Creation/approval-time validation only ever sees the raw URL with
+    // {placeholders} blanked out, so `url: "http://{host}/{path}"` passes
+    // unconditionally. These tests prove the executor itself blocks a
+    // blocked target once a real value is substituted in at execution time —
+    // and that the HTTP client is never invoked when it does.
+    const templatedTool = {
+      name: 'templated-host',
+      version: '1.0.0',
+      description: 'Test',
+      parameters: {
+        host: { type: 'string' as const, description: 'Host' },
+      },
+      execution: {
+        type: 'http' as const,
+        method: 'GET' as const,
+        url: 'http://{host}/latest/meta-data',
+      },
+    };
+
+    it('blocks a request that resolves to the cloud metadata address', async () => {
+      await expect(executor.execute(templatedTool, { host: '169.254.169.254' })).rejects.toThrow(
+        MatimoError
+      );
+      expect(mockedAxios.request).not.toHaveBeenCalled();
+    });
+
+    it('blocks a request that resolves to localhost', async () => {
+      await expect(executor.execute(templatedTool, { host: 'localhost' })).rejects.toMatchObject({
+        code: ErrorCode.POLICY_DENIED,
+      });
+      expect(mockedAxios.request).not.toHaveBeenCalled();
+    });
+
+    it('allows a request that resolves to a normal external host', async () => {
+      mockedAxios.request.mockResolvedValue({ status: 200, data: { ok: true } });
+      const result = (await executor.execute(templatedTool, {
+        host: 'api.example.com',
+      })) as Record<string, unknown>;
+      expect(result.success).toBe(true);
+      expect(mockedAxios.request).toHaveBeenCalledTimes(1);
+    });
+  });
 });

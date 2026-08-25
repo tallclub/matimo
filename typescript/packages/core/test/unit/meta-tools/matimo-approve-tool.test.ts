@@ -118,6 +118,31 @@ execution:
     expect(result.message).toContain('policy violations');
   });
 
+  it('should reject names with path traversal and never reach the approval manifest', async () => {
+    const result = await matimoApproveTool({
+      name: '../../../etc/passwd',
+      tool_dir: tmpDir,
+    });
+    expect(result.success).toBe(false);
+    expect(result.message).toContain('invalid characters');
+    // No manifest write should have happened — approve() was never reached.
+    expect(fs.existsSync(path.join(tmpDir, '.matimo-approvals.json'))).toBe(false);
+
+    const backslashResult = await matimoApproveTool({
+      name: '..\\..\\secrets',
+      tool_dir: tmpDir,
+    });
+    expect(backslashResult.success).toBe(false);
+    expect(backslashResult.message).toContain('invalid characters');
+
+    const controlCharResult = await matimoApproveTool({
+      name: 'tool\x00name',
+      tool_dir: tmpDir,
+    });
+    expect(controlCharResult.success).toBe(false);
+    expect(controlCharResult.message).toContain('invalid characters');
+  });
+
   it('should use provided approval secret', async () => {
     writeToolYaml(
       'my-tool',

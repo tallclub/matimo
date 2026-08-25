@@ -268,7 +268,7 @@ execution:
     expect(matimo.getApprovalManifest()).toBeDefined();
   });
 
-  it('should work without policy (backward compatible)', async () => {
+  it('should default to a real policy engine with zero config (no ungated execute())', async () => {
     writeToolYaml(
       'simple-tool',
       `
@@ -282,16 +282,43 @@ execution:
 `
     );
 
-    // No policyConfig = no policy engine
+    // No policyConfig/policy/policyFile — must still get a real DefaultPolicyEngine,
+    // not a null/no-op policy. See matimo-instance.ts static init().
     const matimo = await MatimoInstance.init({
       toolPaths: [toolDir],
       logLevel: 'silent',
     });
 
-    expect(matimo.hasPolicy()).toBe(false);
+    expect(matimo.hasPolicy()).toBe(true);
 
-    // Should execute without requiring context
+    // Non-draft, non-deprecated tools still execute fine without context —
+    // the default engine doesn't require an explicit PolicyContext.
     const result = await matimo.execute('simple-tool', {});
     expect(result).toBeDefined();
+  });
+
+  it('zero-config default policy engine still denies a draft-status tool in prod', async () => {
+    writeToolYaml(
+      'draft-tool',
+      `
+name: draft-tool
+version: '1.0.0'
+description: 'Draft tool'
+status: draft
+execution:
+  type: command
+  command: 'echo'
+  args: ['hello']
+`
+    );
+
+    const matimo = await MatimoInstance.init({
+      toolPaths: [toolDir],
+      logLevel: 'silent',
+    });
+
+    await expect(
+      matimo.execute('draft-tool', {}, { context: { environment: 'prod' } })
+    ).rejects.toThrow(/Policy denied|not available in production/);
   });
 });

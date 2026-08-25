@@ -187,6 +187,32 @@ describe('DefaultPolicyEngine', () => {
     });
   });
 
+  describe('canReload', () => {
+    it('allows a tool that canCreate would reject for status: approved (post-approval state)', () => {
+      // Same tool as the canCreate 'forced-draft-status' test above — canReload must
+      // accept it, since that's exactly what a legitimately-approved tool looks like
+      // on reload. This is what makes the approve -> reload lifecycle work.
+      const tool = makeTool({
+        name: 'custom-tool',
+        execution: { type: 'http', method: 'POST', url: 'https://api.example.com' },
+        requires_approval: true,
+        status: 'approved',
+      });
+      const result = engine.canReload({}, tool);
+      expect(result.allowed).toBe(true);
+    });
+
+    it('still denies hard-blocked content (SSRF, function/command) even when reloading', () => {
+      const tool = makeTool({
+        execution: { type: 'http', method: 'GET', url: 'http://169.254.169.254/latest/meta-data' },
+        requires_approval: true,
+        status: 'approved',
+      });
+      const result = engine.canReload({}, tool);
+      expect(result.allowed).toBe(false);
+    });
+  });
+
   describe('canExecute', () => {
     it('should allow normal tools', () => {
       const tool = makeTool({
@@ -221,6 +247,20 @@ describe('DefaultPolicyEngine', () => {
       tool.status = 'draft';
       const result = engine.canExecute({ environment: 'prod' }, tool);
       expect(result.allowed).toBe(false);
+    });
+
+    it('should deny draft tools for any prod-like environment string, not just exact "prod"', () => {
+      // Finding 6: environment matching used to be an exact === 'prod' comparison,
+      // silently missing 'production' (used in Matimo's own docs/example
+      // typescript/examples/tools/policy/policy-demo.ts) and any other variant.
+      const tool = makeTool({
+        execution: { type: 'http', method: 'GET', url: 'https://api.example.com' },
+      });
+      tool.status = 'draft';
+      for (const environment of ['prod', 'production', 'PRODUCTION', 'production-us-east']) {
+        const result = engine.canExecute({ environment, roles: ['reader'] }, tool);
+        expect(result.allowed).toBe(false);
+      }
     });
 
     it('should deny draft tools without admin role', () => {
@@ -270,6 +310,64 @@ describe('DefaultPolicyEngine', () => {
       if (!result.allowed) {
         expect(result.reason).toBe('Use v2 instead');
       }
+    });
+
+    it('should allow medium-risk tools by default (enableHITL off)', () => {
+      const tool = makeTool({
+        execution: { type: 'http', method: 'POST', url: 'https://api.example.com' },
+      });
+      const result = engine.canExecute({}, tool);
+      expect(result.allowed).toBe(true);
+    });
+
+    it('should quarantine medium-risk tools for approval when enableHITL is on', () => {
+      const hitlEngine = new DefaultPolicyEngine({ enableHITL: true });
+      const tool = makeTool({
+        execution: { type: 'http', method: 'POST', url: 'https://api.example.com' },
+      });
+      const result = hitlEngine.canExecute({}, tool);
+      expect(result.allowed).toBe('pending_approval');
+      if (result.allowed === 'pending_approval') {
+        expect(result.riskLevel).toBe('medium');
+        expect(result.toolName).toBe('test-tool');
+      }
+    });
+
+    it('should not quarantine risk levels outside quarantineRiskLevels', () => {
+      const hitlEngine = new DefaultPolicyEngine({
+        enableHITL: true,
+        quarantineRiskLevels: ['medium'],
+      });
+      const tool = makeTool({
+        execution: { type: 'http', method: 'GET', url: 'https://api.example.com' },
+      });
+      const result = hitlEngine.canExecute({}, tool);
+      expect(result.allowed).toBe(true);
+    });
+
+    it('should quarantine high-risk tools when configured', () => {
+      const hitlEngine = new DefaultPolicyEngine({
+        enableHITL: true,
+        quarantineRiskLevels: ['medium', 'high'],
+      });
+      const tool = makeTool({
+        execution: { type: 'http', method: 'DELETE', url: 'https://api.example.com' },
+      });
+      const result = hitlEngine.canExecute({}, tool);
+      expect(result.allowed).toBe('pending_approval');
+      if (result.allowed === 'pending_approval') {
+        expect(result.riskLevel).toBe('high');
+      }
+    });
+
+    it('should respect an explicit risk: override on the tool definition', () => {
+      const hitlEngine = new DefaultPolicyEngine({ enableHITL: true });
+      const tool = makeTool({
+        execution: { type: 'http', method: 'GET', url: 'https://api.example.com' },
+        risk: 'medium',
+      });
+      const result = hitlEngine.canExecute({}, tool);
+      expect(result.allowed).toBe('pending_approval');
     });
   });
 
