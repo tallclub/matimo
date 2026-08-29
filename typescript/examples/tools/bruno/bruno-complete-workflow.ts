@@ -147,15 +147,15 @@ async function runBrunoCompleteWorkflow() {
     console.info('─'.repeat(60));
 
     console.info(`📁 Creating collection at: ${collectionPath}`);
-    const createResult = await matimo.execute('bruno_create_collection', {
+    const createResult = (await matimo.execute('bruno_create_collection', {
       collection_path: collectionPath,
       collection_name: collectionName,
-    });
+    })) as any;
     console.info(`   ✅ ${createResult.message}\n`);
 
     // Add GET request
     console.info('📝 Adding GET request: fetch-todos');
-    const getResult = await matimo.execute('bruno_add_request', {
+    const getResult = (await matimo.execute('bruno_add_request', {
       collection_path: collectionPath,
       request_name: 'fetch-todos',
       method: 'GET',
@@ -176,12 +176,12 @@ test("Todo has required fields", function() {
   const todos = res.getBody();
   expect(todos[0]).to.have.all.keys('userId', 'id', 'title', 'completed');
 });`,
-    });
+    })) as any;
     console.info(`   ✅ ${getResult.message}\n`);
 
     // Add POST request
     console.info('📝 Adding POST request: create-todo');
-    const postResult = await matimo.execute('bruno_add_request', {
+    const postResult = (await matimo.execute('bruno_add_request', {
       collection_path: collectionPath,
       request_name: 'create-todo',
       method: 'POST',
@@ -211,12 +211,12 @@ test("Response has id", function() {
 test("Title matches", function() {
   expect(res.getBody().title).to.equal('Buy groceries');
 });`,
-    });
+    })) as any;
     console.info(`   ✅ ${postResult.message}\n`);
 
     // Add PUT request
     console.info('📝 Adding PUT request: update-todo');
-    const putResult = await matimo.execute('bruno_add_request', {
+    const putResult = (await matimo.execute('bruno_add_request', {
       collection_path: collectionPath,
       request_name: 'update-todo',
       method: 'PUT',
@@ -240,12 +240,12 @@ test("Title matches", function() {
 test("Todo updated", function() {
   expect(res.getBody().completed).to.equal(true);
 });`,
-    });
+    })) as any;
     console.info(`   ✅ ${putResult.message}\n`);
 
     // Add DELETE request
     console.info('📝 Adding DELETE request: delete-todo');
-    const deleteResult = await matimo.execute('bruno_add_request', {
+    const deleteResult = (await matimo.execute('bruno_add_request', {
       collection_path: collectionPath,
       request_name: 'delete-todo',
       method: 'DELETE',
@@ -257,7 +257,7 @@ test("Todo updated", function() {
       tests: `test("Status is 200", function() {
   expect(res.getStatus()).to.equal(200);
 });`,
-    });
+    })) as any;
     console.info(`   ✅ ${deleteResult.message}\n`);
 
     // ========================================
@@ -267,9 +267,9 @@ test("Todo updated", function() {
     console.info('─'.repeat(60));
 
     console.info('🔍 Getting collection info...');
-    const infoResult = await matimo.execute('bruno_get_collection_info', {
+    const infoResult = (await matimo.execute('bruno_get_collection_info', {
       collection_path: collectionPath,
-    });
+    })) as any;
     console.info(`   ✅ Collection found:`);
     console.info(`      Name: ${infoResult.collection.name}`);
     console.info(`      Path: ${infoResult.collection.path}`);
@@ -287,11 +287,11 @@ test("Todo updated", function() {
     console.info('─'.repeat(60));
 
     console.info('🏃 Running collection...');
-    const runResult = await matimo.execute('bruno_run_collection', {
+    const runResult = (await matimo.execute('bruno_run_collection', {
       collection_path: collectionPath,
       bail_on_failure: false,
       report_path: path.join(workspaceDir, 'report.json'),
-    });
+    })) as any;
 
     console.info(`   ✅ Collection Execution Summary:`);
     console.info(`      Total: ${runResult.summary.total_requests}`);
@@ -316,10 +316,10 @@ test("Todo updated", function() {
     console.info('─'.repeat(60));
 
     console.info('🔎 Running single request: fetch-todos');
-    const singleResult = await matimo.execute('bruno_run_request', {
+    const singleResult = (await matimo.execute('bruno_run_request', {
       collection_path: collectionPath,
       request_name: 'fetch-todos',
-    });
+    })) as any;
 
     console.info(`   ✅ Request Execution:`);
     console.info(`      Name: ${singleResult.request}`);
@@ -337,9 +337,9 @@ test("Todo updated", function() {
     console.info('─'.repeat(60));
 
     console.info(`🔍 Listing collections in: ${workspaceDir}`);
-    const listResult = await matimo.execute('bruno_list_collections', {
+    const listResult = (await matimo.execute('bruno_list_collections', {
       workspace_path: workspaceDir,
-    });
+    })) as any;
 
     console.info(`   ✅ Found ${listResult.collections.length} collection(s):`);
     listResult.collections.forEach((collection: any) => {
@@ -356,12 +356,12 @@ test("Todo updated", function() {
     console.info('─'.repeat(60));
 
     console.info('📥 Importing from Swagger Petstore OpenAPI...');
-    const importResult = await matimo.execute('bruno_import_openapi', {
+    const importResult = (await matimo.execute('bruno_import_openapi', {
       spec_source: 'https://petstore.swagger.io/v2/swagger.json',
       output_directory: path.join(workspaceDir, 'petstore-api'),
       collection_name: 'Petstore API',
       group_by: 'tags',
-    });
+    })) as any;
 
     console.info(`   ✅ OpenAPI Import Complete:`);
     console.info(`      Collection: ${importResult.collection_name}`);

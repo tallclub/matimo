@@ -68,7 +68,7 @@ async function runBrunoLangChainAgent() {
   console.info('🔧 Creating LangChain agent...\n');
   const agent = await createAgent({
     model,
-    tools: langchainTools as unknown[],
+    tools: langchainTools as any,
   });
 
   const workspaceDir = path.join(__dirname, '..', 'example-collections');
