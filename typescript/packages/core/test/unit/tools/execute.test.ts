@@ -235,5 +235,25 @@ describe('Injection Detection', () => {
         );
       }
     });
+
+    it('should throw a clean MatimoError (not a TypeError) when command is missing', async () => {
+      // Regression test: the empty-command check must run before any `command.substring()`
+      // call, or an undefined `command` (e.g. from a @tool decorator call with no args)
+      // crashes with "Cannot read properties of undefined (reading 'substring')" instead
+      // of this intended validation error.
+      await expect(
+        executeCommand({ command: undefined as unknown as string })
+      ).rejects.toMatchObject({
+        message: 'Command required',
+        code: 'INVALID_PARAMETER',
+      });
+    });
+
+    it('should throw a clean MatimoError for an empty-string command', async () => {
+      await expect(executeCommand({ command: '' })).rejects.toMatchObject({
+        message: 'Command required',
+        code: 'INVALID_PARAMETER',
+      });
+    });
   });
 });
