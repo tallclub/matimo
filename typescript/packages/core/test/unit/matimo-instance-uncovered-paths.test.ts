@@ -229,13 +229,22 @@ quarantineRiskLevels:
         logLevel: 'silent',
       });
 
+      // The integrity tracker (whose hash #resolveHITL checks approvals against)
+      // is only populated by reloadTools(), not by the initial init() load —
+      // reload once so there's a hash to approve against.
+      await matimo.reloadTools();
+
       // Get tool and pre-approve it
       const tool = matimo.getTool('pre-approved-tool');
       if (tool) {
         const manifest = matimo.getApprovalManifest();
         if (manifest) {
-          const hash = manifest.computeHash(JSON.stringify(tool));
-          manifest.approve(tool.name, hash);
+          // Must match the integrity tracker's actual hash (JSON.stringify(tool) at load
+          // time), not an independently recomputed one — #resolveHITL compares against it.
+          const hash = matimo.getIntegrityTracker().getHash(tool.name);
+          if (hash) {
+            manifest.approve(tool.name, hash);
+          }
         }
 
         // Set HITL callback that should NOT be called
