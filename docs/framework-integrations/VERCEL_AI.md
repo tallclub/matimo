@@ -1,5 +1,11 @@
 # Vercel AI SDK Integration
 
+> ⚠️ **Not yet implemented.** `convertToolsToVercelAI` does not exist in the current SDK — the export
+> is commented out in `typescript/packages/core/src/index.ts` and `integrations/vercel-ai.ts` was
+> never written (only `integrations/langchain.ts` exists today). Everything below describes the
+> planned API, not something you can `import` and run yet. For a working framework integration, see
+> [LANGCHAIN.md](./LANGCHAIN.md) or [CREWAI.md](./CREWAI.md) instead.
+
 Matimo provides `convertToolsToVercelAI` to wrap any Matimo tool as a [`CoreTool`](https://sdk.vercel.ai/docs/ai-sdk-core/tools-and-tool-calling) accepted by `generateText`, `streamText`, `generateObject`, and `streamObject`.
 
 ## Installation
@@ -115,7 +121,8 @@ import type { VercelAITool, VercelAIToolSet } from 'matimo';
 
 ## Full Example
 
-See [`examples/tools/agents/vercel-ai-agent.ts`](../../examples/tools/agents/vercel-ai-agent.ts) for a complete working agent using `generateText` with multi-step tool use.
+No runnable example exists yet (see the not-yet-implemented notice at the top of this page). For a
+complete working agent today, see [`typescript/examples/tools/agents/langchain-agent.ts`](../../typescript/examples/tools/agents/langchain-agent.ts).
 
 ## Comparison with LangChain Adapter
 

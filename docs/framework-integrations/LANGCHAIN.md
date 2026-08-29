@@ -487,7 +487,7 @@ await tools[0].invoke({ channel: '#general' });
 
 ## Working Examples
 
-See [examples/tools/](../../examples/tools/) for complete examples:
+See [examples/tools/](../../typescript/examples/tools/) for complete examples:
 
 - `gmail-langchain.ts` - Gmail tool integration with LangChain
 - `gmail-decorator.ts` - Decorator pattern example

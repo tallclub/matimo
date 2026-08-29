@@ -274,7 +274,7 @@ Complete documentation for Matimo **v0.1.7** (TypeScript & Python).
 2. **Tool creation flow**: `matimo_validate_tool` → `matimo_create_tool` → `matimo_approve_tool` → `matimo_reload_tools`
 3. **Skills discovery**: `matimo_list_skills` → `matimo_get_skill` to load domain expertise on-demand
 4. **OpenAI 128-tool limit**: If using `auto_discover=True`, cap your bound tool list — prioritize `matimo_*` tools first
-5. **Policy rules**: Draft tools are blocked in `environment="prod"`. Command tools (`type: command`) require explicit approval. SSRF-blocked URL patterns are rejected by the content validator.
+5. **Policy rules**: Draft tools are blocked whenever the context `environment` string contains "prod" (case-insensitive substring match — `"prod"`, `"production"`, `"PRODUCTION-us-east"` all match). Command tools (`type: command`) require explicit approval. SSRF-blocked URL patterns are rejected by the content validator both at creation/approval time and again at execution time against the fully-resolved URL.
 6. **Errors**: All errors are `MatimoError` with typed `ErrorCode`. Check `error.code` for programmatic handling.
 7. **Examples to study**: [`python/examples/native/meta_flow/meta_tools_integration.py`](https://github.com/tallclub/matimo/tree/main/python/examples/native/meta_flow/meta_tools_integration.py) is the canonical end-to-end reference.
 

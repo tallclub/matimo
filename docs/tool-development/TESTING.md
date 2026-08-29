@@ -404,4 +404,4 @@ it('should handle execution errors', async () => {
 
 - **Tool Development**: [YAML Tool Specification](./YAML_TOOLS.md)
 - **Error Codes**: [Error Reference](../api-reference/ERRORS.md)
-- **Examples**: [Code Examples](../../examples/)
+- **Examples**: [Code Examples](../../typescript/examples/)

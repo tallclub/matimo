@@ -70,7 +70,7 @@ payment = await agent.execute('stripe_create_payment', {
 
 🎯 **Production-ready** — 3,700+ tests across TypeScript and Python · 95%+ coverage · see [CHANGELOG](./CHANGELOG.md) for release history
 
-[📖 Documentation](./docs) · [🚀 Quick Start](./docs/getting-started/QUICK_START.md) · [📚 API Reference](./docs/api-reference/SDK.md) · [🛠️ Add Tools](./docs/tool-development/ADDING_TOOLS.md) · [🤖 Examples](./examples)
+[📖 Documentation](./docs) · [🚀 Quick Start](./docs/getting-started/QUICK_START.md) · [📚 API Reference](./docs/api-reference/SDK.md) · [🛠️ Add Tools](./docs/tool-development/ADDING_TOOLS.md) · [🤖 Examples](./typescript/examples) ([Python](./python/examples))
 
 ---
 
@@ -122,7 +122,7 @@ async def main():
 asyncio.run(main())
 ```
 
-See [Four Integration Patterns](#four-integration-patterns) and [examples/](./examples) for more. Python SDK reference: [python/README.md](./python/README.md).
+See [Four Integration Patterns](#four-integration-patterns) and [typescript/examples/](./typescript/examples) or [python/examples/](./python/examples) for more. Python SDK reference: [python/README.md](./python/README.md).
 
 ## What's Included
 

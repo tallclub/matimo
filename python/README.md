@@ -33,13 +33,15 @@ python/
       tests/
     cli/               # CLI tool manager
       src/matimo_cli/
-    github/            # GitHub provider (23 tools)
-    gmail/             # Gmail provider (5 tools)
-    hubspot/           # HubSpot provider (55 tools)
+    bruno/             # Bruno CLI provider (7 tools)
+    github/            # GitHub provider (22 tools)
+    gmail/             # Gmail provider (6 tools)
+    hubspot/           # HubSpot provider (50 tools)
     mailchimp/         # Mailchimp provider (7 tools)
+    microsoft/         # Microsoft Graph provider (9 tools)
     notion/            # Notion provider (7 tools)
     postgres/          # PostgreSQL provider (1 tool)
-    slack/             # Slack provider (19 tools)
+    slack/             # Slack provider (16 tools)
     twilio/            # Twilio provider (4 tools)
   examples/
     native/            # Pure Python examples (factory, decorator, provider-specific)
@@ -120,8 +122,10 @@ import asyncio
 from matimo import Matimo
 
 async def main():
-    # Load all Slack tools via auto-discovery
-    matimo = await Matimo.init(auto_discover=True, providers=["slack"])
+    # auto_discover=True loads tools from every installed matimo-* provider
+    # package (there's no per-provider filter on init() itself) — install
+    # only matimo-slack if you want just Slack's tools discovered.
+    matimo = await Matimo.init(auto_discover=True)
 
     await matimo.execute("slack_send_channel_message", {
         "channel": "#general",

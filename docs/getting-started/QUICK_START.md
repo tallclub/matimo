@@ -183,7 +183,7 @@ You want to use Matimo tools with an AI agent (LangChain, CrewAI, etc.).
 **[See LangChain Integration →](../framework-integrations/LANGCHAIN.md)**
 
 ✅ Great for: Building intelligent agents
-📖 **[Examples →](../../examples/README.md)**
+📖 **[Examples →](../../typescript/examples/README.md)**
 
 ---
 
@@ -338,11 +338,13 @@ pnpm add @matimo/slack @matimo/gmail
 Then load them alongside your custom tools:
 
 ```typescript
-const matimo = await MatimoInstance.init([
-  './tools',                    # Your custom tools
-  './node_modules/@matimo/slack/tools',  # Pre-built tools
-  './node_modules/@matimo/gmail/tools'
-]);
+const matimo = await MatimoInstance.init({
+  toolPaths: [
+    './tools',                              // Your custom tools
+    './node_modules/@matimo/slack/tools',   // Pre-built tools
+    './node_modules/@matimo/gmail/tools',
+  ],
+});
 ```
 
 ---
