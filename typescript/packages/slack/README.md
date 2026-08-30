@@ -279,7 +279,7 @@ The token is automatically injected into all API requests.
 
 ## 🔄 Versioning
 
-- **Version 0.1.7** - 16 tools implemented
+- **Version 0.1.8** - 16 tools implemented
 - **Modern APIs** - All tools use current Slack API (as of Feb 2026)
 - **No Deprecated Tools** - Replaced deprecated files.upload with modern API
 

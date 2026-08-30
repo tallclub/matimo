@@ -2,11 +2,11 @@
 
 ## Current Status
 
-**Latest Release**: **v0.1.7** — **📇 Composio Google Workspace Expansion: Gmail, Sheets, Docs, Forms, Meet** (Python: v0.1.2, untouched this release)
+**Latest Release**: **v0.1.8**: **🛡️ Governance Gap Closures: Default Policy Engine, Approve→Reload Lifecycle & Audit Events** (Python: v0.1.3)
 
 ### 🏆 Production Launch — General Availability
 
-Matimo v0.1.7 stable (Python: v0.1.2) is now **production-ready** with full TypeScript and Python SDK support, 139+ tools across 10 native provider packages plus a governed 449-tool `@matimo/composio` catalog, enterprise-grade security, and comprehensive framework integrations.
+Matimo v0.1.8 stable (Python: v0.1.3) is now **production-ready** with full TypeScript and Python SDK support, 139+ tools across 10 native provider packages plus a governed 449-tool `@matimo/composio` catalog, enterprise-grade security, and comprehensive framework integrations.
 
 ✅ **v0.1.0 Stable — Completed Features**:
 

@@ -20,7 +20,7 @@ Give your agents **139+ production-ready tools** to start (plus a governed 449-t
 - 🤝 **Human-in-the-Loop (HITL)** — Critical tools require human approval before execution with configurable timeouts and audit trails
 - 🌐 **Universal Integration** — One YAML definition works across TypeScript, Python, LangChain, CrewAI, Claude MCP, OpenAI
 
-Complete documentation for Matimo **v0.1.7** (TypeScript & Python).
+Complete documentation for Matimo **v0.1.8** (TypeScript & Python).
 
 ---
 
