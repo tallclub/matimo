@@ -140,7 +140,20 @@ console.log(classifyRisk(tool)); // 'high'
 
 ## Governance — Adding HITL Approval
 
-`DefaultPolicyEngine.canExecute()` does not gate on `risk:` (it only checks deprecation/draft/`requires_approval`). To pause medium/high-risk composio tools for human approval, supply a custom `PolicyEngine`:
+As of the fix landing alongside this doc update, `DefaultPolicyEngine.canExecute()` gates on `risk:` for **every** tool (composio-bridged or native) when you opt in:
+
+```typescript
+const matimo = await MatimoInstance.init({
+  toolPaths: [TOOLS_DIR],
+  policyConfig: { enableHITL: true, quarantineRiskLevels: ['medium', 'high'] },
+  onHITL: async (request) => {
+    console.log(`⏸  Approval needed: ${request.toolName} (${request.riskLevel})`);
+    return promptUser();
+  },
+});
+```
+
+`enableHITL` defaults to `false`, so this is opt-in — nothing changes for callers who haven't configured it. If you want HITL scoped to *only* `composio_*` tools rather than every tool in the instance (e.g. because your native providers are already fully trusted), wrap a custom `PolicyEngine` instead:
 
 ```typescript
 import {

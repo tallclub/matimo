@@ -1,4 +1,4 @@
-# @matimo/notion — Notion Tools for Matimo
+# @matimo/notion - Notion Tools for Matimo
 
 Notion workspace integration tools for Matimo's universal AI tools ecosystem. Query databases, create pages, manage content, search workspaces, add comments, and retrieve user information through YAML-defined tools that work with any AI framework.
 
@@ -140,7 +140,7 @@ class NotionManager {
   }
 
   @tool('notion_search')
-  async search(query: string, sort_by?: string) {
+  async search(query: string, sort_direction?: string) {
     // Auto-executed by decorator
   }
 }
@@ -187,7 +187,7 @@ Query pages in a Notion database with optional filtering and sorting.
 **Parameters:**
 - `database_id` (required): UUID of the database
 - `filter` (optional): JSON filter object (e.g., `{"property": "Status", "status": {"equals": "Done"}}`)
-- `sort` (optional): Array of sort objects
+- `sorts` (optional): Array of sort objects
 - `page_size` (optional): Results per page (1-100, default 100)
 - `start_cursor` (optional): Pagination cursor
 
@@ -208,7 +208,7 @@ Create a new page, optionally with properties and content.
 - `icon` (optional): Object for page icon, e.g. `{ type: 'emoji', emoji: '✅' }`
 - `children` (optional): Array of Notion block objects to add to the page
 
-> **Note:** This tool accepts a single `parent` object (for example `{ "database_id": "..." }` or `{ "page_id": "..."`) — do not pass separate `parent_id` / `parent_type` parameters. This matches the tool's YAML definition (`packages/notion/tools/notion_create_page/definition.yaml`).
+> **Note:** This tool accepts a single `parent` object (for example `{ "database_id": "..." }` or `{ "page_id": "..."`) - do not pass separate `parent_id` / `parent_type` parameters. This matches the tool's YAML definition (`packages/notion/tools/notion_create_page/definition.yaml`).
 
 **Returns:** Created page object with `id`, `url`, and `properties`
 
@@ -252,11 +252,12 @@ Add a comment to a page, block, or discussion thread.
 
 **Parameters:**
 - `parent` (optional): Object describing the comment target. Provide ONE of:
-  - `{ "page_id": "..." }` — comment on a page
-  - `{ "block_id": "..." }` — comment on a block
+  - `{ "page_id": "..." }` - comment on a page
+  - `{ "block_id": "..." }` - comment on a block
   - omit to reply to a `discussion_id` (use `discussion_id` parameter)
 - `discussion_id` (optional): Discussion thread to reply to (alternative to `parent`)
 - `rich_text` (required): Array of rich text objects representing the comment content
+- `display_name` (optional): Custom display name to show as the comment's author
 - `attachments` (optional): Array of file objects to attach to the comment
 - Formatting/annotations should be provided within the `rich_text` objects (bold/italic/code via annotations)
 
@@ -332,4 +333,4 @@ Found a bug or want to suggest a feature? See [CONTRIBUTING.md](/CONTRIBUTING.md
 
 ---
 
-**Part of the Matimo ecosystem** — Write YAML once, use everywhere.
+**Part of the Matimo ecosystem** - Write YAML once, use everywhere.

@@ -1,4 +1,4 @@
-# @matimo/mailchimp — Mailchimp Tools for Matimo
+# @matimo/mailchimp - Mailchimp Tools for Matimo
 
 Mailchimp email marketing integration tools for Matimo's universal AI tools ecosystem. Manage audiences, subscribers, and campaigns through YAML-defined tools that work with any AI framework.
 
@@ -287,8 +287,8 @@ while (true) {
 
 ## 🤝 Contributing
 
-See [CONTRIBUTING.md](../../CONTRIBUTING.md) for guidelines on contributing to Matimo.
+See [CONTRIBUTING.md](../../../CONTRIBUTING.md) for guidelines on contributing to Matimo.
 
 ---
 
-Part of the [Matimo](https://github.com/tallclub/matimo) ecosystem — Write YAML once, use everywhere.
+Part of the [Matimo](https://github.com/tallclub/matimo) ecosystem - Write YAML once, use everywhere.

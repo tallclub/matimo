@@ -1,4 +1,4 @@
-import { classifyRisk } from '../../../src/policy/risk-classifier';
+import { classifyRisk, maxRisk } from '../../../src/policy/risk-classifier';
 import type { ToolDefinition } from '../../../src/core/schema';
 
 function makeTool(
@@ -13,12 +13,30 @@ function makeTool(
 }
 
 describe('classifyRisk', () => {
-  it('should honor explicit risk override before execution-type checks', () => {
+  it('a declared risk cannot lower the automatically computed risk', () => {
+    // type: function is automatically 'critical' — declaring 'low' must not downgrade it.
     const tool = makeTool({
-      execution: { type: 'command', command: 'echo hello' },
+      execution: { type: 'function', code: './fn.ts' },
       risk: 'low',
     });
-    expect(classifyRisk(tool)).toBe('low');
+    expect(classifyRisk(tool)).toBe('critical');
+  });
+
+  it('a declared risk can raise the automatically computed risk', () => {
+    // type: http GET is automatically 'low' — declaring 'high' should raise it.
+    const tool = makeTool({
+      execution: { type: 'http', method: 'GET', url: 'https://api.example.com' },
+      risk: 'high',
+    });
+    expect(classifyRisk(tool)).toBe('high');
+  });
+
+  it('a declared risk equal to the automatic level passes through unchanged', () => {
+    const tool = makeTool({
+      execution: { type: 'command', command: 'echo hello' },
+      risk: 'high',
+    });
+    expect(classifyRisk(tool)).toBe('high');
   });
 
   it('should classify function execution as critical', () => {
@@ -81,5 +99,14 @@ describe('classifyRisk', () => {
     // Runtime guard: if malformed definitions bypass schema validation, default to high risk.
     (tool as unknown as { execution: { type: string } }).execution.type = 'unknown';
     expect(classifyRisk(tool)).toBe('high');
+  });
+});
+
+describe('maxRisk', () => {
+  it('returns the more severe of the two levels', () => {
+    expect(maxRisk('low', 'critical')).toBe('critical');
+    expect(maxRisk('critical', 'low')).toBe('critical');
+    expect(maxRisk('medium', 'high')).toBe('high');
+    expect(maxRisk('high', 'high')).toBe('high');
   });
 });

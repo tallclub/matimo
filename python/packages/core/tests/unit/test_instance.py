@@ -819,6 +819,54 @@ class TestInstanceSkillsAndCoverage:
         assert any(s.name == "my-skill" for s in skills)
 
     # ------------------------------------------------------------------
+    # reload_skills()
+    # ------------------------------------------------------------------
+
+    @pytest.mark.asyncio
+    async def test_reload_skills_picks_up_newly_written_skill(self, tmp_path: Path) -> None:
+        """
+        Mirrors reload() for skills: skill_paths are fixed at construction and
+        never re-walked without reload_skills() — a newly written SKILL.md must
+        become visible without recreating the Matimo instance.
+        """
+        skills_root = tmp_path / "skills"
+        skills_root.mkdir()
+
+        matimo = await Matimo.init([], skill_paths=[str(skills_root)])
+        assert matimo.list_skills() == []
+
+        new_skill_dir = skills_root / "new-skill"
+        new_skill_dir.mkdir()
+        (new_skill_dir / "SKILL.md").write_text(
+            "---\nname: new-skill\ndescription: Written after init\n---\n\nContent here."
+        )
+
+        result = await matimo.reload_skills()
+
+        assert result["loaded"] == 1
+        assert any(s.name == "new-skill" for s in matimo.list_skills())
+
+    @pytest.mark.asyncio
+    async def test_reload_skills_removes_deleted_skill(self, tmp_path: Path) -> None:
+        skills_root = tmp_path / "skills"
+        skill_dir = skills_root / "temp-skill"
+        skill_dir.mkdir(parents=True)
+        (skill_dir / "SKILL.md").write_text(
+            "---\nname: temp-skill\ndescription: Will be removed\n---\n\nContent."
+        )
+
+        matimo = await Matimo.init([], skill_paths=[str(skills_root)])
+        assert any(s.name == "temp-skill" for s in matimo.list_skills())
+
+        import shutil
+        shutil.rmtree(skill_dir)
+
+        result = await matimo.reload_skills()
+
+        assert result["removed"] == 1
+        assert not any(s.name == "temp-skill" for s in matimo.list_skills())
+
+    # ------------------------------------------------------------------
     # Lines 299-306: matimo_reload_tools interception in execute()
     # ------------------------------------------------------------------
 

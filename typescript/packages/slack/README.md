@@ -10,13 +10,13 @@ npm install @matimo/slack
 pnpm add @matimo/slack
 ```
 
-## 🛠️ Available Tools (19 Total)
+## 🛠️ Available Tools (16 Total)
 
 | Category | Tools | Description |
 |----------|-------|-------------|
 | **Messaging** | 4 tools | Send messages, replies, DMs |
 | **Channels** | 4 tools | Create, join, manage channels |
-| **Files** | 3 tools | Upload and share files |
+| **Files** | 1 tool | Upload files |
 | **Reading** | 3 tools | Read messages and history |
 | **Reactions** | 2 tools | Add/get emoji reactions |
 | **Users** | 2 tools | Get user information |
@@ -31,9 +31,7 @@ pnpm add @matimo/slack
 - **slack_create_channel** - Create public/private channel
 - **slack_join_channel** - Add bot to channel
 - **slack_set_channel_topic** - Update channel description
-- **slack_upload_file** - Upload file to Slack (modern API)
-- **slack_upload_file_v2** - Get upload URL for files
-- **slack_complete_file_upload** - Complete upload and share
+- **slack_upload_file** - Request an upload URL for a file (modern API, step 1 of 2 - see note below)
 - **slack_get_channel_history** - Get messages from channel
 - **slack_get_thread_replies** - Get thread replies
 - **slack_search_messages** - Search message history
@@ -41,6 +39,12 @@ pnpm add @matimo/slack
 - **slack_get_reactions** - Get reactions on message
 - **slack_get_user_info** - Get user details
 - **slack-get-user** - Alias of slack_get_user_info
+
+> ⚠️ **`slack_upload_file` only performs step 1** of Slack's modern upload
+> flow (`files.getUploadURLExternal`) - it returns an `upload_url` you must
+> `PUT` the file binary to yourself, then call Slack's
+> `files.completeUploadExternal` directly. Matimo does not ship tools for
+> those remaining two steps.
 
 ## 🚀 Quick Start
 
@@ -110,16 +114,14 @@ All tools are based on official Slack Web API methods. See [Slack API Documentat
 | slack-send-message | chat.postMessage | chat:write |
 | slack_send_channel_message | chat.postMessage | chat:write |
 | slack_reply_to_message | chat.postMessage | chat:write |
-| slack_send_dm | conversations.open + chat.postMessage | chat:write, im:write |
+| slack_send_dm | conversations.open + chat.postMessage | im:write, mpim:write |
 | slack-list-channels | conversations.list | channels:read, groups:read, im:read, mpim:read |
-| slack_create_channel | conversations.create | channels:manage |
-| slack_join_channel | conversations.join | channels:write |
-| slack_set_channel_topic | conversations.setTopic | channels:write |
+| slack_create_channel | conversations.create | channels:manage, channels:write, groups:write |
+| slack_join_channel | conversations.join | channels:manage |
+| slack_set_channel_topic | conversations.setTopic | conversations:manage |
 | slack_upload_file | files.getUploadURLExternal | files:write |
-| slack_upload_file_v2 | files.getUploadURLExternal | files:write |
-| slack_complete_file_upload | files.completeUploadExternal | files:write |
-| slack_get_channel_history | conversations.history | channels:history |
-| slack_get_thread_replies | conversations.replies | channels:history |
+| slack_get_channel_history | conversations.history | conversations:history |
+| slack_get_thread_replies | conversations.replies | conversations:history |
 | slack_search_messages | search.messages | search:read |
 | slack_add_reaction | reactions.add | reactions:write |
 | slack_get_reactions | reactions.get | reactions:read |
@@ -137,31 +139,15 @@ Each tool is defined in YAML with complete parameter validation and error handli
 
 ## 🤝 Contributing
 
-Found a bug or want to add a Slack tool? See [Contributing Guide](../../CONTRIBUTING.md) and [Adding Tools Guide](../tool-development/ADDING_TOOLS.md).
+Found a bug or want to add a Slack tool? See [Contributing Guide](../../../CONTRIBUTING.md) and [Adding Tools Guide](../../../docs/tool-development/ADDING_TOOLS.md).
 
 ---
 
 **Part of the Matimo ecosystem** - Define tools once, use them everywhere! 🎯
-| slack_reply_to_message     | chat.postMessage                     | chat:write           |
-| slack_send_dm              | conversations.open, chat.postMessage | im:write, chat:write |
-| slack-list-channels        | conversations.list                   | channels:read        |
-| slack_create_channel       | conversations.create                 | channels:manage      |
-| slack_join_channel         | conversations.join                   | channels:join        |
-| slack_set_channel_topic    | conversations.setTopic               | channels:write.topic |
-| slack_upload_file          | files.getUploadURLExternal           | files:write          |
-| slack_upload_file_v2       | files.getUploadURLExternal           | files:write          |
-| slack_complete_file_upload | files.completeUploadExternal         | files:write          |
-| slack_get_channel_history  | conversations.history                | channels:history     |
-| slack_get_thread_replies   | conversations.replies                | channels:history     |
-| slack_search_messages      | search.messages                      | search:read          |
-| slack_add_reaction         | reactions.add                        | reactions:write      |
-| slack_get_reactions        | reactions.get                        | reactions:read       |
-| slack_get_user_info        | users.info                           | users:read           |
-| slack-get-user             | users.info                           | users:read           |
 
 ## ✅ Status
 
-- ✅ **19 Tools Implemented** - All audited against official Slack API
+- ✅ **16 Tools Implemented** - All audited against official Slack API
 - ✅ **Modern APIs** - Using latest Slack recommendations
 - ✅ **OAuth Scopes Documented** - All required scopes listed
 - ✅ **Type-Safe** - Full TypeScript support with Zod validation
@@ -250,27 +236,26 @@ const channels = await matimo.execute('slack-list-channels', {
 });
 ```
 
-### Upload File (Modern 2-Step)
+### Upload File
 
 ```typescript
-// Step 1: Get upload URL
-const upload = await matimo.execute('slack_upload_file_v2', {
+// Step 1: Get upload URL (this is what slack_upload_file does)
+const upload = await matimo.execute('slack_upload_file', {
   filename: 'report.pdf',
   file_size: 1024000,
-});
-
-// Step 2: Upload file binary (manual)
-
-// Step 3: Complete upload
-await matimo.execute('slack_complete_file_upload', {
-  files: [{ id: upload.file_id }],
   channel_id: 'C024BE91L',
 });
+
+// Step 2: PUT the file binary to upload.upload_url yourself
+// (not a Matimo tool - use fetch/axios/curl directly)
+
+// Step 3: Call Slack's files.completeUploadExternal yourself to finish
+// sharing the file (also not a Matimo tool)
 ```
 
 ## 📚 Documentation
 
-- **[Comprehensive Guide](/examples/tools/slack/README.md)** - Full guide with examples
+- **[Comprehensive Guide](/typescript/examples/tools/slack/README.md)** - Full guide with examples
 - **[Official Slack Docs](https://docs.slack.dev/)** - Slack Web API reference
 
 ## 🔐 Authentication
@@ -294,7 +279,7 @@ The token is automatically injected into all API requests.
 
 ## 🔄 Versioning
 
-- **Version 1.0.0** - Initial release with 19 tools
+- **Version 0.1.8** - 16 tools implemented
 - **Modern APIs** - All tools use current Slack API (as of Feb 2026)
 - **No Deprecated Tools** - Replaced deprecated files.upload with modern API
 

@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as YAML from 'js-yaml';
 import { ToolDefinition, validateToolDefinition } from './schema.js';
 import { MatimoError, ErrorCode } from '../errors/matimo-error.js';
+import { getGlobalMatimoLogger } from '../logging/index.js';
 
 /**
  * Tool Loader - Loads and validates YAML/JSON tool definitions
@@ -11,6 +12,8 @@ import { MatimoError, ErrorCode } from '../errors/matimo-error.js';
  */
 
 export class ToolLoader {
+  private logger = getGlobalMatimoLogger();
+
   /**
    * Static cache for discovered paths - populated on first autoDiscover call
    * Subsequent calls return cached result (O(1) instead of O(n))
@@ -160,9 +163,13 @@ export class ToolLoader {
         if (!tools.has(tool.name)) {
           tools.set(tool.name, tool);
         }
-      } catch {
+      } catch (error) {
         // Skip files that fail validation - they may not be tool definitions
         // (e.g., provider definitions are in tools/ directory but are not tools)
+        this.logger.debug('ToolLoader: skipped file that failed validation', {
+          file,
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
     }
 
@@ -220,8 +227,11 @@ export class ToolLoader {
           }
         }
       }
-    } catch {
+    } catch (error) {
       // Continue if core tools discovery fails
+      this.logger.warn('ToolLoader: core tools discovery failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
 
     // 2. Discover @matimo/* packages from node_modules (installed providers like slack, gmail)
@@ -261,8 +271,11 @@ export class ToolLoader {
           }
         }
       }
-    } catch {
+    } catch (error) {
       // Continue even if @matimo discovery fails
+      this.logger.warn('ToolLoader: @matimo package discovery failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
 
     // Cache the results for future calls - this makes subsequent autoDiscoverPackages() calls O(1)

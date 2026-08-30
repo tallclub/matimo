@@ -249,8 +249,13 @@ describe('CommandExecutor – credential override', () => {
     expect(spawnOptions.env).toBeDefined();
     expect(spawnOptions.env!.SLACK_BOT_TOKEN).toBe('xoxb-tenant-a');
     expect(spawnOptions.env!.API_KEY).toBe('secret-key');
-    // Should still include existing process.env variables
-    expect(spawnOptions.env!.PATH).toBe(process.env.PATH);
+    // Should still include existing process.env variables. Look up PATH case-insensitively:
+    // process.env does case-insensitive key lookup on Windows (so `process.env.PATH` always
+    // resolves), but the merged plain object preserves whatever literal casing Windows reports
+    // for the variable (commonly 'Path'), so a direct `.PATH` index on it isn't reliable there.
+    const pathKey = Object.keys(spawnOptions.env!).find((k) => k.toUpperCase() === 'PATH');
+    expect(pathKey).toBeDefined();
+    expect(spawnOptions.env![pathKey!]).toBe(process.env.PATH);
   });
 
   it('should use process.env (no extra keys) when credentials not provided (backward compat)', async () => {

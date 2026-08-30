@@ -147,6 +147,19 @@ class ApprovalManifest:
     def get_all(self) -> list[ApprovalRecord]:
         return list(self._records.values())
 
+    def refresh(self) -> None:
+        """
+        Re-read the manifest file from disk into the in-memory cache.
+
+        Approvals are normally granted by a separately-constructed
+        ApprovalManifest instance (matimo_approve_tool creates its own per
+        call), so a long-lived instance (e.g. the one Matimo holds for its
+        whole lifetime) would otherwise never see approvals written after it
+        was constructed. Called by `reload()` before checking approval state.
+        """
+        self._records.clear()
+        self._load()
+
     # ------------------------------------------------------------------
     # Internal
     # ------------------------------------------------------------------

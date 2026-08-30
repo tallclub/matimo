@@ -1,6 +1,6 @@
 {
   "name": "@matimo/core",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "Core SDK for Matimo: Framework-agnostic YAML-driven tool ecosystem for AI agents.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -52,7 +52,11 @@
     "framework-agnostic",
     "yaml-tools",
     "agent-toolkit",
-    "typescript-ai"
+    "typescript-ai",
+    "mcp-server",
+    "agentic-ai",
+    "ai-governance",
+    "policy-engine"
   ],
   "author": "Sajesh Nair <vsajeshnair@gmail.com>",
   "license": "MIT",

@@ -1,0 +1,38 @@
+# Matimo
+
+> Matimo is an MIT-licensed, policy-governed tool-execution SDK for AI agents. Every tool call — built-in, third-party, or agent-created — passes through a policy engine (risk classification, deterministic security rules, human-in-the-loop approval) before it executes. Dual TypeScript and Python implementation with feature parity; one YAML tool definition runs across TypeScript, Python, LangChain, CrewAI, and MCP.
+
+Install: `npm install @matimo/core` (TypeScript) or `pip install matimo` (Python). Provider packages install separately, e.g. `npm install @matimo/slack` / `pip install "matimo[slack]"`. CLI: `npm install -g @matimo/cli`.
+
+Core capabilities: 139+ production tools across 10 first-party provider packages (Slack, Gmail, GitHub, Notion, HubSpot, Postgres, Twilio, Mailchimp, Microsoft Graph, Bruno), plus a governed 449-tool Composio catalog; 12 meta-tools for runtime self-extension (`matimo_create_tool`, `matimo_create_skill`, `matimo_reload_tools`, and 9 more); a policy engine with 9 deterministic security rules, risk classification (low/medium/high/critical), HITL quarantine, HMAC-signed approvals, and full audit events; a first-party MCP server (stdio + Streamable HTTP) compatible with Claude Desktop, Cursor, and Windsurf.
+
+## Docs
+
+- [README](./README.md): full overview, installation, integration patterns, quick examples
+- [Getting Started — Quick Start](./docs/getting-started/QUICK_START.md): minimal working setup
+- [Getting Started — Your First Tool](./docs/getting-started/YOUR_FIRST_TOOL.md): write and register a tool
+- [SDK API Reference](./docs/api-reference/SDK.md): full SDK surface
+- [Policy Engine & Tool Lifecycle](./docs/api-reference/POLICY_AND_LIFECYCLE.md): risk classification, HITL, security rules, hot-reload
+- [Meta-Tools](./docs/api-reference/META_TOOLS.md): `matimo_create_tool`, `matimo_create_skill`, `matimo_reload_tools`, and the rest
+- [Approval System](./docs/api-reference/APPROVAL-SYSTEM.md): HITL approval manifests and workflow
+- [Tool Specification](./docs/tool-development/TOOL_SPECIFICATION.md) / [YAML Tools](./docs/tool-development/YAML_TOOLS.md): how to define a tool
+- [Adding Tools](./docs/tool-development/ADDING_TOOLS.md): 6-step guide to a new `@matimo/<provider>` package
+- [MCP Server](./docs/MCP.md) / [MCP Setup Guide](./docs/mcp/SETUP_GUIDE.md): stdio/HTTP transport, client config for Claude Desktop/Cursor/Windsurf
+- [LangChain Integration](./docs/framework-integrations/LANGCHAIN.md)
+- [CrewAI Integration](./docs/framework-integrations/CREWAI.md)
+- [Skills System](./docs/skills/SKILLS.md): SKILL.md spec, semantic search, progressive disclosure
+- [Architecture Overview](./docs/architecture/OVERVIEW.md)
+- [Python SDK Reference](./python/README.md): full parity reference for the Python implementation
+
+## Agent-facing
+
+- [AGENTS.md](./AGENTS.md): setup/build/test commands and conventions for AI coding agents working in this repository
+- [CLI Reference](./typescript/packages/cli/README.md): `matimo list/search/install` (package management). `doctor`, `review`, `mcp`, and `mcp setup` are additional commands not yet covered by this README — see [AGENTS.md](./AGENTS.md) and [docs/MCP.md](./docs/MCP.md).
+
+## Optional
+
+- [Contributing](./CONTRIBUTING.md)
+- [Changelog](./CHANGELOG.md)
+- [Roadmap](./docs/ROADMAP.md)
+- [Security Policy](./SECURITY.md)
+- [Composio Integration Rationale](./docs/COMPOSIO.md)

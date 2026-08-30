@@ -1,3 +1,175 @@
+## v0.1.8 - Governance Gap Closures: Default Policy Engine, Approve→Reload Lifecycle & Audit Events 🛡️
+
+> **Release**: Closes the gap between what Matimo's docs claim about governance ("every tool call passes through a policy engine", "full audit trail") and what a zero-config instance actually enforced - `MatimoInstance.init()` now always gets a real `DefaultPolicyEngine`, the `matimo_approve_tool` → `reloadTools()` lifecycle no longer trusts stale hashes, SSRF targets are re-checked at the fully-resolved URL immediately before a request fires, and the simple per-tool `requires_approval` flag now emits real audit events. Plus a large wave of Windows/cross-platform fixes and a full documentation accuracy audit.
+
+**Released**: August 30, 2026
+**Scope**: `typescript/` workspace - all 13 packages (`core`, `cli`, `bruno`, `slack`, `gmail`, `github`, `hubspot`, `notion`, `mailchimp`, `microsoft`, `postgres`, `twilio`, `composio`) bumped to `0.1.8` in lockstep.
+**Severity**: 🟠 **Important** - closes real governance gaps in the default (zero-config) code path; no breaking API changes.
+
+---
+
+### 🛡️ **Governance: Default Policy Engine & Approve→Reload Lifecycle**
+
+A six-finding pass on the self-extension workflow (`matimo_create_tool` → `matimo_approve_tool` → `matimo_reload_tools`) and the zero-config default:
+
+1. **Policy engine is no longer optional.** `MatimoInstance.init()` now always constructs a `DefaultPolicyEngine()` when no `policy` option is given, matching Python's existing behavior. Previously a zero-config instance had `#policy` as `null` and every governance check was silently skipped.
+2. **Approve → reload hash-timing bug fixed.** `matimo_approve_tool` computed its approval hash from the tool's *pre-mutation* content, then overwrote the file afterward - so `isApproved()` could never validate against the tool's actual post-approval on-disk state, and the SDK's own documented self-extension workflow never completed end-to-end. The hash is now computed *after* the `status: approved` write. `reloadTools()` also now consults the approval manifest before gating an untrusted tool: a legitimately-approved tool uses a new, narrower `canReload()` (skips only "new proposal" rules), while anything never legitimately approved - including a hand-edited `status: approved` that bypassed `matimo_approve_tool` - still falls back to `canCreate()`.
+3. **SSRF re-checked at execution time.** `HttpExecutor` now re-validates the fully-resolved URL against SSRF targets immediately before the HTTP request fires, closing the gap where creation-time validation only ever saw `{placeholder}`-blanked URLs.
+4. **Path traversal closed on 3 more meta-tools.** `matimo_get_tool` and `matimo_get_tool_status` now sanitize their `name` parameter against the same pattern `matimo_create_tool` already used; `matimo_approve_tool` picked this up as part of the hash-timing rewrite.
+5. **Risk can only go up.** A tool's self-declared `risk:` field can now only *raise* the automatically computed risk level, never lower it.
+6. **Production-environment matching fixed.** The production gate now does a case-insensitive substring match (`'prod' in environment.toLowerCase()`) instead of an exact `=== 'prod'` comparison - matching Python's existing behavior and Matimo's own docs/examples, which use `'production'`.
+
+Also adds `reloadSkills()`, mirroring `reloadTools()`'s clear/re-walk/re-register shape, plus a new `skills:reloaded` event.
+
+### ✨ **Enhancement: audit events for the simple `requires_approval` flow**
+
+`onEvent` previously only fired from `DefaultPolicyEngine`'s create/quarantine paths - so the plain per-tool `requires_approval: true` YAML flag (the approval mechanism active by default, with no `policy`/`policyFile`/`policyConfig` configured) produced zero audit events, contradicting the README's "full audit trail via structured events" claim. New `tool:approval_granted` / `tool:approval_denied` events now fire around `ApprovalHandler.requestApproval()` regardless of whether a full `PolicyEngine` is configured.
+
+### 🐛 **Fixes**
+
+- `execute` tool: command validation now runs *before* the debug-log line that referenced it, so a missing/undefined command produces the intended `MatimoError` instead of crashing with a `TypeError`.
+- Meta-tools: switched to a namespace import for `js-yaml` - the 5.x ESM build has no default export, which crashed under real Node ESM (ts-jest's CJS interop had been masking it in tests).
+- Tool discovery: discarded `MatimoError` validation failures during `loadToolsFromDirectory` are now logged (debug level for malformed tool YAML, warn level for the two outer discovery catches) instead of vanishing from the registry silently.
+
+### 🪟 **Windows / cross-platform fixes**
+
+- `pnpm build` failed on Windows entirely (`cmd.exe` doesn't strip single-quoted `--filter='./packages/**'` the way POSIX shells do) - switched to double quotes, and added a missing root-level `build` script (`pnpm --dir typescript build`) the README already documented but which didn't exist.
+- Fixed Windows-only test failures in `command-executor.test.ts` and `credentials-override.test.ts`: tests hardcoded `echo`/`ls`/`sleep`/`sh` as bare commands, which don't exist as standalone executables on Windows (`echo` is a `cmd.exe` builtin); replaced with `process.execPath` running an inline script, and fixed a case-sensitive `.PATH` lookup against a `Path`-cased env var (Windows env-var casing is inconsistent across the runtime).
+- Fixed three more Windows-only pre-existing test failures found while verifying the above: a forward-slash-only mock path in `search.test.ts`, a POSIX-only quoting assumption in `execute.test.ts`, and a forward-slash path assertion in `matimo-get-skill.test.ts`.
+- Fixed a stale test hash assertion in the HITL pre-approval test suite (recompute against the integrity tracker's actual recorded hash, not an independently-derived one).
+
+### 🧹 **Example fixes**
+
+- Fixed TypeScript compile errors in Bruno examples (missing casts on `matimo.execute()`'s unknown-typed result; a LangChain tool-array type mismatch).
+- Execute-tool examples hardcoded POSIX-only commands (`ls`, `pwd`, `uname -a`) and one that the tool's own injection detector always blocks - now branch on `process.platform` and use real cross-platform commands; also fixed two decorator-example methods that sent no command at all because they declared no parameters.
+- Capped auto-discovery agent examples to fewer than 128 tools before binding to the LLM - OpenAI rejects tool-calling requests above that limit, and auto-discovery now loads 150+ tools across all `@matimo/*` provider packages (HubSpot alone ships 50+). Affected: `langchain-skills-policy-agent.ts` (now activates a provider's tools on demand via skill loading) and the MCP `agent`/`agent-stdio`/`agent-http` examples (now bind curated subsets).
+
+### 📚 **Documentation**
+
+A full accuracy audit against current code, across `docs/`, package READMEs, and `docs/ROADMAP.md`:
+- Fixed ~15 broken example cross-references that pointed at a repo-root `examples/` directory (moved under `typescript/`/`python/` a while ago), plus broken links in `POLICY_AND_LIFECYCLE.md` and `RELEASES.md`.
+- `VERCEL_AI.md` documented `convertToolsToVercelAI` as a working API with full code samples - it doesn't exist in the codebase (export is commented out, integration file was never written); replaced with an explicit not-yet-implemented notice.
+- `SDK.md`: removed a fabricated `options: InitOptions` parameter and a nonexistent `PolicyConfig(blocked_commands=...)` field from the documented Python `Matimo.init()` signature; corrected `ReloadResult.reloaded_count` → `loaded`.
+- `META_TOOLS.md`: corrected `matimo_approve_tool`'s documented "Internal Flow" to match the fixed hash-timing order, and documented the new `canReload()`/`canCreate()` split and the meta-tools' name-validation sanitization.
+- `POLICY_AND_LIFECYCLE.md`: added `enableHITL`/`quarantineRiskLevels`/`approvalTtlSeconds` to the `PolicyConfig` table, added `reloadSkills()` to the API reference, documented the new execution-time SSRF re-check.
+- Corrected tool/provider counts repo-wide: **139+ tools across 10 native provider packages, 12 meta-tools** (recounted directly from the YAML tool definitions), with the separately-governed 449-tool `@matimo/composio` catalog called out distinctly rather than folded into the native count. This landed in `README.md`, `docs/ROADMAP.md`, the landing page, and 13 provider-package READMEs (Slack's tool count and two nonexistent tools were the most visibly wrong).
+- Added `AGENTS.md` and `llms.txt` so AI coding agents and MCP/npm search can find and correctly use Matimo without scraping the website.
+- `docs/api-reference/POLICY_AND_LIFECYCLE.md`'s HITL guidance updated to reflect that `DefaultPolicyEngine.canExecute()` now quarantines by `classifyRisk()` + `quarantineRiskLevels` when `enableHITL` is set, rather than only checking deprecation/draft/`requires_approval`.
+
+### 🌐 **Website / SEO**
+
+Fixed a broken `og:image`/JSON-LD image path, a duplicate JSON-LD key that silently dropped the npm install link, a stale `softwareVersion`, an over-length meta description, a duplicated `robots.txt` rule block, and a same-host sitemap violation (`docs.matimo.dev` URLs listed inside `matimo.dev`'s own sitemap) on the landing page.
+
+### 🔐 **Security note (flagged, not fixed in this release)**
+
+`pnpm audit` reports 32 vulnerabilities (2 low / 11 moderate / **19 high**), all transitive via `@modelcontextprotocol/sdk`'s dependency chain (`express` → `body-parser`, `hono`). This needs a deliberate SDK-dependency-bump task - tracked separately, not absorbed into this release.
+
+### 📦 **Version Bumps**
+
+| Package | Previous | New | Type |
+|---------|----------|-----|------|
+| matimo (root, typescript/) | 0.1.7 | 0.1.8 | Patch |
+| @matimo/core | 0.1.7 | 0.1.8 | Patch |
+| @matimo/cli | 0.1.7 | 0.1.8 | Patch |
+| @matimo/bruno | 0.1.7 | 0.1.8 | Patch |
+| @matimo/slack | 0.1.7 | 0.1.8 | Patch |
+| @matimo/gmail | 0.1.7 | 0.1.8 | Patch |
+| @matimo/github | 0.1.7 | 0.1.8 | Patch |
+| @matimo/hubspot | 0.1.7 | 0.1.8 | Patch |
+| @matimo/notion | 0.1.7 | 0.1.8 | Patch |
+| @matimo/mailchimp | 0.1.7 | 0.1.8 | Patch |
+| @matimo/microsoft | 0.1.7 | 0.1.8 | Patch |
+| @matimo/postgres | 0.1.7 | 0.1.8 | Patch |
+| @matimo/twilio | 0.1.7 | 0.1.8 | Patch |
+| @matimo/composio | 0.1.7 | 0.1.8 | Patch |
+
+**Note on semver strictness:** this batch includes one genuine `feat:` commit (audit events, above). A strict reading of this project's own conventional-commits rule (`feat:` → minor) would argue for `0.2.0` rather than `0.1.8`; this release follows established precedent (the `v0.1.6`→`v0.1.7` jump also shipped a `feat` commit and was still released as a patch-level bump) and the branch name (`release/v0.1.8`). Flagged here for visibility rather than silently decided.
+
+### 🧪 **Verification**
+
+- `pnpm install` / `pnpm build`: clean across all 13 packages
+- `pnpm test:coverage`: 109 suites, 2446 tests passing - 95.65% statements / 88.48% branches / 97.81% functions / 96.39% lines (all above the configured 95/87/97/95 thresholds)
+- `pnpm lint`: clean
+- `pnpm validate-tools`: 599/599 valid
+- `grep -rn "eval(\|new Function("`: 2 hits, both pre-existing and unrelated to this release (a guarded sandbox in `function-executor.ts`, an ESM/CJS interop trick in `mcp-server.ts`) - verified via `git log typescript/v0.1.7..HEAD` that neither file was touched by this release's commits
+
+---
+
+## Python v0.1.3 - Governance Parity & Cross-Platform Fixes 🐍
+
+> **Release**: Brings Python to parity with the TypeScript v0.1.8 governance fixes above - default policy engine, approve→reload lifecycle, execution-time SSRF re-check, path-traversal sanitization on 3 meta-tools - plus a Windows/cross-platform fix to skill-resource containment checking and a fix that had provider packages silently failing to install in the workspace.
+
+**Released**: August 30, 2026
+**Scope**: `python/` workspace - all 13 packages (`matimo-core`, `matimo-cli`, `matimo` meta-package, `matimo-bruno`, `matimo-slack`, `matimo-gmail`, `matimo-github`, `matimo-hubspot`, `matimo-notion`, `matimo-mailchimp`, `matimo-microsoft`, `matimo-postgres`, `matimo-twilio`) bumped to `0.1.3` in lockstep.
+**Severity**: 🟠 **Important** - closes real governance gaps in the default code path; no breaking API changes.
+
+---
+
+### 🛡️ **Governance: Default Policy Engine & Approve→Reload Lifecycle (parity with TS)**
+
+Mirrors the TypeScript fixes above, with a few points where the Python side had actually diverged further:
+
+- `reload()` previously ran **no** policy validation on untrusted tools at all (it never called `can_create()`), so it never hit the TS hash-timing bug directly - but it also gave zero content/SSRF re-validation on reload. `untrusted_paths` and an `ApprovalManifest` are now actually wired into `Matimo` (both were previously accepted as init arguments but silently unused), and a new `can_reload()` sits alongside the now-genuinely-live `can_create()` in `DefaultPolicyEngine`: already-legitimately-approved tools (on-disk hash matches a signed approval record) use `can_reload()`; everything else falls back to `can_create()`.
+- Also closes a real anti-self-approval hole: `can_create()` previously only ever enforced critical/high-severity content violations, so a hand-edited `status: approved` with no high-severity violations passed unconditionally. Medium-severity violations (e.g. `forced-draft-status`) now deny or quarantine too.
+- Fixed `matimo_approve_tool.py`'s identical hash-timing bug (hashed content before the `status: approved` rewrite, not after).
+- `http_executor.py` re-checks the fully-resolved URL for SSRF targets immediately before the request fires, via a new public `is_ssrf_target()` wrapper around the existing private check.
+- `matimo_get_tool.py`, `matimo_approve_tool.py`, and `matimo_get_tool_status.py` now sanitize the `name` parameter against the same pattern `matimo_create_tool.py` already used.
+- A self-declared `risk` field can now only raise the automatically computed risk level, never lower it.
+- `_is_production()` was already a correct substring match on the Python side - confirmed, not a bug here.
+- Adds `reload_skills()`, mirroring `reload()`'s clear/re-walk/re-register shape; `Matimo` now stores `skill_paths`/`skill_loader` as instance attributes so a later reload can re-walk them.
+
+### 🐛 **Fix: cross-platform skill-resource containment check**
+
+The skill-resource containment check hardcoded a forward-slash separator (`str(resolved).startswith(str(skill_dir_resolved) + "/")`), which never matches `Path.resolve()`'s backslash-separated output on Windows - every resource read was rejected as "escaping" the skill directory even when it wasn't. Replaced with `Path.is_relative_to()`, the correct separator-agnostic check.
+
+### 🐛 **Fix: provider packages weren't installed by default**
+
+Root `pyproject.toml` listed all 10 provider packages under `[tool.uv.workspace].members` and `[tool.uv.sources]` but never in `[project].dependencies`, so `uv sync --all-extras --dev` never actually installed them - causing 74 test failures and 2 collection errors from `ModuleNotFoundError`, concentrated in `bruno` and `microsoft`. Now matches the TypeScript side's "always installed" workspace behavior.
+
+### 🧹 **Example fixes**
+
+Execute-tool examples: the Python `execute` tool spawns commands directly via `asyncio.create_subprocess_exec()` with no shell involved, so shell builtins and pipes were never available regardless of platform - switched the examples to `git` subcommands (real installed executables everywhere), and fixed two decorator-example methods that sent no command at all because they declared no parameters. Verified by running all four examples end-to-end on Windows.
+
+### 📚 **Documentation**
+
+Same repo-wide accuracy audit as the TypeScript release above: `python/README.md`'s quickstart called `Matimo.init(providers=[...])`, a parameter that doesn't exist, and its per-provider tool counts were stale and missing `bruno`/`microsoft` entirely (recounted directly from `definition.yaml` files on disk); HubSpot's docs pointed at `HUBSPOT_ACCESS_TOKEN` when tools actually read `MATIMO_HUBSPOT_API_KEY`; Postgres had a wrong tool name, wrong env var prefixes, and a false `requires_approval` claim; GitHub/Gmail quick-starts were missing the provider name prefix on tool calls; the CLI README documented 6 flags/features that don't exist; `AGENTS.md`/`llms.txt` added alongside the TypeScript ones.
+
+### ⬆️ **Dependency bumps** (Dependabot, routine)
+
+`pypdf` 6.14.2→6.15.0, `cryptography` (examples/mcp), `aiohttp` 3.14.1→3.14.3 (both `python/` and `python/examples/mcp`), `pillow` 12.2.0→12.3.0, `mcp` →1.28.1 (both `python/` and `python/examples/mcp`), `litellm` 1.72.0→1.84.0, `json-repair` 0.25.2→0.60.1.
+
+### 📦 **Version Bumps**
+
+| Package | Previous | New | Type |
+|---------|----------|-----|------|
+| matimo (meta-package) | 0.1.2 | 0.1.3 | Patch |
+| matimo-core | 0.1.2 | 0.1.3 | Patch |
+| matimo-cli | 0.1.2 | 0.1.3 | Patch |
+| matimo-bruno | 0.1.2 | 0.1.3 | Patch |
+| matimo-slack | 0.1.2 | 0.1.3 | Patch |
+| matimo-gmail | 0.1.2 | 0.1.3 | Patch |
+| matimo-github | 0.1.2 | 0.1.3 | Patch |
+| matimo-hubspot | 0.1.2 | 0.1.3 | Patch |
+| matimo-notion | 0.1.2 | 0.1.3 | Patch |
+| matimo-mailchimp | 0.1.2 | 0.1.3 | Patch |
+| matimo-microsoft | 0.1.2 | 0.1.3 | Patch |
+| matimo-postgres | 0.1.2 | 0.1.3 | Patch |
+| matimo-twilio | 0.1.2 | 0.1.3 | Patch |
+
+No `feat:` commits touch `python/` in this batch (the audit-events feature above is TS-only; `@matimo/composio` has no Python counterpart per the known TS/Python parity gap) - this is an unambiguous patch bump.
+
+### 🧪 **Verification**
+
+- `uv sync --all-extras --dev`: clean, confirms all 13 packages moved 0.1.2→0.1.3
+- `pytest --cov`: 1134 tests passing, 97% coverage (≥95% threshold)
+- `ruff check`: clean
+- `python scripts/validate_tools.py`: 155/155 valid
+- `grep -rn "shell=True"`: 0 hits
+
+**Known non-blocking issue (pre-existing, not introduced by this release):** `mypy` strict typecheck on `packages/core/src` currently reports 127 errors across 25 files, traced via `git blame` to code from April 5, 2026 - well before `python/v0.1.2`. This repo's own CI already runs mypy non-blocking (`mypy packages/ || true` in `.github/workflows/ci.yml` and `test-python.yml`, with an explicit "union type refinement work in progress" comment), so it was not treated as a release blocker here either. Flagged for visibility.
+
+---
+
 ## v0.1.7 — Composio Google Workspace Expansion: Gmail, Sheets, Docs, Forms, Meet 📇
 
 > **Release**: Five new Composio-backed Google Workspace toolkits (Gmail, Sheets, Docs, Forms, Meet) adding 107 governed tools, plus explicit BYOK compliance documentation for the Composio dependency, two small fixes, and a flaky-test timeout fix.
@@ -243,7 +415,7 @@ const matimo = await MatimoInstance.init({
   - `composio_jira_get_issue_types` (decorator) → real Jira issue type list (`Epic`, etc.)
   - LangChain agent (GPT-4o-mini) → loaded 342 tools, filtered to 46 Jira tools, made real Composio API call, returned natural language response
   - HITL approval flow → low-risk executed immediately; medium (`create_issue`) and high (`delete_issue`) both triggered approval prompt with correct risk labels before proceeding
-  - `canCreate()` returned `pending_approval` for medium-risk tools in prod context; `classifyRisk()` honored explicit YAML risk fields + overrides
+  - `canCreate()` returned `pending_approval` for medium-risk tools in prod context; `classifyRisk()` honored explicit YAML risk fields + overrides *(superseded — a later fix changed this so a self-declared `risk:` can only raise the automatically-computed level, never lower it; see POLICY_AND_LIFECYCLE.md)*
 
 **Known Composio catalog issue**: As of March 2026, Jira deprecated `/rest/api/3/search`. Composio's `JIRA_SEARCH_ISSUES` and `JIRA_SEARCH_FOR_ISSUES_USING_JQL_POST` actions return HTTP 410 until Composio updates their catalog to use `/rest/api/3/search/jql`. All other Jira actions are unaffected.
 
@@ -2034,9 +2206,9 @@ All 3 integration patterns (Factory, Decorator, LangChain) + SQL approval workfl
 
 ### 🔗 Related Documentation
 
-- [Postgres Package README](../packages/postgres/README.md) — Tool specifications and usage
-- [Examples README](../examples/README.md) — Sequential discovery pattern, approval workflow
-- [Tool Development Guide](../docs/tool-development/EXTENDING.md) — How to create new tools
+- [Postgres Package README](../typescript/packages/postgres/README.md) — Tool specifications and usage
+- [Examples README](../typescript/examples/README.md) — Sequential discovery pattern, approval workflow
+- [Tool Development Guide](./tool-development/ADDING_TOOLS.md) — How to create new tools
 
 ### ⚠️ Breaking Changes
 
@@ -2246,7 +2418,7 @@ pnpm add matimo@0.1.0-alpha.6
 - [Quick Start](./getting-started/QUICK_START.md)
 - [SDK Patterns](./user-guide/SDK_PATTERNS.md)
 - [Tool Reference](./api-reference/SDK.md)
-- [Examples](../examples/)
+- [Examples](../typescript/examples/)
 
 ## Contributing
 
@@ -2395,7 +2567,7 @@ const response = await llm.invoke(messages, { tools });
 
 - [Installation & Setup](./getting-started/installation.md)
 - [Quick Start](./getting-started/QUICK_START.md)
-- [Examples Guide](../examples/README.md) - All three patterns with detailed walkthrough
+- [Examples Guide](../typescript/examples/README.md) - All three patterns with detailed walkthrough
 - [SDK Patterns](./user-guide/SDK_PATTERNS.md)
 - [OAuth2 Guide](./architecture/OAUTH.md)
 - [API Reference](./api-reference/SDK.md)
@@ -2498,7 +2670,7 @@ const result = await m.execute('calculator', {
 - [SDK Patterns](./user-guide/SDK_PATTERNS.md)
 - [OAuth2 Guide](./architecture/OAUTH.md)
 - [API Reference](./api-reference/SDK.md)
-- [Examples](../examples/)
+- [Examples](../typescript/examples/)
 
 ## Known Limitations
 

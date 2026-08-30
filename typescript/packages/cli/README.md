@@ -117,12 +117,47 @@ Results for "email":
      Gmail email tools
      Tools: gmail-send-email, gmail-list-messages, gmail-create-draft, ...
 
-  📍 @matimo/sendgrid
-     SendGrid email tools
-     Tools: sendgrid-send-email, sendgrid-list-templates, ...
+  📍 @matimo/mailchimp
+     Mailchimp email marketing tools
+     Tools: mailchimp-send-campaign, mailchimp-add-list-member, ...
 ```
 
 **Use when:** You want to find tools before installing them, or discover what's available for a specific service.
+
+### `matimo mcp`
+
+Start an MCP (Model Context Protocol) server exposing installed Matimo tools.
+
+```bash
+matimo mcp
+matimo mcp --transport http --port 3000
+```
+
+### `matimo mcp setup`
+
+Generate MCP client config for Claude Desktop / Cursor.
+
+```bash
+matimo mcp setup
+```
+
+### `matimo doctor`
+
+Diagnose your Matimo setup - checks env vars, YAML validity, and Node version.
+
+```bash
+matimo doctor
+```
+
+### `matimo review`
+
+Review agent-created tools awaiting human approval.
+
+```bash
+matimo review list
+matimo review approve my_tool
+matimo review reject my_tool
+```
 
 ## Auto-Discovery
 
@@ -159,14 +194,20 @@ Matimo packages are published to npm with the `@matimo` scope:
 - `@matimo/slack` - Slack workspace tools
 - `@matimo/github` - GitHub repository tools
 - `@matimo/gmail` - Gmail email tools
-- `@matimo/stripe` - Stripe payment tools (coming soon)
-- `@matimo/twilio` - Twilio SMS/voice tools (coming soon)
+- `@matimo/hubspot` - HubSpot CRM tools
+- `@matimo/mailchimp` - Mailchimp email marketing tools
+- `@matimo/microsoft` - Microsoft Graph tools (mail, files, Teams, calendar, SharePoint)
+- `@matimo/notion` - Notion workspace tools
+- `@matimo/postgres` - PostgreSQL query tools
+- `@matimo/twilio` - Twilio SMS/voice tools
+- `@matimo/bruno` - Bruno API test collection tools
+- `@matimo/composio` - Governed access to Composio's tool catalog
 
 [Browse all Matimo packages](https://www.npmjs.com/search?q=%40matimo)
 
 ## Creating Tool Packages
 
-Want to create your own tools? See the [Adding Tools to Matimo](../../docs/tool-development/ADDING_TOOLS.md) guide.
+Want to create your own tools? See the [Adding Tools to Matimo](../../../docs/tool-development/ADDING_TOOLS.md) guide.
 
 **Summary:** Create a package with YAML tool definitions and publish it to npm as `@matimo/{provider}`.
 
@@ -285,6 +326,6 @@ npm install @matimo/slack@1.2.0
 
 ## Support
 
-- 📖 [Matimo Documentation](../../docs/index.md)
-- 🛠️ [Tool Development Guide](../../docs/tool-development/ADDING_TOOLS.md)
+- 📖 [Matimo Documentation](../../../docs/index.md)
+- 🛠️ [Tool Development Guide](../../../docs/tool-development/ADDING_TOOLS.md)
 - 💬 [GitHub Issues](https://github.com/tallclub/matimo/issues)

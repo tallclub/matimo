@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import yaml from 'js-yaml';
+import * as yaml from 'js-yaml';
 import {
   validateToolDefinition,
   classifyRisk,
@@ -25,12 +25,25 @@ interface StatusResult {
   message: string;
 }
 
+const UNSAFE_NAME_PATTERN = /[/\\]|\.\.|[\x00-\x1f]/;
+
 export default async function matimoGetToolStatus(
   params: StatusParams,
-  context?: { credentials?: Record<string, string> },
+  context?: { credentials?: Record<string, string> }
 ): Promise<StatusResult> {
   const logger = getGlobalMatimoLogger();
   const toolDir = params.tool_dir || './matimo-tools';
+
+  if (!params.name || params.name.trim().length === 0) {
+    return { found: false, message: 'Tool name is required' };
+  }
+  if (UNSAFE_NAME_PATTERN.test(params.name)) {
+    return {
+      found: false,
+      message:
+        'Tool name contains invalid characters (path traversal, backslash, or control characters)',
+    };
+  }
 
   const defPath = path.join(toolDir, params.name, 'definition.yaml');
   if (!fs.existsSync(defPath)) {
@@ -57,10 +70,7 @@ export default async function matimoGetToolStatus(
 
   // Determine approval state from manifest
   const approvalDir = path.resolve(toolDir);
-  const manifest = new ApprovalManifest(
-    approvalDir,
-    context?.credentials?.MATIMO_APPROVAL_SECRET,
-  );
+  const manifest = new ApprovalManifest(approvalDir, context?.credentials?.MATIMO_APPROVAL_SECRET);
 
   const hash = manifest.computeHash(yamlContent);
   const approvalRecord = manifest.getApproval(params.name);

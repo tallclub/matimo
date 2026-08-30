@@ -1,6 +1,6 @@
 # matimo-github
 
-> GitHub tools for [Matimo](https://matimo.dev) — manage repositories, issues, pull requests, releases, and more.
+> GitHub tools for [Matimo](https://matimo.dev) - manage repositories, issues, pull requests, releases, and more.
 
 [![PyPI](https://img.shields.io/pypi/v/matimo-github)](https://pypi.org/project/matimo-github/)
 [![Docs](https://img.shields.io/badge/docs-matimo.dev-blue)](https://matimo.dev/docs)
@@ -15,32 +15,32 @@ pip install matimo matimo-github
 
 ---
 
-## Available Tools (27 Total)
+## Available Tools (22 Total)
 
 | Category | Tool | Description |
 |----------|------|-------------|
-| **Repositories** | `get-repository` | Get repository details |
-| | `list-repositories` | List repositories for user/org |
-| | `create-repository` | Create a new repository |
-| | `delete-repository` | Delete a repository |
-| | `search-repositories` | Search GitHub repositories |
-| **Issues** | `list-issues` | List issues in a repository |
-| | `get-issue` | Get a single issue |
-| | `create-issue` | Create a new issue |
-| | `update-issue` | Update issue title, body, state, labels |
-| | `search-issues` | Search issues across GitHub |
-| **Pull Requests** | `list-pull-requests` | List PRs in a repository |
-| | `create-pull-request` | Open a new pull request |
-| | `merge-pull-request` | Merge a pull request |
-| **Releases** | `list-releases` | List releases for a repository |
-| | `create-release` | Create a new release with tag |
-| **Commits** | `list-commits` | List commits on a branch |
-| **Collaborators** | `list-collaborators` | List repository collaborators |
-| | `add-collaborator` | Add a collaborator |
-| **Code Search** | `search-code` | Search code across repositories |
-| | `search-users` | Search GitHub users |
-| **Security** | `list-code-alerts` | List Dependabot/code scanning alerts |
-| | `update-code-alert` | Dismiss or resolve a code alert |
+| **Repositories** | `github-get-repository` | Get repository details |
+| | `github-list-repositories` | List repositories for user/org |
+| | `github-create-repository` | Create a new repository |
+| | `github-delete-repository` | Delete a repository |
+| | `github-search-repositories` | Search GitHub repositories |
+| **Issues** | `github-list-issues` | List issues in a repository |
+| | `github-get-issue` | Get a single issue |
+| | `github-create-issue` | Create a new issue |
+| | `github-update-issue` | Update issue title, body, state, labels |
+| | `github-search-issues` | Search issues across GitHub |
+| **Pull Requests** | `github-list-pull-requests` | List PRs in a repository |
+| | `github-create-pull-request` | Open a new pull request |
+| | `github-merge-pull-request` | Merge a pull request |
+| **Releases** | `github-list-releases` | List releases for a repository |
+| | `github-create-release` | Create a new release with tag |
+| **Commits** | `github-list-commits` | List commits on a branch |
+| **Collaborators** | `github-list-collaborators` | List repository collaborators |
+| | `github-add-collaborator` | Add a collaborator |
+| **Code Search** | `github-search-code` | Search code across repositories |
+| | `github-search-users` | Search GitHub users |
+| **Security** | `github-list-code-alerts` | List Dependabot/code scanning alerts |
+| | `github-update-code-alert` | Dismiss or resolve a code alert |
 
 ---
 
@@ -56,14 +56,14 @@ async def main():
     matimo = await Matimo.init(get_tools_path())
 
     # List open issues
-    result = await matimo.execute('list-issues', {
+    result = await matimo.execute('github-list-issues', {
         'owner': 'my-org',
         'repo': 'my-repo',
         'state': 'open',
     })
 
     # Create an issue
-    await matimo.execute('create-issue', {
+    await matimo.execute('github-create-issue', {
         'owner': 'my-org',
         'repo': 'my-repo',
         'title': 'Bug: login fails on mobile',

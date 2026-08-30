@@ -1,4 +1,4 @@
-# @matimo/github — GitHub Tools for Matimo
+# @matimo/github - GitHub Tools for Matimo
 
 Comprehensive GitHub REST API integration for Matimo. Execute 22 focused tools across search, issues, repositories, pull requests, commits, collaborators, releases, and code scanning.
 
@@ -134,11 +134,11 @@ const ghTools = matimo.listTools()
 
 1. Create token at https://github.com/settings/tokens
 2. Choose scopes:
-   - **repo** — Full access to repositories
-   - **gist** — Full access to gists
-   - **user** — Read user profile
-   - **admin:org_hook** — Write organization webhooks (optional)
-   - **security_events** — Read code scanning alerts
+   - **repo** - Full access to repositories
+   - **gist** - Full access to gists
+   - **user** - Read user profile
+   - **admin:org_hook** - Write organization webhooks (optional)
+   - **security_events** - Read code scanning alerts
 
 3. Set environment variable:
 
@@ -166,15 +166,24 @@ export GITHUB_TOKEN=github_pat_xxxxxxxxxxxxxxxx
 ```typescript
 import { OAuth2Handler } from '@matimo/core';
 
-const handler = new OAuth2Handler('github');
-const { authorize_url, state } = handler.getAuthorizationUrl();
+const handler = new OAuth2Handler({
+  provider: 'github',
+  clientId: process.env.GITHUB_CLIENT_ID!,
+  clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+  redirectUri: 'https://your-app.example.com/oauth/callback',
+});
 
-// Redirect user to authorize_url
-// Handle callback with authorization code
-const tokens = await handler.exchangeAuthorizationCode(code, state);
+const authorizeUrl = handler.getAuthorizationUrl({
+  userId: 'user-123',
+  scopes: ['repo'],
+});
 
-// tokens.access_token ready for use
-process.env.GITHUB_TOKEN = tokens.access_token;
+// Redirect user to authorizeUrl
+// Handle callback with the returned authorization code
+const token = await handler.exchangeCodeForToken(code, 'user-123');
+
+// token.accessToken ready for use
+process.env.GITHUB_TOKEN = token.accessToken;
 ```
 
 ## Rate Limiting
@@ -217,7 +226,7 @@ try {
   if (error instanceof MatimoError) {
     console.error('Code:', error.code);           // EXECUTION_FAILED
     console.error('Message:', error.message);     // User-friendly message
-    console.error('Details:', error.details);     // { statusCode: 404, toolName: '...' }
+    console.error('Details:', error.details);     // { statusCode: 404, details: <response body>, originalError: '...' }
     
     // Handle specific scenarios
     if (error.code === 'EXECUTION_FAILED' && error.details?.statusCode === 404) {
@@ -228,11 +237,11 @@ try {
 ```
 
 Common GitHub API errors:
-- **401 Unauthorized** — Invalid or expired token
-- **403 Forbidden** — Insufficient permissions, rate limited, or GHSA disabled
-- **404 Not Found** — Repository, issue, or user doesn't exist
-- **422 Unprocessable Entity** — Invalid parameters
-- **429 Too Many Requests** — Rate limit exceeded
+- **401 Unauthorized** - Invalid or expired token
+- **403 Forbidden** - Insufficient permissions, rate limited, or GHSA disabled
+- **404 Not Found** - Repository, issue, or user doesn't exist
+- **422 Unprocessable Entity** - Invalid parameters
+- **429 Too Many Requests** - Rate limit exceeded
 
 ## Examples
 
@@ -325,7 +334,7 @@ for (const alert of alerts.filter(a => a.rule.id === 'false-positive')) {
 
 ### "401 Unauthorized"
 - Verify `GITHUB_TOKEN` is set: `echo $GITHUB_TOKEN`
-- Token may be expired or revoked — create new one
+- Token may be expired or revoked - create new one
 - For fine-grained PAT, verify it hasn't been expired
 
 ### "403 Forbidden" for private repos

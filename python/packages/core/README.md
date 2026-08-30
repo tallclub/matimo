@@ -1,14 +1,14 @@
 # matimo-core
 
-> Matimo core — framework-agnostic SDK with pre-built providers, skills layer, MCP, and a policy engine you control.
+> Matimo core - framework-agnostic SDK with pre-built providers, skills layer, MCP, and a policy engine you control.
 
 [![PyPI](https://img.shields.io/pypi/v/matimo-core)](https://pypi.org/project/matimo-core/)
 [![Python](https://img.shields.io/pypi/pyversions/matimo-core)](https://pypi.org/project/matimo-core/)
 [![Docs](https://img.shields.io/badge/docs-matimo.dev-blue)](https://matimo.dev/docs)
-[![Tests](https://img.shields.io/badge/tests-658%20passing-brightgreen)](https://github.com/tallclub/matimo)
+[![Tests](https://img.shields.io/badge/tests-1134%20passing-brightgreen)](https://github.com/tallclub/matimo)
 [![Coverage](https://img.shields.io/badge/coverage-97%25-brightgreen)](https://github.com/tallclub/matimo)
 
-Write tools once in YAML, use them everywhere — with LangChain, CrewAI, MCP, and more.
+Write tools once in YAML, use them everywhere - with LangChain, CrewAI, MCP, and more.
 
 > **Note:** Most users should install [`matimo`](https://pypi.org/project/matimo/) (the convenience wrapper) instead of `matimo-core` directly.
 
@@ -126,7 +126,6 @@ from matimo import Matimo, InitOptions
 matimo = await Matimo.init(
     tool_paths=['./tools', './agent-tools'],  # or a single string
     auto_discover=False,       # discover installed matimo-* packages
-    include_core=True,         # include built-in meta-tools
     policy_file='./policy.yaml',
     untrusted_paths=['./agent-tools'],
     skill_paths=['./skills'],
@@ -204,7 +203,7 @@ from matimo.mcp.secrets import create_resolver_chain
 resolver = create_resolver_chain([
     {'type': 'env'},
     {'type': 'dotenv', 'path': '.env'},
-    {'type': 'vault', 'address': 'http://vault:8200'},
+    {'type': 'vault', 'addr': 'http://vault:8200'},
     {'type': 'aws', 'region': 'us-east-1'},
 ])
 token = await resolver.resolve('SLACK_BOT_TOKEN')
@@ -220,7 +219,7 @@ from matimo.logging import get_global_matimo_logger
 
 matimo = await Matimo.init('./tools', log_level='info', log_format='json')
 logger = get_global_matimo_logger()
-logger.info('Tool executed', {'tool': 'slack_send_channel_message'})
+logger.info('Tool executed', tool='slack_send_channel_message')
 ```
 
 ---
@@ -236,7 +235,9 @@ Built-in tools that let agents manage other tools at runtime:
 | `matimo_approve_tool` | Promote draft → approved | Yes |
 | `matimo_reload_tools` | Hot-reload registry | Yes |
 | `matimo_list_user_tools` | List agent-created tools | No |
+| `matimo_get_tool` | Retrieve a tool's full definition | No |
 | `matimo_get_tool_status` | Check approval state | Yes |
+| `matimo_search_tools` | Search the loaded tool registry by keyword | No |
 | `matimo_create_skill` | Create a SKILL.md | Yes |
 | `matimo_list_skills` | List available skills | No |
 | `matimo_get_skill` | Read skill content | No |

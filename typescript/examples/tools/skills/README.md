@@ -1,12 +1,12 @@
-# Matimo Skills System — LangChain Agent Demo
+# Matimo Skills System - LangChain Agent Demo
 
 A **real LangChain ReAct agent** (gpt-4o-mini) that **autonomously discovers** the Matimo skills lifecycle, aligned with the official [Agent Skills specification](https://agentskills.io/specification).
 
 Skills are SKILL.md files with YAML frontmatter that agents load on demand via **progressive disclosure**:
 
-- **Level 1 — Metadata** (~100 tokens): `name` and `description` loaded at startup / via `matimo_list_skills`
-- **Level 2 — Instructions** (<5k tokens): Full SKILL.md body loaded when skill is activated via `matimo_get_skill`
-- **Level 3 — Resources** (as needed): Bundled `scripts/`, `references/`, `assets/` loaded on demand
+- **Level 1 - Metadata** (~100 tokens): `name` and `description` loaded at startup / via `matimo_list_skills`
+- **Level 2 - Instructions** (<5k tokens): Full SKILL.md body loaded when skill is activated via `matimo_get_skill`
+- **Level 3 - Resources** (as needed): Bundled `scripts/`, `references/`, `assets/` loaded on demand
 
 > **This is not a scripted demo.** The agent is given goals like "I need a code review checklist" and must independently discover how to create, list, validate, read, and apply skills.
 
@@ -119,17 +119,17 @@ echo -e "y\ny\ny\ny\ny" | pnpm skills:demo
 
 ### Phase 2: Agent Missions
 
-**Mission 1 — Create a Skill:** Agent discovers `matimo_create_skill`. Creates SKILL.md with spec-compliant YAML frontmatter and structured markdown.
+**Mission 1 - Create a Skill:** Agent discovers `matimo_create_skill`. Creates SKILL.md with spec-compliant YAML frontmatter and structured markdown.
 
-**Mission 2 — List Skills (Level 1):** Agent discovers `matimo_list_skills`. Reports each skill's metadata (name, description).
+**Mission 2 - List Skills (Level 1):** Agent discovers `matimo_list_skills`. Reports each skill's metadata (name, description).
 
-**Mission 3 — Read & Apply (Level 2):** Agent reads code review skill via `matimo_get_skill`, then applies its guidelines to buggy sample code (eval, hardcoded passwords, empty catch blocks).
+**Mission 3 - Read & Apply (Level 2):** Agent reads code review skill via `matimo_get_skill`, then applies its guidelines to buggy sample code (eval, hardcoded passwords, empty catch blocks).
 
-**Mission 4 — Create Another Skill:** Agent creates a security-focused skill with OWASP Top 10 guidelines.
+**Mission 4 - Create Another Skill:** Agent creates a security-focused skill with OWASP Top 10 guidelines.
 
-**Mission 5 — Validate Skills:** Agent discovers `matimo_validate_skill` and checks both skills against the Agent Skills spec.
+**Mission 5 - Validate Skills:** Agent discovers `matimo_validate_skill` and checks both skills against the Agent Skills spec.
 
-**Mission 6 — Multi-Skill Application:** Agent lists ALL skills, reads ALL of them, applies every guideline together for a comprehensive code review.
+**Mission 6 - Multi-Skill Application:** Agent lists ALL skills, reads ALL of them, applies every guideline together for a comprehensive code review.
 
 ### Phase 3: Verification
 - Confirms all skills written to disk
@@ -161,7 +161,7 @@ metadata:
 
 ## Code Quality
 - [ ] Meaningful variable and function names
-- [ ] DRY — no duplicated logic
+- [ ] DRY - no duplicated logic
 
 ## Security
 - [ ] No hardcoded secrets or credentials

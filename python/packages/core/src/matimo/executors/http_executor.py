@@ -15,6 +15,7 @@ import httpx
 from matimo.core.models import HttpExecution, ToolDefinition
 from matimo.encodings.parameter_encoding import apply_parameter_encodings
 from matimo.errors import ErrorCode, MatimoError, from_http_error
+from matimo.policy.content_validator import is_ssrf_target
 
 logger = logging.getLogger("matimo")
 
@@ -115,7 +116,19 @@ class HttpExecutor:
             else:
                 request_json = body
 
-        # 9. Dispatch
+        # 9. Re-check SSRF against the fully-resolved URL, right before the real
+        # request fires. Creation/approval-time validation only ever sees the raw,
+        # unresolved URL (with {placeholders} blanked out) — a URL like
+        # `http://{host}/{path}` passes that check unconditionally and is never
+        # re-checked once a real value (e.g. 169.254.169.254) is substituted in.
+        if is_ssrf_target(url):
+            raise MatimoError(
+                f"Execution blocked: URL targets an internal/metadata network: {url}",
+                ErrorCode.POLICY_DENIED,
+                {"tool_name": tool.name, "url": url},
+            )
+
+        # 10. Dispatch
         timeout_ms = exec_cfg.timeout or 30_000
         timeout_s = timeout_ms / 1000.0
 
@@ -149,7 +162,7 @@ class HttpExecutor:
                 cause=exc,
             ) from exc
 
-        # 10. Parse response
+        # 11. Parse response
         content_type_resp = response.headers.get("content-type", "")
         if "application/json" in content_type_resp:
             return response.json()

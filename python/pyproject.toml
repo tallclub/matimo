@@ -6,6 +6,16 @@ requires-python = ">=3.11"
 dependencies = [
     "matimo-core",
     "matimo-cli",
+    "matimo-bruno",
+    "matimo-github",
+    "matimo-gmail",
+    "matimo-hubspot",
+    "matimo-mailchimp",
+    "matimo-microsoft",
+    "matimo-notion",
+    "matimo-postgres",
+    "matimo-slack",
+    "matimo-twilio",
 ]
 
 [dependency-groups]

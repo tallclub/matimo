@@ -1,6 +1,6 @@
 {
   "name": "matimo",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "A framework-agnostic SDK with pre-built providers, a skills knowledge layer, MCP out of the box, and agents that autonomously build new capabilities — governed by a policy engine you control.",
   "main": "packages/core/dist/index.js",
   "types": "packages/core/dist/index.d.ts",
@@ -22,8 +22,8 @@
   },
   "scripts": {
     "prepare": "husky install",
-    "build": "pnpm --filter='./packages/**' build",
-    "watch": "pnpm --filter='./packages/**' watch",
+    "build": "pnpm --filter=\"./packages/**\" build",
+    "watch": "pnpm --filter=\"./packages/**\" watch",
     "pretest": "pnpm build",
     "test": "jest",
     "test:watch": "jest --watch",

@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import yaml from 'js-yaml';
+import * as yaml from 'js-yaml';
 import {
   validateToolDefinition,
   validateToolContent,
@@ -22,12 +22,25 @@ interface ApproveResult {
   message: string;
 }
 
+const UNSAFE_NAME_PATTERN = /[/\\]|\.\.|[\x00-\x1f]/;
+
 export default async function matimoApproveTool(
   params: ApproveParams,
-  context?: { credentials?: Record<string, string> },
+  context?: { credentials?: Record<string, string> }
 ): Promise<ApproveResult> {
   const logger = getGlobalMatimoLogger();
   const toolDir = params.tool_dir || './matimo-tools';
+
+  if (!params.name || params.name.trim().length === 0) {
+    return { success: false, message: 'Tool name is required' };
+  }
+  if (UNSAFE_NAME_PATTERN.test(params.name)) {
+    return {
+      success: false,
+      message:
+        'Tool name contains invalid characters (path traversal, backslash, or control characters)',
+    };
+  }
 
   // Step 1: Read tool definition
   const defPath = path.join(toolDir, params.name, 'definition.yaml');
@@ -49,7 +62,7 @@ export default async function matimoApproveTool(
   // Step 3: Re-run content validator
   const validation = validateToolContent(tool, { source: 'untrusted' });
   const criticalOrHigh = validation.violations.filter(
-    (v: Violation) => v.severity === 'critical' || v.severity === 'high',
+    (v: Violation) => v.severity === 'critical' || v.severity === 'high'
   );
   if (criticalOrHigh.length > 0) {
     return {
@@ -58,22 +71,24 @@ export default async function matimoApproveTool(
     };
   }
 
-  // Step 4: Approve via manifest
-  const approvalDir = path.resolve(toolDir);
-  const manifest = new ApprovalManifest(
-    approvalDir,
-    context?.credentials?.MATIMO_APPROVAL_SECRET,
-  );
-
-  const hash = manifest.computeHash(yamlContent);
-  manifest.approve(params.name, hash);
-  const approval = manifest.getApproval(params.name);
-
-  // Step 5: Update status in YAML
+  // Step 4: Update status in YAML — write first, so the approval hash below is
+  // computed from the file's *final* on-disk content, not the pre-mutation content.
   const parsed = yaml.load(yamlContent) as Record<string, unknown>;
   parsed.status = 'approved';
   const updatedYaml = yaml.dump(parsed);
   fs.writeFileSync(defPath, updatedYaml, 'utf-8');
+
+  // Step 5: Approve via manifest, hashing the file's actual final content.
+  // Hashing yamlContent (pre-mutation) here would make isApproved() unable to
+  // ever match the tool's own post-approval file — approvals would silently
+  // never validate.
+  const finalContent = fs.readFileSync(defPath, 'utf-8');
+  const approvalDir = path.resolve(toolDir);
+  const manifest = new ApprovalManifest(approvalDir, context?.credentials?.MATIMO_APPROVAL_SECRET);
+
+  const hash = manifest.computeHash(finalContent);
+  manifest.approve(params.name, hash);
+  const approval = manifest.getApproval(params.name);
 
   logger.info('matimo_approve_tool: tool approved', {
     name: params.name,

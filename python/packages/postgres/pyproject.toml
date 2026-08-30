@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "matimo-postgres"
-version = "0.1.2"
+version = "0.1.3"
 description = "Matimo provider — PostgreSQL tools (query, insert, update, delete, execute SQL)"
 readme = "README.md"
 license = { text = "MIT" }

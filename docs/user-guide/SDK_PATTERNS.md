@@ -699,6 +699,6 @@ try {
 - **[Framework Integrations](../framework-integrations/LANGCHAIN.md)** — LangChain details & examples
 - **[Tool Discovery Guide](./TOOL_DISCOVERY.md)** — Finding and managing tools
 - **[API Reference](../api-reference/SDK.md)** — Complete SDK documentation
-- **[Examples](../../examples/)** — Working code for all patterns
+- **[Examples](../../typescript/examples/)** — Working code for all patterns
 
-See [examples/tools/](../../examples/tools/) for complete, runnable examples.
+See [examples/tools/](../../typescript/examples/tools/) for complete, runnable examples.

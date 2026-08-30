@@ -18,7 +18,7 @@ All examples are **fully working** and demonstrate real Mailchimp operations (au
 
 Your API key will look like: `abc123def456ghi789-us6`
 
-The suffix after the final `-` (e.g., `us6`) is your **server prefix** — the examples extract this automatically from the API key.
+The suffix after the final `-` (e.g., `us6`) is your **server prefix** - the examples extract this automatically from the API key.
 
 ### 2. Set Up Environment
 
@@ -163,7 +163,7 @@ const lists = await agent.getLists(SERVER, 10);
 - ✅ Real AI agent using OpenAI (GPT-4o-mini)
 - ✅ LLM decides which tools to use based on natural language goals
 - ✅ Autonomous execution of multi-step Mailchimp workflows
-- ✅ No tool names in prompts — pure business objectives
+- ✅ No tool names in prompts - pure business objectives
 
 **Prerequisites:**
 - Requires `OPENAI_API_KEY` set in `.env`
@@ -189,7 +189,7 @@ const langchainTools = await convertToolsToLangChain(mailchimpToolDefs as any[],
 const model = new ChatOpenAI({ model: 'gpt-4o-mini' });
 const agent = createReactAgent({ llm: model, tools: langchainTools });
 
-// Natural language goals — the agent picks the right tools autonomously
+// Natural language goals - the agent picks the right tools autonomously
 await agent.invoke({ messages: [{ role: 'user', content: 'Show me all my mailing lists' }] });
 await agent.invoke({ messages: [{ role: 'user', content: 'Show me the 5 most recent active subscribers in my first list' }] });
 await agent.invoke({ messages: [{ role: 'user', content: "Create a draft campaign with a descriptive subject line; use the first subscriber's email as reply-to" }] });
@@ -207,7 +207,7 @@ Agent: "Here are 5 recent subscribers: jane@example.com (subscribed), ..."
 
 User: "Get my first subscriber and confirm they are still subscribed"
 Agent: [calls mailchimp-get-list-members, then mailchimp-update-list-member]
-Agent: "Confirmed — jane@example.com is subscribed"
+Agent: "Confirmed - jane@example.com is subscribed"
 
 User: "Create a draft campaign for the newsletter list, use the first subscriber's email as reply-to"
 Agent: [calls mailchimp-create-campaign]
@@ -266,8 +266,8 @@ export MAILCHIMP_API_KEY="abc123def456-us6"
 Or add it to `examples/tools/.env`.
 
 ### "404 Resource Not Found"
-- Wrong `list_id` — retrieve it fresh from `mailchimp-get-lists`
-- Wrong `subscriber_hash` — the examples use the `id` field from `mailchimp-get-list-members`, which is already the MD5 hash
+- Wrong `list_id` - retrieve it fresh from `mailchimp-get-lists`
+- Wrong `subscriber_hash` - the examples use the `id` field from `mailchimp-get-list-members`, which is already the MD5 hash
 
 ### "400 Invalid Resource" on update
 - Mailchimp accounts may require specific merge fields (e.g., ADDRESS sub-fields) that differ per account

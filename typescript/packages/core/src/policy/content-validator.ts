@@ -22,6 +22,7 @@ export function validateToolContent(
 ): ValidationResult {
   const violations: Violation[] = [];
   const config = context.policy ?? {};
+  const skipRules = new Set(context.skipRules ?? []);
 
   // Only apply restrictive rules to untrusted sources
   if (context.source !== 'untrusted') {
@@ -90,7 +91,10 @@ export function validateToolContent(
   }
 
   // Rule 6: Force requires_approval on agent-created tools
-  if (tool.requires_approval === false || tool.requires_approval === undefined) {
+  if (
+    !skipRules.has('forced-approval') &&
+    (tool.requires_approval === false || tool.requires_approval === undefined)
+  ) {
     violations.push({
       rule: 'forced-approval',
       severity: 'high',
@@ -127,7 +131,11 @@ export function validateToolContent(
   }
 
   // Rule 9: Force draft status on agent-created tools
-  if (tool.status !== undefined && tool.status !== 'draft') {
+  if (
+    !skipRules.has('forced-draft-status') &&
+    tool.status !== undefined &&
+    tool.status !== 'draft'
+  ) {
     violations.push({
       rule: 'forced-draft-status',
       severity: 'medium',

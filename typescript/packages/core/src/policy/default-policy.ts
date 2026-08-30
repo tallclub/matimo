@@ -44,6 +44,26 @@ export class DefaultPolicyEngine implements PolicyEngine {
    * then runs ContentValidator rules.
    */
   canCreate(context: PolicyContext, toolDef: ToolDefinition): PolicyDecision {
+    return this.evaluateUntrustedTool(context, toolDef, []);
+  }
+
+  /**
+   * Check whether an already-legitimately-approved tool may be reloaded.
+   * Same evaluation as `canCreate`, except the two rules whose sole purpose is
+   * "a *new proposal* cannot self-declare approval/non-draft status" are skipped —
+   * a real approval via matimo_approve_tool legitimately changes those fields.
+   * All other content rules (SSRF, credentials, namespace, HTTP method/domain,
+   * production risk gate) still apply in full.
+   */
+  canReload(context: PolicyContext, toolDef: ToolDefinition): PolicyDecision {
+    return this.evaluateUntrustedTool(context, toolDef, ['forced-approval', 'forced-draft-status']);
+  }
+
+  private evaluateUntrustedTool(
+    context: PolicyContext,
+    toolDef: ToolDefinition,
+    skipRules: string[]
+  ): PolicyDecision {
     // Hard TIER 3 gate — blocked regardless of content validator.
     // Each check uses a reason string that the policy tests assert (.toContain).
     const protectedNamespaces = this.config.protectedNamespaces;
@@ -82,6 +102,7 @@ export class DefaultPolicyEngine implements PolicyEngine {
     const result = validateToolContent(toolDef, {
       source: 'untrusted',
       policy: this.config,
+      skipRules,
     });
 
     if (!result.valid) {
@@ -127,7 +148,7 @@ export class DefaultPolicyEngine implements PolicyEngine {
     // In production, block anything above low risk — unless HITL is enabled
     // for the tool's risk level, in which case quarantine it for human review
     const risk = classifyRisk(toolDef);
-    if (context.environment === 'prod' && risk !== 'low') {
+    if (isProductionEnvironment(context.environment) && risk !== 'low') {
       if (this.config.enableHITL && this.config.quarantineRiskLevels.includes(risk)) {
         return {
           allowed: 'pending_approval',
@@ -161,7 +182,7 @@ export class DefaultPolicyEngine implements PolicyEngine {
     }
 
     // Draft tools in prod: deny
-    if (status === 'draft' && context.environment === 'prod') {
+    if (status === 'draft' && isProductionEnvironment(context.environment)) {
       return {
         allowed: false,
         reason: `Draft tool "${tool.name}" is not available in production`,
@@ -180,7 +201,7 @@ export class DefaultPolicyEngine implements PolicyEngine {
 
     // In prod, tools requiring approval need admin or operator role
     if (
-      context.environment === 'prod' &&
+      isProductionEnvironment(context.environment) &&
       tool.requires_approval === true &&
       !context.roles?.includes('admin') &&
       !context.roles?.includes('operator')
@@ -190,6 +211,21 @@ export class DefaultPolicyEngine implements PolicyEngine {
         reason: `Tool "${tool.name}" requires approval and caller lacks admin/operator role in production`,
         riskLevel: 'high',
       };
+    }
+
+    // Quarantine tools whose risk level is configured for HITL review. Opt-in
+    // via enableHITL (off by default) so this never changes behavior for
+    // callers who haven't configured quarantineRiskLevels themselves.
+    if (this.config.enableHITL) {
+      const risk = classifyRisk(tool);
+      if (this.config.quarantineRiskLevels.includes(risk)) {
+        return {
+          allowed: 'pending_approval',
+          reason: `Tool "${tool.name}" risk level "${risk}" requires human approval`,
+          riskLevel: risk,
+          toolName: tool.name,
+        };
+      }
     }
 
     return { allowed: true };
@@ -254,6 +290,16 @@ export function getTierForTool(tool: ToolDefinition, config?: PolicyConfig): Pol
 
   // TIER 1 — AUTO (low-risk read-only)
   return 'auto';
+}
+
+/**
+ * Substring/case-insensitive match on the environment string — mirrors Python's
+ * `_is_production()` (`"prod" in environment`). An exact `=== 'prod'` match would
+ * silently miss values like 'production' or 'PRODUCTION-us-east' that Matimo's own
+ * docs/examples use.
+ */
+function isProductionEnvironment(environment?: string): boolean {
+  return (environment ?? '').toLowerCase().includes('prod');
 }
 
 /** Check if a URL targets a blocked/internal destination (mirrors content-validator SSRF check). */

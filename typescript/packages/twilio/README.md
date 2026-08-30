@@ -1,4 +1,4 @@
-# @matimo/twilio — Twilio Messaging Tools for Matimo
+# @matimo/twilio - Twilio Messaging Tools for Matimo
 
 Twilio Programmable Messaging integration tools for Matimo's universal AI tools ecosystem. Send SMS and MMS messages, and manage message resources through YAML-defined tools that work with any AI framework.
 
@@ -43,7 +43,7 @@ const messages = await matimo.execute('twilio-list-messages', {
 
 ## 🔐 Account Setup & Authentication
 
-Twilio uses **HTTP Basic authentication** (`Account SID` as the username and `Auth Token` as the password). Matimo handles the encoding automatically — you only need to set two environment variables.
+Twilio uses **HTTP Basic authentication** (`Account SID` as the username and `Auth Token` as the password). Matimo handles the encoding automatically - you only need to set two environment variables.
 
 ### Step 1: Create a Twilio Account
 
@@ -62,10 +62,10 @@ After signing up you land in the [Twilio Console](https://console.twilio.com) wh
 
 Your **Account SID** and **Auth Token** are displayed on your [Twilio Console dashboard](https://console.twilio.com) under **Account Info**.
 
-- **Account SID** — a 34-character identifier that starts with `AC` (e.g. `ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`). Acts as your username for every API call.
-- **Auth Token** — a 32-character secret key. Acts as your password. Click the **eye (👁) icon** to reveal it.
+- **Account SID** - a 34-character identifier that starts with `AC` (e.g. `ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`). Acts as your username for every API call.
+- **Auth Token** - a 32-character secret key. Acts as your password. Click the **eye (👁) icon** to reveal it.
 
-> ⚠️ **Security Note**: Keep both values secret. Do not commit them to version control. Anyone with your Account SID and Auth Token has full access to your Twilio project. Source: [Twilio Help — What is a Twilio Account SID?](https://help.twilio.com/articles/14726256820123-What-is-a-Twilio-Account-SID)
+> ⚠️ **Security Note**: Keep both values secret. Do not commit them to version control. Anyone with your Account SID and Auth Token has full access to your Twilio project. Source: [Twilio Help - What is a Twilio Account SID?](https://help.twilio.com/articles/14726256820123-What-is-a-Twilio-Account-SID)
 
 You can also find your Account SID in:
 - The [API Keys & Tokens](https://console.twilio.com/us1/account/keys-credentials/api-keys) page
@@ -80,7 +80,7 @@ You need a **Twilio phone number** to use as the sender (`from` parameter). Tria
 
 **To get your first number:**
 1. Open the [Twilio Console](https://console.twilio.com) and click **Get phone number** on the home page, or go to [Buy a Number](https://console.twilio.com/us1/develop/phone-numbers/manage/search)
-2. Set the search filters — **Country**, **Capabilities** (SMS / MMS / Voice), and **Number Type** (local, mobile, or toll-free)
+2. Set the search filters - **Country**, **Capabilities** (SMS / MMS / Voice), and **Number Type** (local, mobile, or toll-free)
 3. Click **Buy** to provision the number to your account
 
 > **Trial accounts**: You can have only **one Twilio phone number** at a time on a trial account, with a maximum of 3 unique numbers over the lifetime of the trial. [Upgrade your account](https://help.twilio.com/articles/223183208-Upgrading-to-a-paid-Twilio-Account) to provision additional numbers.
@@ -90,12 +90,12 @@ You need a **Twilio phone number** to use as the sender (`from` parameter). Tria
 ### Step 4: Set Environment Variables
 
 ```bash
-# .env — only two Twilio credentials needed
+# .env - only two Twilio credentials needed
 TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 TWILIO_AUTH_TOKEN=your_32_char_auth_token_here
 ```
 
-> **Zero extra steps!** Matimo natively handles HTTP Basic Auth — it reads `TWILIO_ACCOUNT_SID` and `TWILIO_AUTH_TOKEN`, encodes them as `base64(AccountSid:AuthToken)`, and injects `Authorization: Basic ...` automatically on every request. No manual encoding required.
+> **Zero extra steps!** Matimo natively handles HTTP Basic Auth - it reads `TWILIO_ACCOUNT_SID` and `TWILIO_AUTH_TOKEN`, encodes them as `base64(AccountSid:AuthToken)`, and injects `Authorization: Basic ...` automatically on every request. No manual encoding required.
 
 ---
 
@@ -154,7 +154,7 @@ During trial, you can only send to numbers you have explicitly verified. To add 
 1. Go to [Verified Caller IDs](https://console.twilio.com/us1/develop/phone-numbers/manage/verified) in the Console
 2. Click **Add a new Caller ID**
 3. Enter the phone number in E.164 format (e.g. `+15558675310`)
-4. Select **SMS** as the verification method — trial accounts **cannot** verify numbers by voice call
+4. Select **SMS** as the verification method - trial accounts **cannot** verify numbers by voice call
 5. Enter the verification code sent to that number
 
 The phone number you verified during sign-up is automatically included.
@@ -179,7 +179,7 @@ const smsResult = await matimo.execute('twilio-send-sms', {
 });
 
 const message = (smsResult as any).data;
-console.info(`✅ SMS sent: ${message.sid} — Status: ${message.status}`);
+console.info(`✅ SMS sent: ${message.sid} - Status: ${message.status}`);
 ```
 
 ### Decorator Pattern
@@ -236,7 +236,7 @@ import { createAgent } from 'langchain';
 const matimo = await MatimoInstance.init({ autoDiscover: true });
 const twilioTools = matimo.listTools().filter(t => t.name.startsWith('twilio-'));
 
-// No extra credential injection needed — Matimo handles Basic Auth automatically
+// No extra credential injection needed - Matimo handles Basic Auth automatically
 const langchainTools = await convertToolsToLangChain(
   twilioTools as ToolDefinition[],
   matimo
@@ -250,7 +250,7 @@ const agent = await createAgent({ model, tools: langchainTools as any[] });
 
 ### `twilio-send-sms`
 
-Send an outbound SMS message. Source: [Twilio Messages API — Create a Message](https://www.twilio.com/docs/messaging/api/message-resource#create-a-message-resource)
+Send an outbound SMS message. Source: [Twilio Messages API - Create a Message](https://www.twilio.com/docs/messaging/api/message-resource#create-a-message-resource)
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -273,11 +273,11 @@ Send an outbound MMS message with media.
 | `body` | string | ❌ | Optional text content to accompany the media |
 | `status_callback` | string | ❌ | Webhook URL for delivery status updates |
 
-**Supported media types**: jpeg, jpg, gif, png (up to 5 MB); other types up to 500 KB. Up to 10 `media_url` values per message.
+**Supported media types**: jpeg, jpg, gif, png (up to 5 MB); other types up to 500 KB. The tool accepts a single `media_url` per call - to send multiple media items, call `twilio-send-mms` once per attachment.
 
 ### `twilio-get-message`
 
-Fetch a single Message resource by SID. Source: [Twilio — Fetch a Message resource](https://www.twilio.com/docs/messaging/api/message-resource#fetch-a-message-resource)
+Fetch a single Message resource by SID. Source: [Twilio - Fetch a Message resource](https://www.twilio.com/docs/messaging/api/message-resource#fetch-a-message-resource)
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -286,7 +286,7 @@ Fetch a single Message resource by SID. Source: [Twilio — Fetch a Message reso
 
 ### `twilio-list-messages`
 
-List Message resources with optional filters. Results are sorted by `DateSent`, most recent first. Source: [Twilio — Read multiple Message resources](https://www.twilio.com/docs/messaging/api/message-resource#read-multiple-message-resources)
+List Message resources with optional filters. Results are sorted by `DateSent`, most recent first. Source: [Twilio - Read multiple Message resources](https://www.twilio.com/docs/messaging/api/message-resource#read-multiple-message-resources)
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -335,14 +335,14 @@ For high-volume messaging, use [Twilio Messaging Services](https://www.twilio.co
 
 ## 🔧 Troubleshooting
 
-### `HTTP 401 — Authentication Failed (Error 20003)`
+### `HTTP 401 - Authentication Failed (Error 20003)`
 
 Your `TWILIO_AUTH_TOKEN` is incorrect or does not match the `TWILIO_ACCOUNT_SID`. Both values must come from the same Twilio account.
 
 1. Go to your [Twilio Console dashboard](https://console.twilio.com)
 2. Under **Account Info**, copy the **Account SID** (starts with `AC`)
 3. Click the **eye icon** next to **Auth Token** to reveal it, then copy the exact value
-4. Update your environment variables — Matimo encodes them automatically, no base64 step needed
+4. Update your environment variables - Matimo encodes them automatically, no base64 step needed
 
 ```bash
 TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
@@ -351,11 +351,11 @@ TWILIO_AUTH_TOKEN=your_32_char_auth_token_here
 
 ---
 
-### `Error 21659 — Unverified "To" Phone Number (Trial Accounts)`
+### `Error 21659 - Unverified "To" Phone Number (Trial Accounts)`
 
 Your account is in trial mode and you are trying to send to a number that has not been verified as a Caller ID.
 
-**Fix — verify the recipient number:**
+**Fix - verify the recipient number:**
 1. Go to [Verified Caller IDs](https://console.twilio.com/us1/develop/phone-numbers/manage/verified) in the Console
 2. Click **Add a new Caller ID** and enter the recipient number in E.164 format
 3. Select **SMS** as the verification method (trial accounts cannot use voice verification)
@@ -365,19 +365,19 @@ Alternatively, [upgrade your Twilio account](https://help.twilio.com/articles/22
 
 ---
 
-### `Error 21266 — Cannot Use Same "To" and "From" Number`
+### `Error 21266 - Cannot Use Same "To" and "From" Number`
 
 The `to` and `from` phone numbers are identical. Twilio does not allow a number to message itself. Use a different verified recipient number.
 
 ---
 
-### `Error 21211 — Invalid "To" Phone Number`
+### `Error 21211 - Invalid "To" Phone Number`
 
-The `to` value is not a valid dialable phone number. Ensure it is in **E.164 format** — a `+` sign followed by the country code and number, with no spaces or dashes (e.g. `+15558675310`).
+The `to` value is not a valid dialable phone number. Ensure it is in **E.164 format** - a `+` sign followed by the country code and number, with no spaces or dashes (e.g. `+15558675310`).
 
 ---
 
-### `Error 21212 — Invalid "From" Phone Number`
+### `Error 21212 - Invalid "From" Phone Number`
 
 The `from` number is not a Twilio number in your account, or it is not SMS-capable.
 
@@ -387,7 +387,7 @@ The `from` number is not a Twilio number in your account, or it is not SMS-capab
 
 ---
 
-### `Error 21408 — Permission to Send an SMS Has Not Been Enabled`
+### `Error 21408 - Permission to Send an SMS Has Not Been Enabled`
 
 Sending to the target country requires geographic permission approval.
 
@@ -397,7 +397,7 @@ Sending to the target country requires geographic permission approval.
 
 ---
 
-### `Error 63038 — Daily Message Limit Exceeded (Trial Only)`
+### `Error 63038 - Daily Message Limit Exceeded (Trial Only)`
 
 Trial accounts are limited to **50 messages per day**. You have reached that limit.
 
@@ -406,7 +406,7 @@ Trial accounts are limited to **50 messages per day**. You have reached that lim
 
 ---
 
-### `Error 30007 — Carrier Violation`
+### `Error 30007 - Carrier Violation`
 
 The carrier blocked the message. Common causes:
 - Content flagged as spam or containing prohibited URL shorteners
@@ -422,7 +422,7 @@ The carrier blocked the message. Common causes:
 
 ### Messages Arrive with "Sent from a Twilio trial account" Prefix
 
-This prefix is automatically prepended by Twilio on all outbound messages from trial accounts. It is **not a Matimo behaviour** — it is a Twilio trial restriction. Upgrading your account removes this prefix immediately.
+This prefix is automatically prepended by Twilio on all outbound messages from trial accounts. It is **not a Matimo behaviour** - it is a Twilio trial restriction. Upgrading your account removes this prefix immediately.
 
 ---
 
@@ -443,9 +443,9 @@ await matimo.execute('twilio-send-sms', {
 
 ## 🤝 Contributing
 
-See the [Contributing Guide](../../CONTRIBUTING.md) for details on how to add new tools, report bugs, or improve documentation.
+See the [Contributing Guide](../../../CONTRIBUTING.md) for details on how to add new tools, report bugs, or improve documentation.
 
 ---
 
-*Part of the [Matimo](https://github.com/tallclub/matimo) ecosystem — universal AI tools SDK.*
+*Part of the [Matimo](https://github.com/tallclub/matimo) ecosystem - universal AI tools SDK.*
 

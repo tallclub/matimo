@@ -6,6 +6,71 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
+## [typescript/v0.1.8] - 2026-08-30
+
+### 🛡️ Governance
+- `MatimoInstance.init()` now always constructs a real `DefaultPolicyEngine()` when no `policy` option is given, since a zero-config instance previously had governance silently disabled
+- Fix the `matimo_approve_tool` → `reloadTools()` hash-timing bug: the approval hash is now computed after the `status: approved` write, not before, so the SDK's own self-extension workflow can actually complete end-to-end; `reloadTools()` now distinguishes legitimately-approved tools (narrower `canReload()`) from everything else (`canCreate()`)
+- `HttpExecutor` re-checks the fully-resolved URL for SSRF targets immediately before the request fires, closing a gap where only the `{placeholder}`-blanked URL was checked at creation time
+- `matimo_get_tool` and `matimo_get_tool_status` now sanitize the `name` parameter against the same path-traversal pattern `matimo_create_tool` already used
+- A self-declared `risk:` field can now only raise the automatically computed risk level, never lower it
+- Production-environment matching is now a case-insensitive substring check, matching Python's existing behavior
+
+### ✨ Features
+- Emit `tool:approval_granted` / `tool:approval_denied` audit events for the simple per-tool `requires_approval` flag, independent of whether a full `PolicyEngine` is configured
+- Add `reloadSkills()`, mirroring `reloadTools()`'s clear/re-walk/re-register shape, plus a `skills:reloaded` event
+
+### 🐛 Bug Fixes
+- Validate the `execute` tool's command before logging it, instead of crashing on an undefined command
+- Use a namespace import for `js-yaml` in meta-tools, since the 5.x ESM build has no default export
+- Log discarded tool-discovery errors instead of silently dropping malformed tool YAML from the registry
+- Fix `pnpm build` on Windows (`cmd.exe` doesn't strip single-quoted `--filter`), add the missing root `build` delegate script
+- Fix Windows-only test failures across `command-executor`, `credentials-override`, `search`, `execute`, and `matimo-get-skill` test suites (bare-executable ENOENT, case-sensitive `PATH` lookup, forward-slash-only path assertions)
+- Fix TypeScript compile errors in Bruno examples; make execute-tool examples work cross-platform; cap auto-discovery agent examples to fewer than 128 bound tools (OpenAI's hard limit)
+
+### 📚 Documentation
+- Correct tool/provider counts repo-wide to the verified 139+ tools / 10 provider packages / 12 meta-tools, with `@matimo/composio`'s separate 449-tool catalog called out distinctly
+- Fix ~15 broken example cross-references, a fabricated `convertToolsToVercelAI` API writeup, several fabricated Python `Matimo.init()`/`ReloadResult` fields, and stale HITL/SSRF/reload-lifecycle guidance across `docs/`
+- Add `AGENTS.md` and `llms.txt` for AI-agent and MCP/npm discoverability
+- Fix landing-page SEO issues (broken `og:image`, duplicate JSON-LD key, stale version, sitemap protocol violation)
+
+### 🧪 Testing
+- Add end-to-end coverage for the approve→reload lifecycle, zero-config policy defaults, execution-time SSRF re-check, and path-traversal rejection on the 3 newly-sanitized meta-tools
+
+### 🔐 Security (flagged, not fixed this release)
+- `pnpm audit`: 19 high-severity transitive vulnerabilities via `@modelcontextprotocol/sdk`'s dependency chain, tracked separately
+
+### 📦 Version Bumps
+- All 13 `typescript/` packages (`core`, `cli`, `bruno`, `slack`, `gmail`, `github`, `hubspot`, `notion`, `mailchimp`, `microsoft`, `postgres`, `twilio`, `composio`): `0.1.7` → `0.1.8`
+
+---
+## [python/v0.1.3] - 2026-08-30
+
+### 🛡️ Governance
+- Parity with the TypeScript v0.1.8 governance fixes above: `untrusted_paths` and an `ApprovalManifest` are now actually wired into `Matimo` (previously accepted but unused), a new `can_reload()` sits alongside the now-live `can_create()`, and `http_executor.py` re-checks SSRF targets at the fully-resolved URL before the request fires
+- Close an anti-self-approval hole: `can_create()` previously only enforced critical/high-severity content violations, so a hand-edited `status: approved` with no high-severity findings passed unconditionally
+- `matimo_get_tool.py`, `matimo_approve_tool.py`, and `matimo_get_tool_status.py` now sanitize the `name` parameter for path traversal
+- A self-declared `risk` field can now only raise the automatically computed risk level, never lower it
+- Add `reload_skills()`, mirroring `reload()`'s clear/re-walk/re-register shape
+
+### 🐛 Bug Fixes
+- Use `Path.is_relative_to()` for the skill-resource containment check, since the previous forward-slash-only check rejected every resource read on Windows
+- Install all 10 provider packages by default in the `uv` workspace: they were listed as workspace members but never as project dependencies, so `uv sync` never installed them
+- Make execute-tool examples work cross-platform (switch to `git` subcommands; fix two decorator-example methods that sent no command at all)
+
+### 📚 Documentation
+- Fix stale/fabricated quickstart parameters and stale per-provider tool counts in `python/README.md`; fix wrong env var names (HubSpot, Postgres) and missing provider-name prefixes (GitHub, Gmail) across provider READMEs
+- Add `AGENTS.md` and `llms.txt`
+
+### ⬆️ Dependency Bumps
+- `pypdf` 6.14.2 → 6.15.0, `aiohttp` 3.14.1 → 3.14.3, `pillow` 12.2.0 → 12.3.0, `mcp` → 1.28.1, `litellm` 1.72.0 → 1.84.0, `json-repair` 0.25.2 → 0.60.1, `cryptography` (examples/mcp)
+
+### 📦 Version Bumps
+- All 13 `python/` packages (`matimo` meta-package, `matimo-core`, `matimo-cli`, `matimo-bruno`, `matimo-slack`, `matimo-gmail`, `matimo-github`, `matimo-hubspot`, `matimo-notion`, `matimo-mailchimp`, `matimo-microsoft`, `matimo-postgres`, `matimo-twilio`): `0.1.2` → `0.1.3`
+
+**Known non-blocking issue (pre-existing):** `mypy` strict typecheck on `packages/core/src` reports 127 errors traced to April 2026 code, predating `python/v0.1.2`. This repo's CI already runs mypy non-blocking (`|| true`); not treated as a release blocker.
+
+---
 ## [v0.1.7] - 2026-08-11
 
 ### ✨ Features

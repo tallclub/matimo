@@ -26,8 +26,19 @@ USAGE:
 
 AVAILABLE EXECUTE TOOL PARAMETERS:
 ────────────────────────────────────────────────────────────────────────────
-  command   (str, required) - Shell command to execute (e.g., "ls", "pwd")
+  command   (str, required) - Command to execute (e.g., "git --version")
   timeout   (int, optional) - Timeout in milliseconds (default: 30000)
+
+NOTE ON CROSS-PLATFORM COMMANDS:
+────────────────────────────────────────────────────────────────────────────
+  Unlike the TypeScript SDK's `execute` tool (which runs commands through a
+  real shell — cmd.exe on Windows, sh elsewhere), the Python `execute` tool
+  spawns the command directly via asyncio.create_subprocess_exec() with no
+  shell involved. That means shell built-ins (`ls`, `pwd`, `dir`, `cd`,
+  `echo`) and pipes are not available — `command` must name a real,
+  installed executable. This example uses `git`, which is a real executable
+  on every platform, so the same commands work identically on Windows,
+  macOS, and Linux.
 
 ============================================================================
 """
@@ -55,100 +66,97 @@ async def main() -> None:
     print(f"✅  Loaded {len(all_tools)} tools\n")
 
     try:
-        # Example 1: List files in current directory
-        print("1️⃣  Running: ls\n")
+        # Example 1: Check the installed git version (a real executable on
+        # every platform — no shell built-in required)
+        print("1️⃣  Running: git --version\n")
         try:
-            ls_result: Dict[str, Any] = await matimo.execute(
+            version_result: Dict[str, Any] = await matimo.execute(
                 "execute",
                 {
-                    "command": "ls",
+                    "command": "git --version",
                     "timeout": 10000,
                 }
             )
-            
-            print(f"Success: {ls_result.get('success', False)}")
-            stdout = ls_result.get("stdout", "")
-            
-            # Show first 200 chars of output
-            if stdout:
-                preview = stdout[:200]
-                print(f"Output: {preview}")
-            else:
-                print("Output: (empty)")
-                
-            # Check for errors
-            stderr = ls_result.get("stderr", "")
+
+            print(f"Success: {version_result.get('success', False)}")
+            stdout = version_result.get("stdout", "").strip()
+            print(f"Output: {stdout}" if stdout else "Output: (empty)")
+
+            stderr = version_result.get("stderr", "")
             if stderr:
                 print(f"Errors: {stderr[:100]}")
         except Exception as e:
             print(f"Error in Example 1: {e}")
         print("---\n")
 
-        # Example 2: Get current working directory
-        print("2️⃣  Running: pwd\n")
+        # Example 2: Get the repo root (the closest cross-platform equivalent
+        # of `pwd` that doesn't require a shell)
+        print("2️⃣  Running: git rev-parse --show-toplevel\n")
         try:
-            pwd_result: Dict[str, Any] = await matimo.execute(
+            toplevel_result: Dict[str, Any] = await matimo.execute(
                 "execute",
                 {
-                    "command": "pwd",
+                    "command": "git rev-parse --show-toplevel",
                 }
             )
-            
-            print(f"Success: {pwd_result.get('success', False)}")
-            stdout = pwd_result.get("stdout", "").strip()
+
+            print(f"Success: {toplevel_result.get('success', False)}")
+            stdout = toplevel_result.get("stdout", "").strip()
             print(f"Output: {stdout}")
         except Exception as e:
             print(f"Error in Example 2: {e}")
         print("---\n")
 
-        # Example 3: Echo command
-        print('3️⃣  Running: echo "Hello from Matimo"\n')
+        # Example 3: Show the latest commit subject
+        print("3️⃣  Running: git log -1 --format=%s\n")
         try:
-            echo_result: Dict[str, Any] = await matimo.execute(
+            log_result: Dict[str, Any] = await matimo.execute(
                 "execute",
                 {
-                    "command": 'echo "Hello from Matimo"',
+                    "command": "git log -1 --format=%s",
                 }
             )
-            
-            print(f"Success: {echo_result.get('success', False)}")
-            stdout = echo_result.get("stdout", "").strip()
+
+            print(f"Success: {log_result.get('success', False)}")
+            stdout = log_result.get("stdout", "").strip()
             print(f"Output: {stdout}")
         except Exception as e:
             print(f"Error in Example 3: {e}")
         print("---\n")
 
-        # Example 4: Get system information
-        print("4️⃣  Running: uname -a\n")
+        # Example 4: List changed files in the working tree
+        print("4️⃣  Running: git status --short\n")
         try:
-            uname_result: Dict[str, Any] = await matimo.execute(
+            status_result: Dict[str, Any] = await matimo.execute(
                 "execute",
                 {
-                    "command": "uname -a",
+                    "command": "git status --short",
                 }
             )
-            
-            print(f"Success: {uname_result.get('success', False)}")
-            stdout = uname_result.get("stdout", "").strip()
-            print(f"Output: {stdout}")
+
+            print(f"Success: {status_result.get('success', False)}")
+            stdout = status_result.get("stdout", "").strip()
+            print(f"Output: {stdout}" if stdout else "Output: (clean working tree)")
         except Exception as e:
             print(f"Error in Example 4: {e}")
         print("---\n")
 
-        # Example 5: File count in directory
-        print("5️⃣  Running: find . -type f | wc -l\n")
+        # Example 5: Count total commits (no shell pipe needed — `execute`
+        # spawns a single process directly, so `| wc -l` style pipelines
+        # aren't supported; git has a dedicated flag for this instead)
+        print("5️⃣  Running: git rev-list --count HEAD\n")
         try:
-            find_result: Dict[str, Any] = await matimo.execute(
+            count_result: Dict[str, Any] = await matimo.execute(
                 "execute",
                 {
-                    "command": "find . -type f | wc -l",
+                    "command": "git rev-list --count HEAD",
                     "timeout": 15000,
                 }
             )
-            
-            print(f"Success: {find_result.get('success', False)}")
-            stdout = find_result.get("stdout", "").strip()
-            print(f"File count: {stdout}")
+
+            print(f"Success: {count_result.get('success', False)}")
+            stdout = count_result.get("stdout", "").strip()
+            print(f"Commit count: {stdout}")
         except Exception as e:
             print(f"Error in Example 5: {e}")
         print("---\n")

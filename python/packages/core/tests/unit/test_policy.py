@@ -18,7 +18,7 @@ from matimo.policy.content_validator import (
 )
 from matimo.policy.default_policy import DefaultPolicyEngine
 from matimo.policy.integrity_tracker import IntegrityAction, ToolIntegrityTracker
-from matimo.policy.risk_classifier import classify_risk
+from matimo.policy.risk_classifier import classify_risk, max_risk
 from matimo.policy.types import PolicyConfig, RiskLevel
 
 
@@ -75,6 +75,29 @@ class TestRiskClassifier:
         tool = _make_http_tool(method="GET", requires_approval=True)
         level = classify_risk(tool)
         assert level in (RiskLevel.HIGH, RiskLevel.MEDIUM)  # At least bumped up
+
+    def test_declared_risk_cannot_lower_automatic_risk(self) -> None:
+        # type: function is automatically CRITICAL — declaring 'low' must not downgrade it.
+        tool = ToolDefinition(
+            name="f", description="func",
+            execution=FunctionExecution(type="function", code="x.py"),
+            risk="low",
+        )
+        assert classify_risk(tool) == RiskLevel.CRITICAL
+
+    def test_declared_risk_can_raise_automatic_risk(self) -> None:
+        # HTTP GET is automatically LOW — declaring 'high' should raise it.
+        tool = _make_http_tool(method="GET")
+        tool.risk = "high"
+        assert classify_risk(tool) == RiskLevel.HIGH
+
+
+class TestMaxRisk:
+    def test_returns_more_severe_level(self) -> None:
+        assert max_risk(RiskLevel.LOW, RiskLevel.CRITICAL) == RiskLevel.CRITICAL
+        assert max_risk(RiskLevel.CRITICAL, RiskLevel.LOW) == RiskLevel.CRITICAL
+        assert max_risk(RiskLevel.MEDIUM, RiskLevel.HIGH) == RiskLevel.HIGH
+        assert max_risk(RiskLevel.HIGH, RiskLevel.HIGH) == RiskLevel.HIGH
 
 
 # ---------------------------------------------------------------------------
@@ -172,12 +195,64 @@ class TestDefaultPolicyEngine:
         decision = engine.can_execute(ctx, tool)
         assert decision.allowed is True
 
+    def test_draft_tool_denied_for_prod_like_environment_strings(self) -> None:
+        """
+        _is_production() does a substring match ('prod' in environment), not an
+        exact 'prod' comparison — 'production', 'PRODUCTION', and
+        'production-us-east' must all trigger the production gate. This is the
+        behavior TS's isProductionEnvironment() was brought in line with
+        (Finding 6): Python never had the exact-string-miss bug.
+        """
+        engine = DefaultPolicyEngine()
+        tool = _make_http_tool(status=ToolStatus.DRAFT)
+        for env in ("prod", "production", "PRODUCTION", "production-us-east"):
+            ctx = PolicyContext(agent_id="agent1", environment=env, roles=[])
+            decision = engine.can_execute(ctx, tool)
+            assert decision.allowed is False, f"expected denial for environment={env!r}"
+
     def test_requires_approval_blocked_in_production(self) -> None:
         engine = DefaultPolicyEngine()
         tool = _make_http_tool(requires_approval=True)
         ctx = PolicyContext(agent_id="agent1", environment="production", roles=[])
         decision = engine.can_execute(ctx, tool)
         assert decision.allowed is False
+
+    def test_medium_risk_allowed_by_default(self) -> None:
+        engine = DefaultPolicyEngine()
+        tool = _make_http_tool(method="POST")
+        ctx = PolicyContext(agent_id="agent1")
+        decision = engine.can_execute(ctx, tool)
+        assert decision.allowed is True
+
+    def test_medium_risk_quarantined_when_hitl_enabled(self) -> None:
+        engine = DefaultPolicyEngine(config=PolicyConfig(enable_hitl=True))
+        tool = _make_http_tool(method="POST")
+        ctx = PolicyContext(agent_id="agent1")
+        decision = engine.can_execute(ctx, tool)
+        assert decision.allowed == "pending_approval"
+        assert decision.risk_level == RiskLevel.MEDIUM
+        assert decision.tool_name == tool.name
+
+    def test_risk_not_in_quarantine_levels_is_allowed(self) -> None:
+        engine = DefaultPolicyEngine(
+            config=PolicyConfig(enable_hitl=True, quarantine_risk_levels=[RiskLevel.MEDIUM])
+        )
+        tool = _make_http_tool(method="GET")
+        ctx = PolicyContext(agent_id="agent1")
+        decision = engine.can_execute(ctx, tool)
+        assert decision.allowed is True
+
+    def test_high_risk_quarantined_when_configured(self) -> None:
+        engine = DefaultPolicyEngine(
+            config=PolicyConfig(
+                enable_hitl=True, quarantine_risk_levels=[RiskLevel.MEDIUM, RiskLevel.HIGH]
+            )
+        )
+        tool = _make_http_tool(method="DELETE")
+        ctx = PolicyContext(agent_id="agent1")
+        decision = engine.can_execute(ctx, tool)
+        assert decision.allowed == "pending_approval"
+        assert decision.risk_level == RiskLevel.HIGH
 
     def test_filter_for_agent_excludes_deprecated(self) -> None:
         engine = DefaultPolicyEngine()
@@ -277,6 +352,51 @@ class TestDefaultPolicyEngine:
             result = engine.can_create(ctx, tool)
         # should be allowed (no critical violations, not in production)
         assert result.allowed is not False or result.allowed == "pending_approval"
+
+    def test_can_create_rejects_hand_edited_approved_status(self) -> None:
+        """
+        A tool whose status was hand-edited to 'approved' (bypassing
+        matimo_approve_tool) must still be rejected by can_create() —
+        this is the anti-self-approval hole the whole check exists to close.
+        """
+        import tempfile
+        engine = DefaultPolicyEngine()
+        tool = ToolDefinition(
+            name="forged_tool",
+            description="forged",
+            requires_approval=True,
+            status=ToolStatus.STABLE,  # not 'draft' — self-declared, never legitimately approved
+            execution=HttpExecution(type="http", method="GET", url="https://api.example.com/data"),
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tool.set_definition_path(f"{tmpdir}/definition.yaml")
+            engine.register_untrusted_path(tmpdir)
+            ctx = PolicyContext(agent_id="a1")
+            result = engine.can_create(ctx, tool)
+        assert result.allowed is False
+
+    def test_can_reload_allows_the_same_tool_can_create_would_reject(self) -> None:
+        """
+        can_reload() skips the forced-approval/forced-draft-status rules, so the
+        exact tool that can_create() rejects above must be allowed by can_reload() —
+        this is what makes the approve -> reload lifecycle work for a tool whose
+        legitimate post-approval status is no longer 'draft'.
+        """
+        import tempfile
+        engine = DefaultPolicyEngine()
+        tool = ToolDefinition(
+            name="approved_tool",
+            description="approved",
+            requires_approval=True,
+            status=ToolStatus.STABLE,
+            execution=HttpExecution(type="http", method="GET", url="https://api.example.com/data"),
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tool.set_definition_path(f"{tmpdir}/definition.yaml")
+            engine.register_untrusted_path(tmpdir)
+            ctx = PolicyContext(agent_id="a1")
+            result = engine.can_reload(ctx, tool)
+        assert result.allowed is True
 
 
 # ---------------------------------------------------------------------------

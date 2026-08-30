@@ -17,11 +17,13 @@ Usage:
 """
 from __future__ import annotations
 
+import hashlib
 import logging
 import time
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC
+from pathlib import Path
 from typing import Any
 
 from matimo.auth.injection import inject_auth_parameters
@@ -41,11 +43,13 @@ from matimo.executors.command_executor import CommandExecutor
 from matimo.executors.function_executor import FunctionExecutor
 from matimo.executors.http_executor import HttpExecutor
 from matimo.logging import MatimoLogger, setup_logger
+from matimo.policy.approval_manifest import ApprovalManifest
 from matimo.policy.default_policy import DefaultPolicyEngine, PolicyEngine
 from matimo.policy.types import (
     HITLCallback,
     MatimoEventHandler,
     PolicyConfig,
+    PolicyDecision,
     PolicyDenied,
     PolicyPendingApproval,
 )
@@ -117,6 +121,10 @@ class Matimo:
         matimo_logger: MatimoLogger,
         hitl_timeout_ms: int | None = None,
         skill_registry: SkillRegistry | None = None,
+        untrusted_paths: list[str] | None = None,
+        approval_manifest: ApprovalManifest | None = None,
+        skill_paths: list[str] | None = None,
+        skill_loader: SkillLoader | None = None,
     ) -> None:
         self._registry = registry
         self._policy = policy_engine
@@ -127,6 +135,10 @@ class Matimo:
         self._hitl_timeout_ms = hitl_timeout_ms
         self._logger = matimo_logger
         self._skill_registry: SkillRegistry = skill_registry or SkillRegistry()
+        self._untrusted_paths = untrusted_paths or []
+        self._approval_manifest = approval_manifest
+        self._skill_paths = skill_paths or []
+        self._skill_loader = skill_loader or SkillLoader()
 
         self._http_executor = HttpExecutor()
         self._command_executor = CommandExecutor()
@@ -201,6 +213,14 @@ class Matimo:
             policy, policy_config, policy_file, trusted_paths, untrusted_paths
         )
 
+        # Approval manifest — used by reload() to distinguish an already-legitimately-
+        # approved tool (via matimo_approve_tool) from a brand-new/never-approved one.
+        approval_manifest = ApprovalManifest(
+            approval_dir or ".",
+            approval_secret,
+            approval_ttl_seconds,
+        )
+
         # Load tools
         registry = ToolRegistry()
         all_tools = loader.load_tools_from_multiple_paths(paths)
@@ -218,17 +238,17 @@ class Matimo:
 
         # Load skills (optional)
         skill_reg = SkillRegistry()
-        
+        skill_loader = SkillLoader()
+
         # Auto-discover skill paths if auto_discover=True
         skill_discovery_paths = list(skill_paths) if skill_paths else []
         # Note: auto_discover is for tools only, not skills. Skills must be passed via skill_paths.
-        
+
         if skill_discovery_paths:
-            skill_loader = SkillLoader()
             for sp in skill_discovery_paths:
                 skills = skill_loader.load_skills_from_directory(sp)
                 skill_reg.register_all(skills)
-        
+
         if skill_reg.count() > 0:
             matimo_logger.info(f"{skill_reg.count()} skill(s) loaded")
 
@@ -242,6 +262,10 @@ class Matimo:
             matimo_logger=matimo_logger,
             hitl_timeout_ms=hitl_timeout_ms,
             skill_registry=skill_reg,
+            untrusted_paths=untrusted_paths,
+            approval_manifest=approval_manifest,
+            skill_paths=skill_discovery_paths,
+            skill_loader=skill_loader,
         )
 
     # ------------------------------------------------------------------
@@ -456,8 +480,23 @@ class Matimo:
         """
         Reload all tool definitions from disk.
         New tools are added; changed tools are replaced; removed YAMLs are unregistered.
+
+        Untrusted tools (under a configured untrusted_paths entry) are re-validated via
+        the policy engine on every reload: an already-legitimately-approved tool (its
+        current on-disk YAML hash matches a signed approval record) is evaluated with
+        can_reload() instead of can_create() — otherwise the tool's own post-approval
+        status/requires_approval fields would trip the "new proposal" content rules on
+        every reload. Falls back to can_create()'s stricter gate for anything never
+        legitimately approved, including a hand-edited `status: approved` that bypassed
+        matimo_approve_tool, which keeps the anti-self-approval hole closed.
         """
         result = ReloadResult()
+
+        # Approvals are typically granted by matimo_approve_tool, which constructs its
+        # own ApprovalManifest instance per call — refresh so this reload sees approvals
+        # written since this Matimo instance was created or last reloaded.
+        if self._approval_manifest is not None:
+            self._approval_manifest.refresh()
 
         new_tools = self._loader.load_tools_from_multiple_paths(self._tool_paths)
         existing_names = {t.name for t in self._registry.get_all()}
@@ -470,6 +509,25 @@ class Matimo:
 
         # Add / replace tools
         for name, tool in new_tools.items():
+            if self._is_untrusted_tool(tool):
+                decision = self._evaluate_untrusted_reload(tool)
+                if isinstance(decision, PolicyDenied):
+                    result.rejected.append(name)
+                    if self._registry.get(name) is not None:
+                        self._registry.remove(name)
+                        result.removed += 1
+                    logger.warning("Reload: rejected '%s': %s", name, decision.reason)
+                    continue
+                if isinstance(decision, PolicyPendingApproval):
+                    logger.info(
+                        "Reload: quarantined '%s' (risk=%s): %s",
+                        name,
+                        decision.risk_level.value,
+                        decision.reason,
+                    )
+                    # Still register the tool so it exists, but it will be blocked
+                    # at execution time until approved.
+
             existing = self._registry.get(name)
             if existing is not None:
                 self._registry.register_or_replace(tool)
@@ -491,6 +549,39 @@ class Matimo:
         })
 
         return result
+
+    async def reload_skills(self) -> dict[str, int]:
+        """
+        Hot-reload skills from all configured skill paths.
+        Structural mirror of `reload()`: clears the skill registry and re-walks
+        `skill_paths` via `skill_loader`, so newly written SKILL.md files become
+        visible without recreating the whole Matimo instance.
+        """
+        previous_names = {s.name for s in self._skill_registry.list()}
+
+        self._skill_registry.clear()
+
+        for skill_path in self._skill_paths:
+            try:
+                skills = self._skill_loader.load_skills_from_directory(skill_path)
+                self._skill_registry.register_all(skills)
+            except Exception as exc:
+                self._logger.warn(
+                    f"reload_skills: failed to load skills from path: {skill_path}: {exc}"
+                )
+
+        current_names = {s.name for s in self._skill_registry.list()}
+        loaded = len(current_names - previous_names)
+        removed = len(previous_names - current_names)
+
+        self._emit_event({
+            "type": "skills:reloaded",
+            "loaded": loaded,
+            "removed": removed,
+            "timestamp": _now(),
+        })
+
+        return {"loaded": loaded, "removed": removed}
 
     # ------------------------------------------------------------------
     # Internal
@@ -515,6 +606,47 @@ class Matimo:
             ErrorCode.EXECUTION_FAILED,
             {"tool_name": tool.name, "execution_type": exec_type},
         )
+
+    def _is_untrusted_tool(self, tool: ToolDefinition) -> bool:
+        """Return True if `tool` was loaded from a configured untrusted_paths entry."""
+        definition_path = tool.definition_path or ""
+        if not definition_path or not self._untrusted_paths:
+            return False
+        return any(definition_path.startswith(up) for up in self._untrusted_paths)
+
+    def _is_legitimately_approved(self, tool: ToolDefinition) -> bool:
+        """
+        Check whether a tool's *current on-disk YAML* matches a signed approval
+        record — i.e. it was approved via matimo_approve_tool and hasn't been
+        modified since. Hashes the raw file content the same way
+        matimo_approve_tool does, since that's what the approval record's hash
+        was computed against.
+        """
+        if self._approval_manifest is None:
+            return False
+        definition_path = tool.definition_path
+        if not definition_path:
+            return False
+        try:
+            content = Path(definition_path).read_text(encoding="utf-8")
+        except OSError:
+            return False
+        content_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
+        return self._approval_manifest.is_approved(tool.name, content_hash)
+
+    def _evaluate_untrusted_reload(self, tool: ToolDefinition) -> PolicyDecision:
+        """
+        Decide policy for an untrusted tool during reload(): use the looser
+        can_reload() gate for an already-legitimately-approved tool, otherwise
+        fall back to can_create()'s stricter "new proposal" gate. can_reload is
+        optional on PolicyEngine, so third-party engines that don't implement it
+        always fall back to can_create.
+        """
+        context = PolicyContext()
+        can_reload = getattr(self._policy, "can_reload", None)
+        if can_reload is not None and self._is_legitimately_approved(tool):
+            return can_reload(context, tool)  # type: ignore[no-any-return]
+        return self._policy.can_create(context, tool)
 
     async def _resolve_hitl(
         self,

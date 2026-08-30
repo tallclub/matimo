@@ -156,7 +156,7 @@ npx tsx test-install.ts
 ## Next Steps
 
 - **New Users**: Go to [Quick Start](./QUICK_START.md)
-- **Want Examples**: See [examples/](../../examples/)
+- **Want Examples**: See [examples/](../../typescript/examples/)
 - **Building Tools**: Read [Tool Specification](../tool-development/YAML_TOOLS.md)
 - **Using Decorators**: Check [Decorator Guide](../tool-development/DECORATOR_GUIDE.md)
 

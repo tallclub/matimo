@@ -7,13 +7,30 @@ from __future__ import annotations
 from matimo.core.models import ToolDefinition
 from matimo.policy.types import RiskLevel
 
+_SEVERITY_RANK: dict[RiskLevel, int] = {
+    RiskLevel.LOW: 0,
+    RiskLevel.MEDIUM: 1,
+    RiskLevel.HIGH: 2,
+    RiskLevel.CRITICAL: 3,
+}
 
-def classify_risk(tool: ToolDefinition) -> RiskLevel:
+
+def max_risk(a: RiskLevel, b: RiskLevel) -> RiskLevel:
     """
-    Assign a risk level based on execution type and HTTP method.
+    Rank two risk levels and return the more severe one. Used so a tool's
+    self-declared `risk` can only raise the automatically computed level,
+    never lower it — a `type: function` tool declaring `risk: low` must
+    still classify as `critical`.
+    """
+    return a if _SEVERITY_RANK[a] >= _SEVERITY_RANK[b] else b
 
-    Rules (matches TypeScript classifyRisk):
-      explicit risk field → honours it directly
+
+def _classify_automatic_risk(tool: ToolDefinition) -> RiskLevel:
+    """
+    Compute risk purely from execution type, HTTP method, and approval
+    requirement — ignores any self-declared `risk` field.
+
+    Rules (matches TypeScript classifyAutomaticRisk):
       function → critical
       command  → high
       http:
@@ -22,10 +39,6 @@ def classify_risk(tool: ToolDefinition) -> RiskLevel:
         POST / PUT / PATCH → medium
         GET (default)     → low
     """
-    # Explicit override declared in the tool YAML takes precedence
-    if tool.risk:
-        return RiskLevel(tool.risk)
-
     exec_type = tool.execution.type
 
     if exec_type == "function":
@@ -45,3 +58,17 @@ def classify_risk(tool: ToolDefinition) -> RiskLevel:
         return RiskLevel.LOW
 
     return RiskLevel.HIGH  # unknown execution type
+
+
+def classify_risk(tool: ToolDefinition) -> RiskLevel:
+    """
+    Assign a risk level based on execution type and HTTP method.
+
+    A self-declared `risk` field can only raise the automatically computed
+    risk level, never lower it — a `type: function` tool cannot downgrade
+    itself from `critical` to `low` by declaring `risk: low`.
+    """
+    automatic_risk = _classify_automatic_risk(tool)
+    if tool.risk:
+        return max_risk(automatic_risk, RiskLevel(tool.risk))
+    return automatic_risk

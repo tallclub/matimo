@@ -8,20 +8,28 @@
 import type { ToolDefinition } from '../core/schema.js';
 import type { RiskLevel } from './types.js';
 
+const SEVERITY_RANK: Record<RiskLevel, number> = { low: 0, medium: 1, high: 2, critical: 3 };
+
 /**
- * Classify the risk level of a tool based on its definition.
+ * Rank two risk levels and return the more severe one. Used so a tool's
+ * self-declared `risk:` can only raise the automatically computed level,
+ * never lower it — a `type: function` tool declaring `risk: low` must still
+ * classify as `critical`.
+ */
+export function maxRisk(a: RiskLevel, b: RiskLevel): RiskLevel {
+  return SEVERITY_RANK[a] >= SEVERITY_RANK[b] ? a : b;
+}
+
+/**
+ * Compute risk purely from a tool's execution type, HTTP method, and
+ * approval requirement — ignores any self-declared `risk:` field.
  *
  * - critical: arbitrary code execution (type: function)
  * - high: shell execution (type: command), HTTP DELETE, or explicit requires_approval
  * - medium: HTTP POST/PUT/PATCH (write operations)
  * - low: HTTP GET, read-only tools
  */
-export function classifyRisk(tool: ToolDefinition): RiskLevel {
-  // Explicit override declared in the tool YAML takes precedence
-  if (tool.risk) {
-    return tool.risk as RiskLevel;
-  }
-
+function classifyAutomaticRisk(tool: ToolDefinition): RiskLevel {
   const exec = tool.execution;
 
   // Arbitrary code execution is always critical risk
@@ -52,4 +60,19 @@ export function classifyRisk(tool: ToolDefinition): RiskLevel {
 
   // Unknown execution type — treat as high
   return 'high';
+}
+
+/**
+ * Classify the risk level of a tool based on its definition.
+ *
+ * A self-declared `risk:` field can only raise the automatically computed
+ * risk level, never lower it — a `type: function` tool cannot downgrade
+ * itself from `critical` to `low` by declaring `risk: low`.
+ */
+export function classifyRisk(tool: ToolDefinition): RiskLevel {
+  const automaticRisk = classifyAutomaticRisk(tool);
+  if (tool.risk) {
+    return maxRisk(automaticRisk, tool.risk as RiskLevel);
+  }
+  return automaticRisk;
 }

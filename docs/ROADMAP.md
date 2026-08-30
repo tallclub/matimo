@@ -2,11 +2,11 @@
 
 ## Current Status
 
-**Latest Release**: **v0.1.6** — **🛠️ Document & Web Tooling: web_scraper, convert_to_file, extract_from_file** (Python: v0.1.2)
+**Latest Release**: **v0.1.8**: **🛡️ Governance Gap Closures: Default Policy Engine, Approve→Reload Lifecycle & Audit Events** (Python: v0.1.3)
 
 ### 🏆 Production Launch — General Availability
 
-Matimo v0.1.6 stable (Python: v0.1.2) is now **production-ready** with full TypeScript and Python SDK support, 492+ tools across 12 providers (150+ native + 342 via `@matimo/composio`), enterprise-grade security, and comprehensive framework integrations.
+Matimo v0.1.8 stable (Python: v0.1.3) is now **production-ready** with full TypeScript and Python SDK support, 139+ tools across 10 native provider packages plus a governed 449-tool `@matimo/composio` catalog, enterprise-grade security, and comprehensive framework integrations.
 
 ✅ **v0.1.0 Stable — Completed Features**:
 
@@ -22,12 +22,11 @@ Matimo v0.1.6 stable (Python: v0.1.2) is now **production-ready** with full Type
 - Policy engine with risk classification + HITL workflows
 - Secret management (Env, Dotenv, Vault, AWS Secrets Manager)
 
-**Provider Ecosystem** (492+ tools across 12 providers)
-- **Slack** (16+), **GitHub** (10+), **Gmail** (7+), **Notion** (7+)
-- **HubSpot** (50+), **Mailchimp** (8+), **Postgres** (6+), **Twilio** (4+)
-- **Bruno CLI** (7), **Microsoft Graph** (9) — Mail, Teams, calendar, SharePoint, OneDrive search
-- **Composio** (342) — Jira, Google Workspace, Microsoft 365, Asana, Linear, and more via a policy-governed proxy
-- All providers ship with TypeScript + Python SDKs, LangChain/CrewAI examples
+**Provider Ecosystem** (139+ native tools across 10 providers, plus a governed 449-tool Composio catalog)
+- **Slack**, **GitHub**, **Gmail**, **Notion**, **HubSpot**, **Mailchimp**, **Postgres**, **Twilio**
+- **Bruno CLI**, **Microsoft Graph** — Mail, Teams, calendar, SharePoint, OneDrive search
+- **Composio** (449) — Jira, Google Workspace, Microsoft 365, Asana, Linear, and more via a policy-governed proxy
+- All native providers ship with TypeScript + Python SDKs, LangChain/CrewAI examples (`@matimo/composio` is TypeScript-only today)
 
 **Bruno CLI Provider** (v0.1.0 — NEW)
 - ✅ 7 production tools: create, add, run, inspect, import OpenAPI

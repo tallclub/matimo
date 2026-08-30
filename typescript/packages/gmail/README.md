@@ -92,6 +92,9 @@ All tools are based on the official Gmail REST API. See [Gmail API Documentation
 | gmail-send-email | gmail.send | https://www.googleapis.com/auth/gmail.send |
 | gmail-create-draft | drafts.create | https://www.googleapis.com/auth/gmail.compose |
 | gmail-list-messages | messages.list | https://www.googleapis.com/auth/gmail.readonly |
+| gmail-get-message | messages.get | https://www.googleapis.com/auth/gmail.readonly |
+| gmail-get-attachment | messages.attachments.get | https://www.googleapis.com/auth/gmail.readonly |
+| gmail-delete-message | messages.trash | https://www.googleapis.com/auth/gmail.modify |
 
 ## 📋 Tool Specifications
 
@@ -104,7 +107,7 @@ Each tool is defined in YAML with complete parameter validation and error handli
 
 ## 🤝 Contributing
 
-Found a bug or want to add a Gmail tool? See [Contributing Guide](../../CONTRIBUTING.md) and [Adding Tools Guide](../tool-development/ADDING_TOOLS.md).
+Found a bug or want to add a Gmail tool? See [Contributing Guide](../../../CONTRIBUTING.md) and [Adding Tools Guide](../../../docs/tool-development/ADDING_TOOLS.md).
 
 ---
 
@@ -114,7 +117,7 @@ YAML keeps tool definitions **maintainable, readable, and contributor-friendly**
 
 ```yaml
 # Human-readable
-name: send-email
+name: gmail-send-email
 description: Send an email via Gmail
 
 # Parameters clearly defined
@@ -167,20 +170,22 @@ This is what makes Matimo **framework-agnostic** and **scalable**.
 ### File Structure
 
 ```
-tools/gmail/
+packages/gmail/
 ├── README.md                          # This file
-├── send-email/
-│   ├── definition.yaml                # Tool definition
-├── list-messages/
-│   ├── definition.yaml
-├── create-draft/
-│   ├── definition.yaml
-├── get-message/
-│   ├── definition.yaml
-├── get-attachment/
-│   ├── definition.yaml
-└── delete-message/
-    ├── definition.yaml
+├── definition.yaml                    # Provider-level config (default scopes, etc.)
+└── tools/
+    ├── send-email/
+    │   └── definition.yaml            # Tool definition
+    ├── list-messages/
+    │   └── definition.yaml
+    ├── create-draft/
+    │   └── definition.yaml
+    ├── get-message/
+    │   └── definition.yaml
+    ├── get-attachment/
+    │   └── definition.yaml
+    └── delete-message/
+        └── definition.yaml
 ```
 
 ### Anatomy of a Tool Definition (YAML)
@@ -190,7 +195,7 @@ Every tool has these sections:
 #### 1. **Metadata**
 
 ```yaml
-name: send-email
+name: gmail-send-email
 version: '1.0.0'
 description: Send an email via Gmail
 tags: [email, gmail, messaging]
@@ -233,10 +238,8 @@ parameters:
 authentication:
   type: oauth2 # How to authenticate
   provider: google # Which service
-  scopes: # Permissions needed
-    - gmail.readonly # Read emails
-    - gmail.send # Send emails
-    - gmail.compose # Create drafts
+  scopes: # Permissions this specific tool needs
+    - https://www.googleapis.com/auth/gmail.send
 ```
 
 Matimo auto-injects tokens from environment:
@@ -319,21 +322,22 @@ output_schema:
 In addition to individual tool definitions, Matimo uses **Provider YAML** files to centralize OAuth2 configuration and shared settings across all tools for a single provider (in this case, Google).
 
 ```
-tools/gmail/
+packages/gmail/
 ├── definition.yaml                    # ← PROVIDER YAML (Google OAuth2 config)
 │                                         All Gmail tools reference this
-├── send-email/
-│   ├── definition.yaml                # Individual tool definition
-│   └── ...
-├── create-draft/
-│   ├── definition.yaml
-│   └── ...
-└── list-messages/
-    ├── definition.yaml
-    └── ...
+└── tools/
+    ├── send-email/
+    │   ├── definition.yaml            # Individual tool definition
+    │   └── ...
+    ├── create-draft/
+    │   ├── definition.yaml
+    │   └── ...
+    └── list-messages/
+        ├── definition.yaml
+        └── ...
 ```
 
-### Provider YAML: `tools/gmail/definition.yaml`
+### Provider YAML: `packages/gmail/definition.yaml`
 
 The provider-level YAML file serves multiple purposes:
 
@@ -366,15 +370,16 @@ provider:
 The provider file defines OAuth2 scopes required by Gmail tools:
 
 ```yaml
-# From definition.yaml
-scopes:
-  - gmail.readonly # Read emails
-  - gmail.send # Send emails
-  - gmail.compose # Create drafts
-  - gmail.modify # Delete/modify emails
+# From definition.yaml, under provider.defaultScopes
+defaultScopes:
+  - https://www.googleapis.com/auth/gmail.readonly
+  - https://www.googleapis.com/auth/gmail.send
+  - https://www.googleapis.com/auth/gmail.compose
 ```
 
-Each individual tool declares which scopes it needs:
+Individual tools can override the defaults with their own narrower or broader
+scopes - e.g. `delete-message` needs `gmail.modify`, which isn't in the
+provider's default list:
 
 ```yaml
 # In send-email/definition.yaml
@@ -382,7 +387,7 @@ authentication:
   type: oauth2
   provider: google
   scopes:
-    - gmail.send # This tool needs to send emails
+    - https://www.googleapis.com/auth/gmail.send # This tool needs to send emails
 ```
 
 **3. Configuration Override Pattern**
@@ -421,8 +426,7 @@ authentication:
   type: oauth2
   provider: google # ← References the provider
   scopes:
-    - gmail.send # Specific scopes for this tool
-    - gmail.compose
+    - https://www.googleapis.com/auth/gmail.send # Specific scope for this tool
 
 execution:
   type: http
@@ -436,34 +440,38 @@ execution:
 
 1. Load tool: `gmail-send-email`
 2. Read `authentication.provider: google`
-3. Find provider YAML: `tools/gmail/definition.yaml`
+3. Find provider YAML: `packages/gmail/definition.yaml`
 4. Load OAuth2 endpoints and scopes from provider
 5. Merge with tool-specific requirements
 6. Ready to execute!
 
 ### Multi-Provider Scenario
 
-When Matimo has tools from multiple providers, provider YAML keeps them isolated:
+When Matimo has tools from multiple providers, each provider is its own
+package with its own provider YAML, keeping them isolated:
 
 ```
-tools/
+packages/
 ├── gmail/
 │   ├── definition.yaml          # ← Provider: Google
-│   ├── send-email/
-│   ├── create-draft/
-│   └── list-messages/
+│   └── tools/
+│       ├── send-email/
+│       ├── create-draft/
+│       └── list-messages/
 │
 ├── slack/
 │   ├── definition.yaml          # ← Provider: Slack
-│   ├── send-message/
-│   ├── post-channel/
-│   └── get-users/
+│   └── tools/
+│       ├── slack_send_channel_message/
+│       ├── slack_create_channel/
+│       └── slack_get_user_info/
 │
 └── github/
     ├── definition.yaml          # ← Provider: GitHub
-    ├── create-issue/
-    ├── list-repos/
-    └── create-pr/
+    └── tools/
+        ├── github-create-issue/
+        ├── github-list-repositories/
+        └── github-create-pull-request/
 ```
 
 Each provider has:
@@ -501,13 +509,14 @@ if (provider === 'slack') {
 ✅ **Good approach (Matimo):**
 
 ```yaml
-# tools/gmail/definition.yaml
-provider: google
-endpoints:
-  authorizationUrl: https://accounts.google.com/...
-scopes:
-  - gmail.readonly
-  - gmail.send
+# packages/gmail/definition.yaml
+provider:
+  name: google
+  endpoints:
+    authorizationUrl: https://accounts.google.com/...
+  defaultScopes:
+    - https://www.googleapis.com/auth/gmail.readonly
+    - https://www.googleapis.com/auth/gmail.send
 ```
 
 **Benefits:**

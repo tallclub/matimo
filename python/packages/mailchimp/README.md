@@ -1,6 +1,6 @@
 # matimo-mailchimp
 
-> Mailchimp tools for [Matimo](https://matimo.dev) — manage campaigns, lists, and subscribers.
+> Mailchimp tools for [Matimo](https://matimo.dev) - manage campaigns, lists, and subscribers.
 
 [![PyPI](https://img.shields.io/pypi/v/matimo-mailchimp)](https://pypi.org/project/matimo-mailchimp/)
 [![Docs](https://img.shields.io/badge/docs-matimo.dev-blue)](https://matimo.dev/docs)
@@ -40,12 +40,15 @@ from matimo_mailchimp import get_tools_path
 async def main():
     matimo = await Matimo.init(get_tools_path())
 
-    # List all audiences
-    lists = await matimo.execute('mailchimp-get-lists', {})
+    # List all audiences (server_prefix is required on every call)
+    lists = await matimo.execute('mailchimp-get-lists', {
+        'server_prefix': 'us1',
+    })
     print(lists)
 
     # Add a subscriber
     await matimo.execute('mailchimp-add-list-member', {
+        'server_prefix': 'us1',
         'list_id': 'abc123def',
         'email_address': 'new@example.com',
         'status': 'subscribed',
@@ -54,12 +57,14 @@ async def main():
 
     # Create and send a campaign
     campaign = await matimo.execute('mailchimp-create-campaign', {
+        'server_prefix': 'us1',
         'list_id': 'abc123def',
         'subject_line': 'April Newsletter',
         'from_name': 'My Company',
         'reply_to': 'hello@example.com',
     })
     await matimo.execute('mailchimp-send-campaign', {
+        'server_prefix': 'us1',
         'campaign_id': campaign['id'],
     })
 
@@ -72,14 +77,16 @@ asyncio.run(main())
 
 ```bash
 export MAILCHIMP_API_KEY="your-api-key-us1"     # includes datacenter suffix
-export MAILCHIMP_SERVER_PREFIX="us1"             # datacenter prefix from your API key
 ```
+
+Every tool also requires a `server_prefix` parameter (e.g. `'us1'`) passed
+directly in the call - it is not read from an environment variable.
 
 ### Getting Mailchimp API Credentials
 
 1. Log in to [Mailchimp](https://mailchimp.com) → **Profile** → **Extras** → **API keys**
 2. Click **Create A Key**
-3. Copy the API key — the suffix (`us1`, `us6`, etc.) is your server prefix
+3. Copy the API key - the suffix (`us1`, `us6`, etc.) is your server prefix, used as the `server_prefix` parameter
 
 ---
 

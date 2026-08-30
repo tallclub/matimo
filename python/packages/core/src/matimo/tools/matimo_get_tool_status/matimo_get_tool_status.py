@@ -3,11 +3,14 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import re
 from pathlib import Path
 
 import yaml
 
 logger = logging.getLogger("matimo")
+
+UNSAFE_NAME = re.compile(r"[/\\]|\.\.|[\x00-\x1f]")
 
 
 async def run(params: dict) -> dict:  # type: ignore[type-arg]
@@ -19,6 +22,14 @@ async def run(params: dict) -> dict:  # type: ignore[type-arg]
 
     name: str = params.get("name", "")
     tool_dir: str = params.get("tool_dir", "./matimo-tools")
+
+    if not name or not name.strip():
+        return {"found": False, "message": "Tool name is required"}
+    if UNSAFE_NAME.search(name):
+        return {
+            "found": False,
+            "message": "Tool name contains invalid characters (path traversal, backslash, or control characters)",
+        }
 
     def_path = Path(tool_dir) / name / "definition.yaml"
     if not def_path.exists():

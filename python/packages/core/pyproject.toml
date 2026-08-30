@@ -4,12 +4,12 @@ build-backend = "hatchling.build"
 
 [project]
 name = "matimo-core"
-version = "0.1.2"
+version = "0.1.3"
 description = "Matimo core — framework-agnostic SDK: pre-built providers, skills layer, MCP, and a policy engine you control"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.11"
-keywords = ["ai", "tools", "agents", "langchain", "crewai", "mcp", "matimo"]
+keywords = ["ai", "tools", "agents", "langchain", "crewai", "mcp", "matimo", "mcp-server", "agentic-ai", "ai-governance", "policy-engine"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",

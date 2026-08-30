@@ -4,12 +4,12 @@ Exposes Matimo tools via the [Model Context Protocol (MCP)](https://modelcontext
 
 This module mirrors the TypeScript `@matimo/core/mcp` implementation and maintains full parity with the following capabilities:
 
-- **Auth parameter filtering** — prevents secret tokens from appearing in client schemas
-- **Secret pre-resolution** — resolves all credentials once at startup, stores in memory
-- **Approval gating** — approval-required tools enforce `_matimo_approved` parameter
-- **Skill resources** — exposes Matimo skills as MCP resources (`skills://name`)
-- **HTTP transport** — Streamable HTTP with bearer-token auth, CORS, health endpoint
-- **Stdio transport** — stdio server for Claude Desktop integration
+- **Auth parameter filtering** - prevents secret tokens from appearing in client schemas
+- **Secret pre-resolution** - resolves all credentials once at startup, stores in memory
+- **Approval gating** - approval-required tools enforce `_matimo_approved` parameter
+- **Skill resources** - exposes Matimo skills as MCP resources (`skills://name`)
+- **HTTP transport** - Streamable HTTP with bearer-token auth, CORS, health endpoint
+- **Stdio transport** - stdio server for Claude Desktop integration
 
 ---
 
@@ -60,7 +60,7 @@ matimo/mcp/
 
 **File:** `tool_converter.py`
 
-**Problem:** Tool schemas include secrets (API tokens, keys, passwords) — exposing them to clients is a security risk.
+**Problem:** Tool schemas include secrets (API tokens, keys, passwords) - exposing them to clients is a security risk.
 
 **Solution:** Detect auth parameters and strip them from the MCP schema:
 
@@ -272,12 +272,12 @@ async def _run_http(self, server: Any) -> None:
 
 **Features:**
 
-- ✅ **Stateless sessions** — each HTTP request is independent
-- ✅ **Bearer token auth** — `Authorization: Bearer {token}`
-- ✅ **CORS headers** — `Access-Control-Allow-*`
-- ✅ **Health endpoint** — `/health` for health checks
-- ✅ **Concurrent clients** — true HTTP/stateless, not SSE
-- ✅ **Pure ASGI** — no BaseHTTPMiddleware response-buffering issues
+- ✅ **Stateless sessions** - each HTTP request is independent
+- ✅ **Bearer token auth** - `Authorization: Bearer {token}`
+- ✅ **CORS headers** - `Access-Control-Allow-*`
+- ✅ **Health endpoint** - `/health` for health checks
+- ✅ **Concurrent clients** - true HTTP/stateless, not SSE
+- ✅ **Pure ASGI** - no BaseHTTPMiddleware response-buffering issues
 
 ---
 
@@ -472,10 +472,10 @@ exclude_tools = [
 ```
 
 **Pattern syntax:**
-- `*` — matches any sequence of characters
-- `?` — matches any single character
-- `[seq]` — matches any character in `seq`
-- `[!seq]` — matches any character not in `seq`
+- `*` - matches any sequence of characters
+- `?` - matches any single character
+- `[seq]` - matches any character in `seq`
+- `[!seq]` - matches any character not in `seq`
 
 If a tool name matches both `tools` (allowlist) and `exclude_tools` (denylist), it is **excluded** (denylist takes precedence).
 
@@ -527,12 +527,12 @@ uv run pytest packages/core/tests/unit/test_mcp_server.py -v
 
 ## Security Notes
 
-1. **Credentials never logged** — `_resolved_secrets` is internal; never logged or printed
-2. **Auth params stripped from schema** — clients cannot infer secret names
-3. **Credentials stored in memory only** — never written to process.env or disk
-4. **Secrets per-call injection** — only passed to `matimo.execute()`, not to clients
-5. **Bearer token for HTTP** — required in `Authorization` header for HTTP transport
-6. **Approval gating** — destructive tools require explicit `_matimo_approved=true`, then server-side approval still applies by default
+1. **Credentials never logged** - `_resolved_secrets` is internal; never logged or printed
+2. **Auth params stripped from schema** - clients cannot infer secret names
+3. **Credentials stored in memory only** - never written to process.env or disk
+4. **Secrets per-call injection** - only passed to `matimo.execute()`, not to clients
+5. **Bearer token for HTTP** - required in `Authorization` header for HTTP transport
+6. **Approval gating** - destructive tools require explicit `_matimo_approved=true`, then server-side approval still applies by default
 
 ---
 
@@ -567,7 +567,7 @@ export MATIMO_MCP_TOKEN="your-secret-token"
 
 **Cause:** Logging to stdout interferes with JSON-RPC protocol
 
-**Solution:** Already fixed — `start()` suppresses matimo logger in stdio mode
+**Solution:** Already fixed - `start()` suppresses matimo logger in stdio mode
 
 ---
 

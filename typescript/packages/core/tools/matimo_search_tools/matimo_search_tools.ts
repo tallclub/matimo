@@ -1,7 +1,7 @@
 import { getGlobalMatimoInstance, getGlobalMatimoLogger, validateToolDefinition, classifyRisk } from '@matimo/core';
 import fs from 'fs';
 import path from 'path';
-import yaml from 'js-yaml';
+import * as yaml from 'js-yaml';
 
 interface SearchParams {
   query: string;
