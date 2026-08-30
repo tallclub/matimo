@@ -1,5 +1,12 @@
 import { CommandExecutor } from '../../src/executors/command-executor';
 
+// CommandExecutor spawns processes directly (no shell), so test commands must be real,
+// directly-spawnable executables on every platform — shell builtins like POSIX `echo`/`sh`
+// or POSIX-only binaries like `sleep` don't exist as standalone executables on Windows.
+// process.execPath (the Node binary running these tests) is guaranteed present everywhere.
+const NODE = process.execPath;
+const ECHO_ARGS_SCRIPT = "console.log(process.argv.slice(1).join(' '))";
+
 describe('CommandExecutor', () => {
   let executor: CommandExecutor;
 
@@ -16,8 +23,8 @@ describe('CommandExecutor', () => {
         parameters: {},
         execution: {
           type: 'command' as const,
-          command: 'echo',
-          args: ['hello'],
+          command: NODE,
+          args: ['-e', ECHO_ARGS_SCRIPT, 'hello'],
         },
       };
 
@@ -40,8 +47,8 @@ describe('CommandExecutor', () => {
         },
         execution: {
           type: 'command' as const,
-          command: 'echo',
-          args: ['{message}'],
+          command: NODE,
+          args: ['-e', ECHO_ARGS_SCRIPT, '{message}'],
         },
       };
 
@@ -70,8 +77,8 @@ describe('CommandExecutor', () => {
         },
         execution: {
           type: 'command' as const,
-          command: 'echo',
-          args: ['{arg1}', '{arg2}'],
+          command: NODE,
+          args: ['-e', ECHO_ARGS_SCRIPT, '{arg1}', '{arg2}'],
         },
       };
 
@@ -92,14 +99,15 @@ describe('CommandExecutor', () => {
         parameters: {},
         execution: {
           type: 'command' as const,
-          command: 'ls',
-          args: ['/nonexistent-directory-12345'],
+          command: NODE,
+          args: ['-e', "console.error('boom'); process.exit(1)"],
         },
       };
 
       const result = (await executor.execute(tool, {})) as Record<string, unknown>;
       expect(result.success).toBe(false);
       expect(result.stderr).toBeDefined();
+      expect(result.stderr).toContain('boom');
     });
 
     it('should respect timeout', async () => {
@@ -110,8 +118,8 @@ describe('CommandExecutor', () => {
         parameters: {},
         execution: {
           type: 'command' as const,
-          command: 'sleep',
-          args: ['10'],
+          command: NODE,
+          args: ['-e', 'setTimeout(() => {}, 10000)'],
           timeout: 1000,
         },
       };
@@ -147,8 +155,8 @@ describe('CommandExecutor', () => {
         parameters: {},
         execution: {
           type: 'command' as const,
-          command: 'sh',
-          args: ['-c', 'exit 1'],
+          command: NODE,
+          args: ['-e', 'process.exit(1)'],
         },
       };
 
@@ -165,8 +173,8 @@ describe('CommandExecutor', () => {
         parameters: {},
         execution: {
           type: 'command' as const,
-          command: 'echo',
-          args: ['{"key":"value"}'],
+          command: NODE,
+          args: ['-e', "console.log(JSON.stringify({ key: 'value' }))"],
         },
       };
 
@@ -190,8 +198,8 @@ describe('CommandExecutor', () => {
         },
         execution: {
           type: 'command' as const,
-          command: 'echo',
-          args: ['Hello {name}!'],
+          command: NODE,
+          args: ['-e', ECHO_ARGS_SCRIPT, 'Hello {name}!'],
         },
       };
 
@@ -212,8 +220,8 @@ describe('CommandExecutor', () => {
         },
         execution: {
           type: 'command' as const,
-          command: 'echo',
-          args: ['{word} {word} {word}'],
+          command: NODE,
+          args: ['-e', ECHO_ARGS_SCRIPT, '{word} {word} {word}'],
         },
       };
 
@@ -234,8 +242,8 @@ describe('CommandExecutor', () => {
         },
         execution: {
           type: 'command' as const,
-          command: 'echo',
-          args: ['Number: {count}'],
+          command: NODE,
+          args: ['-e', ECHO_ARGS_SCRIPT, 'Number: {count}'],
         },
       };
 
@@ -253,8 +261,8 @@ describe('CommandExecutor', () => {
         parameters: {},
         execution: {
           type: 'command' as const,
-          command: 'echo',
-          args: ['output'],
+          command: NODE,
+          args: ['-e', ECHO_ARGS_SCRIPT, 'output'],
         },
       };
 
@@ -274,8 +282,8 @@ describe('CommandExecutor', () => {
         parameters: {},
         execution: {
           type: 'command' as const,
-          command: 'echo',
-          args: ['test'],
+          command: NODE,
+          args: ['-e', ECHO_ARGS_SCRIPT, 'test'],
         },
       };
 
