@@ -1,6 +1,6 @@
 # @matimo/microsoft
 
-Microsoft Graph tools for Matimo — search, OneDrive/SharePoint files, Outlook mail,
+Microsoft Graph tools for Matimo - search, OneDrive/SharePoint files, Outlook mail,
 Microsoft Teams, calendar, and SharePoint publishing through YAML-defined tools that
 work with any AI framework.
 
@@ -36,7 +36,7 @@ const file = await matimo.execute('ms_read_file', {
   item_id: '01ABCXYZ7654321',
 });
 
-// Send an email (requires_approval: true — routed through HITL)
+// Send an email (requires_approval: true - routed through HITL)
 await matimo.execute('ms_send_email', {
   to: ['alice@contoso.com'],
   subject: 'Weekly status update',
@@ -61,7 +61,7 @@ await matimo.execute('ms_send_email', {
 ## 🔐 Authentication
 
 Microsoft Graph tools use delegated OAuth2 access tokens. Matimo never performs the
-OAuth code exchange itself — connect Microsoft through your Matimo deployment (Nova),
+OAuth code exchange itself - connect Microsoft through your Matimo deployment (Nova),
 then provide the resulting token at execution time:
 
 ```bash
@@ -84,11 +84,18 @@ See [`definition.yaml`](./definition.yaml) for the full OAuth2 provider configur
 ## ⚠️ Risk & Approval
 
 `ms_send_email` and `ms_publish_to_sharepoint` are marked `risk: high` and
-`requires_approval: true` — Matimo routes them through the human-in-the-loop approval
+`requires_approval: true` - Matimo routes them through the human-in-the-loop approval
 flow before they execute, since they send mail and publish content visible to others
 on the user's behalf. `ms_send_teams_message`, `ms_create_document`, and
 `ms_create_calendar_event` are `risk: medium` (external writes, narrower blast radius).
 The remaining read-only tools are `risk: low`.
+
+> ⚠️ All 9 tools use `execution.type: function` (needed for the Graph SDK's token
+> handling). Matimo's automatic risk classifier assigns `type: function` tools an
+> effective floor of `risk: critical` that a lower self-declared `risk:` can never
+> reduce - so if you enable HITL quarantine with `critical` in your
+> `quarantineRiskLevels`, every tool in this package (including the read-only ones)
+> will be quarantined, regardless of the `low`/`medium`/`high` values shown above.
 
 ## 📚 Integration Examples
 

@@ -7,7 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](../LICENSE)
 [![Tests](https://github.com/tallclub/matimo/actions/workflows/test-python.yml/badge.svg)](https://github.com/tallclub/matimo/actions)
 
-Matimo is a configuration-driven AI tools SDK. Define tools once in YAML and execute them from any framework — LangChain, CrewAI, MCP, or plain Python.
+Matimo is a configuration-driven AI tools SDK. Define tools once in YAML and execute them from any framework - LangChain, CrewAI, MCP, or plain Python.
 
 ```python
 from matimo import Matimo
@@ -123,7 +123,7 @@ from matimo import Matimo
 
 async def main():
     # auto_discover=True loads tools from every installed matimo-* provider
-    # package (there's no per-provider filter on init() itself) — install
+    # package (there's no per-provider filter on init() itself) - install
     # only matimo-slack if you want just Slack's tools discovered.
     matimo = await Matimo.init(auto_discover=True)
 
@@ -364,7 +364,7 @@ This runs `scripts/validate_tools.py` which walks all `packages/*/tools/*/defini
 | `MATIMO_LOG_LEVEL` | `info` | `silent`, `error`, `warn`, `info`, `debug` |
 | `MATIMO_LOG_FORMAT` | `simple` | `json` or `simple` |
 | `MATIMO_AUTO_APPROVE` | `false` | Skip HITL approval in CI |
-| `MATIMO_APPROVED_PATTERNS` | — | Comma-separated glob patterns (e.g. `get_*,list_*`) |
+| `MATIMO_APPROVED_PATTERNS` | - | Comma-separated glob patterns (e.g. `get_*,list_*`) |
 
 ---
 

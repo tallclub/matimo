@@ -1,4 +1,4 @@
-# Matimo — Enable AI Agents To Build Themselves
+# Matimo - Enable AI Agents To Build Themselves
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/tallclub/matimo/main/docs/assets/logo.png" alt="Matimo Logo" width="300" />
@@ -21,11 +21,11 @@
 
 ## The TypeScript AI SDK with Meta-Tools, Policy Engine, Governance and Human-in-the-Loop Control
 
-Give your agents **137+ production-ready tools** to start. Then activate **10 meta-tools** that let them create, validate, and approve new capabilities at runtime — governed by your **policy engine** with **human approval workflows** for critical actions.
+Give your agents **137+ production-ready tools** to start. Then activate **10 meta-tools** that let them create, validate, and approve new capabilities at runtime - governed by your **policy engine** with **human approval workflows** for critical actions.
 
 **Why this matters:**
 
-- 🔧 **Meta-Tools**: Agents write new tool definitions in YAML, validate schemas, approve for production, and hot-reload — all mid-conversation. No restart. No redeployment.
+- 🔧 **Meta-Tools**: Agents write new tool definitions in YAML, validate schemas, approve for production, and hot-reload - all mid-conversation. No restart. No redeployment.
 
 - 🛡️ **Policy Engine**: Classify every action by risk level (low/medium/high/critical). Block dangerous operations. Quarantine draft tools. Enforce your rules automatically.
 
@@ -33,7 +33,7 @@ Give your agents **137+ production-ready tools** to start. Then activate **10 me
 
 - 🌐 **Universal Integration**: One YAML definition works across TypeScript, LangChain, Claude MCP, OpenAI. Write once, run everywhere.
 
-> **Python SDK?** Install [`matimo` on PyPI](https://pypi.org/project/matimo/) — full feature parity with TypeScript.
+> **Python SDK?** Install [`matimo` on PyPI](https://pypi.org/project/matimo/) - full feature parity with TypeScript.
 
 ---
 
@@ -58,9 +58,9 @@ const payment = await matimo.execute('stripe_create_payment', {
 });
 ```
 
-**Other SDKs give agents a toolbox. Matimo gives them a workshop — with safety guardrails.**
+**Other SDKs give agents a toolbox. Matimo gives them a workshop - with safety guardrails.**
 
-🎯 **v0.1.0 Stable** (May 1, 2026) — 2,996 tests · 95%+ coverage · Production-ready
+🎯 **v0.1.0 Stable** (May 1, 2026) - 2,996 tests · 95%+ coverage · Production-ready
 
 [📖 Documentation](https://github.com/tallclub/matimo/tree/main/docs) · [🚀 Quick Start](https://github.com/tallclub/matimo/blob/main/docs/getting-started/QUICK_START.md) · [📚 API Reference](https://github.com/tallclub/matimo/blob/main/docs/api-reference/SDK.md) · [🛠️ Add Tools](https://github.com/tallclub/matimo/blob/main/docs/tool-development/ADDING_TOOLS.md)
 
@@ -191,13 +191,13 @@ pnpm test
 
 ## Skills System
 
-Matimo supports the [Agent Skills specification](https://agentskills.io) — structured knowledge files (`SKILL.md`) that teach agents domain expertise at runtime.
+Matimo supports the [Agent Skills specification](https://agentskills.io) - structured knowledge files (`SKILL.md`) that teach agents domain expertise at runtime.
 
 ```typescript
-// Discover available skills (Level 1 — metadata only)
+// Discover available skills (Level 1 - metadata only)
 const skills = matimo.listSkills();
 
-// Load a specific skill (Level 2 — full content)
+// Load a specific skill (Level 2 - full content)
 const skill = matimo.getSkill('slack');
 
 // Load only the sections you need (smart context management)
@@ -210,7 +210,7 @@ const content = matimo.getSkillContent('postgres', {
 const results = await matimo.semanticSearchSkills('How do I handle rate limiting?');
 ```
 
-**Each provider ships one skill** with domain knowledge for all its tools. Agents load skills on demand — no context bloat.
+**Each provider ships one skill** with domain knowledge for all its tools. Agents load skills on demand - no context bloat.
 
 See [Skills Documentation](https://github.com/tallclub/matimo/blob/main/docs/skills/SKILLS.md) for the full guide.
 
@@ -240,8 +240,8 @@ await matimo.reloadPolicy('./policy-prod.yaml');
 **Key features:**
 
 - 9 deterministic security rules (SSRF detection, namespace protection, credential allowlists)
-- HITL quarantine — medium-risk tools pause for human approval instead of auto-rejecting
-- Policy hot-reload — swap policies at runtime with automatic tool re-validation
+- HITL quarantine - medium-risk tools pause for human approval instead of auto-rejecting
+- Policy hot-reload - swap policies at runtime with automatic tool re-validation
 - SHA-256 integrity tracking + HMAC approval manifest
 - Full audit trail via structured events
 

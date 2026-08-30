@@ -1,10 +1,10 @@
-# Matimo — The Governance Layer for AI Agent Tools
+# Matimo - The Governance Layer for AI Agent Tools
 
 <p align="center">
   <img src="./docs/assets/logo.png" alt="Matimo Logo" width="300" />
 </p>
 <p align="center">
-    <strong>Policy-governed tool execution for any agent framework — plus a toolkit and meta-tools for agents that build their own capabilities</strong>
+    <strong>Policy-governed tool execution for any agent framework - plus a toolkit and meta-tools for agents that build their own capabilities</strong>
 </p>
 
 <p align="center">
@@ -27,19 +27,19 @@
   </a>
 </p>
 
-## Governance First — Then Tools, Meta-Tools, and Universal Integration
+## Governance First - Then Tools, Meta-Tools, and Universal Integration
 
-Every tool call — built-in, third-party, or agent-created — passes through Matimo's **policy engine** before it executes. On top of that governance layer, agents get **139+ production-ready tools** (plus a governed 449-tool Composio catalog), **12 meta-tools** to create/validate/approve new capabilities at runtime, and **one YAML definition** that runs across every framework you use.
+Every tool call - built-in, third-party, or agent-created - passes through Matimo's **policy engine** before it executes. On top of that governance layer, agents get **139+ production-ready tools** (plus a governed 449-tool Composio catalog), **12 meta-tools** to create/validate/approve new capabilities at runtime, and **one YAML definition** that runs across every framework you use.
 
 **Why this matters:**
 
-- 🛡️ **Policy Engine (Governance)**: Every execution — not just agent-created tools — is classified by risk level (low/medium/high/critical), checked against deterministic security rules, and logged to an audit trail. This is the layer everything else sits on top of.
+- 🛡️ **Policy Engine (Governance)**: Every execution - not just agent-created tools - is classified by risk level (low/medium/high/critical), checked against deterministic security rules, and logged to an audit trail. This is the layer everything else sits on top of.
 
 - 🤝 **Human-in-the-Loop (HITL)**: Critical or high-risk actions pause for human approval before execution. Configurable timeouts, HMAC-signed approval manifests, full audit trails. You stay in control even as agents gain autonomy.
 
-- 🔧 **Meta-Tools & Self-Extension**: Agents write new tool definitions in YAML, submit them for policy validation, get human approval when required, and hot-reload — all mid-conversation. No restart. No redeployment. Every agent-created tool is governed the same way as your built-in ones.
+- 🔧 **Meta-Tools & Self-Extension**: Agents write new tool definitions in YAML, submit them for policy validation, get human approval when required, and hot-reload - all mid-conversation. No restart. No redeployment. Every agent-created tool is governed the same way as your built-in ones.
 
-- 🌐 **Universal Integration**: One YAML definition works across TypeScript, Python, LangChain, CrewAI, Claude MCP, OpenAI. Write once, run everywhere — with the same policy enforcement everywhere.
+- 🌐 **Universal Integration**: One YAML definition works across TypeScript, Python, LangChain, CrewAI, Claude MCP, OpenAI. Write once, run everywhere - with the same policy enforcement everywhere.
 
 Want a hosted runtime on top of this governance layer, with a visual builder and 16 reasoning engines included? Take a look at [Matimo Workbench](https://matimo.ai).
 
@@ -66,9 +66,9 @@ payment = await agent.execute('stripe_create_payment', {
 })
 ```
 
-**Other SDKs give agents a toolbox. Matimo gives them a workshop — with safety guardrails.**
+**Other SDKs give agents a toolbox. Matimo gives them a workshop - with safety guardrails.**
 
-🎯 **Production-ready** — 3,700+ tests across TypeScript and Python · 95%+ coverage · see [CHANGELOG](./CHANGELOG.md) for release history
+🎯 **Production-ready** - 3,700+ tests across TypeScript and Python · 95%+ coverage · see [CHANGELOG](./CHANGELOG.md) for release history
 
 [📖 Documentation](./docs) · [🚀 Quick Start](./docs/getting-started/QUICK_START.md) · [📚 API Reference](./docs/api-reference/SDK.md) · [🛠️ Add Tools](./docs/tool-development/ADDING_TOOLS.md) · [🤖 Examples](./typescript/examples) ([Python](./python/examples))
 
@@ -140,13 +140,13 @@ Matimo ships with built-in support for:
 - **Mailchimp Tools**: Audiences, subscribers, email campaigns
 - **Microsoft Graph Tools**: Search, files, mail, Teams, calendar, SharePoint
 - **Bruno Tools**: Execute, import, and validate Bruno API collections
-- **Composio Catalog (Governed)**: 449 tools across Asana, Jira, Linear, Google Workspace, Microsoft 365, and more — routed through [Composio](https://composio.dev) with Matimo's policy engine and HITL layered on top ([why](./typescript/packages/composio/README.md#-credit-where-its-due))
+- **Composio Catalog (Governed)**: 449 tools across Asana, Jira, Linear, Google Workspace, Microsoft 365, and more - routed through [Composio](https://composio.dev) with Matimo's policy engine and HITL layered on top ([why](./typescript/packages/composio/README.md#-credit-where-its-due))
 - **Auto-Discovery**: Automatic detection of `@matimo/*` providers from npm
 - **Matimo CLI**: Tool discovery, setup wizard, MCP config generation
 - **OAuth2 Support**: Provider-agnostic authorization for Slack, Gmail, GitHub, etc.
 - **Framework Support**: Factory pattern, Decorator pattern, LangChain, CrewAI
 - **TypeScript SDK**: Full type safety and IDE support
-- **Python SDK**: Full feature parity with TypeScript — factory pattern, decorator, LangChain, CrewAI, MCP, policy engine
+- **Python SDK**: Full feature parity with TypeScript - factory pattern, decorator, LangChain, CrewAI, MCP, policy engine
 - **Agent Skills System**: [SKILL.md](https://agentskills.io) knowledge files with semantic search, content chunking, and progressive disclosure
 - **Policy Engine**: 9 security rules, HITL quarantine, hot-reload, SHA-256 integrity tracking, HMAC approvals, audit events
 
@@ -154,21 +154,21 @@ Matimo ships with built-in support for:
 
 **The Problem:** Every AI framework (LangChain, CrewAI, custom agents, etc.) defines tools differently, with no shared layer to govern what an agent is actually allowed to do. You duplicate tool logic across frameworks, bolt on approval checks per-project, and most SDKs can't safely handle agents that build new tools at runtime.
 
-**The Solution:** Matimo is, first, a **governance layer** — a policy engine that classifies risk and gates execution for every tool call, agent-created or not. Everything else builds on that foundation:
+**The Solution:** Matimo is, first, a **governance layer** - a policy engine that classifies risk and gates execution for every tool call, agent-created or not. Everything else builds on that foundation:
 
-1. **Governance by Default** — Every tool execution is classified by risk (low/medium/high/critical), checked against deterministic security rules (SSRF detection, namespace protection, credential allowlists), and can require human approval before running. This applies uniformly to built-in tools, third-party providers, and anything an agent creates itself.
-2. **Write Once, Use Everywhere** — Define tools in clean YAML, deploy to SDK, LangChain, MCP, or custom agents without duplication — with the same policy enforcement in every context.
-3. **Agent Self-Extension, Safely** — Agents autonomously build new tools and skills at runtime without restarting, and every new capability is policy-gated:
-   - **Tool Creation**: `matimo_create_tool` — agents write YAML definitions, submit for approval, and use instantly
-   - **Skill Creation**: `matimo_create_skill` — agents author domain knowledge (SKILL.md) directly into the system
-   - **Hot-Reload**: `matimo_reload_tools` — updated capabilities live immediately without server restart
+1. **Governance by Default** - Every tool execution is classified by risk (low/medium/high/critical), checked against deterministic security rules (SSRF detection, namespace protection, credential allowlists), and can require human approval before running. This applies uniformly to built-in tools, third-party providers, and anything an agent creates itself.
+2. **Write Once, Use Everywhere** - Define tools in clean YAML, deploy to SDK, LangChain, MCP, or custom agents without duplication - with the same policy enforcement in every context.
+3. **Agent Self-Extension, Safely** - Agents autonomously build new tools and skills at runtime without restarting, and every new capability is policy-gated:
+   - **Tool Creation**: `matimo_create_tool` - agents write YAML definitions, submit for approval, and use instantly
+   - **Skill Creation**: `matimo_create_skill` - agents author domain knowledge (SKILL.md) directly into the system
+   - **Hot-Reload**: `matimo_reload_tools` - updated capabilities live immediately without server restart
    - **Policy-Gated**: All agent-created tools validated against security rules; HITL approval for high-risk changes
-4. **Pre-built Ecosystem** — 10 providers (Slack, Gmail, GitHub, Notion, HubSpot, Postgres, Twilio, Mailchimp, Microsoft, Bruno) ready to go, all governed by the same policy engine, plus a governed 449-tool Composio catalog for broader coverage.
+4. **Pre-built Ecosystem** - 10 providers (Slack, Gmail, GitHub, Notion, HubSpot, Postgres, Twilio, Mailchimp, Microsoft, Bruno) ready to go, all governed by the same policy engine, plus a governed 449-tool Composio catalog for broader coverage.
 
 Included:
-- **Policy Engine** — 9 security rules, risk classification, HITL quarantine, HMAC approval manifests, audit events
+- **Policy Engine** - 9 security rules, risk classification, HITL quarantine, HMAC approval manifests, audit events
 - TypeScript SDK (factory & decorator patterns)
-- **Python SDK** (factory, decorator, LangChain, CrewAI, MCP — full parity)
+- **Python SDK** (factory, decorator, LangChain, CrewAI, MCP - full parity)
 - LangChain integration (with examples)
 - Matimo CLI (tool discovery & setup)
 - MCP Server (Claude Desktop, Cursor, Windsurf, any MCP client)
@@ -283,13 +283,13 @@ cd examples/tools && pnpm install && pnpm agent:factory
 
 ## Skills System
 
-Matimo supports the [Agent Skills specification](https://agentskills.io) — structured knowledge files (`SKILL.md`) that teach agents domain expertise at runtime.
+Matimo supports the [Agent Skills specification](https://agentskills.io) - structured knowledge files (`SKILL.md`) that teach agents domain expertise at runtime.
 
 ```typescript
-// Discover available skills (Level 1 — metadata only)
+// Discover available skills (Level 1 - metadata only)
 const skills = matimo.listSkills();
 
-// Load a specific skill (Level 2 — full content)
+// Load a specific skill (Level 2 - full content)
 const skill = matimo.getSkill('slack');
 
 // Load only the sections you need (smart context management)
@@ -302,7 +302,7 @@ const content = matimo.getSkillContent('postgres', {
 const results = await matimo.semanticSearchSkills('How do I handle rate limiting?');
 ```
 
-**Each provider ships one skill** with domain knowledge for all its tools. Agents load skills on demand — no context bloat.
+**Each provider ships one skill** with domain knowledge for all its tools. Agents load skills on demand - no context bloat.
 
 See [Skills Documentation](./docs/skills/SKILLS.md) for the full guide.
 
@@ -330,8 +330,8 @@ await matimo.reloadPolicy('./policy-prod.yaml');
 **Key features:**
 
 - 9 deterministic security rules (SSRF detection, namespace protection, credential allowlists)
-- HITL quarantine — medium-risk tools pause for human approval instead of auto-rejecting
-- Policy hot-reload — swap policies at runtime with automatic tool re-validation
+- HITL quarantine - medium-risk tools pause for human approval instead of auto-rejecting
+- Policy hot-reload - swap policies at runtime with automatic tool re-validation
 - SHA-256 integrity tracking + HMAC approval manifest
 - Full audit trail via structured events
 
@@ -403,12 +403,12 @@ See [Adding Tools to Matimo](./docs/tool-development/ADDING_TOOLS.md) for the co
 ## Acknowledgments
 
 Broad integration coverage (Asana, Jira, Linear, Google Workspace, Microsoft
-365, and more — 449 tools total) is made possible today by
+365, and more - 449 tools total) is made possible today by
 [Composio](https://composio.dev), whose catalog `@matimo/composio` wraps with
 Matimo's policy engine, risk classification, and HITL approval. Building and
 maintaining native, fully-tested first-party tools for that many actions
 ourselves would take far longer than agents should have to wait for governed
-access — so we lean on Composio's integration breadth as a deliberate,
+access - so we lean on Composio's integration breadth as a deliberate,
 temporary bridge while we grow native `@matimo/<provider>` packages for the
 highest-usage toolkits over time. See
 [the composio package README](./typescript/packages/composio/README.md#-credit-where-its-due)

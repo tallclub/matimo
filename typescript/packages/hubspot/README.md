@@ -28,74 +28,74 @@ pnpm add @matimo/hubspot
 ### Complete Tool List
 
 **Contacts (5):**
-- `hubspot-create-contact` — Create new contact
-- `hubspot-get-contact` — Get contact by ID
-- `hubspot-update-contact` — Update contact (🔒 requires approval)
-- `hubspot-delete-contact` — Delete contact (🔒 requires approval)
-- `hubspot-list-contacts` — List all contacts with pagination
+- `hubspot-create-contact` - Create new contact
+- `hubspot-get-contact` - Get contact by ID
+- `hubspot-update-contact` - Update contact (🔒 requires approval)
+- `hubspot-delete-contact` - Delete contact (🔒 requires approval)
+- `hubspot-list-contacts` - List all contacts with pagination
 
 **Companies (5):**
-- `hubspot-create-company` — Create new company
-- `hubspot-get-company` — Get company by ID
-- `hubspot-update-company` — Update company (🔒 requires approval)
-- `hubspot-delete-company` — Delete company (🔒 requires approval)
-- `hubspot-list-companies` — List all companies with pagination
+- `hubspot-create-company` - Create new company
+- `hubspot-get-company` - Get company by ID
+- `hubspot-update-company` - Update company (🔒 requires approval)
+- `hubspot-delete-company` - Delete company (🔒 requires approval)
+- `hubspot-list-companies` - List all companies with pagination
 
 **Deals (5):**
-- `hubspot-create-deal` — Create new deal
-- `hubspot-get-deal` — Get deal by ID
-- `hubspot-update-deal` — Update deal (🔒 requires approval)
-- `hubspot-delete-deal` — Delete deal (🔒 requires approval)
-- `hubspot-list-deals` — List all deals with pagination
+- `hubspot-create-deal` - Create new deal
+- `hubspot-get-deal` - Get deal by ID
+- `hubspot-update-deal` - Update deal (🔒 requires approval)
+- `hubspot-delete-deal` - Delete deal (🔒 requires approval)
+- `hubspot-list-deals` - List all deals with pagination
 
 **Tickets (5):**
-- `hubspot-create-ticket` — Create new ticket
-- `hubspot-get-ticket` — Get ticket by ID
-- `hubspot-update-ticket` — Update ticket (🔒 requires approval)
-- `hubspot-delete-ticket` — Delete ticket (🔒 requires approval)
-- `hubspot-list-tickets` — List all tickets with pagination
+- `hubspot-create-ticket` - Create new ticket
+- `hubspot-get-ticket` - Get ticket by ID
+- `hubspot-update-ticket` - Update ticket (🔒 requires approval)
+- `hubspot-delete-ticket` - Delete ticket (🔒 requires approval)
+- `hubspot-list-tickets` - List all tickets with pagination
 
 **Leads (5):**
-- `hubspot-create-lead` — Create new lead
-- `hubspot-get-lead` — Get lead by ID
-- `hubspot-update-lead` — Update lead (🔒 requires approval)
-- `hubspot-delete-lead` — Delete lead (🔒 requires approval)
-- `hubspot-list-leads` — List all leads with pagination
+- `hubspot-create-lead` - Create new lead
+- `hubspot-get-lead` - Get lead by ID
+- `hubspot-update-lead` - Update lead (🔒 requires approval)
+- `hubspot-delete-lead` - Delete lead (🔒 requires approval)
+- `hubspot-list-leads` - List all leads with pagination
 
 **Line Items (5):**
-- `hubspot-create-line-item` — Create new line item
-- `hubspot-get-line-item` — Get line item by ID
-- `hubspot-update-line-item` — Update line item (🔒 requires approval)
-- `hubspot-delete-line-item` — Delete line item (🔒 requires approval)
-- `hubspot-list-line-items` — List all line items with pagination
+- `hubspot-create-line-item` - Create new line item
+- `hubspot-get-line-item` - Get line item by ID
+- `hubspot-update-line-item` - Update line item (🔒 requires approval)
+- `hubspot-delete-line-item` - Delete line item (🔒 requires approval)
+- `hubspot-list-line-items` - List all line items with pagination
 
 **Invoices (5):**
-- `hubspot-create-invoice` — Create new invoice
-- `hubspot-get-invoice` — Get invoice by ID
-- `hubspot-update-invoice` — Update invoice (🔒 requires approval)
-- `hubspot-delete-invoice` — Delete invoice (🔒 requires approval)
-- `hubspot-list-invoices` — List all invoices with pagination
+- `hubspot-create-invoice` - Create new invoice
+- `hubspot-get-invoice` - Get invoice by ID
+- `hubspot-update-invoice` - Update invoice (🔒 requires approval)
+- `hubspot-delete-invoice` - Delete invoice (🔒 requires approval)
+- `hubspot-list-invoices` - List all invoices with pagination
 
 **Orders (5):**
-- `hubspot-create-order` — Create new order
-- `hubspot-get-order` — Get order by ID
-- `hubspot-update-order` — Update order (🔒 requires approval)
-- `hubspot-delete-order` — Delete order (🔒 requires approval)
-- `hubspot-list-orders` — List all orders with pagination
+- `hubspot-create-order` - Create new order
+- `hubspot-get-order` - Get order by ID
+- `hubspot-update-order` - Update order (🔒 requires approval)
+- `hubspot-delete-order` - Delete order (🔒 requires approval)
+- `hubspot-list-orders` - List all orders with pagination
 
 **Products (5):**
-- `hubspot-create-product` — Create new product
-- `hubspot-get-product` — Get product by ID
-- `hubspot-update-product` — Update product (🔒 requires approval)
-- `hubspot-delete-product` — Delete product (🔒 requires approval)
-- `hubspot-list-products` — List all products with pagination
+- `hubspot-create-product` - Create new product
+- `hubspot-get-product` - Get product by ID
+- `hubspot-update-product` - Update product (🔒 requires approval)
+- `hubspot-delete-product` - Delete product (🔒 requires approval)
+- `hubspot-list-products` - List all products with pagination
 
 **Custom Objects (5):**
-- `hubspot-create-custom-object` — Create new custom object
-- `hubspot-get-custom-object` — Get custom object by ID
-- `hubspot-update-custom-object` — Update custom object (🔒 requires approval)
-- `hubspot-delete-custom-object` — Delete custom object (🔒 requires approval)
-- `hubspot-list-custom-objects` — List custom objects with pagination
+- `hubspot-create-custom-object` - Create new custom object
+- `hubspot-get-custom-object` - Get custom object by ID
+- `hubspot-update-custom-object` - Update custom object (🔒 requires approval)
+- `hubspot-delete-custom-object` - Delete custom object (🔒 requires approval)
+- `hubspot-list-custom-objects` - List custom objects with pagination
 
 ## ⚡ Quick Start
 
@@ -140,9 +140,9 @@ main();
 
 HubSpot tools support three authentication methods:
 
-### Option 1: Service Keys (⭐ Recommended — Modern)
+### Option 1: Service Keys (⭐ Recommended - Modern)
 
-**NEW (Feb 2026)** — The modern replacement for legacy private apps. Purpose-built for system-to-system integrations like Matimo.
+**NEW (Feb 2026)** - The modern replacement for legacy private apps. Purpose-built for system-to-system integrations like Matimo.
 
 **When to use:**
 - ✅ System-to-system integrations (Matimo, automation, BI tools)
@@ -258,7 +258,7 @@ curl -sS -X POST https://api.hubapi.com/oauth/v2/private-apps/get/access-token-i
 
 ### Option 3: OAuth2 (For Multi-Account or Marketplace Apps)
 
-Advanced — use OAuth2 for distributing apps to multiple HubSpot accounts or handling per-account access with refresh tokens.
+Advanced - use OAuth2 for distributing apps to multiple HubSpot accounts or handling per-account access with refresh tokens.
 
 **When to use OAuth:**
 - Distributing app to HubSpot App Marketplace
@@ -311,23 +311,23 @@ const matimo = await MatimoInstance.init({ autoDiscover: true });
 
 **Three integration patterns:**
 
-1. **Factory Pattern** — Direct tool execution (simplest)
+1. **Factory Pattern** - Direct tool execution (simplest)
    ```bash
    npm run hubspot:factory
    ```
-   See [examples/tools/hubspot/hubspot-factory.ts](../examples/tools/hubspot/hubspot-factory.ts)
+   See [examples/tools/hubspot/hubspot-factory.ts](../../examples/tools/hubspot/hubspot-factory.ts)
 
-2. **Decorator Pattern** — Class-based tools
+2. **Decorator Pattern** - Class-based tools
    ```bash
    npm run hubspot:decorator
    ```
-   See [examples/tools/hubspot/hubspot-decorator.ts](../examples/tools/hubspot/hubspot-decorator.ts)
+   See [examples/tools/hubspot/hubspot-decorator.ts](../../examples/tools/hubspot/hubspot-decorator.ts)
 
-3. **LangChain Integration** — AI agent tools
+3. **LangChain Integration** - AI agent tools
    ```bash
    npm run hubspot:langchain
    ```
-   See [examples/tools/hubspot/hubspot-langchain.ts](../examples/tools/hubspot/hubspot-langchain.ts)
+   See [examples/tools/hubspot/hubspot-langchain.ts](../../examples/tools/hubspot/hubspot-langchain.ts)
 
 ## 📖 API Reference
 
@@ -343,10 +343,10 @@ For detailed API documentation:
 Destructive operations (update, delete) require approval before execution. Configure approval handling programmatically:
 
 ```typescript
-import { ApprovalHandler } from '@matimo/core';
+import { getGlobalApprovalHandler } from '@matimo/core';
 
 // Set approval callback
-ApprovalHandler.setApprovalCallback(async (toolName: string, params: Record<string, unknown>) => {
+getGlobalApprovalHandler().setApprovalCallback(async ({ toolName, params }) => {
   console.log(`Approval required for: ${toolName}`);
   console.log('Parameters:', params);
   // Return true to approve, false to deny
@@ -362,13 +362,13 @@ Tools marked with 🔒 will request approval before executing.
 
 ## 📊 Tool Status
 
-- ✅ Contacts CRUD — Production ready
-- ✅ Companies CRUD — Production ready
-- ✅ Deals CRUD — Production ready
-- ✅ Tickets CRUD — Production ready
-- 🚧 Associations API — Coming soon
-- 🚧 Custom objects — Coming soon
-- 🚧 Workflows & Automation — Coming soon
+- ✅ Contacts CRUD - Production ready
+- ✅ Companies CRUD - Production ready
+- ✅ Deals CRUD - Production ready
+- ✅ Tickets CRUD - Production ready
+- 🚧 Associations API - Coming soon
+- 🚧 Custom objects - Coming soon
+- 🚧 Workflows & Automation - Coming soon
 
 ## ⚙️ Configuration
 
@@ -381,7 +381,7 @@ All tools support:
 
 ## 🧑‍💻 Contributing
 
-See [CONTRIBUTING.md](../../CONTRIBUTING.md) for guidelines.
+See [CONTRIBUTING.md](../../../CONTRIBUTING.md) for guidelines.
 
 ---
 

@@ -1,6 +1,6 @@
 # matimo-cli
 
-> Command-line interface for [Matimo](https://matimo.dev) — tool package manager & MCP server launcher.
+> Command-line interface for [Matimo](https://matimo.dev) - tool package manager & MCP server launcher.
 
 [![PyPI](https://img.shields.io/pypi/v/matimo-cli)](https://pypi.org/project/matimo-cli/)
 [![Docs](https://img.shields.io/badge/docs-matimo.dev-blue)](https://matimo.dev/docs)
@@ -19,36 +19,32 @@ uv add matimo-cli
 
 ## Commands
 
-### `matimo install` — Install provider packages
+### `matimo install` - Install provider packages
 
 ```bash
 matimo install slack github gmail         # install specific providers
-matimo install slack --upgrade            # upgrade an existing provider
 ```
 
-### `matimo list` — List available tools
+### `matimo list` - List available tools
 
 ```bash
 matimo list                               # all loaded tools
-matimo list --provider slack             # filter by provider
-matimo list --format json                # JSON output
 ```
 
-### `matimo search` — Search for tools
+### `matimo search` - Search for tools
 
 ```bash
 matimo search email                       # text search over tool names + descriptions
 matimo search "send message"
 ```
 
-### `matimo mcp` — Start MCP server
+### `matimo mcp` - Start MCP server
 
 Serve all loaded tools over the [Model Context Protocol](https://matimo.dev/docs/MCP) so Claude Desktop, Cursor, or any MCP client can access them.
 
 ```bash
 matimo mcp                                # start on stdio (default)
 matimo mcp --transport http --port 3000   # start as HTTP server
-matimo mcp --name "my-agent"              # set server name
 ```
 
 **Claude Desktop `claude_desktop_config.json`:**
@@ -63,34 +59,28 @@ matimo mcp --name "my-agent"              # set server name
 }
 ```
 
-### `matimo doctor` — Diagnose your setup
+### `matimo doctor` - Diagnose your setup
 
 ```bash
 matimo doctor                             # check config, installed providers, connectivity
-matimo doctor --fix                       # attempt auto-repair
 ```
 
-### `matimo review` — Review agent-created tool definitions
+### `matimo review` - Review agent-created tool definitions
+
+Operates on the current directory (or `$MATIMO_TOOL_DIR`), not an arbitrary path argument:
 
 ```bash
-matimo review ./agent-tools/              # interactive review of draft tools
+matimo review list                        # list draft tools awaiting approval
+matimo review approve my_tool             # approve a pending tool
+matimo review reject my_tool              # reject/revoke a tool
 ```
 
 ---
 
 ## Configuration
 
-The CLI reads Matimo configuration from the environment or a `.matimo.yaml` file in the project root:
-
-```yaml
-# .matimo.yaml
-toolPaths:
-  - ./tools
-  - ./agent-tools
-logLevel: info
-```
-
-Environment variables:
+The CLI reads configuration entirely from environment variables - there is no
+`.matimo.yaml` config file:
 
 ```bash
 export MATIMO_LOG_LEVEL=info        # silent | error | warn | info | debug

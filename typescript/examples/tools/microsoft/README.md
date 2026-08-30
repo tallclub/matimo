@@ -2,17 +2,17 @@
 
 Example directory contains **4 example patterns** showing different ways to use Matimo's
 Microsoft Graph tools:
-1. **Factory Pattern** (`microsoft-factory.ts`) — Direct SDK execution (simplest)
-2. **Decorator Pattern** (`microsoft-decorator.ts`) — Class-based with `@tool` decorators
-3. **LangChain Pattern** (`microsoft-langchain.ts`) — AI-driven ReAct agent with OpenAI
-4. **Approval Pattern** (`microsoft-with-approval.ts`) — Human-in-the-loop (HITL) approval flow
+1. **Factory Pattern** (`microsoft-factory.ts`) - Direct SDK execution (simplest)
+2. **Decorator Pattern** (`microsoft-decorator.ts`) - Class-based with `@tool` decorators
+3. **LangChain Pattern** (`microsoft-langchain.ts`) - AI-driven ReAct agent with OpenAI
+4. **Approval Pattern** (`microsoft-with-approval.ts`) - Human-in-the-loop (HITL) approval flow
 
-All examples exercise the 9 `ms_*` tools — search, mail, files/OneDrive/SharePoint,
-Teams, calendar, and SharePoint publishing — against a real Microsoft Graph tenant.
+All examples exercise the 9 `ms_*` tools - search, mail, files/OneDrive/SharePoint,
+Teams, calendar, and SharePoint publishing - against a real Microsoft Graph tenant.
 
 ## 🔐 Step 1: Register an App and Get a Graph Access Token
 
-Matimo never performs the OAuth code exchange itself — you connect Microsoft through
+Matimo never performs the OAuth code exchange itself - you connect Microsoft through
 your own app registration (or your Matimo deployment / Nova) and provide the resulting
 **delegated** access token at execution time.
 
@@ -27,10 +27,10 @@ your own app registration (or your Matimo deployment / Nova) and provide the res
    sign-in, or the auth code/device-code flow against your registered app) to obtain
    a **delegated access token** for the signed-in user
 
-> ⚠️ A real Graph v1.0 access token is a **JWT** — three base64url segments joined by
+> ⚠️ A real Graph v1.0 access token is a **JWT** - three base64url segments joined by
 > dots, e.g. `eyJ0eXAiOiJKV1Qi....<payload>....<signature>`. If your token has no dots
 > (e.g. an `EwB…`-prefixed compact SSO/MSA ticket), Graph will reject it with
-> `401 InvalidAuthenticationToken — "JWT is not well formed, there are no dots (.)"`.
+> `401 InvalidAuthenticationToken - "JWT is not well formed, there are no dots (.)"`.
 > Make sure you're copying a **Graph-scoped Bearer token**, not an MSA/SSO ticket.
 
 ### Required scopes by tool
@@ -57,7 +57,7 @@ OPENAI_API_KEY=sk-...your-openai-key...
 ```
 
 `OPENAI_API_KEY` is only required for the LangChain example. Delegated Graph access
-tokens are short-lived (typically ~1 hour) — re-issue one if you start seeing
+tokens are short-lived (typically ~1 hour) - re-issue one if you start seeing
 `AUTH_FAILED` / `401` errors.
 
 ## 🧪 Step 3: Run the Examples
@@ -66,16 +66,16 @@ tokens are short-lived (typically ~1 hour) — re-issue one if you start seeing
 cd typescript/examples/tools
 pnpm install
 
-# Factory Pattern — direct execution, simplest
+# Factory Pattern - direct execution, simplest
 pnpm microsoft:factory
 
-# Decorator Pattern — class-based @tool methods
+# Decorator Pattern - class-based @tool methods
 pnpm microsoft:decorator
 
-# LangChain Pattern — OpenAI ReAct agent decides which tools to call
+# LangChain Pattern - OpenAI ReAct agent decides which tools to call
 pnpm microsoft:langchain
 
-# Approval Pattern — HITL approval flow for high-risk tools
+# Approval Pattern - HITL approval flow for high-risk tools
 pnpm microsoft:approval
 ```
 
@@ -83,7 +83,7 @@ pnpm microsoft:approval
 
 ### 1. Factory Pattern (`microsoft-factory.ts`)
 
-**Best for:** scripts, quick tests, CLI tools — direct execution with explicit parameters.
+**Best for:** scripts, quick tests, CLI tools - direct execution with explicit parameters.
 
 ```typescript
 const matimo = await MatimoInstance.init({ autoDiscover: true });
@@ -103,7 +103,7 @@ const inbox = await matimo.execute('ms_get_email', {
 
 ### 2. Decorator Pattern (`microsoft-decorator.ts`)
 
-**Best for:** object-oriented agents — class methods auto-route through Matimo.
+**Best for:** object-oriented agents - class methods auto-route through Matimo.
 
 ```typescript
 import { setGlobalMatimoInstance, tool } from '@matimo/core';
@@ -148,7 +148,7 @@ await agent.invoke({
 **File:** [microsoft-langchain.ts](microsoft-langchain.ts)
 
 > 💡 **Note:** LLM-driven agents (LangChain and CrewAI alike) often wrap raw tool
-> failures — e.g. `AUTH_FAILED` from an expired/malformed token — in polished,
+> failures - e.g. `AUTH_FAILED` from an expired/malformed token - in polished,
 > conversational prose ("It seems there was an issue accessing your mailbox due to
 > authentication problems…"). A fluent response is *not* proof the underlying Graph
 > call succeeded; check the tool-call trace / raw `MatimoError` for the real outcome.
@@ -174,7 +174,7 @@ await matimo.execute('ms_send_email', {
 
 Three ways to resolve approval:
 - **Interactive** (default): you'll be prompted to approve/reject each high-risk call
-  in the terminal — requires a TTY (won't work under `nohup`/non-interactive shells)
+  in the terminal - requires a TTY (won't work under `nohup`/non-interactive shells)
 - **Auto-approve everything** (CI / unattended runs):
   ```bash
   MATIMO_AUTO_APPROVE=true pnpm microsoft:approval
@@ -185,7 +185,7 @@ Three ways to resolve approval:
   ```
 
 > ⚠️ Without a TTY *and* without `MATIMO_AUTO_APPROVE=true`, approval requests are
-> auto-**rejected** with `"non-interactive environment (no terminal)"` — a different
+> auto-**rejected** with `"non-interactive environment (no terminal)"` - a different
 > failure mode than `AUTH_FAILED`. Don't confuse the two when debugging.
 
 **File:** [microsoft-with-approval.ts](microsoft-with-approval.ts)
@@ -212,15 +212,15 @@ tool documentation and the OAuth2 provider configuration.
 ### `AUTH_FAILED` / `401 InvalidAuthenticationToken`
 Your token is missing, expired, or malformed:
 - Confirm `MICROSOFT_GRAPH_ACCESS_TOKEN` is set and non-empty
-- Confirm it's a **JWT** (three dot-separated base64url segments) — not an opaque
+- Confirm it's a **JWT** (three dot-separated base64url segments) - not an opaque
   `EwB…` SSO/MSA ticket. Verify quickly without printing the secret:
   ```bash
   awk -F. '{print NF-1" dot(s)"}' <<< "$MICROSOFT_GRAPH_ACCESS_TOKEN"   # expect "2 dot(s)"
   ```
-- Re-issue a fresh delegated token — Graph access tokens are short-lived (~1 hour)
+- Re-issue a fresh delegated token - Graph access tokens are short-lived (~1 hour)
 
 ### `403 Forbidden` / "Microsoft Graph access denied"
-Your token is well-formed but lacks the scope the tool needs — recheck the
+Your token is well-formed but lacks the scope the tool needs - recheck the
 **Required scopes by tool** table above and re-consent with the missing permission.
 
 ### "non-interactive environment (no terminal)"
@@ -235,7 +235,7 @@ export OPENAI_API_KEY="sk-your-openai-key-here"
 
 ### `entity_types` rejected by `ms_search_knowledge`
 The tool validates `entity_types` against `["driveItem", "listItem", "site", "list", "drive"]`
-— values like `"message"` are rejected by design, since the tool's declared scopes
+- values like `"message"` are rejected by design, since the tool's declared scopes
 (`Sites.Read.All`, `Files.Read.All`) don't cover mail search. Use `ms_get_email` for mail.
 
 ## 🔗 Related Resources

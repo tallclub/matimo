@@ -315,5 +315,5 @@ MATIMO_LOG_LEVEL=debug  # See internal logging
 ---
 
 **See also**: 
-- [policy-demo.ts](../policy/policy-demo.ts) — Policy engine focused example
-- [skills-demo.ts](../skills/skills-demo.ts) — Skills system focused example
+- [policy-demo.ts](../policy/policy-demo.ts) - Policy engine focused example
+- [skills-demo.ts](../skills/skills-demo.ts) - Skills system focused example

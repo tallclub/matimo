@@ -1,4 +1,4 @@
-# @matimo/core — Core SDK for Matimo
+# @matimo/core - Core SDK for Matimo
 
 Matimo core provides the TypeScript SDK that loads, validates, and executes YAML-defined tools across frameworks.
 
@@ -19,15 +19,15 @@ pnpm add @matimo/core
 
 `@matimo/core` contains:
 
-- `MatimoInstance` — initialization, discovery, registry, and execution API
-- **Executors** — Command (shell), HTTP (REST with object/array embedding), Function (JS/TS)
-- **Policy Engine** — content validation, risk classification, RBAC, integrity tracking
-- **Meta-Tools** — 9 built-in tools for tool lifecycle management (create, validate, approve, reload, list, skill)
-- **Approval System** — human-in-the-loop approval with interactive, auto-approve, and MCP patterns
-- **MCP Server** — Model Context Protocol server with HTTP and stdio transports
+- `MatimoInstance` - initialization, discovery, registry, and execution API
+- **Executors** - Command (shell), HTTP (REST with object/array embedding), Function (JS/TS)
+- **Policy Engine** - content validation, risk classification, RBAC, integrity tracking
+- **Meta-Tools** - 9 built-in tools for tool lifecycle management (create, validate, approve, reload, list, skill)
+- **Approval System** - human-in-the-loop approval with interactive, auto-approve, and MCP patterns
+- **MCP Server** - Model Context Protocol server with HTTP and stdio transports
 - Decorator utilities (`@tool`, `setGlobalMatimoInstance`)
 - Zod-based schema validation for YAML tool definitions
-- **Structured error handling** — `MatimoError` with error chaining via optional `cause` field
+- **Structured error handling** - `MatimoError` with error chaining via optional `cause` field
 - OAuth2 authentication support (provider integrations in separate packages)
 
 This package is intended to be imported by applications, CLIs, and provider packages.
@@ -49,29 +49,32 @@ await matimo.execute('calculator', { operation: 'add', a: 1, b: 2 });
 
 ## 🛠 Included Core Tools
 
-`@matimo/core` includes 18 built-in tools:
+`@matimo/core` includes 21 built-in tools:
 
 ### Utility Tools
-- **`execute`** — Run shell commands with output capture, timeout, and working directory control
-- **`read`** — Read files with line range support and encoding detection
-- **`edit`** — Edit/replace content in files with backup
-- **`search`** — Search files with grep patterns and context
-- **`web`** — Fetch and parse web content
-- **`web_scraper`** — Crawl and extract readable content from web pages, with SSRF/robots.txt-aware multi-page support
-- **`calculator`** — Arithmetic operations, including a sandboxed expression mode (`sqrt(16) + 2^3`)
-- **`convert_to_file`** — Convert content between formats (JSON/CSV/Markdown/text to PDF/DOCX/etc.)
-- **`extract_from_file`** — Extract text/structured content from local or remote PDF, DOCX, CSV, and text files
+- **`execute`** - Run shell commands with output capture, timeout, and working directory control
+- **`read`** - Read files with line range support and encoding detection
+- **`edit`** - Edit/replace content in files with backup
+- **`search`** - Search files with grep patterns and context
+- **`web`** - Fetch and parse web content
+- **`web_scraper`** - Crawl and extract readable content from web pages, with SSRF/robots.txt-aware multi-page support
+- **`calculator`** - Arithmetic operations, including a sandboxed expression mode (`sqrt(16) + 2^3`)
+- **`convert_to_file`** - Convert content between formats (JSON/CSV/Markdown/text to PDF/DOCX/etc.)
+- **`extract_from_file`** - Extract text/structured content from local or remote PDF, DOCX, CSV, and text files
 
 ### Meta-Tools (Tool Lifecycle Management)
-- **`matimo_validate_tool`** — Validate YAML against schema + policy rules, returns risk level
-- **`matimo_create_tool`** — Write a new tool to disk with safety enforcement (forces draft + requires_approval)
-- **`matimo_approve_tool`** — Promote a draft tool with HMAC-signed approval manifest
-- **`matimo_reload_tools`** — Hot-reload all tools into the live registry without restart
-- **`matimo_list_user_tools`** — List tools in a directory with risk classification and status
-- **`matimo_create_skill`** — Create SKILL.md files with validated YAML frontmatter
-- **`matimo_list_skills`** — List skills in a directory with name, description, and path
-- **`matimo_get_skill`** — Read a skill's full content by name for agent context
-- **`matimo_validate_skill`** — Validate a skill against the Agent Skills specification
+- **`matimo_validate_tool`** - Validate YAML against schema + policy rules, returns risk level
+- **`matimo_create_tool`** - Write a new tool to disk with safety enforcement (forces draft + requires_approval)
+- **`matimo_approve_tool`** - Promote a draft tool with HMAC-signed approval manifest
+- **`matimo_reload_tools`** - Hot-reload all tools into the live registry without restart
+- **`matimo_list_user_tools`** - List tools in a directory with risk classification and status
+- **`matimo_get_tool`** - Retrieve the full definition of a tool (raw YAML + parsed fields)
+- **`matimo_get_tool_status`** - Get the current status, risk level, and approval state of a tool
+- **`matimo_search_tools`** - Search the loaded tool registry by keyword
+- **`matimo_create_skill`** - Create SKILL.md files with validated YAML frontmatter
+- **`matimo_list_skills`** - List skills in a directory with name, description, and path
+- **`matimo_get_skill`** - Read a skill's full content by name for agent context
+- **`matimo_validate_skill`** - Validate a skill against the Agent Skills specification
 
 All core tools use **function-based execution** (not shell commands) for better performance and reliability.
 
@@ -81,7 +84,7 @@ All core tools use **function-based execution** (not shell commands) for better 
 - Decorator pattern: use `@tool()` and `setGlobalMatimoInstance()` for class-based code
 - LangChain integration: convert Matimo tools to LangChain function schemas
 
-See the full SDK docs: [docs/api-reference/SDK.md](../../docs/api-reference/SDK.md)
+See the full SDK docs: [docs/api-reference/SDK.md](../../../docs/api-reference/SDK.md)
 
 ## ⚙️ Executors
 
@@ -89,10 +92,10 @@ See the full SDK docs: [docs/api-reference/SDK.md](../../docs/api-reference/SDK.
 
 ### FunctionExecutor (Recommended for Core Tools)
 Executes TypeScript/JavaScript functions with type-safe parameters:
-- ✅ **Direct execution** — No subprocess overhead
-- ✅ **Better performance** — Direct async function calls
-- ✅ **Type safety** — Proper TypeScript integration
-- ✅ **Error handling** — Native exception handling
+- ✅ **Direct execution** - No subprocess overhead
+- ✅ **Better performance** - Direct async function calls
+- ✅ **Type safety** - Proper TypeScript integration
+- ✅ **Error handling** - Native exception handling
 
 **Core tools** (`execute`, `read`, `edit`, `search`, `web`, `calculator`) all use function-based execution:
 ```yaml
@@ -128,10 +131,10 @@ execution:
 ```
 
 **Key features:**
-- ✅ **Parameter embedding** — Objects and arrays automatically JSON-encoded in request body
-- ✅ **Response validation** — Validates output against `output_schema` using Zod
-- ✅ **Error normalization** — Converts Axios/HTTP errors to structured `MatimoError`
-- ✅ **Structured error details** — Original error preserved via `error.cause` field
+- ✅ **Parameter embedding** - Objects and arrays automatically JSON-encoded in request body
+- ✅ **Response validation** - Validates output against `output_schema` using Zod
+- ✅ **Error normalization** - Converts Axios/HTTP errors to structured `MatimoError`
+- ✅ **Structured error details** - Original error preserved via `error.cause` field
 
 ### CommandExecutor (Legacy Shell Execution)
 Spawns shell processes for external commands:
@@ -174,10 +177,10 @@ try {
 ```
 
 **Error codes:**
-- `INVALID_SCHEMA` — Tool definition or parameters invalid
-- `EXECUTION_FAILED` — Tool execution failed (network, timeout, etc.)
-- `AUTH_FAILED` — Authentication/authorization error
-- `TOOL_NOT_FOUND` — Tool not found in registry
+- `INVALID_SCHEMA` - Tool definition or parameters invalid
+- `EXECUTION_FAILED` - Tool execution failed (network, timeout, etc.)
+- `AUTH_FAILED` - Authentication/authorization error
+- `TOOL_NOT_FOUND` - Tool not found in registry
 
 **Error chaining:**
 The optional `cause` field preserves the original error for debugging:
@@ -213,7 +216,7 @@ export NOTION_API_KEY=ntn_...
 
 ## 🛡 Policy Engine
 
-The policy engine provides defense-in-depth security for AI agent tool usage. Policy is defined at deploy time and `Object.freeze()`'d at runtime — agents cannot modify it.
+The policy engine provides defense-in-depth security for AI agent tool usage. Policy is defined at deploy time and `Object.freeze()`'d at runtime - agents cannot modify it.
 
 ```typescript
 import { MatimoInstance } from 'matimo';
@@ -257,14 +260,14 @@ const matimo = await MatimoInstance.init({
 | **medium** | HTTP `POST`, `PUT`, `PATCH` |
 | **low** | HTTP `GET`, `HEAD`, `OPTIONS` |
 
-See the full guide: [docs/tool-development/POLICY_AND_LIFECYCLE.md](../../docs/tool-development/POLICY_AND_LIFECYCLE.md)
+See the full guide: [docs/api-reference/POLICY_AND_LIFECYCLE.md](../../../docs/api-reference/POLICY_AND_LIFECYCLE.md)
 
 ## 🔄 Tool Lifecycle (Create → Approve → Reload → Use)
 
 Agents can create tools at runtime with full policy enforcement:
 
 ```typescript
-// 1. Create — writes YAML to disk (forces draft + requires_approval)
+// 1. Create - writes YAML to disk (forces draft + requires_approval)
 await matimo.execute('matimo_create_tool', {
   name: 'city_lookup',
   target_dir: './agent-tools',
@@ -281,22 +284,22 @@ execution:
 `,
 });
 
-// 2. Approve — re-validates, signs HMAC, updates status to approved
+// 2. Approve - re-validates, signs HMAC, updates status to approved
 await matimo.execute('matimo_approve_tool', {
   name: 'city_lookup',
   tool_dir: './agent-tools',
 });
 
-// 3. Reload — clears registry, re-reads YAML, re-validates untrusted tools
+// 3. Reload - clears registry, re-reads YAML, re-validates untrusted tools
 await matimo.execute('matimo_reload_tools', {});
 
-// 4. Use — tool is now in the live registry
+// 4. Use - tool is now in the live registry
 const result = await matimo.execute('city_lookup', { id: '1' });
 ```
 
 This lifecycle works identically across SDK, LangChain, and MCP interfaces.
 
-See the full reference: [docs/tool-development/META_TOOLS.md](../../docs/tool-development/META_TOOLS.md)
+See the full reference: [docs/api-reference/META_TOOLS.md](../../../docs/api-reference/META_TOOLS.md)
 
 ## ✅ Approval System
 
@@ -322,7 +325,7 @@ process.env.MATIMO_APPROVED_PATTERNS = 'calculator,weather_*';
 
 **MCP approval:** MCP clients pass `_matimo_approved: true` in arguments for tools that require approval.
 
-See: [docs/APPROVAL-SYSTEM.md](../../docs/APPROVAL-SYSTEM.md)
+See: [docs/api-reference/APPROVAL-SYSTEM.md](../../../docs/api-reference/APPROVAL-SYSTEM.md)
 
 ## 🌐 MCP Server
 
@@ -349,7 +352,7 @@ await server.start();
 - Tool lifecycle via meta-tools (create, approve, reload)
 - Automatic `notifications/tools/list_changed` on reload
 
-See: [docs/MCP.md](../../docs/MCP.md)
+See: [docs/MCP.md](../../../docs/MCP.md)
 
 ## ✅ Validation & Output Schema
 
@@ -401,16 +404,16 @@ pnpm --filter "@matimo/core" build
 
 ## 📚 Documentation
 
-- [Quick Start](../../docs/getting-started/QUICK_START.md)
-- [API Reference](../../docs/api-reference/SDK.md)
-- [Policy & Lifecycle Guide](../../docs/tool-development/POLICY_AND_LIFECYCLE.md)
-- [Meta-Tools Reference](../../docs/tool-development/META_TOOLS.md)
-- [Approval System](../../docs/APPROVAL-SYSTEM.md)
-- [MCP Server](../../docs/MCP.md)
-- [Tool Specification](../../docs/tool-development/TOOL_SPECIFICATION.md)
-- [Adding Tools](../../docs/tool-development/ADDING_TOOLS.md)
+- [Quick Start](../../../docs/getting-started/QUICK_START.md)
+- [API Reference](../../../docs/api-reference/SDK.md)
+- [Policy & Lifecycle Guide](../../../docs/api-reference/POLICY_AND_LIFECYCLE.md)
+- [Meta-Tools Reference](../../../docs/api-reference/META_TOOLS.md)
+- [Approval System](../../../docs/api-reference/APPROVAL-SYSTEM.md)
+- [MCP Server](../../../docs/MCP.md)
+- [Tool Specification](../../../docs/tool-development/TOOL_SPECIFICATION.md)
+- [Adding Tools](../../../docs/tool-development/ADDING_TOOLS.md)
 - [Contributing](https://github.com/tallclub/matimo/blob/main/CONTRIBUTING.md)
 
 ---
 
-Part of the Matimo ecosystem — define tools once, use them everywhere.
+Part of the Matimo ecosystem - define tools once, use them everywhere.

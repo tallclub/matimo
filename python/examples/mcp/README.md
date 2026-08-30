@@ -42,7 +42,7 @@ src/                           # All agents and servers
 
 | File | Purpose | Best For | Line Count |
 |------|---------|----------|-----------|
-| `agent.py` ⭐ | **Unified** — supports `--stdio`, `--http`, `--multi` | 🎯 Start here! Production use | 299 |
+| `agent.py` ⭐ | **Unified** - supports `--stdio`, `--http`, `--multi` | 🎯 Start here! Production use | 299 |
 | `agent_http.py` | HTTP-only transport | Learning HTTP pattern | 212 |
 | `agent_stdio.py` | Stdio-only transport | Learning stdio pattern | 166 |
 
@@ -374,8 +374,8 @@ uv run python src/server_http.py
 Listens on: `http://localhost:3101` (configurable via `MATIMO_SERVER_PORT`)
 
 Endpoints:
-- **MCP**: `http://localhost:3101/mcp` — MCP Streamable HTTP endpoint (tools, calls, streaming)
-- **Health**: `http://localhost:3101/health` — readiness check (`{"status":"ok","tools":N}`)
+- **MCP**: `http://localhost:3101/mcp` - MCP Streamable HTTP endpoint (tools, calls, streaming)
+- **Health**: `http://localhost:3101/health` - readiness check (`{"status":"ok","tools":N}`)
 
 > **Protocol:** Uses MCP Streamable HTTP transport (not legacy SSE). VS Code Copilot, Claude,
 > and any Streamable HTTP-compatible client can connect to `/mcp`.
@@ -395,15 +395,15 @@ uv run python src/agent.py -- --http --url http://localhost:3101/mcp
 
 Use the Python HTTP server with **VS Code Copilot Chat** (or any MCP client).
 
-### Step 1 — Start the HTTP server
+### Step 1 - Start the HTTP server
 ```bash
 cd python/examples/mcp && uv run python src/server_http.py
 # Server starts on http://localhost:3101
 ```
 
-### Step 2 — Configure VS Code
+### Step 2 - Configure VS Code
 
-Create (or update) `.vscode/mcp.json` in your workspace root — **not** `settings.json`:
+Create (or update) `.vscode/mcp.json` in your workspace root - **not** `settings.json`:
 
 ```json
 {
@@ -432,7 +432,7 @@ Create (or update) `.vscode/mcp.json` in your workspace root — **not** `settin
 }
 ```
 
-### Step 3 — Reload
+### Step 3 - Reload
 Command Palette (Cmd+Shift+P) → `MCP: Restart Server`
 
 All Matimo tools then appear in VS Code Copilot Chat as `@tools` under **matimo**.
@@ -641,7 +641,7 @@ pip install langchain-mcp-adapters langchain-openai langgraph
 **Solution:**
 
 1. **Fully quit Claude Desktop** (not just close the window): ⌘Q
-2. **Check server debug logs** — run `server_stdio.py` manually:
+2. **Check server debug logs** - run `server_stdio.py` manually:
 
    ```bash
    cd python/examples/mcp

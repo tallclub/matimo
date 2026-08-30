@@ -1,4 +1,4 @@
-# @matimo/postgres — Postgres Tools for Matimo
+# @matimo/postgres - Postgres Tools for Matimo
 
 Secure, approval-aware SQL execution for Postgres databases with built-in protection for destructive operations.
 
@@ -79,6 +79,7 @@ Execute SQL queries against a Postgres database with automatic approval for dest
 |-----------|------|----------|-------------|
 | `sql` | `string` | ✅ | SQL query to execute. Use `$1`, `$2`, etc. for parameterized queries. |
 | `params` | `unknown[]` \| `unknown[][]` | ❌ | Query parameters for parameterized SQL. |
+| `schema` | `string` | ❌ | Optional schema name to search for tables or qualify queries. |
 
 #### Returns
 
@@ -325,9 +326,9 @@ try {
 ```
 
 Common error codes:
-- `INVALID_SCHEMA` — Missing required SQL parameter
-- `EXECUTION_FAILED` — Query execution error (connection, syntax, etc.)
-- `AUTH_FAILED` — Destructive operation not approved
+- `INVALID_SCHEMA` - Missing required SQL parameter
+- `EXECUTION_FAILED` - Query execution error (connection, syntax, etc.)
+- `AUTH_FAILED` - Destructive operation not approved
 
 ---
 
@@ -365,8 +366,8 @@ postgresql://user@localhost                      # Without port
 
 | Variable | Values | Description |
 |----------|--------|-------------|
-| `MATIMO_SQL_AUTO_APPROVE` | `true` / `false` | Auto-approve all destructive operations (for CI/CD) |
-| `MATIMO_SQL_APPROVED_PATTERNS` | Regex patterns | Comma-separated patterns for pre-approved queries |
+| `MATIMO_AUTO_APPROVE` | `true` / `false` | Auto-approve all destructive operations (for CI/CD) |
+| `MATIMO_APPROVED_PATTERNS` | Comma-separated patterns | Pre-approved tool name patterns |
 
 ---
 
@@ -374,10 +375,10 @@ postgresql://user@localhost                      # Without port
 
 See `examples/tools/postgres/` in the Matimo repository:
 
-- **`postgres-factory.ts`** — Factory pattern with sequential discovery
-- **`postgres-decorator.ts`** — Class-based decorator pattern
-- **`postgres-langchain.ts`** — AI agent using LangChain (GPT-4o-mini)
-- **`postgres-with-approval.ts`** — Interactive approval workflow
+- **`postgres-factory.ts`** - Factory pattern with sequential discovery
+- **`postgres-decorator.ts`** - Class-based decorator pattern
+- **`postgres-langchain.ts`** - AI agent using LangChain (GPT-4o-mini)
+- **`postgres-with-approval.ts`** - Interactive approval workflow
 
 Run examples:
 ```bash
@@ -419,9 +420,9 @@ pnpm postgres:approval
 **Error:** `Destructive SQL requires approval`
 
 **Solution:**
-- Set `MATIMO_SQL_AUTO_APPROVE=true` in CI/CD
+- Set `MATIMO_AUTO_APPROVE=true` in CI/CD
 - Or use interactive approval: `pnpm postgres:approval`
-- Or pre-approve patterns: `export MATIMO_SQL_APPROVED_PATTERNS="DELETE.*,UPDATE.*"`
+- Or pre-approve patterns: `export MATIMO_APPROVED_PATTERNS="postgres-*"`
 
 ### Parameter Binding Error
 **Error:** `bind message supplies X parameters, but prepared statement requires Y`

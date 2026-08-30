@@ -1,6 +1,6 @@
-# Matimo Policy Engine — LangChain Agent Demo
+# Matimo Policy Engine - LangChain Agent Demo
 
-A **real LangChain ReAct agent** (gpt-4o-mini) that **autonomously discovers** the Matimo tool lifecycle. The agent receives high-level goals — never tool names — and must figure out which tools to call by examining tool descriptions.
+A **real LangChain ReAct agent** (gpt-4o-mini) that **autonomously discovers** the Matimo tool lifecycle. The agent receives high-level goals - never tool names - and must figure out which tools to call by examining tool descriptions.
 
 > **This is not a scripted demo.** The agent is given goals like "I need a city lookup tool" and must independently discover the create → approve → reload lifecycle. No mission tells the agent which tool to call.
 
@@ -14,19 +14,19 @@ A **real LangChain ReAct agent** (gpt-4o-mini) that **autonomously discovers** t
 | 4 | "Any security concerns?" | ⊘ Discovers validation, finds SSRF **blocked** |
 | 5 | "Is this compliant?" | ⊘ Discovers validation, finds namespace **blocked** |
 | 6 | "I need a city lookup tool" | ✅ **AUTONOMOUSLY**: create → approve → reload |
-| 7 | "Look up user 1" | ✅ Uses agent-created `city_lookup` — returns real data |
-| 8 | "I need a file reader" | ⊘ **Blocked** — human rejects malicious tool |
+| 7 | "Look up user 1" | ✅ Uses agent-created `city_lookup` - returns real data |
+| 8 | "I need a file reader" | ⊘ **Blocked** - human rejects malicious tool |
 | 9 | "What tools were created?" | ✅ Discovers `matimo_list_user_tools` |
 | 10 | "Refresh the registry" | ✅ Discovers `matimo_reload_tools` |
 | 11 | MCP server verification | ✅ All tools (incl. agent-created) via MCP |
 
 After the agent finishes, **Phase 3** runs programmatic checks that can't be done through tool calls:
 
-- **SHA-256 integrity tracking** — detects YAML tampering between reloads
-- **HMAC approval lifecycle** — approve → verify → auto-revoke on modification
-- **Risk classification** — deterministic, per execution type (low/medium/high/critical)
-- **Policy access control** — draft/deprecated/prod restrictions with RBAC
-- **Audit event trail** — every policy decision emits a structured event
+- **SHA-256 integrity tracking** - detects YAML tampering between reloads
+- **HMAC approval lifecycle** - approve → verify → auto-revoke on modification
+- **Risk classification** - deterministic, per execution type (low/medium/high/critical)
+- **Policy access control** - draft/deprecated/prod restrictions with RBAC
+- **Audit event trail** - every policy decision emits a structured event
 
 ## ✅ What Gets Validated
 
@@ -98,7 +98,7 @@ The demo uses a **policy.yaml file** to configure what agent-created tools are a
 When the demo runs, it:
 1. Loads `policy.yaml` (in the demo, inline config is used for simplicity)
 2. Creates a `DefaultPolicyEngine` from the policy
-3. **Freezes the policy** at startup (`Object.freeze()`) — agents cannot change it
+3. **Freezes the policy** at startup (`Object.freeze()`) - agents cannot change it
 4. When an agent proposes a tool, the engine **validates** it against the policy
 5. **Dangerous patterns are blocked** before they can be created
 
@@ -204,7 +204,7 @@ The demo outputs ~400 lines. Key sections:
 ### Phase 1: Initialization
 ```
 ╔════════════════════════════════════════════════════════════════════╗
-║    Matimo Policy Engine — LangChain Agent Demonstration            ║
+║    Matimo Policy Engine - LangChain Agent Demonstration            ║
 ╚════════════════════════════════════════════════════════════════════╝
 
 ═══════════════════════════════════════════════════════════════════
@@ -219,7 +219,7 @@ The demo outputs ~400 lines. Key sections:
     • protectedNamespaces: matimo_
 
   ✓ PASS  Interactive terminal approval callback installed
-  ✓ PASS  Matimo initialized — 13 tools loaded
+  ✓ PASS  Matimo initialized - 13 tools loaded
   ✓ PASS  Policy engine active: true
   ✓ PASS  Converted 13 tools to LangChain format
   ✓ PASS  LLM (gpt-4o-mini) initialized with tool bindings
@@ -227,7 +227,7 @@ The demo outputs ~400 lines. Key sections:
 
 ### Phase 2: Autonomous Agent Missions (sample)
 ```
-  ── Mission 6: AUTONOMOUS LIFECYCLE — "I need a city lookup tool" ──
+  ── Mission 6: AUTONOMOUS LIFECYCLE - "I need a city lookup tool" ──
     🎯 Goal: Make a city lookup tool available in the system.
     🎯 The agent must DISCOVER the lifecycle: create → approve → reload.
 
@@ -260,7 +260,7 @@ The demo outputs ~400 lines. Key sections:
   SUMMARY
 ════════════════════════════════════════════════════════════════════
 
-  Autonomous Agent Discovery (Goal-Driven — No Tool Names Given):
+  Autonomous Agent Discovery (Goal-Driven - No Tool Names Given):
     ✓ PASS  1. "What is 42+58?" → discovered calculator
     ✓ PASS  2. "Is this tool safe?" → discovered matimo_validate_tool
     ⊘ BLOCKED  3. "Review this for security" → found shell command violations
@@ -271,7 +271,7 @@ The demo outputs ~400 lines. Key sections:
     ⊘ BLOCKED  8. "I need a file reader" → malicious tool rejected by human
     ✓ PASS  9. "What tools were created?" → discovered matimo_list_user_tools
     ✓ PASS  10. "Refresh the registry" → discovered matimo_reload_tools
-    ✓ PASS  11. MCP server verified — all tools (incl. city_lookup) via MCP
+    ✓ PASS  11. MCP server verified - all tools (incl. city_lookup) via MCP
 ```
 
 ## Architecture
@@ -362,12 +362,12 @@ User/Agent calls matimo.execute('tool_name', params)
 
 | File | Purpose |
 |------|---------|
-| `policy-demo.ts` | Main demo — 11 autonomous missions + Phase 3 checks |
+| `policy-demo.ts` | Main demo - 11 autonomous missions + Phase 3 checks |
 | `README.md` | This file |
 
 ## Related Documentation
 
-- [Policy Engine & Tool Lifecycle Guide](../../../docs/tool-development/POLICY_AND_LIFECYCLE.md) — Complete developer guide
-- [Meta-Tools Reference](../../../docs/tool-development/META_TOOLS.md) — All built-in matimo_* tools
-- [Approval System](../../../docs/APPROVAL-SYSTEM.md) — Approval handler configuration
-- [MCP Server](../../../docs/MCP.md) — Model Context Protocol integration
+- [Policy Engine & Tool Lifecycle Guide](../../../docs/tool-development/POLICY_AND_LIFECYCLE.md) - Complete developer guide
+- [Meta-Tools Reference](../../../docs/tool-development/META_TOOLS.md) - All built-in matimo_* tools
+- [Approval System](../../../docs/APPROVAL-SYSTEM.md) - Approval handler configuration
+- [MCP Server](../../../docs/MCP.md) - Model Context Protocol integration
