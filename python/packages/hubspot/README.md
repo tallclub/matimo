@@ -1,6 +1,6 @@
 # matimo-hubspot
 
-> HubSpot CRM tools for [Matimo](https://matimo.dev) — manage contacts, companies, deals, tickets, and more.
+> HubSpot CRM tools for [Matimo](https://matimo.dev) - manage contacts, companies, deals, tickets, and more.
 
 [![PyPI](https://img.shields.io/pypi/v/matimo-hubspot)](https://pypi.org/project/matimo-hubspot/)
 [![Docs](https://img.shields.io/badge/docs-matimo.dev-blue)](https://matimo.dev/docs)
@@ -77,7 +77,7 @@ asyncio.run(main())
 ## Authentication
 
 ```bash
-export HUBSPOT_ACCESS_TOKEN="pat-na1-your-private-app-token"
+export MATIMO_HUBSPOT_API_KEY="pat-na1-your-private-app-token"
 ```
 
 ### Setting Up a HubSpot Private App
@@ -112,7 +112,7 @@ from langchain_core.prompts import ChatPromptTemplate
 matimo = await Matimo.init(get_tools_path())
 lc_tools = convert_tools_to_langchain(
     matimo.list_tools(), matimo,
-    credentials={'HUBSPOT_ACCESS_TOKEN': os.environ['HUBSPOT_ACCESS_TOKEN']},
+    credentials={'MATIMO_HUBSPOT_API_KEY': os.environ['MATIMO_HUBSPOT_API_KEY']},
 )
 llm = ChatOpenAI(model='gpt-4o-mini')
 prompt = ChatPromptTemplate.from_messages([

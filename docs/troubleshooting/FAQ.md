@@ -751,7 +751,7 @@ Still stuck? Try:
 1. **GitHub Issues**: [Search issues](https://github.com/tallclub/matimo/issues)
 2. **GitHub Discussions**: [Ask questions](https://github.com/tallclub/matimo/discussions)
 3. **Documentation**: [Full docs](../)
-4. **Examples**: [See examples](../../examples/)
+4. **Examples**: [See examples](../../typescript/examples/)
 
 ---
 

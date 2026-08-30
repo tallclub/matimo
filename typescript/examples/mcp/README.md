@@ -38,7 +38,7 @@ TEST_CHANNEL=C0123456789
 
 ## Quick Start
 
-### Stdio transport (simplest — no server to start)
+### Stdio transport (simplest - no server to start)
 
 ```bash
 pnpm agent:stdio
@@ -53,7 +53,7 @@ pnpm agent:stdio -- --channel=C0123456789
 
 ### Streamable HTTP transport (remote / networked)
 
-**Step 1 — Start the MCP server:**
+**Step 1 - Start the MCP server:**
 
 ```bash
 pnpm mcp:start:http
@@ -61,13 +61,13 @@ pnpm mcp:start:http
 ```
 
 The server reads `MATIMO_MCP_TOKEN` from your `.env` automatically and starts on **plain HTTP**
-on `localhost:3555`. This is the recommended setup for local development — no TLS required.
+on `localhost:3555`. This is the recommended setup for local development - no TLS required.
 
 > **Want HTTPS locally?** Run `matimo mcp --transport http --port 3555 --self-signed` and
 > set `MCP_SERVER_URL=https://localhost:3555/mcp` in `.env`. You'll need to trust the generated
-> cert (`mkcert -install`) — see the [TLS troubleshooting guide](../../docs/MCP.md#https-client-cant-connect-self-signed-cert).
+> cert (`mkcert -install`) - see the [TLS troubleshooting guide](../../docs/MCP.md#https-client-cant-connect-self-signed-cert).
 
-**Step 2 — Run the agent:**
+**Step 2 - Run the agent:**
 
 ```bash
 pnpm agent:http
@@ -86,16 +86,16 @@ curl http://localhost:3555/health
 ### Unified agent (stdio / HTTP / multi in one script)
 
 ```bash
-# Stdio — no server needed (default)
+# Stdio - no server needed (default)
 pnpm agent -- --stdio
 
-# HTTP — requires a running server
+# HTTP - requires a running server
 pnpm agent -- --http
 
 # HTTP with explicit token
 pnpm agent -- --http --url http://localhost:3555/mcp --token matimo-dev-token
 
-# Multi-server — merge stdio + HTTP tools
+# Multi-server - merge stdio + HTTP tools
 pnpm agent -- --multi --token matimo-dev-token
 ```
 
@@ -125,7 +125,7 @@ Tasks that fail (e.g., missing OAuth scopes) are caught individually and do not 
 
 > **Note on Slack bot token scopes:** Some tools require additional scopes on your Slack app:
 > `groups:write` (create channel), `reactions:write/read`, `users:read`, `channels:history`.
-> Search (`slack_search_messages`) requires a user token — bot tokens cannot use the Search API.
+> Search (`slack_search_messages`) requires a user token - bot tokens cannot use the Search API.
 
 ---
 
@@ -134,11 +134,11 @@ Tasks that fail (e.g., missing OAuth scopes) are caught individually and do not 
 ```
 examples/mcp/
 ├── .env                 # Your secrets (gitignored)
-├── .env.example         # Template — copy to .env
+├── .env.example         # Template - copy to .env
 ├── package.json
 └── src/
-    ├── agent-stdio.ts   # All 12 Slack tools — stdio transport
-    ├── agent-http.ts    # All 12 Slack tools — HTTP transport
+    ├── agent-stdio.ts   # All 12 Slack tools - stdio transport
+    ├── agent-http.ts    # All 12 Slack tools - HTTP transport
     └── agent.ts         # Unified agent (--stdio / --http / --multi flags)
 ```
 
@@ -183,7 +183,7 @@ This channel is then used for all subsequent tasks in the same run.
 - `MultiServerMCPClient` spawns `npx matimo mcp` as a child process
 - Communication over stdin/stdout via the MCP protocol
 - Tools are auto-discovered from installed `@matimo/*` packages
-- No server setup required — ideal for local development and CI
+- No server setup required - ideal for local development and CI
 
 ### Streamable HTTP transport
 - Connects to a running `matimo mcp --transport http` server
@@ -212,7 +212,7 @@ This channel is then used for all subsequent tasks in the same run.
 
 Connect the TypeScript HTTP server to **VS Code Copilot Chat**.
 
-### Step 1 — Start the MCP server
+### Step 1 - Start the MCP server
 ```bash
 cd typescript
 pnpm mcp:start:http
@@ -220,9 +220,9 @@ pnpm mcp:start:http
 # Server starts on http://localhost:3555
 ```
 
-### Step 2 — Configure VS Code
+### Step 2 - Configure VS Code
 
-Create (or update) `.vscode/mcp.json` at your **workspace root** — **not** `settings.json`:
+Create (or update) `.vscode/mcp.json` at your **workspace root** - **not** `settings.json`:
 
 ```json
 {
@@ -249,7 +249,7 @@ Create (or update) `.vscode/mcp.json` at your **workspace root** — **not** `se
 Or **no token** (skip auth by omitting the `headers` block if your server runs without
 `MATIMO_MCP_TOKEN`).
 
-**No pre-start needed?** Use stdio — VS Code spawns the server on demand:
+**No pre-start needed?** Use stdio - VS Code spawns the server on demand:
 ```json
 {
   "servers": {
@@ -263,7 +263,7 @@ Or **no token** (skip auth by omitting the `headers` block if your server runs w
 }
 ```
 
-### Step 3 — Reload
+### Step 3 - Reload
 Command Palette (Cmd+Shift+P) → `MCP: Restart Server`
 
 ---
@@ -275,7 +275,7 @@ Command Palette (Cmd+Shift+P) → `MCP: Restart Server`
 
 **`Unauthorized` when running `pnpm agent:http`**
 - Ensure `MATIMO_MCP_TOKEN` in `.env` matches the token the server was started with.
-- The server reads `MATIMO_MCP_TOKEN` from `.env` automatically — no need to pass it on the CLI.
+- The server reads `MATIMO_MCP_TOKEN` from `.env` automatically - no need to pass it on the CLI.
 
 **No tools loaded (0 tools)**
 - For stdio: ensure `@matimo/slack` is installed (`pnpm ls @matimo/slack`).

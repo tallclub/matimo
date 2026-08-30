@@ -1,6 +1,6 @@
 # matimo-slack
 
-> Slack tools for [Matimo](https://matimo.dev) — send messages, manage channels, upload files, and more.
+> Slack tools for [Matimo](https://matimo.dev) - send messages, manage channels, upload files, and more.
 
 [![PyPI](https://img.shields.io/pypi/v/matimo-slack)](https://pypi.org/project/matimo-slack/)
 [![Docs](https://img.shields.io/badge/docs-matimo.dev-blue)](https://matimo.dev/docs)
@@ -15,7 +15,7 @@ pip install matimo matimo-slack
 
 ---
 
-## Available Tools (19 Total)
+## Available Tools (16 Total)
 
 | Category | Tool | Description |
 |----------|------|-------------|
@@ -27,9 +27,7 @@ pip install matimo matimo-slack
 | | `slack_create_channel` | Create public/private channel |
 | | `slack_join_channel` | Add bot to channel |
 | | `slack_set_channel_topic` | Update channel description/topic |
-| **Files** | `slack_upload_file` | Upload file (modern API) |
-| | `slack_upload_file_v2` | Get upload URL for large files |
-| | `slack_complete_file_upload` | Complete upload and share to channel |
+| **Files** | `slack_upload_file` | Request an upload URL for a file (modern API, step 1 of 2 - see note below) |
 | **Reading** | `slack_get_channel_history` | Read messages from channel |
 | | `slack_get_thread_replies` | Get thread replies |
 | | `slack_search_messages` | Search message history |
@@ -37,6 +35,12 @@ pip install matimo matimo-slack
 | | `slack_get_reactions` | Get reactions on a message |
 | **Users** | `slack_get_user_info` | Get user profile details |
 | | `slack-get-user` | Alias of `slack_get_user_info` |
+
+> ⚠️ **`slack_upload_file` only performs step 1** of Slack's modern upload
+> flow (`files.getUploadURLExternal`) - it returns an `upload_url` you must
+> `PUT` the file binary to yourself, then call Slack's
+> `files.completeUploadExternal` directly. Matimo does not ship tools for
+> those remaining two steps.
 
 ---
 
@@ -87,15 +91,14 @@ export SLACK_BOT_TOKEN="xoxb-your-bot-token"
 |------|-----------------|-----------------|
 | `slack_send_channel_message` / `slack-send-message` | `chat.postMessage` | `chat:write` |
 | `slack_reply_to_message` | `chat.postMessage` | `chat:write` |
-| `slack_send_dm` | `conversations.open` + `chat.postMessage` | `im:write`, `chat:write` |
+| `slack_send_dm` | `conversations.open` + `chat.postMessage` | `im:write`, `mpim:write` |
 | `slack-list-channels` | `conversations.list` | `channels:read`, `groups:read`, `im:read`, `mpim:read` |
-| `slack_create_channel` | `conversations.create` | `channels:manage` |
-| `slack_join_channel` | `conversations.join` | `channels:join` |
-| `slack_set_channel_topic` | `conversations.setTopic` | `channels:write.topic` |
-| `slack_upload_file` / `slack_upload_file_v2` | `files.getUploadURLExternal` | `files:write` |
-| `slack_complete_file_upload` | `files.completeUploadExternal` | `files:write` |
-| `slack_get_channel_history` | `conversations.history` | `channels:history` |
-| `slack_get_thread_replies` | `conversations.replies` | `channels:history` |
+| `slack_create_channel` | `conversations.create` | `channels:manage`, `channels:write`, `groups:write` |
+| `slack_join_channel` | `conversations.join` | `channels:manage` |
+| `slack_set_channel_topic` | `conversations.setTopic` | `conversations:manage` |
+| `slack_upload_file` | `files.getUploadURLExternal` | `files:write` |
+| `slack_get_channel_history` | `conversations.history` | `conversations:history` |
+| `slack_get_thread_replies` | `conversations.replies` | `conversations:history` |
 | `slack_search_messages` | `search.messages` | `search:read` |
 | `slack_add_reaction` | `reactions.add` | `reactions:write` |
 | `slack_get_reactions` | `reactions.get` | `reactions:read` |
@@ -137,7 +140,7 @@ result = await executor.ainvoke({'input': 'List all public channels'})
 - The bot must be **a member of a channel** before it can post messages or read history
 - Use `slack_upload_file` (not the deprecated `files.upload`) for file uploads
 - `slack_search_messages` requires the `search:read` scope which needs special approval from Slack
-- Rate limits apply — add delays between rapid API calls in bulk operations
+- Rate limits apply - add delays between rapid API calls in bulk operations
 
 ---
 

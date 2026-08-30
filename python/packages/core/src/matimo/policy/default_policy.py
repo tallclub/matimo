@@ -140,6 +140,12 @@ class PolicyEngine(Protocol):
         self, context: PolicyContext, tools: list[ToolDefinition]
     ) -> list[ToolDefinition]: ...
 
+    # can_reload is intentionally NOT declared here — it's optional so
+    # third-party PolicyEngine implementations aren't broken by this Protocol.
+    # Call sites (Matimo.reload()) check `hasattr(engine, "can_reload")` and
+    # fall back to `can_create` when it's absent. DefaultPolicyEngine below
+    # implements it.
+
 
 class DefaultPolicyEngine:
     """
@@ -238,12 +244,34 @@ class DefaultPolicyEngine:
         - SSRF
         Then risk-classifies and optionally quarantines.
         """
+        return self._evaluate_untrusted_tool(context, tool_def, skip_rules=frozenset())
+
+    def can_reload(
+        self, context: PolicyContext, tool_def: ToolDefinition
+    ) -> PolicyDecision:
+        """
+        Check whether an already-legitimately-approved tool may be reloaded.
+        Same evaluation as `can_create`, except the two rules whose sole
+        purpose is "a *new proposal* cannot self-declare approval/non-draft
+        status" are skipped — a real approval via matimo_approve_tool
+        legitimately changes those fields. All other content rules still apply.
+        """
+        return self._evaluate_untrusted_tool(
+            context, tool_def, skip_rules=frozenset({"forced-approval", "forced-draft-status"})
+        )
+
+    def _evaluate_untrusted_tool(
+        self,
+        context: PolicyContext,
+        tool_def: ToolDefinition,
+        skip_rules: frozenset[str],
+    ) -> PolicyDecision:
         definition_path = tool_def.definition_path or ""
         is_untrusted = self._is_untrusted_path(definition_path)
 
         if is_untrusted:
             violations: list[ContentViolation] = validate_tool_content(
-                tool_def, self.config
+                tool_def, self.config, skip_rules=skip_rules
             )
             critical = [v for v in violations if v.severity == RiskLevel.CRITICAL]
             high = [v for v in violations if v.severity == RiskLevel.HIGH]
@@ -265,6 +293,34 @@ class DefaultPolicyEngine:
                         reason=f"Tool '{tool_def.name}' failed high-severity content policy in production: {msgs}",
                         risk_level=RiskLevel.HIGH,
                     )
+
+            # Remaining (medium/low) violations — e.g. forced-draft-status, which fires
+            # when a tool's status no longer matches 'draft' without a legitimate approval
+            # (skip_rules only suppresses it for already-approved reloads). Previously
+            # silently ignored here, which meant a hand-edited `status: approved` that
+            # bypassed matimo_approve_tool would pass can_create() unconditionally — the
+            # anti-self-approval hole this whole check exists to close. Deny (or quarantine
+            # when HITL is configured for the risk level) instead of silently allowing.
+            remaining = [v for v in violations if v.severity not in (RiskLevel.CRITICAL, RiskLevel.HIGH)]
+            if remaining:
+                most_severe = (
+                    RiskLevel.MEDIUM
+                    if any(v.severity == RiskLevel.MEDIUM for v in remaining)
+                    else RiskLevel.LOW
+                )
+                msgs = "; ".join(v.message for v in remaining)
+                if self.config.enable_hitl and most_severe in self.config.quarantine_risk_levels:
+                    return PolicyPendingApproval(
+                        allowed="pending_approval",
+                        reason=f"Tool '{tool_def.name}' failed content policy: {msgs}",
+                        risk_level=most_severe,
+                        tool_name=tool_def.name,
+                    )
+                return PolicyDenied(
+                    allowed=False,
+                    reason=f"Tool '{tool_def.name}' failed content policy: {msgs}",
+                    risk_level=most_severe,
+                )
 
         # Risk-classify and optionally quarantine
         risk = classify_risk(tool_def)

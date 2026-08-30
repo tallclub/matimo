@@ -1,8 +1,8 @@
-# Matimo Python SDK — Examples
+# Matimo Python SDK - Examples
 
 A standalone project demonstrating how to use the [Matimo Python SDK](https://github.com/tallclub/matimo/tree/main/python) with every supported integration pattern and provider.
 
-> These examples mirror the TypeScript examples in [`typescript/examples/tools/`](../../typescript/examples/tools/) at full parity — plus Python-native advanced demos for policy, skills, meta-tools, and logging.
+> These examples mirror the TypeScript examples in [`typescript/examples/tools/`](../../typescript/examples/tools/) at full parity - plus Python-native advanced demos for policy, skills, meta-tools, and logging.
 
 ---
 
@@ -15,7 +15,7 @@ cp .env.example .env
 
 # 2. Install dependencies
 make install
-# (requires uv — https://docs.astral.sh/uv/getting-started/installation/)
+# (requires uv - https://docs.astral.sh/uv/getting-started/installation/)
 
 # 3. Run your first example
 make slack-factory
@@ -38,11 +38,11 @@ Examples are organized into three framework groups plus a set of advanced native
 
 | Group | Pattern | When to use |
 |-------|---------|-------------|
-| **native/** | Factory & Decorator | Simple scripts, CLIs, class-based agents — no LLM required |
+| **native/** | Factory & Decorator | Simple scripts, CLIs, class-based agents - no LLM required |
 | **native/policy/**, **native/skills/**, **native/meta_flow/** | Advanced LangChain ReAct demos | Full-featured policy, skills, and meta-tool lifecycle walkthroughs |
-| **langchain/** | LangChain ReAct | LLM-driven agents — model decides which tools to call |
+| **langchain/** | LangChain ReAct | LLM-driven agents - model decides which tools to call |
 | **crewai/** | CrewAI | Multi-agent workflows with role-based crews |
-| **bruno/** | Bruno CLI testing | API collection lifecycle — create, run, inspect, import (no LLM needed for complete workflow) |
+| **bruno/** | Bruno CLI testing | API collection lifecycle - create, run, inspect, import (no LLM needed for complete workflow) |
 
 ---
 
@@ -52,7 +52,7 @@ Examples are organized into three framework groups plus a set of advanced native
 examples/
 ├── pyproject.toml              ← standalone project (declares matimo as a dep)
 ├── Makefile                    ← run any example with `make <target>`
-├── .env.example                ← credential template — copy to .env
+├── .env.example                ← credential template - copy to .env
 │
 ├── bruno/                      ← Bruno CLI API testing (no LLM needed for complete workflow)
 │   ├── complete_workflow.py        ← 7 tools × 6 workflows: create, add, inspect, run, list, import ✅
@@ -63,8 +63,8 @@ examples/
 │   ├── logger_example.py       ← Structured logging (no API key needed) ✅
 │   │
 │   ├── agents/
-│   │   ├── factory_pattern_agent.py     ← LLM agent — factory pattern
-│   │   └── decorator_pattern_agent.py   ← LLM agent — decorator pattern
+│   │   ├── factory_pattern_agent.py     ← LLM agent - factory pattern
+│   │   └── decorator_pattern_agent.py   ← LLM agent - decorator pattern
 │   │
 │   ├── credentials/
 │   │   └── credentials_example.py       ← Per-call credential overrides
@@ -79,7 +79,7 @@ examples/
 │   │   └── skills_demo.py      ← 6-mission skills lifecycle demo ✅
 │   │       # Covers: create SKILL.md via agent, list/read skills, apply guidelines,
 │   │       # validate skills, get_skills_metadata(), semantic_search_skills(),
-│   │       # build_relevant_skill_prompt() — progressive disclosure L1/L2
+│   │       # build_relevant_skill_prompt() - progressive disclosure L1/L2
 │   │
 │   ├── meta_flow/
 │   │   └── meta_tools_integration.py   ← 5-mission meta-tools lifecycle demo ✅
@@ -88,8 +88,8 @@ examples/
 │   │       # policy-blocked tools (shell/file-reader), full tool lifecycle end-to-end
 │   │
 │   ├── execute/
-│   │   ├── execute_factory.py           ← Execute tools — factory pattern
-│   │   └── execute_decorator.py         ← Execute tools — decorator pattern
+│   │   ├── execute_factory.py           ← Execute tools - factory pattern
+│   │   └── execute_decorator.py         ← Execute tools - decorator pattern
 │   │
 │   ├── read/
 │   │   ├── read_factory.py              ← File read tool
@@ -200,18 +200,18 @@ examples/
 
 The `bruno/` folder contains two standalone examples for the **`@matimo/bruno`** provider (7 tools):
 
-### `bruno/complete_workflow.py` — All 7 Tools (no API key needed)
+### `bruno/complete_workflow.py` - All 7 Tools (no API key needed)
 
 6 workflows covering the full Bruno collection lifecycle:
 
 | Workflow | What it shows |
 |----------|---------------|
-| 1 | `bruno_create_collection` — creates directory + `bruno.json` |
-| 2 | `bruno_add_request` × 4 — adds GET / POST / PUT / DELETE requests |
-| 3 | `bruno_get_collection_info` — reads collection structure and request list |
-| 4 | `bruno_run_collection` — executes all requests via `bru run` |
-| 5 | `bruno_run_request` — runs a single named request |
-| 6 | `bruno_import_openapi` + `bruno_list_collections` — OpenAPI import + discovery |
+| 1 | `bruno_create_collection` - creates directory + `bruno.json` |
+| 2 | `bruno_add_request` × 4 - adds GET / POST / PUT / DELETE requests |
+| 3 | `bruno_get_collection_info` - reads collection structure and request list |
+| 4 | `bruno_run_collection` - executes all requests via `bru run` |
+| 5 | `bruno_run_request` - runs a single named request |
+| 6 | `bruno_import_openapi` + `bruno_list_collections` - OpenAPI import + discovery |
 
 ```bash
 make bruno-complete
@@ -219,7 +219,7 @@ make bruno-complete
 uv run python bruno/complete_workflow.py
 ```
 
-### `bruno/crewai_agent.py` — CrewAI Agent (needs OPENAI_API_KEY)
+### `bruno/crewai_agent.py` - CrewAI Agent (needs OPENAI_API_KEY)
 
 A CrewAI researcher-then-executor crew that autonomously:
 1. Creates a Bruno collection
@@ -239,29 +239,29 @@ uv run python bruno/crewai_agent.py
 
 ## Advanced Native Demos
 
-These three demos (plus the logger) are full-featured walkthroughs designed to be studied end-to-end. They use real LangChain ReAct loops — not mocks — and verify each step programmatically.
+These three demos (plus the logger) are full-featured walkthroughs designed to be studied end-to-end. They use real LangChain ReAct loops - not mocks - and verify each step programmatically.
 
-### `native/policy/policy_demo.py` — Policy Engine & HITL Lifecycle
+### `native/policy/policy_demo.py` - Policy Engine & HITL Lifecycle
 
 11 missions covering the complete policy lifecycle:
 
 | Mission | What it shows |
 |---------|--------------|
-| 1 | Auto-approve safe HTTP tool — `weather_fetch` created and reloaded |
-| 2 | Domain restriction — tool blocked by `allowed_domains` policy config |
-| 3 | Content validation — SSRF-blocked URL pattern caught by `content-validator` |
-| 4 | Default policy — deprecated tool always blocked |
-| 5 | Risk classification — `classify_risk()` returns `high` for shell + network tools |
-| 6 | Full lifecycle with calculator — create → approve → reload → execute |
+| 1 | Auto-approve safe HTTP tool - `weather_fetch` created and reloaded |
+| 2 | Domain restriction - tool blocked by `allowed_domains` policy config |
+| 3 | Content validation - SSRF-blocked URL pattern caught by `content-validator` |
+| 4 | Default policy - deprecated tool always blocked |
+| 5 | Risk classification - `classify_risk()` returns `high` for shell + network tools |
+| 6 | Full lifecycle with calculator - create → approve → reload → execute |
 | 7 | Draft tool allowed outside production environment |
 | 8 | Draft tool blocked in `environment="prod"` |
-| 9 | Policy tier query — `get_tier_for_tool()` returns `approval-required` |
-| 10 | Hot-reload atomicity — malformed YAML triggers rollback; good tools survive |
-| 11 | Approval state tracking — `tool_status` reports `approved` vs `pending` |
+| 9 | Policy tier query - `get_tier_for_tool()` returns `approval-required` |
+| 10 | Hot-reload atomicity - malformed YAML triggers rollback; good tools survive |
+| 11 | Approval state tracking - `tool_status` reports `approved` vs `pending` |
 
 Phase 3 closes with programmatic checks (no agent): `DefaultPolicyEngine`, `classify_risk()`, `validate_tool_content()`, approval manifest inspection.
 
-### `native/skills/skills_demo.py` — Skills Lifecycle
+### `native/skills/skills_demo.py` - Skills Lifecycle
 
 6 missions + Phase 4 progressive disclosure:
 
@@ -276,21 +276,21 @@ Phase 3 closes with programmatic checks (no agent): `DefaultPolicyEngine`, `clas
 
 Phase 4 (no agent): `Matimo.init(skill_paths=[...])` → `get_skills_metadata()` (Level 1) → `semantic_search_skills()` (TF-IDF ranked) → `build_relevant_skill_prompt()` (Level 2, ready-to-inject string).
 
-### `native/meta_flow/meta_tools_integration.py` — Meta-Tools Lifecycle
+### `native/meta_flow/meta_tools_integration.py` - Meta-Tools Lifecycle
 
 5 missions covering the full tool creation lifecycle:
 
 | Mission | What it shows |
 |---------|--------------|
-| 1 | `weather_fetch` — safe HTTP GET: doctor → create → review → reload → execute |
-| 2 | `shell_exec` — command type blocked by policy (expect WARN) |
-| 3 | `file_reader` — `cat` command blocked by policy (expect WARN) |
-| 4 | `user_lookup` + `github_stars` — two safe tools, full lifecycle |
+| 1 | `weather_fetch` - safe HTTP GET: doctor → create → review → reload → execute |
+| 2 | `shell_exec` - command type blocked by policy (expect WARN) |
+| 3 | `file_reader` - `cat` command blocked by policy (expect WARN) |
+| 4 | `user_lookup` + `github_stars` - two safe tools, full lifecycle |
 | 5 | List all created tools, execute one |
 
 Phase 3 closes with disk verification (`definition.yaml` exists per tool) and a mission results table.
 
-### `native/logger_example.py` — Structured Logging
+### `native/logger_example.py` - Structured Logging
 
 No API key needed. 6 sections:
 
@@ -415,4 +415,4 @@ make logger-example
 | OPENAI_API_KEY | Required for all LangChain/agent demos |
 | Provider credentials | See `.env.example` for per-provider vars |
 
-The `pyproject.toml` in `examples/` declares matimo as a workspace dependency. When run via `uv run -w ../..`, it resolves against the local source automatically — no manual editable installs needed.
+The `pyproject.toml` in `examples/` declares matimo as a workspace dependency. When run via `uv run -w ../..`, it resolves against the local source automatically - no manual editable installs needed.

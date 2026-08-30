@@ -589,3 +589,52 @@ class TestTemplateObjectTypeCoverage:
             with pytest.raises(MatimoError) as exc_info:
                 ex._template_object(obj, {}, None, param_defs)  # type: ignore[arg-type]
         assert exc_info.value.code == ErrorCode.INVALID_PARAMETER
+
+
+class TestHttpExecutorExecutionTimeSSRF:
+    """
+    Creation/approval-time validation only ever sees the raw URL with
+    {placeholders} blanked out, so `url: "http://{host}/{path}"` passes
+    unconditionally. These tests prove the executor itself blocks a blocked
+    target once a real value is substituted in at execution time — and that
+    no HTTP request is ever attempted when it does.
+    """
+
+    def _templated_tool(self) -> ToolDefinition:
+        return _make_http_tool(
+            url="http://{host}/latest/meta-data",
+            params={"host": Parameter(type=ParameterType.STRING, description="Host", required=True)},
+        )
+
+    @respx.mock
+    async def test_blocks_request_resolving_to_cloud_metadata_address(
+        self, executor: HttpExecutor
+    ) -> None:
+        route = respx.get(url__regex=r".*").mock(
+            return_value=httpx.Response(200, json={"ok": True})
+        )
+        with pytest.raises(MatimoError) as exc_info:
+            await executor.execute(self._templated_tool(), {"host": "169.254.169.254"})
+        assert exc_info.value.code == ErrorCode.POLICY_DENIED
+        assert not route.called
+
+    @respx.mock
+    async def test_blocks_request_resolving_to_localhost(self, executor: HttpExecutor) -> None:
+        route = respx.get(url__regex=r".*").mock(
+            return_value=httpx.Response(200, json={"ok": True})
+        )
+        with pytest.raises(MatimoError) as exc_info:
+            await executor.execute(self._templated_tool(), {"host": "localhost"})
+        assert exc_info.value.code == ErrorCode.POLICY_DENIED
+        assert not route.called
+
+    @respx.mock
+    async def test_allows_request_resolving_to_normal_external_host(
+        self, executor: HttpExecutor
+    ) -> None:
+        route = respx.get("http://api.example.com/latest/meta-data").mock(
+            return_value=httpx.Response(200, json={"ok": True})
+        )
+        result = await executor.execute(self._templated_tool(), {"host": "api.example.com"})
+        assert result["ok"] is True
+        assert route.called

@@ -255,7 +255,7 @@ const matimo = await MatimoInstance.init({
 ### Policy Loading & Initialization
 
 Under the hood, when you pass `policyFile`, Matimo:
-1. Reads the YAML file using [`loadPolicyFromFile()`](../../packages/core/src/policy/policy-loader.ts)
+1. Reads the YAML file using [`loadPolicyFromFile()`](../../typescript/packages/core/src/policy/policy-loader.ts)
 2. Validates it against a strict Zod schema
 3. Creates a `DefaultPolicyEngine` with the config
 4. **Freezes the policy** with `Object.freeze()` — immutable at runtime
@@ -359,6 +359,19 @@ interface PolicyConfig {
 
   /** Allowed credential/env var names for agent-created tools */
   allowedCredentials?: string[];
+
+  /**
+   * Enable quarantine/HITL for medium-risk tools in production. When true,
+   * `canCreate()`/`canExecute()` return `pending_approval` instead of `allowed: false`
+   * for tools whose risk level is in `quarantineRiskLevels`. Default: false.
+   */
+  enableHITL?: boolean;
+
+  /** Risk levels eligible for HITL quarantine instead of outright rejection. Default: ['medium'] */
+  quarantineRiskLevels?: RiskLevel[];
+
+  /** Seconds after which an approval expires and the tool must be re-approved. Default: never expires. */
+  approvalTtlSeconds?: number;
 }
 ```
 
@@ -498,6 +511,14 @@ The `no-ssrf` rule blocks URLs targeting:
 - `localhost`, `127.0.0.1`, `0.0.0.0` — Loopback addresses
 - `*.internal`, `*.local` — Internal DNS suffixes
 - `metadata.google.internal` — GCP metadata
+
+> **This check also runs a second time, at execution.** The rule above only ever sees a tool's raw,
+> unresolved URL — any `{placeholder}` tokens are blanked out before checking, since the real value
+> isn't known yet at creation/approval time. A URL like `http://{host}/{path}` therefore passes this
+> creation-time check unconditionally. To close that gap, `HttpExecutor`/`http_executor.py` re-run the
+> same SSRF check against the **fully-resolved** URL immediately before the real HTTP request fires —
+> so a call that resolves `{host}` to `169.254.169.254` at execution time is still blocked with a
+> `POLICY_DENIED` error, even though the tool definition itself validated cleanly.
 
 ### Violation Severities
 
@@ -1519,8 +1540,9 @@ const result = await matimo.execute('city_lookup', { id: '1' });
 | `matimo.execute(name, params)` | `Promise<unknown>` | Execute a tool (policy enforced) |
 | `matimo.listTools(context?)` | `ToolDefinition[]` | List available tools (policy filtered) |
 | `matimo.searchTools(query)` | `ToolDefinition[]` | Search tools by name/description |
-| `matimo.reloadTools()` | `Promise<ReloadResult>` | Hot-reload from disk |
-| `matimo.hasPolicy()` | `boolean` | Check if policy is active |
+| `matimo.reloadTools()` | `Promise<ReloadResult>` | Hot-reload tools from disk |
+| `matimo.reloadSkills()` | `Promise<{ loaded: number; removed: number }>` | Hot-reload skills from configured `skillPaths` |
+| `matimo.hasPolicy()` | `boolean` | Always `true` — `init()` always constructs a `DefaultPolicyEngine()` when no `policy`/`policyFile`/`policyConfig` is given, so every instance is policy-gated by default |
 | `matimo.reloadPolicy(configOrFile?)` | `Promise<ReloadResult>` | Hot-reload policy engine + re-validate tools |
 | `matimo.setHITLCallback(callback)` | `void` | Set or clear the HITL quarantine callback |
 
@@ -1586,7 +1608,7 @@ export OPENAI_API_KEY=sk-...
 printf "y\ny\ny\ny\nn\ny\n" | pnpm policy:demo
 ```
 
-See [examples/tools/policy/README.md](../../examples/tools/policy/README.md) for detailed documentation.
+See [examples/tools/policy/README.md](../../typescript/examples/tools/policy/README.md) for detailed documentation.
 
 ### Minimal Policy Setup
 

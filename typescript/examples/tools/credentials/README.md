@@ -4,11 +4,11 @@ Demonstrates how to securely manage credentials and API keys across different pr
 
 ## 🎯 What This Example Shows
 
-✅ **Environment Variable Loading** — Load credentials from `.env`  
-✅ **Multiple Providers** — Manage keys for different services (Slack, GitHub, etc.)  
-✅ **Credential Validation** — Verify keys are set before tool execution  
-✅ **Multi-Pattern Support** — Works with factory, decorator, and LangChain patterns  
-✅ **Production Patterns** — Best practices for credential management  
+✅ **Environment Variable Loading** - Load credentials from `.env`  
+✅ **Multiple Providers** - Manage keys for different services (Slack, GitHub, etc.)  
+✅ **Credential Validation** - Verify keys are set before tool execution  
+✅ **Multi-Pattern Support** - Works with factory, decorator, and LangChain patterns  
+✅ **Production Patterns** - Best practices for credential management  
 
 ## 🚀 Run the Example
 
@@ -213,9 +213,9 @@ process.env.OPENAI_API_KEY = 'sk-test-key';
 
 ## 🔗 Related Examples
 
-- [Slack Examples](../slack/) — Slack integration with credentials
-- [GitHub Examples](../github/) — GitHub integration with credentials
-- [QUICK_COMMANDS.md](../QUICK_COMMANDS.md) — All examples reference
+- [Slack Examples](../slack/) - Slack integration with credentials
+- [GitHub Examples](../github/) - GitHub integration with credentials
+- [QUICK_COMMANDS.md](../QUICK_COMMANDS.md) - All examples reference
 
 ## ✅ Verification
 
@@ -236,6 +236,6 @@ pnpm credentials:example
 
 1. **Add your credentials** to `.env`
 2. **Run provider examples** with credentials (e.g., `pnpm slack:factory`)
-3. **Use in your agent** — credentials auto-load when tools execute
-4. **Rotate periodically** — refresh tokens in provider dashboards
-5. **Deploy with confidence** — production servers read from secure env vars
+3. **Use in your agent** - credentials auto-load when tools execute
+4. **Rotate periodically** - refresh tokens in provider dashboards
+5. **Deploy with confidence** - production servers read from secure env vars

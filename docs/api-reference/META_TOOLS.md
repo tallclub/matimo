@@ -332,6 +332,19 @@ Approve a draft tool for production use. Re-validates the tool, signs with HMAC,
 | `name` | string | Yes | — | Name of the tool to approve |
 | `tool_dir` | string | No | `./matimo-tools` | Directory containing the tool |
 
+### Name Validation
+
+The `name` parameter is sanitized to prevent path traversal outside `tool_dir` — including into the
+approval-manifest write, since a forged path here would let an attacker stamp `status: approved` onto
+an arbitrary file:
+
+| Check | Blocked Pattern | Example |
+|-------|----------------|---------|
+| Path traversal | `../`, `..\\` | `../../etc/passwd` |
+| Backslash | `\` | `tools\backdoor` |
+| Control characters | `\x00`-`\x1f` | Null bytes, newlines |
+| Empty/whitespace | `""`, `" "` | Blank names |
+
 ### Response
 
 ```typescript
@@ -366,11 +379,14 @@ const result = await matimo.execute('matimo_approve_tool', {
 2. Parse and validate against Zod schema
 3. **Re-run content validator** (prevents approve-after-modify attacks)
 4. Reject if any `critical` or `high` violations remain
-5. Compute SHA-256 hash of the YAML content
-6. Create HMAC signature using `MATIMO_APPROVAL_SECRET` (or random UUID)
-7. Store approval in `.matimo-approvals.json`
-8. Update YAML: `status: draft` → `status: approved`
-9. Write updated YAML to disk
+5. Update YAML: `status: draft` → `status: approved`
+6. Write the updated YAML to disk
+7. Read the file back and compute the SHA-256 hash of its **final, on-disk content** — not the
+   pre-mutation content. Hashing before the `status` mutation would make the stored approval unable
+   to ever validate against the tool's own post-approval file, since `isApproved()` checks the hash
+   against what's currently on disk.
+8. Create HMAC signature using `MATIMO_APPROVAL_SECRET` (or an ephemeral secret, with a warning, if unset)
+9. Store the approval (name, hash, signature, timestamp) in `.matimo-approvals.json`
 
 ### Approval Manifest File
 
@@ -429,6 +445,29 @@ const result = await matimo.execute('matimo_reload_tools', {});
 // Or programmatically (SDK only)
 const reloadResult = await matimo.reloadTools();
 ```
+
+### How Reload Distinguishes "Already Approved" from "New Proposal"
+
+Every untrusted tool is re-validated on reload, but which gate it's checked against depends on
+whether it was legitimately approved:
+
+1. Hash the tool's current on-disk YAML.
+2. If that hash matches a signed record in the approval manifest (i.e. it went through
+   `matimo_approve_tool` and hasn't been modified since), it's checked with the looser
+   `canReload()`/`can_reload()` gate — which skips only the two rules whose purpose is
+   "a *new proposal* cannot self-declare approval/non-draft status," since a real approval
+   legitimately changed those fields. All other content rules (SSRF, credentials, namespace,
+   HTTP method/domain) still apply in full.
+3. Otherwise — including a tool hand-edited to `status: approved` without ever going through
+   `matimo_approve_tool` — it falls back to the stricter `canCreate()`/`can_create()` gate, the
+   same one used for brand-new proposals. This is what keeps the anti-self-approval hole closed:
+   forging `status: approved` in the YAML directly, with no matching manifest record, still gets
+   rejected on reload.
+
+Without this distinction, a legitimately approved tool's own post-approval `status`/`requires_approval`
+fields would trip the "new proposal" rules on every subsequent reload, and the tool could never
+actually be used — the create → approve → reload → execute lifecycle would silently fail on its
+own second step.
 
 ### Why This Meta-Tool Exists
 
@@ -494,6 +533,17 @@ Get the current status, risk level, and approval state of a specific tool by nam
 | `name` | string | Yes | — | Name of the tool to check |
 | `tool_dir` | string | No | `./matimo-tools` | Directory containing the tool |
 
+### Name Validation
+
+The `name` parameter is sanitized to prevent path traversal outside `tool_dir`:
+
+| Check | Blocked Pattern | Example |
+|-------|----------------|---------|
+| Path traversal | `../`, `..\\` | `../../etc/passwd` |
+| Backslash | `\` | `tools\backdoor` |
+| Control characters | `\x00`-`\x1f` | Null bytes, newlines |
+| Empty/whitespace | `""`, `" "` | Blank names |
+
 ### Response
 
 ```typescript
@@ -544,6 +594,19 @@ Retrieve the full definition of a tool — both the raw YAML source and its pars
 |-----------|------|:--------:|---------|-------------|
 | `name` | string | Yes | — | Name of the tool to retrieve |
 | `tool_dir` | string | No | `./matimo-tools` | Directory containing the tool |
+
+### Name Validation
+
+The `name` parameter is sanitized to prevent path traversal outside `tool_dir` — without this, a
+crafted name could read arbitrary files on disk (e.g. `../../.env`) and return their contents as
+`yaml_content`:
+
+| Check | Blocked Pattern | Example |
+|-------|----------------|---------|
+| Path traversal | `../`, `..\\` | `../../etc/passwd` |
+| Backslash | `\` | `tools\backdoor` |
+| Control characters | `\x00`-`\x1f` | Null bytes, newlines |
+| Empty/whitespace | `""`, `" "` | Blank names |
 
 ### Response
 

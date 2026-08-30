@@ -487,6 +487,24 @@ class TestMatimoApproveTool:
         result = await run({"name": "demo_tool"})
         assert result["success"] is True
 
+    @pytest.mark.asyncio
+    async def test_rejects_path_traversal_and_never_reaches_manifest(self, tmp_path: Path) -> None:
+        from matimo.tools.matimo_approve_tool.matimo_approve_tool import run
+
+        result = await run({"name": "../../../etc/passwd", "tool_dir": str(tmp_path)})
+        assert result["success"] is False
+        assert "invalid characters" in result["message"]
+        # No manifest write should have happened — approve() was never reached.
+        assert not (tmp_path / ".matimo-approvals.json").exists()
+
+        backslash_result = await run({"name": "..\\..\\secrets", "tool_dir": str(tmp_path)})
+        assert backslash_result["success"] is False
+        assert "invalid characters" in backslash_result["message"]
+
+        control_char_result = await run({"name": "tool\x00name", "tool_dir": str(tmp_path)})
+        assert control_char_result["success"] is False
+        assert "invalid characters" in control_char_result["message"]
+
 
 # ===========================================================================
 # matimo_reload_tools
@@ -538,11 +556,70 @@ class TestMatimoReloadTools:
 
 
 # ===========================================================================
+# matimo_get_tool
+# ===========================================================================
+
+class TestMatimoGetTool:
+    """Tests for matimo_get_tool.run()."""
+
+    @pytest.mark.asyncio
+    async def test_retrieves_existing_tool(self, tmp_path: Path) -> None:
+        from matimo.tools.matimo_get_tool.matimo_get_tool import run
+
+        _write_tool(tmp_path, "my_tool")
+
+        result = await run({"name": "my_tool", "tool_dir": str(tmp_path)})
+
+        assert result["found"] is True
+        assert result["name"] == "my_tool"
+        assert result["definition"] is not None
+
+    @pytest.mark.asyncio
+    async def test_returns_not_found_for_missing_tool(self, tmp_path: Path) -> None:
+        from matimo.tools.matimo_get_tool.matimo_get_tool import run
+
+        result = await run({"name": "nonexistent", "tool_dir": str(tmp_path)})
+        assert result["found"] is False
+
+    @pytest.mark.asyncio
+    async def test_rejects_path_traversal(self, tmp_path: Path) -> None:
+        from matimo.tools.matimo_get_tool.matimo_get_tool import run
+
+        result = await run({"name": "../../../etc/passwd", "tool_dir": str(tmp_path)})
+        assert result["found"] is False
+        assert "invalid characters" in result["message"]
+
+        backslash_result = await run({"name": "..\\..\\secrets", "tool_dir": str(tmp_path)})
+        assert backslash_result["found"] is False
+        assert "invalid characters" in backslash_result["message"]
+
+        control_char_result = await run({"name": "tool\x00name", "tool_dir": str(tmp_path)})
+        assert control_char_result["found"] is False
+        assert "invalid characters" in control_char_result["message"]
+
+
+# ===========================================================================
 # matimo_get_tool_status
 # ===========================================================================
 
 class TestMatimoGetToolStatus:
     """Tests for matimo_get_tool_status.run()."""
+
+    @pytest.mark.asyncio
+    async def test_rejects_path_traversal(self, tmp_path: Path) -> None:
+        from matimo.tools.matimo_get_tool_status.matimo_get_tool_status import run
+
+        result = await run({"name": "../../../etc/passwd", "tool_dir": str(tmp_path)})
+        assert result["found"] is False
+        assert "invalid characters" in result["message"]
+
+        backslash_result = await run({"name": "..\\..\\secrets", "tool_dir": str(tmp_path)})
+        assert backslash_result["found"] is False
+        assert "invalid characters" in backslash_result["message"]
+
+        control_char_result = await run({"name": "tool\x00name", "tool_dir": str(tmp_path)})
+        assert control_char_result["found"] is False
+        assert "invalid characters" in control_char_result["message"]
 
     @pytest.mark.asyncio
     async def test_returns_status_for_existing_tool(self, tmp_path: Path) -> None:

@@ -49,7 +49,7 @@ Always check for:
     expect(result.description).toBe('Guidelines for reviewing code');
     expect(result.content).toContain('Error handling');
     expect(result.content).toContain('Edge cases');
-    expect(result.path).toContain('code-review/SKILL.md');
+    expect(result.path).toContain(path.join('code-review', 'SKILL.md'));
   });
 
   it('should return full content including frontmatter', async () => {
@@ -182,7 +182,7 @@ description: Data processing
     });
     expect(result.success).toBe(true);
     expect(result.content).toBe('import json\nprint("parsed")');
-    expect(result.path).toContain('scripts/parse.py');
+    expect(result.path).toContain(path.join('scripts', 'parse.py'));
     // resources should NOT be included when reading a specific file
     expect(result.resources).toBeUndefined();
   });

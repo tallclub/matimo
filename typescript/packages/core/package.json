@@ -52,7 +52,11 @@
     "framework-agnostic",
     "yaml-tools",
     "agent-toolkit",
-    "typescript-ai"
+    "typescript-ai",
+    "mcp-server",
+    "agentic-ai",
+    "ai-governance",
+    "policy-engine"
   ],
   "author": "Sajesh Nair <vsajeshnair@gmail.com>",
   "license": "MIT",

@@ -10,7 +10,7 @@
 
 ✅ **Bruno CLI API Testing (New):**
 - 7 tools for full API collection lifecycle management
-- Complete + LangChain agent examples — no API key required for complete workflow
+- Complete + LangChain agent examples - no API key required for complete workflow
 - Integrates with any existing Bruno collection
 
 ✅ **Framework-Independent Tool Execution:**
@@ -111,7 +111,7 @@ Quick reference:
 
 ### Bruno CLI API Testing
 ```bash
-pnpm bruno:complete       # Complete workflow — 7 tools × 6 workflows (no API key needed)
+pnpm bruno:complete       # Complete workflow - 7 tools × 6 workflows (no API key needed)
 pnpm bruno:langchain      # LangChain agent driving Bruno tools autonomously
 ```
 
@@ -357,9 +357,9 @@ examples/tools/
 
 **Key:** All examples load tools from: `../../tools/` (parent project's tool definitions)
 **Pattern:** Each category (provider, feature) has 3 file variants:
-- `*-factory.ts` — Use MatimoInstance.execute()
-- `*-decorator.ts` — Use @tool() decorators
-- `*-langchain.ts` — Use LangChain Official API
+- `*-factory.ts` - Use MatimoInstance.execute()
+- `*-decorator.ts` - Use @tool() decorators
+- `*-langchain.ts` - Use LangChain Official API
 ```
 
 ## 🔄 SDK Patterns Explained
@@ -537,7 +537,7 @@ This proves:
 3. ✅ **Matimo executed the actual tool** (via CommandExecutor)
 4. ✅ Result flowed back through both frameworks
 
-Not a LangChain tool—a **Matimo tool executed through LangChain's orchestration**.
+Not a LangChain tool - a **Matimo tool executed through LangChain's orchestration**.
 
 ## 🔑 Key Principles
 
@@ -641,20 +641,20 @@ npm run agent:langchain   # or agent:decorator, agent:factory
 ## 📚 Next Steps
 
 ### Beginner
-1. **Run all three agent patterns** — compare approaches: `npm run agent:langchain`, `agent:decorator`, `agent:factory`
-2. **Try Bruno API testing** — no API key needed: `pnpm bruno:complete`
-3. **Try a provider** — pick Slack/Gmail/GitHub: `npm run slack:factory`, `npm run github:langchain`, etc.
-4. **Test core features** — execute, read, edit: `npm run execute:factory`, `npm run read:langchain`, etc.
+1. **Run all three agent patterns** - compare approaches: `npm run agent:langchain`, `agent:decorator`, `agent:factory`
+2. **Try Bruno API testing** - no API key needed: `pnpm bruno:complete`
+3. **Try a provider** - pick Slack/Gmail/GitHub: `npm run slack:factory`, `npm run github:langchain`, etc.
+4. **Test core features** - execute, read, edit: `npm run execute:factory`, `npm run read:langchain`, etc.
 
 ### Intermediate
-4. **Modify example prompts** — edit `agents/*.ts` or provider files to change queries
-5. **Add custom tools** — create `../../tools/custom-tool/definition.yaml`, they auto-appear in all examples
-6. **Extend agents** — add memory, streaming, custom system prompts, better error handling
+4. **Modify example prompts** - edit `agents/*.ts` or provider files to change queries
+5. **Add custom tools** - create `../../tools/custom-tool/definition.yaml`, they auto-appear in all examples
+6. **Extend agents** - add memory, streaming, custom system prompts, better error handling
 
 ### Advanced
-7. **Use advanced features** — try `npm run meta:flow` (meta-tools), `pnpm policy:demo` (validation), `pnpm skills:demo` (reusable skills)
-8. **Implement approvals** — try PostgreSQL/GitHub approval workflows: `npm run postgres:approval`, `npm run github:approval`
-9. **Deploy to production** — use Matimo REST API (Phase 2) or MCP server for Claude integration
+7. **Use advanced features** - try `npm run meta:flow` (meta-tools), `pnpm policy:demo` (validation), `pnpm skills:demo` (reusable skills)
+8. **Implement approvals** - try PostgreSQL/GitHub approval workflows: `npm run postgres:approval`, `npm run github:approval`
+9. **Deploy to production** - use Matimo REST API (Phase 2) or MCP server for Claude integration
 
 ## 🔗 Related Documentation
 
@@ -672,7 +672,7 @@ These examples prove Matimo's core value proposition:
 **Use them with THREE calling patterns** (LangChain, Decorator, Factory) ↓  
 **Use them with TEN+ providers** (Slack, Gmail, GitHub, PostgreSQL, Notion, HubSpot, Mailchimp, Twilio, etc.) ↓  
 **Use them with FIVE core features** (Execute, Read, Edit, Search, Web) ↓  
-**Use them for API testing** (Bruno CLI — create, run, import, inspect collections) ↓  
+**Use them for API testing** (Bruno CLI - create, run, import, inspect collections) ↓  
 **Use them with advanced capabilities** (Meta-tools, Policy, Skills, Approvals) ↓  
 **Use them EVERYWHERE**: LangChain, SDK, CrewAI, MCP, REST API, CLI ↓  
 

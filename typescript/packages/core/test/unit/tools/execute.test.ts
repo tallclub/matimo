@@ -209,7 +209,10 @@ describe('Injection Detection', () => {
     it('should allow legitimate commands without injection', async () => {
       const result = await executeCommand({ command: 'echo "hello world"' });
       expect(result.success).toBe(true);
-      expect(result.stdout.trim()).toBe('hello world');
+      // cmd.exe's `echo` does not strip quotes the way POSIX sh does, so the
+      // literal quotes survive in stdout on Windows.
+      const expected = process.platform === 'win32' ? '"hello world"' : 'hello world';
+      expect(result.stdout.trim()).toBe(expected);
     });
 
     it('should allow commands with quotes', async () => {
@@ -231,6 +234,26 @@ describe('Injection Detection', () => {
           'Command contains potentially dangerous shell metacharacters'
         );
       }
+    });
+
+    it('should throw a clean MatimoError (not a TypeError) when command is missing', async () => {
+      // Regression test: the empty-command check must run before any `command.substring()`
+      // call, or an undefined `command` (e.g. from a @tool decorator call with no args)
+      // crashes with "Cannot read properties of undefined (reading 'substring')" instead
+      // of this intended validation error.
+      await expect(
+        executeCommand({ command: undefined as unknown as string })
+      ).rejects.toMatchObject({
+        message: 'Command required',
+        code: 'INVALID_PARAMETER',
+      });
+    });
+
+    it('should throw a clean MatimoError for an empty-string command', async () => {
+      await expect(executeCommand({ command: '' })).rejects.toMatchObject({
+        message: 'Command required',
+        code: 'INVALID_PARAMETER',
+      });
     });
   });
 });

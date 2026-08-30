@@ -661,6 +661,12 @@ interface ToolDefinition {
   output_schema?: Record<string, unknown>; // Response schema (Zod)
   authentication?: AuthConfig; // Auth configuration
   examples?: Example[]; // Usage examples
+  requires_approval?: boolean; // Whether execution needs human approval
+  risk?: 'low' | 'medium' | 'high' | 'critical'; // Self-declared risk (can only raise the automatically-computed level, never lower it)
+  status?: 'draft' | 'approved' | 'deprecated'; // Lifecycle status — see POLICY_AND_LIFECYCLE.md
+  tags?: string[]; // Free-form categorization tags
+  deprecated?: boolean;
+  deprecation_message?: string;
 }
 ```
 
@@ -739,35 +745,50 @@ Complete Python SDK reference. Mirrors the TypeScript `MatimoInstance` API with 
 @classmethod
 async def init(
     cls,
-    tool_paths: list[str] | str | None = None,
-    options: InitOptions | None = None,
+    tool_paths: str | list[str] | None = None,
     *,
     auto_discover: bool = False,
-    untrusted_paths: list[str] | None = None,
+    skill_paths: list[str] | None = None,
+    policy: PolicyEngine | None = None,
     policy_config: PolicyConfig | None = None,
     policy_file: str | None = None,
-    skill_paths: list[str] | None = None,
-    log_level: str = 'info',
-    log_format: str = 'simple',
-    on_hitl: Callable | None = None,
-    on_event: Callable | None = None,
+    trusted_paths: list[str] | None = None,
+    untrusted_paths: list[str] | None = None,
+    approval_secret: str | None = None,
+    approval_dir: str | None = None,
+    approval_ttl_seconds: int | None = None,
+    on_event: MatimoEventHandler | None = None,
+    on_hitl: HITLCallback | None = None,
+    hitl_timeout_ms: int | None = None,
+    log_level: str | None = None,
+    log_format: str | None = None,
 ) -> 'Matimo'
 ```
+
+Every option is a direct keyword-only argument on `init()` itself — there is no `InitOptions` wrapper object in Python (unlike an options-bag pattern you may have seen elsewhere).
 
 **Parameters:**
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `tool_paths` | `list[str] \| str` | `None` | Explicit tool directories to load |
+| `tool_paths` | `str \| list[str]` | `None` | Explicit tool directories to load |
 | `auto_discover` | `bool` | `False` | Load tools from installed `matimo-*` packages |
-| `untrusted_paths` | `list[str]` | `None` | Paths requiring stricter content validation |
-| `policy_config` | `PolicyConfig` | `None` | Policy engine configuration |
-| `policy_file` | `str` | `None` | Load policy from a YAML file path |
 | `skill_paths` | `list[str]` | `None` | Directories containing SKILL.md files |
-| `log_level` | `str` | `'info'` | `'debug' \| 'info' \| 'warn' \| 'error' \| 'silent'` |
-| `log_format` | `str` | `'simple'` | `'simple' \| 'json'` |
-| `on_hitl` | `async Callable` | `None` | Human-in-the-loop callback for approval requests |
-| `on_event` | `Callable` | `None` | Event callback for lifecycle events |
+| `policy` | `PolicyEngine` | `None` | Custom policy engine instance. Mutually exclusive with `policy_config`/`policy_file` |
+| `policy_config` | `PolicyConfig` | `None` | Shorthand to build a `DefaultPolicyEngine` with this config |
+| `policy_file` | `str` | `None` | Load policy from a YAML file path |
+| `trusted_paths` | `list[str]` | `None` | Paths considered developer-authored (skip content validation) |
+| `untrusted_paths` | `list[str]` | `None` | Paths requiring stricter content validation |
+| `approval_secret` | `str` | `None` | HMAC secret for the approval manifest. Overrides `MATIMO_APPROVAL_SECRET` env |
+| `approval_dir` | `str` | `None` | Directory for `.matimo-approvals.json`. Defaults to the current working directory |
+| `approval_ttl_seconds` | `int` | `None` | Approval expiry in seconds. `None` means approvals never expire |
+| `on_event` | `Callable` | `None` | Event callback for audit/lifecycle events |
+| `on_hitl` | `async Callable` | `None` | Human-in-the-loop callback for quarantined tools |
+| `hitl_timeout_ms` | `int` | `None` | Timeout for the HITL callback; `None` waits indefinitely |
+| `log_level` | `str` | `None` | `'debug' \| 'info' \| 'warn' \| 'error' \| 'silent'` (resolved from env/defaults when unset) |
+| `log_format` | `str` | `None` | `'simple' \| 'json'` (resolved from env/defaults when unset) |
+
+If no `policy`/`policy_config`/`policy_file` is given, `init()` always constructs a `DefaultPolicyEngine()` — a zero-config Python instance is never left ungated (this always was Python's behavior; the equivalent TypeScript `MatimoInstance.init()` was fixed to match it).
 
 **Examples:**
 
@@ -789,7 +810,7 @@ matimo = await Matimo.init(
     untrusted_paths=['./tools'],
     policy_config=PolicyConfig(
         allowed_domains=['api.example.com'],
-        blocked_commands=['rm', 'curl'],
+        allow_command_tools=False,
     ),
     log_level='debug',
 )
@@ -904,14 +925,19 @@ email_tools = matimo.search_tools('email')
 async def reload(self) -> ReloadResult
 ```
 
-Hot-reload all tools from their source paths. Atomic — rolls back on error.
+Hot-reload all tools from their source paths. Untrusted tools are re-validated against the active
+policy — already-approved tools are checked with the looser `can_reload()` gate, everything else
+with the stricter `can_create()` gate (see POLICY_AND_LIFECYCLE.md).
 
 ```python
 result = await matimo.reload()
-print(f"Reloaded {result.reloaded_count} tools")
-if result.rolled_back:
-    print("Registry was rolled back due to an error")
+print(f"Loaded: {result.loaded}, removed: {result.removed}, rejected: {result.rejected}")
 ```
+
+`ReloadResult` has `loaded`, `removed`, `revalidated`, `rejected`, and `rolled_back` fields (mirroring
+TypeScript's `ReloadResult`). Note: unlike the TypeScript SDK — which snapshots the registry and
+restores it on a mid-load I/O failure, setting `rolledBack: true` — Python's `reload()` does not yet
+implement that snapshot/restore behavior, so `rolled_back` is currently always `False`.
 
 ---
 

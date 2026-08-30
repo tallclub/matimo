@@ -1,6 +1,6 @@
 # matimo
 
-> A framework-agnostic SDK with pre-built providers, a skills knowledge layer, MCP out of the box, and agents that autonomously build new capabilities — governed by a policy engine you control.
+> A framework-agnostic SDK with pre-built providers, a skills knowledge layer, MCP out of the box, and agents that autonomously build new capabilities - governed by a policy engine you control.
 
 [![PyPI](https://img.shields.io/pypi/v/matimo)](https://pypi.org/project/matimo/)
 [![Python](https://img.shields.io/pypi/pyversions/matimo)](https://pypi.org/project/matimo/)
@@ -133,19 +133,21 @@ Install the tools you need:
 | [`matimo-twilio`](https://pypi.org/project/matimo-twilio/) | SMS, MMS, message history | `pip install matimo-twilio` |
 | [`matimo-hubspot`](https://pypi.org/project/matimo-hubspot/) | CRM: contacts, deals, companies | `pip install matimo-hubspot` |
 | [`matimo-mailchimp`](https://pypi.org/project/matimo-mailchimp/) | Campaigns, lists, members | `pip install matimo-mailchimp` |
+| [`matimo-microsoft`](https://pypi.org/project/matimo-microsoft/) | Mail, OneDrive/SharePoint, Teams, calendar | `pip install matimo-microsoft` |
+| [`matimo-bruno`](https://pypi.org/project/matimo-bruno/) | Manage and run Bruno API test collections | `pip install matimo-bruno` |
 
 ---
 
 ## Key Features
 
-- **YAML-defined tools** — define once, use from any framework
-- **10 provider packages** — 100+ pre-built tools ready to use
-- **LangChain / CrewAI / MCP** — first-class integrations
-- **Policy engine** — risk classification, HITL approvals, content validation
-- **Skills system** — inject reusable domain knowledge into agents
-- **Meta-tools** — agents can create, approve, and reload tools at runtime
-- **Secrets management** — env, `.env`, Vault, AWS Secrets Manager resolver chain
-- **Structured logging** — JSON/simple formats, configurable log levels
+- **YAML-defined tools** - define once, use from any framework
+- **10 provider packages** - 100+ pre-built tools ready to use
+- **LangChain / CrewAI / MCP** - first-class integrations
+- **Policy engine** - risk classification, HITL approvals, content validation
+- **Skills system** - inject reusable domain knowledge into agents
+- **Meta-tools** - agents can create, approve, and reload tools at runtime
+- **Secrets management** - env, `.env`, Vault, AWS Secrets Manager resolver chain
+- **Structured logging** - JSON/simple formats, configurable log levels
 
 ---
 

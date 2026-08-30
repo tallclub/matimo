@@ -2,6 +2,7 @@ import axios, { AxiosRequestConfig } from 'axios';
 import { ToolDefinition } from '../core/schema.js';
 import { applyParameterEncodings } from '../encodings/parameter-encoding.js';
 import { MatimoError, ErrorCode, fromHttpError } from '../errors/matimo-error.js';
+import { isSSRFTarget } from '../policy/content-validator.js';
 
 /**
  * HttpExecutor - Executes HTTP requests
@@ -115,6 +116,19 @@ export class HttpExecutor {
 
     if (timeout !== undefined) {
       requestConfig.timeout = timeout;
+    }
+
+    // Re-check SSRF against the fully-resolved URL, right before the real request
+    // fires. Creation/approval-time validation only ever sees the raw, unresolved
+    // URL (with {placeholders} blanked out) — a URL like `http://{host}/{path}`
+    // passes that check unconditionally and is never re-checked once a real value
+    // (e.g. 169.254.169.254) is substituted in at execution time.
+    if (isSSRFTarget(finalUrl)) {
+      throw new MatimoError(
+        `Execution blocked: URL targets an internal/metadata network: ${finalUrl}`,
+        ErrorCode.POLICY_DENIED,
+        { toolName: tool.name, url: finalUrl }
+      );
     }
 
     try {

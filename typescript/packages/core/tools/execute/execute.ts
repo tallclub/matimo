@@ -83,12 +83,6 @@ export default async function executeCommand(
   const { command, cwd, timeout = 30000 } = params;
   const startTime = Date.now();
 
-  logger.debug('Execute tool: Command received', {
-    command: command.substring(0, 100),
-    cwd,
-    timeout,
-  });
-
   if (!command || command.trim().length === 0) {
     logger.error('Execute tool: Empty command provided', {
       reason: 'No command provided',
@@ -97,6 +91,12 @@ export default async function executeCommand(
       reason: 'No command provided',
     });
   }
+
+  logger.debug('Execute tool: Command received', {
+    command: command.substring(0, 100),
+    cwd,
+    timeout,
+  });
 
   // Check for potential command injection
   if (detectCommandInjection(command)) {

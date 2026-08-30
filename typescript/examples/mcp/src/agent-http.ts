@@ -114,13 +114,17 @@ async function runMcpHttpAgent() {
       process.exit(1);
     }
 
+    // MCP auto-discovers every installed @matimo/* provider package (150+
+    // tools across the example workspace), but LangChain/OpenAI rejects
+    // requests with more than 128 bound tools. This demo only exercises
+    // Slack, so bind just the Slack tools rather than everything MCP loaded.
     const slackTools = tools.filter((t) => t.name.startsWith('slack'));
     console.info(`💬 ${slackTools.length} Slack tools available\n`);
 
     console.info('🤖 Initializing OpenAI (GPT-4o-mini) LLM...');
     const llm = new ChatOpenAI({ model: 'gpt-4o-mini', temperature: 0 });
     console.info('🔧 Creating agent...\n');
-    const agent = createReactAgent({ llm, tools });
+    const agent = createReactAgent({ llm, tools: slackTools });
 
     // ── Find a channel to use for all the tasks ────────────────────────
     let activeChannel = channelId;

@@ -34,6 +34,7 @@ class ContentViolation:
 def validate_tool_content(
     tool: ToolDefinition,
     policy: PolicyConfig,
+    skip_rules: frozenset[str] | set[str] | None = None,
 ) -> list[ContentViolation]:
     """
     Validate an (untrusted) tool definition against policy rules.
@@ -49,8 +50,14 @@ def validate_tool_content(
       blocked-http-method     high
       blocked-domain          high
       forced-draft-status     medium
+
+    skip_rules: rule ids to skip (e.g. {'forced-approval', 'forced-draft-status'}) —
+    used when re-validating a tool that has already been legitimately approved via
+    matimo_approve_tool, whose requires_approval/status fields are expected to have
+    changed from their forced-draft values. All other rules still run.
     """
     violations: list[ContentViolation] = []
+    skip = skip_rules or frozenset()
     exec_type = tool.execution.type
 
     # 1. No function execution
@@ -106,7 +113,7 @@ def validate_tool_content(
             ))
 
     # 6. Forced approval flag — untrusted tools must declare requires_approval
-    if not tool.requires_approval:
+    if "forced-approval" not in skip and not tool.requires_approval:
         violations.append(ContentViolation(
             rule="forced-approval",
             severity=RiskLevel.HIGH,
@@ -141,7 +148,7 @@ def validate_tool_content(
             ))
 
     # 9. Forced draft status
-    if tool.status not in ("draft", None):
+    if "forced-draft-status" not in skip and tool.status not in ("draft", None):
         violations.append(ContentViolation(
             rule="forced-draft-status",
             severity=RiskLevel.MEDIUM,
@@ -154,6 +161,15 @@ def validate_tool_content(
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
+
+def is_ssrf_target(url: str) -> bool:
+    """
+    Public wrapper around `_check_ssrf` for execution-time SSRF re-validation
+    (called by HttpExecutor right before the real request fires, after
+    parameter templating has resolved the URL to its final form).
+    """
+    return _check_ssrf(url) is not None
 
 
 def _check_ssrf(url: str) -> str | None:

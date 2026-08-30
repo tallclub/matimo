@@ -84,7 +84,7 @@ async def run(params: dict) -> dict:  # type: ignore[type-arg]
         # Ensure the resolved path stays inside the skill directory
         resolved = resource_path.resolve()
         skill_dir_resolved = skill_dir.resolve()
-        if not str(resolved).startswith(str(skill_dir_resolved) + "/") and resolved != skill_dir_resolved:
+        if resolved != skill_dir_resolved and not resolved.is_relative_to(skill_dir_resolved):
             return {"success": False, "message": "File path escapes the skill directory"}
         if not resource_path.exists():
             return {

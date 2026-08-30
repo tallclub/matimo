@@ -35,7 +35,7 @@ printf "y\ny\n" | npx tsx skills/skills-demo.ts      # Skills system
 
 ---
 
-## 1️⃣ Factory Pattern — Direct SDK Usage
+## 1️⃣ Factory Pattern - Direct SDK Usage
 
 **Best for:** Scripts, APIs, backends, microservices | **Simplicity:** ⭐⭐⭐⭐⭐
 
@@ -61,7 +61,7 @@ const result = await matimo.execute('slack-send-message', {
 
 ---
 
-## 2️⃣ Decorator Pattern — Class-Based
+## 2️⃣ Decorator Pattern - Class-Based
 
 **Best for:** Object-oriented apps, clean architecture | **Simplicity:** ⭐⭐⭐⭐
 
@@ -94,7 +94,7 @@ await bot.sendMessage('#general', 'Hello!');
 
 ---
 
-## 3️⃣ LangChain Integration — AI Agents
+## 3️⃣ LangChain Integration - AI Agents
 
 **Best for:** AI automation, natural language | **Simplicity:** ⭐⭐⭐
 
@@ -151,28 +151,28 @@ Choose **Factory** if you just want to execute tools. Choose **Decorator** if bu
 ## Available Tools by Service
 
 ### Slack Tools
-- `slack-send-message` — Send messages to channels
-- `slack-list-channels` — List all channels
-- `slack_get_channel_history` — Get message history
-- `slack_add_reaction` — Add emoji reactions
-- `slack_get_user_info` — Get user profiles
-- `slack_send_dm` — Send direct messages
+- `slack-send-message` - Send messages to channels
+- `slack-list-channels` - List all channels
+- `slack_get_channel_history` - Get message history
+- `slack_add_reaction` - Add emoji reactions
+- `slack_get_user_info` - Get user profiles
+- `slack_send_dm` - Send direct messages
 
 ### Gmail Tools
-- `gmail-send-email` — Send emails
-- `gmail-list-messages` — List messages
-- `gmail-get-message` — Get message details
-- `gmail-create-draft` — Create drafts
+- `gmail-send-email` - Send emails
+- `gmail-list-messages` - List messages
+- `gmail-get-message` - Get message details
+- `gmail-create-draft` - Create drafts
 
 ### Postgres Tools
-- `postgres-execute-sql` — Execute SQL queries with safety approval
-  - ✅ `SELECT` / `INSERT` — Auto-allowed
-  - 🔒 `UPDATE` / `DELETE` / `CREATE` — Requires approval
+- `postgres-execute-sql` - Execute SQL queries with safety approval
+  - ✅ `SELECT` / `INSERT` - Auto-allowed
+  - 🔒 `UPDATE` / `DELETE` / `CREATE` - Requires approval
   - Use `pnpm postgres:approval` to see interactive approval flow
 
 ### Utility Tools
-- `calculator` — Math operations
-- `echo-tool` — Echo for testing
+- `calculator` - Math operations
+- `echo-tool` - Echo for testing
 
 ---
 
@@ -398,7 +398,7 @@ Executor Layer (CommandExecutor, HttpExecutor, FunctionExecutor)
 Tool Definition Layer (YAML files)
 ```
 
-All three patterns are equivalent at the execution layer — just different interfaces for different use cases.
+All three patterns are equivalent at the execution layer - just different interfaces for different use cases.
 
 ---
 

@@ -21,8 +21,8 @@ All examples demonstrate real Twilio Messaging API operations (send SMS, send MM
 
 On the [Twilio Console dashboard](https://console.twilio.com), look for the **Account Info** section:
 
-- **Account SID** — a 34-character identifier starting with `AC`. Acts as your username for every API call.
-- **Auth Token** — a 32-character secret key. Click the **eye (👁) icon** to reveal it.
+- **Account SID** - a 34-character identifier starting with `AC`. Acts as your username for every API call.
+- **Auth Token** - a 32-character secret key. Click the **eye (👁) icon** to reveal it.
 
 > ⚠️ **Keep both values secret.** Do not commit them to version control.
 
@@ -57,7 +57,7 @@ OPENAI_API_KEY=sk-your-openai-key-here   # Required for LangChain example only
 ```
 
 > **Note:** All phone numbers must be in **E.164 format** (e.g. `+15551234567`).  
-> Matimo automatically handles Basic Auth encoding — no manual base64 encoding required.
+> Matimo automatically handles Basic Auth encoding - no manual base64 encoding required.
 
 ### 6. Run Examples
 

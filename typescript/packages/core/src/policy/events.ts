@@ -70,6 +70,19 @@ export type MatimoEvent =
       timestamp: string;
     }
   | {
+      type: 'tool:approval_granted';
+      toolName: string;
+      agentId?: string;
+      timestamp: string;
+    }
+  | {
+      type: 'tool:approval_denied';
+      toolName: string;
+      reason: string;
+      agentId?: string;
+      timestamp: string;
+    }
+  | {
       type: 'policy:reloaded';
       timestamp: string;
     }
@@ -78,6 +91,12 @@ export type MatimoEvent =
       loaded: number;
       removed: number;
       rejected: string[];
+      timestamp: string;
+    }
+  | {
+      type: 'skills:reloaded';
+      loaded: number;
+      removed: number;
       timestamp: string;
     };
 

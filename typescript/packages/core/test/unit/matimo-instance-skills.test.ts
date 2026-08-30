@@ -205,8 +205,8 @@ describe('MatimoInstance — Skill & Reload Coverage', () => {
 
   // ─── reloadPolicy edge cases ─────────────────────────────────────
 
-  describe('reloadPolicy without any policy', () => {
-    it('should return empty result when no policy engine exists', async () => {
+  describe('reloadPolicy without any config or file', () => {
+    it('should return empty result when there is nothing to reload from', async () => {
       writeToolYaml('no-policy-tool');
       const matimo = await MatimoInstance.init({
         toolPaths: [toolDir],
@@ -238,6 +238,61 @@ describe('MatimoInstance — Skill & Reload Coverage', () => {
       // Since the directory doesn't exist, loadToolsFromMultiplePaths may return empty
       // But the tool should still be known from the initial load or rolled back
       expect(result).toBeDefined();
+    });
+  });
+
+  // ─── reloadSkills ──────────────────────────────────────────────────
+
+  describe('reloadSkills', () => {
+    it('should pick up a skill written to disk after init', async () => {
+      writeToolYaml('reload-skills-tool');
+      const matimo = await MatimoInstance.init({
+        toolPaths: [toolDir],
+        skillPaths: [skillDir],
+        logLevel: 'silent',
+      });
+
+      expect(matimo.listSkills().some((s) => s.name === 'new-skill')).toBe(false);
+
+      writeSkill('new-skill');
+      const result = await matimo.reloadSkills();
+
+      expect(result.loaded).toBe(1);
+      expect(matimo.listSkills().some((s) => s.name === 'new-skill')).toBe(true);
+    });
+
+    it('should remove a skill deleted from disk', async () => {
+      writeToolYaml('reload-skills-tool2');
+      writeSkill('temp-skill');
+      const matimo = await MatimoInstance.init({
+        toolPaths: [toolDir],
+        skillPaths: [skillDir],
+        logLevel: 'silent',
+      });
+
+      expect(matimo.listSkills().some((s) => s.name === 'temp-skill')).toBe(true);
+
+      fs.rmSync(path.join(skillDir, 'temp-skill'), { recursive: true, force: true });
+      const result = await matimo.reloadSkills();
+
+      expect(result.removed).toBe(1);
+      expect(matimo.listSkills().some((s) => s.name === 'temp-skill')).toBe(false);
+    });
+
+    it('should emit a skills:reloaded event', async () => {
+      writeToolYaml('reload-skills-tool3');
+      const events: Array<{ type: string }> = [];
+      const matimo = await MatimoInstance.init({
+        toolPaths: [toolDir],
+        skillPaths: [skillDir],
+        logLevel: 'silent',
+        onEvent: (event) => events.push(event),
+      });
+
+      writeSkill('event-skill');
+      await matimo.reloadSkills();
+
+      expect(events.some((e) => e.type === 'skills:reloaded')).toBe(true);
     });
   });
 });

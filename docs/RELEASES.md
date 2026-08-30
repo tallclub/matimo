@@ -243,7 +243,7 @@ const matimo = await MatimoInstance.init({
   - `composio_jira_get_issue_types` (decorator) → real Jira issue type list (`Epic`, etc.)
   - LangChain agent (GPT-4o-mini) → loaded 342 tools, filtered to 46 Jira tools, made real Composio API call, returned natural language response
   - HITL approval flow → low-risk executed immediately; medium (`create_issue`) and high (`delete_issue`) both triggered approval prompt with correct risk labels before proceeding
-  - `canCreate()` returned `pending_approval` for medium-risk tools in prod context; `classifyRisk()` honored explicit YAML risk fields + overrides
+  - `canCreate()` returned `pending_approval` for medium-risk tools in prod context; `classifyRisk()` honored explicit YAML risk fields + overrides *(superseded — a later fix changed this so a self-declared `risk:` can only raise the automatically-computed level, never lower it; see POLICY_AND_LIFECYCLE.md)*
 
 **Known Composio catalog issue**: As of March 2026, Jira deprecated `/rest/api/3/search`. Composio's `JIRA_SEARCH_ISSUES` and `JIRA_SEARCH_FOR_ISSUES_USING_JQL_POST` actions return HTTP 410 until Composio updates their catalog to use `/rest/api/3/search/jql`. All other Jira actions are unaffected.
 
@@ -2034,9 +2034,9 @@ All 3 integration patterns (Factory, Decorator, LangChain) + SQL approval workfl
 
 ### 🔗 Related Documentation
 
-- [Postgres Package README](../packages/postgres/README.md) — Tool specifications and usage
-- [Examples README](../examples/README.md) — Sequential discovery pattern, approval workflow
-- [Tool Development Guide](../docs/tool-development/EXTENDING.md) — How to create new tools
+- [Postgres Package README](../typescript/packages/postgres/README.md) — Tool specifications and usage
+- [Examples README](../typescript/examples/README.md) — Sequential discovery pattern, approval workflow
+- [Tool Development Guide](./tool-development/ADDING_TOOLS.md) — How to create new tools
 
 ### ⚠️ Breaking Changes
 
@@ -2246,7 +2246,7 @@ pnpm add matimo@0.1.0-alpha.6
 - [Quick Start](./getting-started/QUICK_START.md)
 - [SDK Patterns](./user-guide/SDK_PATTERNS.md)
 - [Tool Reference](./api-reference/SDK.md)
-- [Examples](../examples/)
+- [Examples](../typescript/examples/)
 
 ## Contributing
 
@@ -2395,7 +2395,7 @@ const response = await llm.invoke(messages, { tools });
 
 - [Installation & Setup](./getting-started/installation.md)
 - [Quick Start](./getting-started/QUICK_START.md)
-- [Examples Guide](../examples/README.md) - All three patterns with detailed walkthrough
+- [Examples Guide](../typescript/examples/README.md) - All three patterns with detailed walkthrough
 - [SDK Patterns](./user-guide/SDK_PATTERNS.md)
 - [OAuth2 Guide](./architecture/OAUTH.md)
 - [API Reference](./api-reference/SDK.md)
@@ -2498,7 +2498,7 @@ const result = await m.execute('calculator', {
 - [SDK Patterns](./user-guide/SDK_PATTERNS.md)
 - [OAuth2 Guide](./architecture/OAUTH.md)
 - [API Reference](./api-reference/SDK.md)
-- [Examples](../examples/)
+- [Examples](../typescript/examples/)
 
 ## Known Limitations
 

@@ -1,6 +1,6 @@
 # matimo-notion
 
-> Notion tools for [Matimo](https://matimo.dev) — create pages, query databases, search, and manage content.
+> Notion tools for [Matimo](https://matimo.dev) - create pages, query databases, search, and manage content.
 
 [![PyPI](https://img.shields.io/pypi/v/matimo-notion)](https://pypi.org/project/matimo-notion/)
 [![Docs](https://img.shields.io/badge/docs-matimo.dev-blue)](https://matimo.dev/docs)
@@ -52,9 +52,11 @@ async def main():
 
     # Create a page in a database
     await matimo.execute('notion_create_page', {
-        'parent_id': 'your-database-id',
-        'title': 'New Task',
-        'properties': {'Status': {'select': {'name': 'Todo'}}},
+        'parent': {'database_id': 'your-database-id'},
+        'properties': {
+            'Name': {'title': [{'text': {'content': 'New Task'}}]},
+            'Status': {'select': {'name': 'Todo'}},
+        },
     })
 
 asyncio.run(main())

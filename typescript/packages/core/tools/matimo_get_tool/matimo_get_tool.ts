@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import yaml from 'js-yaml';
+import * as yaml from 'js-yaml';
 import { validateToolDefinition, getGlobalMatimoLogger } from '@matimo/core';
 
 interface GetToolParams {
@@ -16,9 +16,22 @@ interface GetToolResult {
   message: string;
 }
 
+const UNSAFE_NAME_PATTERN = /[/\\]|\.\.|[\x00-\x1f]/;
+
 export default async function matimoGetTool(params: GetToolParams): Promise<GetToolResult> {
   const logger = getGlobalMatimoLogger();
   const toolDir = params.tool_dir ?? './matimo-tools';
+
+  if (!params.name || params.name.trim().length === 0) {
+    return { found: false, message: 'Tool name is required' };
+  }
+  if (UNSAFE_NAME_PATTERN.test(params.name)) {
+    return {
+      found: false,
+      message:
+        'Tool name contains invalid characters (path traversal, backslash, or control characters)',
+    };
+  }
 
   const defPath = path.join(toolDir, params.name, 'definition.yaml');
   if (!fs.existsSync(defPath)) {
