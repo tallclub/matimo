@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "matimo-gmail"
-version = "0.1.2"
+version = "0.1.3"
 description = "Matimo provider — Gmail tools (send, list, read, delete emails)"
 readme = "README.md"
 license = { text = "MIT" }
