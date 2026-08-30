@@ -238,6 +238,23 @@ const userRequests = [
   'List my recent Gmail messages. Return the subject lines.',
 ];
 
+const OPENAI_MAX_TOOLS = 128;
+
+/**
+ * MCP auto-discovers every installed @matimo/* provider package (150+ tools
+ * across the example workspace), but LangChain/OpenAI rejects requests with
+ * more than 128 bound tools. This demo's tasks only touch calculator, Slack,
+ * and Gmail — keep those first, then fill any remaining budget with whatever
+ * else MCP exposed, capped at the API limit.
+ */
+function capTools<T extends { name: string }>(tools: T[], priorityPrefixes: string[]): T[] {
+  if (tools.length <= OPENAI_MAX_TOOLS) return tools;
+  const isPriority = (name: string) => priorityPrefixes.some((p) => name.startsWith(p));
+  const prioritized = tools.filter((t) => isPriority(t.name));
+  const rest = tools.filter((t) => !isPriority(t.name));
+  return [...prioritized, ...rest].slice(0, OPENAI_MAX_TOOLS);
+}
+
 // ─────────────────────────────────────────────────────────────
 // Main Agent Function
 // ─────────────────────────────────────────────────────────────
@@ -276,13 +293,20 @@ async function runUnifiedAgent(): Promise<void> {
       process.exit(1);
     }
 
+    const boundTools = capTools(tools, ['calculator', 'slack', 'gmail']);
+    if (boundTools.length < tools.length) {
+      console.info(
+        `Capped to ${boundTools.length} tools for the LLM (OpenAI's 128-tool limit; prioritized calculator/slack/gmail for this demo's tasks).\n`
+      );
+    }
+
     // ── Step 3: Create LangChain ReAct agent ──────────────────────────
     const llm = new ChatOpenAI({
       model: config.model,
       temperature: 0,
     });
 
-    const agent = createReactAgent({ llm, tools });
+    const agent = createReactAgent({ llm, tools: boundTools });
 
     // ── Step 4: Run example tasks ─────────────────────────────────────
     let successCount = 0;
@@ -318,7 +342,7 @@ async function runUnifiedAgent(): Promise<void> {
     console.info('  RESULTS SUMMARY');
     console.info('='.repeat(60));
     console.info(`  Transport:  ${transportLabels[config.transport]}`);
-    console.info(`  Tools:      ${tools.length} loaded`);
+    console.info(`  Tools:      ${boundTools.length} bound (${tools.length} discovered)`);
     console.info(`  Tasks:      ${successCount}/${userRequests.length} succeeded`);
     console.info('='.repeat(60));
     console.info();

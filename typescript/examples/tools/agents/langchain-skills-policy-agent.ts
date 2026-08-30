@@ -169,16 +169,77 @@ Your approach:
 
 You decide what tools to use — use your judgment and the available tools to complete your mission efficiently.`.trim();
 
+// ─── Provider-scoped tool activation ────────────────────────────────────
+//
+// OpenAI rejects a `tools` array longer than 128 entries. Auto-discovery across
+// all @matimo/* provider packages easily exceeds that (@matimo/hubspot alone
+// ships 50 tools). Binding every tool up front isn't just over budget — it also
+// defeats the progressive disclosure this example already demonstrates for
+// skills (see getSkillsMetadata / buildRelevantSkillPrompt above).
+//
+// So tools get the same treatment: bind only Matimo's core tools (matimo_*
+// meta-tools + generic utilities) at startup, and activate a provider's tools
+// only once the agent actually loads that provider's skill via matimo_get_skill.
+// This mirrors Level 1 (skill names known) → Level 2 (skill content + its
+// tools loaded on demand).
+
+const OPENAI_MAX_TOOLS = 128;
+
+function isProviderTool(toolName: string, providerNames: Set<string>): string | undefined {
+  for (const provider of providerNames) {
+    if (toolName.startsWith(`${provider}_`)) return provider;
+  }
+  return undefined;
+}
+
 // ─── Agent Runner ───────────────────────────────────────────────────────
 
 async function runMission(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  llmWithTools: any,
+  llm: ChatOpenAI,
+  allTools: ToolDefinition[],
+  coreTools: ToolDefinition[],
+  providerNames: Set<string>,
   matimo: MatimoInstance,
   mission: string,
   systemPrompt = AGENT_SYSTEM_PROMPT
 ): Promise<string> {
   const messages: BaseMessage[] = [new SystemMessage(systemPrompt), new HumanMessage(mission)];
+
+  const activatedProviders = new Set<string>();
+
+  async function bindActiveTools(): Promise<
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    any
+  > {
+    const active = allTools.filter((t) => {
+      const provider = isProviderTool(t.name, providerNames);
+      return provider === undefined || activatedProviders.has(provider);
+    });
+    if (active.length > OPENAI_MAX_TOOLS) {
+      console.info(
+        `    ⚠ Active tool set (${active.length}) exceeds the ${OPENAI_MAX_TOOLS}-tool API limit; trimming lowest-priority tools.`
+      );
+    }
+    // If still over budget, prioritize matimo_* meta-tools (the on-demand
+    // activation loop itself depends on matimo_get_skill staying bound) and
+    // explicitly-activated provider tools over the remaining generic/legacy
+    // core tools, rather than truncating in arbitrary discovery order.
+    const bounded = [...active]
+      .sort((a, b) => rank(a.name) - rank(b.name))
+      .slice(0, OPENAI_MAX_TOOLS);
+
+    function rank(name: string): number {
+      if (name.startsWith('matimo_')) return 0;
+      if (isProviderTool(name, providerNames) !== undefined) return 1;
+      return 2;
+    }
+    const langchainTools = await convertToolsToLangChain(bounded, matimo);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return llm.bindTools(langchainTools as any);
+  }
+
+  let llmWithTools = await bindActiveTools();
+  console.info(`    ${INFO} Active tools: ${coreTools.length} core (providers activate on demand)`);
 
   let iterations = 0;
   const MAX_ITERATIONS = 10;
@@ -189,6 +250,8 @@ async function runMission(
 
     if (response.tool_calls && response.tool_calls.length > 0) {
       messages.push(response);
+
+      let providersChanged = false;
 
       for (const toolCall of response.tool_calls) {
         const isSkillTool = toolCall.name.includes('skill');
@@ -214,6 +277,20 @@ async function runMission(
               name: toolCall.name,
             })
           );
+
+          // Loading a provider skill activates that provider's tools for
+          // subsequent iterations — the on-demand half of the progressive
+          // disclosure model described above.
+          if (
+            toolCall.name === 'matimo_get_skill' &&
+            typeof toolCall.args?.name === 'string' &&
+            providerNames.has(toolCall.args.name) &&
+            !activatedProviders.has(toolCall.args.name)
+          ) {
+            activatedProviders.add(toolCall.args.name);
+            providersChanged = true;
+            console.info(`    🔓 Activated provider tools: ${toolCall.args.name}`);
+          }
         } catch (err) {
           const errorMsg = err instanceof Error ? err.message : String(err);
           console.info(`    ❌ Error: ${errorMsg.slice(0, 200)}`);
@@ -226,6 +303,10 @@ async function runMission(
             })
           );
         }
+      }
+
+      if (providersChanged) {
+        llmWithTools = await bindActiveTools();
       }
     } else {
       const finalText =
@@ -313,11 +394,28 @@ async function main(): Promise<void> {
       console.info(`    ${INFO} Skills: ${skills.map((s) => s.name).join(', ')}`);
     }
 
-    const langchainTools = await convertToolsToLangChain(tools as ToolDefinition[], matimo);
     const llm = new ChatOpenAI({ model: 'gpt-4o-mini', temperature: 0 });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const llmWithTools = llm.bindTools(langchainTools as any);
-    status('LLM (gpt-4o-mini) bound with tools');
+
+    // Provider names come from the loaded provider skills (everything except
+    // the 6 core SDK-level skills) — matches the `{provider}_{action}` tool
+    // naming convention, so it stays correct as packages are added/removed.
+    const CORE_SKILL_NAMES = new Set([
+      'meta-tools-lifecycle',
+      'policy-validation',
+      'skill-creator',
+      'skills-catalog',
+      'tool-creation',
+      'tool-discovery',
+    ]);
+    const providerNames = new Set(
+      skills.map((s) => s.name).filter((name) => !CORE_SKILL_NAMES.has(name))
+    );
+    const coreTools = (tools as ToolDefinition[]).filter(
+      (t) => isProviderTool(t.name, providerNames) === undefined
+    );
+    status(
+      `LLM (gpt-4o-mini) ready — ${coreTools.length} core tools bound, ${providerNames.size} provider tool sets activate on demand`
+    );
 
     // Non-MCP progressive disclosure:
     //   Level 1 (startup) — inject skill metadata so the agent is aware of all skills.
@@ -353,7 +451,15 @@ async function main(): Promise<void> {
     subheader('Mission');
     console.info(`    🎯 "${userMission}"\n`);
 
-    const finalResponse = await runMission(llmWithTools, matimo, userMission, agentSystemPrompt);
+    const finalResponse = await runMission(
+      llm,
+      tools as ToolDefinition[],
+      coreTools,
+      providerNames,
+      matimo,
+      userMission,
+      agentSystemPrompt
+    );
     console.info(`\n  ${INFO} Final response:`);
     console.info(`    "${finalResponse}"`);
 

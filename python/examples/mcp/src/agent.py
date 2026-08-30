@@ -60,7 +60,7 @@ import asyncio
 import os
 import sys
 from pathlib import Path
-from typing import TypedDict
+from typing import Any, TypedDict
 
 # ── Load .env ─────────────────────────────────────────────────────────────────
 try:
@@ -68,6 +68,24 @@ try:
     load_dotenv(Path(__file__).parent.parent / ".env")
 except ImportError:
     pass
+
+
+# MCP auto-discovers every installed matimo-* provider package (150+ tools
+# across the example workspace), but LangChain/OpenAI rejects requests with
+# more than 128 bound tools. This demo's task only touches Slack, Gmail,
+# GitHub, and database tools — keep those first, then fill any remaining
+# budget with whatever else MCP exposed, capped at the API limit.
+_OPENAI_TOOL_LIMIT = 128
+_PRIORITY_PREFIXES = ("slack", "gmail", "github", "postgres")
+
+
+def _cap_tools(tools: list[Any]) -> list[Any]:
+    """Return at most _OPENAI_TOOL_LIMIT tools, keeping priority tools first."""
+    if len(tools) <= _OPENAI_TOOL_LIMIT:
+        return tools
+    prioritized = [t for t in tools if t.name.startswith(_PRIORITY_PREFIXES)]
+    rest = [t for t in tools if not t.name.startswith(_PRIORITY_PREFIXES)]
+    return (prioritized + rest)[:_OPENAI_TOOL_LIMIT]
 
 
 class Config(TypedDict):
@@ -249,10 +267,17 @@ async def main() -> None:
             print("❌ No tools loaded. Check your configuration and server status.")
             sys.exit(1)
 
+        bound_tools = _cap_tools(tools)
+        if len(bound_tools) < len(tools):
+            print(
+                f"⚠️  Capped to {len(bound_tools)} tools for the LLM (OpenAI's 128-tool "
+                "limit; prioritized slack/gmail/github/postgres for this demo's task)\n"
+            )
+
         # ── Build agent ───────────────────────────────────────────────────────
         print("🤖 Initialising OpenAI LLM...")
         llm = ChatOpenAI(model=config["model"], temperature=0)
-        agent = create_react_agent(llm, tools)
+        agent = create_react_agent(llm, bound_tools)
 
         # ── Task prompt ───────────────────────────────────────────────────────
         task = f"""

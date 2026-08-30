@@ -143,13 +143,17 @@ async def main() -> None:
             print("❌ No tools loaded. Is the MCP server running at " + server_url + "?")
             sys.exit(1)
 
+        # MCP auto-discovers every installed matimo-* provider package (150+
+        # tools across the example workspace), but LangChain/OpenAI rejects
+        # requests with more than 128 bound tools. This demo only exercises
+        # Slack, so bind just the Slack tools rather than everything MCP loaded.
         slack_tools = [t for t in tools if t.name.startswith("slack")]
         print(f"💬 {len(slack_tools)} Slack tools available\n")
 
         # ── Build agent ───────────────────────────────────────────────────────
         print("🤖 Initialising OpenAI (GPT-4o-mini) LLM...")
         llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
-        agent = create_react_agent(llm, tools)
+        agent = create_react_agent(llm, slack_tools)
 
         # ── Find a channel to use for all the tasks ────────────────────────────
         active_channel = channel_id
