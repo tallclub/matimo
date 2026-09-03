@@ -207,10 +207,8 @@ async function runMission(
 
   const activatedProviders = new Set<string>();
 
-  async function bindActiveTools(): Promise<
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    any
-  > {
+  async function bindActiveTools(): Promise<// eslint-disable-next-line @typescript-eslint/no-explicit-any
+  any> {
     const active = allTools.filter((t) => {
       const provider = isProviderTool(t.name, providerNames);
       return provider === undefined || activatedProviders.has(provider);
