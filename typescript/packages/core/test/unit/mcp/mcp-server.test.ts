@@ -147,6 +147,7 @@ jest.mock('child_process', () => ({
 
 import { MCPServer, createMCPServer } from '../../../src/mcp/mcp-server';
 import type { ToolDefinition } from '../../../src/core/schema';
+import { ErrorCode } from '../../../src/errors/matimo-error';
 
 // ─── Fixtures ───────────────────────────────────────────────────────────
 
@@ -423,6 +424,12 @@ describe('MCPServer', () => {
       expect(result).toEqual({
         content: [{ type: 'text', text: 'Error: Tool not found' }],
         isError: true,
+        structuredContent: {
+          code: ErrorCode.TOOL_NOT_FOUND,
+          statusCode: null,
+          retryable: false,
+          message: 'Tool not found',
+        },
       });
 
       await server.stop();
@@ -442,6 +449,45 @@ describe('MCPServer', () => {
       expect(result).toEqual({
         content: [{ type: 'text', text: 'Error: Something went wrong' }],
         isError: true,
+        structuredContent: {
+          code: ErrorCode.UNKNOWN_ERROR,
+          statusCode: null,
+          retryable: false,
+          message: 'Something went wrong',
+        },
+      });
+
+      await server.stop();
+    });
+
+    it('should carry statusCode and retryable through structuredContent for a rate-limit MatimoError', async () => {
+      const { MatimoError, ErrorCode: RealErrorCode } = jest.requireActual(
+        '../../../src/errors/matimo-error'
+      );
+      const tool = createTestTool();
+      mockListTools.mockReturnValue([tool]);
+      mockExecute.mockRejectedValue(
+        new MatimoError('Rate limit exceeded', RealErrorCode.RATE_LIMIT_EXCEEDED, {
+          statusCode: 429,
+          retryable: true,
+        })
+      );
+
+      const server = new MCPServer({ transport: 'stdio', autoDiscover: false });
+      await server.start();
+
+      const callback = mockRegisterTool.mock.calls[0][2];
+      const result = await callback({ message: 'hi' });
+
+      expect(result).toEqual({
+        content: [{ type: 'text', text: 'Error: Rate limit exceeded' }],
+        isError: true,
+        structuredContent: {
+          code: ErrorCode.RATE_LIMIT_EXCEEDED,
+          statusCode: 429,
+          retryable: true,
+          message: 'Rate limit exceeded',
+        },
       });
 
       await server.stop();

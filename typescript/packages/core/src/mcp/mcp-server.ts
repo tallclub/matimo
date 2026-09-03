@@ -483,16 +483,40 @@ export class MCPServer {
               logger.error(`MCP tool call failed: ${tool.name}`, {
                 toolName: tool.name,
                 error: error instanceof Error ? error.message : String(error),
+                code: error instanceof MatimoError ? error.code : undefined,
               });
+
+              const message = error instanceof Error ? error.message : String(error);
+
+              // Carry the structured error code/status/retryability across the
+              // MCP boundary instead of dropping it — `structuredContent` is
+              // safe to attach here regardless of any registered outputSchema,
+              // since the MCP SDK skips output validation whenever isError is
+              // true (and Matimo never registers a success-path outputSchema).
+              const structuredContent =
+                error instanceof MatimoError
+                  ? {
+                      code: error.code,
+                      statusCode: (error.details?.statusCode as number | undefined) ?? null,
+                      retryable: (error.details?.retryable as boolean | undefined) ?? false,
+                      message,
+                    }
+                  : {
+                      code: ErrorCode.UNKNOWN_ERROR,
+                      statusCode: null,
+                      retryable: false,
+                      message,
+                    };
 
               return {
                 content: [
                   {
                     type: 'text' as const,
-                    text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+                    text: `Error: ${message}`,
                   },
                 ],
                 isError: true,
+                structuredContent,
               };
             }
           }

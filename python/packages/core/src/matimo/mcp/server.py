@@ -117,7 +117,7 @@ class MCPServer:
         @server.call_tool()  # type: ignore[misc]
         async def handle_call_tool(
             name: str, arguments: dict[str, Any]
-        ) -> list[mcp_types.TextContent]:
+        ) -> list[mcp_types.TextContent] | mcp_types.CallToolResult:
             return await self._call_tool(name, arguments)
 
         # Register skill resources (skills://name) so MCP clients can read them.
@@ -308,11 +308,14 @@ class MCPServer:
 
     async def _call_tool(
         self, name: str, arguments: dict[str, Any]
-    ) -> list[Any]:
-        """Execute a Matimo tool and return MCP TextContent.
+    ) -> list[Any] | Any:  # noqa: ANN401 — success path returns list[TextContent], error path a CallToolResult
+        """Execute a Matimo tool and return MCP TextContent, or a CallToolResult on error.
 
         Handles _matimo_approved for approval-required tools, mirrors
-        the TypeScript _callTool() in mcp-server.ts.
+        the TypeScript _callTool() in mcp-server.ts. Error results carry
+        structured `code`/`statusCode`/`retryable` data via
+        CallToolResult.structuredContent rather than being flattened into
+        a plain-text list, matching the TS side's use of `structuredContent`.
         """
         try:
             import mcp.types as mcp_types  # type: ignore[import]
@@ -328,13 +331,15 @@ class MCPServer:
         # Get tool definition once — used for approval check and fallback secrets.
         tool_def = self._matimo.get_tool(name)
 
-        # Approval gate: rejection mirrors TypeScript behaviour (throw before execute)
+        # Approval gate: rejection mirrors TypeScript behaviour (throw before execute).
+        # Uses EXECUTION_FAILED to match the code TS's equivalent throw site uses
+        # for this same rejection (mcp-server.ts), not POLICY_DENIED.
         if tool_def and getattr(tool_def, "requires_approval", False) and matimo_approved is not True:
             msg = (
                 f"Tool '{name}' requires approval. This is a destructive operation. "
                 "Re-invoke with parameter _matimo_approved: true to confirm execution."
             )
-            return [mcp_types.TextContent(type="text", text=msg)]
+            return self._build_error_result(mcp_types, ErrorCode.EXECUTION_FAILED.value, {}, msg)
 
         # Credentials: prefer pre-resolved secrets from startup (_seed_environment_secrets).
         # Fall back to per-call resolution for backward-compat / direct calls (e.g. tests).
@@ -361,10 +366,36 @@ class MCPServer:
             output = _json.dumps(result, indent=2, default=str)
             return [mcp_types.TextContent(type="text", text=output)]
         except MatimoError as exc:
-            return [mcp_types.TextContent(
-                type="text",
-                text=f"Error: {exc.code.value} — {exc}",
-            )]
+            return self._build_error_result(mcp_types, exc.code.value, exc.details, str(exc))
+        except Exception as exc:  # noqa: BLE001 — mirrors TS: any non-MatimoError becomes UNKNOWN_ERROR
+            return self._build_error_result(mcp_types, ErrorCode.UNKNOWN_ERROR.value, {}, str(exc))
+
+    @staticmethod
+    def _build_error_result(
+        mcp_types: Any,  # noqa: ANN401 — the MCP Server type is from an optional dependency (mcp)
+        code: str,
+        details: dict[str, Any],
+        message: str,
+    ) -> Any:  # noqa: ANN401 — return type mirrors mcp_types.CallToolResult, an optional dependency
+        """Build an MCP CallToolResult carrying structured error data.
+
+        Mirrors the catch block in mcp-server.ts's registerTool() handler:
+        `structuredContent` carries `code`/`statusCode`/`retryable` alongside
+        the human-readable text, and `isError=True` is set explicitly (the
+        prior implementation never set an isError-equivalent flag at all).
+
+        mcp_types: Any because the MCP Server type is from an optional dependency (mcp).
+        """
+        return mcp_types.CallToolResult(
+            content=[mcp_types.TextContent(type="text", text=f"Error: {message}")],
+            isError=True,
+            structuredContent={
+                "code": code,
+                "statusCode": details.get("status_code") or details.get("statusCode"),
+                "retryable": bool(details.get("retryable", False)),
+                "message": message,
+            },
+        )
 
     async def _seed_environment_secrets(self, tools: list[Any]) -> None:
         """Resolve all auth placeholders for the filtered tool list at startup.

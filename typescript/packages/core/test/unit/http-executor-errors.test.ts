@@ -505,8 +505,10 @@ describe('HttpExecutor - GitHub Approval Flows', () => {
       fail('Expected executor to throw MatimoError');
     } catch (err) {
       expect(err).toBeInstanceOf(MatimoError);
-      expect((err as MatimoError).code).toBe(ErrorCode.EXECUTION_FAILED);
-      expect((err as MatimoError).details?.statusCode).toBe(500);
+      // A plain Error with no `.response` and no axios markers has no real
+      // HTTP status — it's classified UNKNOWN_ERROR rather than a faked 500.
+      expect((err as MatimoError).code).toBe(ErrorCode.UNKNOWN_ERROR);
+      expect((err as MatimoError).details?.statusCode).toBeUndefined();
     }
   });
 

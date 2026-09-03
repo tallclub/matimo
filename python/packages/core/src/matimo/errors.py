@@ -83,14 +83,33 @@ def create_execution_error(
 
 
 def from_http_error(error: Exception, message: str = "HTTP request failed") -> MatimoError:
-    """Wrap an httpx / requests exception into a structured MatimoError."""
+    """Wrap an httpx / requests exception into a structured MatimoError.
+
+    Maps HTTP status codes to specific ErrorCodes (401/403 -> AUTH_FAILED,
+    429 -> RATE_LIMIT_EXCEEDED) rather than always collapsing to
+    EXECUTION_FAILED, and records ``retryable`` so callers — including the
+    MCP boundary — can tell a caller whether a failure is worth retrying.
+    Mirrors the status-code branch of fromHttpError() in matimo-error.ts
+    (TIMEOUT / NETWORK_ERROR are handled upstream in http_executor.py,
+    which only ever calls this function for actual HTTPStatusError).
+    """
     details: dict[str, Any] = {"original_error": str(error)}
+    code = ErrorCode.EXECUTION_FAILED
     # httpx exposes .response on HTTPStatusError
     response = getattr(error, "response", None)
     if response is not None:
-        details["status_code"] = getattr(response, "status_code", None)
+        status_code = getattr(response, "status_code", None)
+        details["status_code"] = status_code
         try:
             details["body"] = response.text[:500]  # truncate — never log full body
         except Exception:  # noqa: BLE001, S110
             pass  # response.text access failed — continue without body
-    return MatimoError(message, ErrorCode.EXECUTION_FAILED, details, cause=error)
+
+        if status_code in (401, 403):
+            code = ErrorCode.AUTH_FAILED
+        elif status_code == 429:
+            code = ErrorCode.RATE_LIMIT_EXCEEDED
+        details["retryable"] = status_code == 429 or (
+            isinstance(status_code, int) and status_code >= 500
+        )
+    return MatimoError(message, code, details, cause=error)

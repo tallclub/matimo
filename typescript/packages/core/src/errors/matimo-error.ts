@@ -53,18 +53,60 @@ export class MatimoError extends Error {
  * Normalize an HTTP/Axios-style error into a MatimoError preserving useful metadata.
  * This avoids importing axios in the errors module and works with any object
  * that follows the common `error.response` shape.
+ *
+ * Maps HTTP status codes and network-level failure modes to specific
+ * `ErrorCode`s (rather than always collapsing to `EXECUTION_FAILED`) so
+ * callers — including the MCP boundary — can tell a model whether a
+ * failure is worth retrying (`details.retryable`) and roughly why.
  */
-export function fromHttpError(error: unknown, message = 'HTTP request failed') {
+export function fromHttpError(error: unknown, message = 'HTTP request failed'): MatimoError {
   // Attempt to extract common HTTP error fields
   const asAny = error as Record<string, unknown> | undefined;
   const response = asAny?.response as Record<string, unknown> | undefined;
-  const statusCode = (response?.status as number | undefined) ?? 500;
-  const details = response?.data as Record<string, unknown> | undefined;
-  const meta: Record<string, unknown> = { statusCode };
-  if (details !== undefined) meta.details = details;
-  // Preserve original error message/cause for debugging (redaction handled elsewhere)
-  meta.originalError = asAny?.message ?? String(error ?? '');
-  return new MatimoError(message, ErrorCode.EXECUTION_FAILED, meta, error);
+
+  if (response !== undefined) {
+    const statusCode = (response.status as number | undefined) ?? 500;
+    const details = response.data as Record<string, unknown> | undefined;
+    const meta: Record<string, unknown> = { statusCode };
+    if (details !== undefined) meta.details = details;
+    // Preserve original error message/cause for debugging (redaction handled elsewhere)
+    meta.originalError = asAny?.message ?? String(error ?? '');
+    meta.retryable = statusCode === 429 || statusCode >= 500;
+
+    let code: ErrorCode;
+    if (statusCode === 401 || statusCode === 403) {
+      code = ErrorCode.AUTH_FAILED;
+    } else if (statusCode === 429) {
+      code = ErrorCode.RATE_LIMIT_EXCEEDED;
+    } else {
+      code = ErrorCode.EXECUTION_FAILED;
+    }
+
+    return new MatimoError(message, code, meta, error);
+  }
+
+  // No response — a network-level failure (timeout, DNS, connection refused)
+  // or a non-HTTP error entirely. There is no real HTTP status here, so
+  // `statusCode` is intentionally omitted rather than faked as 500.
+  const nodeErrorCode = asAny?.code as string | undefined;
+  const isAxiosError = asAny?.isAxiosError === true;
+  const meta: Record<string, unknown> = {
+    originalError: asAny?.message ?? String(error ?? ''),
+  };
+
+  let code: ErrorCode;
+  if (nodeErrorCode === 'ECONNABORTED' || nodeErrorCode === 'ETIMEDOUT') {
+    code = ErrorCode.TIMEOUT;
+    meta.retryable = true;
+  } else if (isAxiosError || nodeErrorCode !== undefined) {
+    code = ErrorCode.NETWORK_ERROR;
+    meta.retryable = true;
+  } else {
+    code = ErrorCode.UNKNOWN_ERROR;
+    meta.retryable = false;
+  }
+
+  return new MatimoError(message, code, meta, error);
 }
 
 /**
