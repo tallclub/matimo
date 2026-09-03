@@ -239,6 +239,30 @@ describe('MCPServer', () => {
       await server.stop();
     });
 
+    it('should include MCP standard annotations in tool registration', async () => {
+      const tool = createTestTool({
+        name: 'delete_thing',
+        execution: { type: 'http', method: 'DELETE', url: 'https://api.example.com/thing' },
+      });
+      mockListTools.mockReturnValue([tool]);
+
+      const server = new MCPServer({ transport: 'stdio', autoDiscover: false });
+      await server.start();
+
+      expect(mockRegisterTool.mock.calls[0][1]).toEqual(
+        expect.objectContaining({
+          annotations: {
+            readOnlyHint: false,
+            destructiveHint: true,
+            idempotentHint: true,
+            openWorldHint: true,
+          },
+        })
+      );
+
+      await server.stop();
+    });
+
     it('should connect with stdio transport', async () => {
       const server = new MCPServer({ transport: 'stdio', autoDiscover: false });
       await server.start();

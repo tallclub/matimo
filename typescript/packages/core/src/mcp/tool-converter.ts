@@ -127,6 +127,108 @@ export function convertParametersToMcpSchema(
 }
 
 /**
+ * MCP standard tool-annotation hints (readOnlyHint, destructiveHint,
+ * idempotentHint, openWorldHint — see the MCP spec's ToolAnnotations).
+ * Defined locally, matching the shape of @modelcontextprotocol/sdk's
+ * ToolAnnotations, rather than imported — the rest of mcp/ only ever
+ * loads the SDK dynamically (see mcp-server.ts), so this module avoids
+ * taking a static compile-time dependency on its type exports.
+ */
+export interface McpToolAnnotations {
+  readOnlyHint: boolean;
+  destructiveHint: boolean;
+  idempotentHint: boolean;
+  openWorldHint: boolean;
+}
+
+/**
+ * Derive MCP standard tool annotations directly from execution type and
+ * HTTP method — more precise than projecting through the aggregate risk
+ * *level* string, since e.g. GET and DELETE can share a risk tier on some
+ * tools while having opposite readOnlyHint/destructiveHint values.
+ *
+ * `requires_approval: true` always forces destructiveHint to true, since
+ * that flag exists precisely to flag operations a human should confirm.
+ */
+export function deriveToolAnnotations(tool: ToolDefinition): McpToolAnnotations {
+  const exec = tool.execution;
+  let annotations: McpToolAnnotations;
+
+  if (exec.type === 'function' || exec.type === 'command') {
+    // Arbitrary code / shell execution: not read-only, treat as destructive
+    // and non-idempotent (matches classifyAutomaticRisk's critical/high tiers).
+    annotations = {
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: false,
+      openWorldHint: true,
+    };
+  } else if (exec.type === 'http') {
+    switch (exec.method.toUpperCase()) {
+      case 'GET':
+        annotations = {
+          readOnlyHint: true,
+          destructiveHint: false,
+          idempotentHint: true,
+          openWorldHint: true,
+        };
+        break;
+      case 'PUT':
+        annotations = {
+          readOnlyHint: false,
+          destructiveHint: false,
+          idempotentHint: true,
+          openWorldHint: true,
+        };
+        break;
+      case 'DELETE':
+        annotations = {
+          readOnlyHint: false,
+          destructiveHint: true,
+          idempotentHint: true,
+          openWorldHint: true,
+        };
+        break;
+      default:
+        // POST, PATCH, and any other write method: not idempotent by default
+        annotations = {
+          readOnlyHint: false,
+          destructiveHint: false,
+          idempotentHint: false,
+          openWorldHint: true,
+        };
+    }
+  } else {
+    // Unknown execution type — treat conservatively (matches
+    // classifyAutomaticRisk's 'high' fallback for unrecognized types).
+    annotations = {
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: false,
+      openWorldHint: true,
+    };
+  }
+
+  if (tool.requires_approval === true) {
+    annotations = { ...annotations, destructiveHint: true };
+  }
+
+  return annotations;
+}
+
+/**
+ * Convert a snake_case tool name into a human-readable title for MCP
+ * clients, e.g. `slack_get_channel_history` → `Slack Get Channel History`.
+ */
+export function humanizeToolName(name: string): string {
+  return name
+    .split('_')
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
+/**
  * Build the full MCP tool registration metadata from a ToolDefinition.
  *
  * @returns Object ready for server.registerTool(name, metadata, handler)
@@ -135,6 +237,7 @@ export function toolToMcpRegistration(tool: ToolDefinition): {
   title: string;
   description: string;
   inputSchema: Record<string, z.ZodTypeAny>;
+  annotations: McpToolAnnotations;
 } {
   const schema = convertParametersToMcpSchema(tool.parameters || {});
 
@@ -148,9 +251,10 @@ export function toolToMcpRegistration(tool: ToolDefinition): {
   }
 
   return {
-    title: tool.name,
+    title: humanizeToolName(tool.name),
     description: tool.description || tool.name,
     inputSchema: schema,
+    annotations: deriveToolAnnotations(tool),
   };
 }
 

@@ -297,8 +297,10 @@ class MCPServer:
             mcp_tools.append(
                 mcp_types.Tool(
                     name=tool.name,
+                    title=registration["title"],
                     description=registration["description"],
                     inputSchema=registration["inputSchema"],
+                    annotations=mcp_types.ToolAnnotations(**registration["annotations"]),
                 )
             )
 

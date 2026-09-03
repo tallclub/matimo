@@ -212,6 +212,22 @@ class TestMCPServerGetMcpTools:
         except ImportError:
             pytest.skip("mcp not installed")
 
+    def test_includes_title_and_annotations(self) -> None:
+        # my_tool uses HTTP GET (see _make_tool) -> readOnlyHint/idempotentHint True
+        matimo = _make_matimo_mock(tools=[_make_tool("my_tool")])
+        server = MCPServer(matimo, MCPServerOptions())
+        try:
+            result = server._get_mcp_tools()
+        except ImportError:
+            pytest.skip("mcp not installed")
+        tool = result[0]
+        assert tool.title == "My Tool"
+        assert tool.annotations is not None
+        assert tool.annotations.readOnlyHint is True
+        assert tool.annotations.destructiveHint is False
+        assert tool.annotations.idempotentHint is True
+        assert tool.annotations.openWorldHint is True
+
 
 # ---------------------------------------------------------------------------
 # MCPServer._call_tool

@@ -1,14 +1,25 @@
 """Unit tests for mcp/tool_converter.py."""
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 
-from matimo.core.models import HttpExecution, Parameter, ParameterType, ToolDefinition
+from matimo.core.models import (
+    CommandExecution,
+    FunctionExecution,
+    HttpExecution,
+    Parameter,
+    ParameterType,
+    ToolDefinition,
+)
 from matimo.mcp.tool_converter import (
     _AUTH_PATTERNS,
     _is_auth_parameter,
     _parameter_to_json_schema,
     convert_parameters_to_mcp_schema,
+    derive_tool_annotations,
+    humanize_tool_name,
     tool_to_mcp_registration,
 )
 
@@ -171,9 +182,10 @@ class TestToolToMcpRegistration:
     def test_returns_title_description_inputschema(self) -> None:
         tool = _make_tool_def()
         reg = tool_to_mcp_registration(tool)
-        assert reg["title"] == "my_tool"
+        assert reg["title"] == "My Tool"
         assert reg["description"] == "A test tool"
         assert "inputSchema" in reg
+        assert "annotations" in reg
 
     def test_description_falls_back_to_name_when_empty(self) -> None:
         tool = ToolDefinition(
@@ -302,3 +314,117 @@ class TestParameterToJsonSchema:
         schema = _parameter_to_json_schema(param)
         assert schema["type"] == "object"
         assert "properties" not in schema
+
+
+# ---------------------------------------------------------------------------
+# derive_tool_annotations
+# ---------------------------------------------------------------------------
+
+
+def _tool_with_execution(execution: Any, requires_approval: bool = False) -> ToolDefinition:
+    return ToolDefinition(
+        name="test_tool",
+        description="Test",
+        execution=execution,
+        requires_approval=requires_approval,
+    )
+
+
+class TestDeriveToolAnnotations:
+    def test_function_execution_is_destructive_not_readonly_not_idempotent(self) -> None:
+        tool = _tool_with_execution(FunctionExecution(type="function", code="./fn.py"))
+        assert derive_tool_annotations(tool) == {
+            "readOnlyHint": False,
+            "destructiveHint": True,
+            "idempotentHint": False,
+            "openWorldHint": True,
+        }
+
+    def test_command_execution_is_destructive_not_readonly_not_idempotent(self) -> None:
+        tool = _tool_with_execution(CommandExecution(type="command", command="echo hello"))
+        assert derive_tool_annotations(tool) == {
+            "readOnlyHint": False,
+            "destructiveHint": True,
+            "idempotentHint": False,
+            "openWorldHint": True,
+        }
+
+    def test_http_get_is_readonly_and_idempotent(self) -> None:
+        tool = _tool_with_execution(
+            HttpExecution(type="http", method="GET", url="https://api.example.com")
+        )
+        assert derive_tool_annotations(tool) == {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": True,
+        }
+
+    def test_http_post_is_non_idempotent_non_destructive(self) -> None:
+        tool = _tool_with_execution(
+            HttpExecution(type="http", method="POST", url="https://api.example.com")
+        )
+        assert derive_tool_annotations(tool) == {
+            "readOnlyHint": False,
+            "destructiveHint": False,
+            "idempotentHint": False,
+            "openWorldHint": True,
+        }
+
+    def test_http_put_is_idempotent_not_destructive(self) -> None:
+        tool = _tool_with_execution(
+            HttpExecution(type="http", method="PUT", url="https://api.example.com")
+        )
+        assert derive_tool_annotations(tool) == {
+            "readOnlyHint": False,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": True,
+        }
+
+    def test_http_patch_like_post(self) -> None:
+        tool = _tool_with_execution(
+            HttpExecution(type="http", method="PATCH", url="https://api.example.com")
+        )
+        assert derive_tool_annotations(tool) == {
+            "readOnlyHint": False,
+            "destructiveHint": False,
+            "idempotentHint": False,
+            "openWorldHint": True,
+        }
+
+    def test_http_delete_is_destructive_and_idempotent(self) -> None:
+        tool = _tool_with_execution(
+            HttpExecution(type="http", method="DELETE", url="https://api.example.com/item")
+        )
+        assert derive_tool_annotations(tool) == {
+            "readOnlyHint": False,
+            "destructiveHint": True,
+            "idempotentHint": True,
+            "openWorldHint": True,
+        }
+
+    def test_requires_approval_forces_destructive_hint_even_for_get(self) -> None:
+        tool = _tool_with_execution(
+            HttpExecution(type="http", method="GET", url="https://api.example.com"),
+            requires_approval=True,
+        )
+        result = derive_tool_annotations(tool)
+        assert result["destructiveHint"] is True
+        assert result["readOnlyHint"] is True
+
+
+# ---------------------------------------------------------------------------
+# humanize_tool_name
+# ---------------------------------------------------------------------------
+
+
+class TestHumanizeToolName:
+    def test_snake_case_to_title_case(self) -> None:
+        assert humanize_tool_name("slack_get_channel_history") == "Slack Get Channel History"
+
+    def test_single_word(self) -> None:
+        assert humanize_tool_name("calculator") == "Calculator"
+
+    def test_collapses_consecutive_underscores(self) -> None:
+        assert humanize_tool_name("foo__bar") == "Foo Bar"

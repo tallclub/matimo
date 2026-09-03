@@ -440,6 +440,7 @@ export class MCPServer {
             title: registration.title,
             description: registration.description,
             inputSchema: registration.inputSchema,
+            annotations: registration.annotations,
           },
           async (args: Record<string, unknown>) => {
             try {
