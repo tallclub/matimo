@@ -87,7 +87,7 @@
       "fast-xml-parser": "^5.7.0",
       "form-data": ">=4.0.6",
       "ws": ">=8.21.0",
-      "undici": "7.28.0",
+      "undici": "7.29.0",
       "tmp": ">=0.2.6",
       "protobufjs@^7.2.5": "^7.6.4",
       "protobufjs@^8.0.1": "^8.7.1",
@@ -96,7 +96,9 @@
       "qs": ">=6.15.2",
       "js-yaml@^4.1.0": "^4.3.0",
       "esbuild": ">=0.28.1",
-      "@babel/core": ">=7.29.6"
+      "@babel/core": ">=7.29.6",
+      "nanoid@3.3.8": "^3.3.18",
+      "@faker-js/faker@^9.7.0": "^10.5.0"
     }
   },
   "devDependencies": {
