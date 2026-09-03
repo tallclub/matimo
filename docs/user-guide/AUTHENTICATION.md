@@ -145,7 +145,7 @@ try {
   });
   console.log('✅ Authentication successful');
 } catch (error) {
-  if (error.code === 'EXECUTION_FAILED' && error.details?.statusCode === 401) {
+  if (error.code === 'AUTH_FAILED') {
     console.error('❌ Token invalid or expired');
   }
 }

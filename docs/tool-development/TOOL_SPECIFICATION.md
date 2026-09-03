@@ -474,6 +474,32 @@ output_schema:
     - status
 ```
 
+### max_response_size
+
+Optional. Caps how many bytes of this tool's raw result Matimo will return before truncating it, overriding the instance-wide default.
+
+```yaml
+output_schema:
+  type: array
+  items:
+    type: object
+  max_response_size: 1048576  # 1 MB, in bytes
+```
+
+Every tool call passes through a response-size guardrail in `execute()` — regardless of whether it's invoked directly, via LangChain/CrewAI, or via MCP — so this applies uniformly across every integration. Precedence, highest first:
+
+1. This tool's own `output_schema.max_response_size`
+2. The instance-level default passed to `MatimoInstance.init()` (`defaultMaxResponseSize` in TS, `default_max_response_size` in Python)
+3. A built-in 256 KB (262,144 byte) default applied to every tool that sets neither of the above
+
+When a result exceeds the effective cap, it's truncated rather than rejected:
+
+- **Arrays** are sliced to fit the byte budget, with a sentinel element appended: `"...truncated, N of M items shown"`.
+- **Long strings** are sliced with an inline `"...truncated, N of M characters shown"` marker.
+- **Large objects** are truncated per-field (smaller fields like `statusCode`/`headers` are kept intact; the largest field absorbs the cut), and the outermost object gets an additive `_truncated: true` field — existing keys are never renamed or removed.
+
+See [Tool Execution Flow](../architecture/OVERVIEW.md#tool-execution-flow) for where this fits in the request lifecycle, and [Error Codes Reference](../api-reference/ERRORS.md) for how a truncated result differs from an error response (it's never an error — the result is still returned, just capped).
+
 ---
 
 ## Authentication

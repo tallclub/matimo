@@ -238,6 +238,8 @@ Process: Send request, embed params, validate by output_schema
 Output: { status, data, headers }
 ```
 
+Both language implementations enforce a coarse 50 MB upstream size ceiling on the raw response as defense in depth, independent of the response-size guardrail applied later in `execute()` (see [Tool Execution Flow](#tool-execution-flow)): TypeScript sets axios's `maxContentLength`/`maxBodyLength`; Python streams the response manually via `httpx`'s `client.stream()` and aborts once the declared `Content-Length` or the accumulated body exceeds the cap, since `httpx` has no direct equivalent option.
+
 **CommandExecutor** (Legacy Shell Execution): Runs external shell commands
 
 ```
@@ -441,7 +443,21 @@ For agents that create tools at runtime (e.g., autonomous coding agents), the fu
        ├─ Check required fields present
        │
        ▼
-7. Return to Application
+7. Response Size Guardrail
+   └─> Cap the raw result to an effective byte budget — the single choke
+       point every execution path (direct SDK, LangChain, CrewAI, MCP)
+       funnels through, so no entry point can bypass it.
+       │
+       ├─ Effective cap = tool's output_schema.max_response_size,
+       │    else the instance-level default, else a built-in 256 KB
+       ├─ Under the cap → returned unchanged
+       ├─ Over the cap → truncated (arrays sliced with a
+       │    "...truncated, N of M items shown" sentinel; long strings
+       │    sliced with an inline marker; large objects truncated
+       │    per-field, decorated once with `_truncated: true`)
+       │
+       ▼
+8. Return to Application
    └─> { result: 8 }
 ```
 
@@ -689,7 +705,7 @@ Error occurs
    ├─> Wrap in MatimoError
    │   ├─ code: ErrorCode
    │   ├─ message: string
-   │   ├─ details?: object
+   │   ├─ details?: object (includes retryable for HTTP-sourced errors)
    │
    ▼
 Application error handling
@@ -701,6 +717,22 @@ Application error handling
    ▼
 Application recovery
 ```
+
+HTTP-sourced errors are mapped to specific codes rather than a single
+generic failure — 401/403 → `AUTH_FAILED`, 429 → `RATE_LIMIT_EXCEEDED`,
+other 4xx/5xx → `EXECUTION_FAILED`; a `retryable` flag on `details`
+tells the caller whether the failure is worth retrying (true for 429
+and 5xx). Network-level failures with no HTTP response at all (timeout,
+DNS failure, connection refused) get their own `TIMEOUT`/`NETWORK_ERROR`
+codes instead of being folded into `EXECUTION_FAILED`.
+
+The MCP server surfaces this same structured data across the protocol
+boundary: a failed tool call returns `isError: true` with a
+`structuredContent` field carrying `{ code, statusCode, retryable,
+message }`, rather than flattening the error into freeform text. See
+[MCP Server docs — Tool Metadata & Error Responses](../MCP.md#tool-metadata--error-responses)
+for the exact shape and [Error Codes Reference](../api-reference/ERRORS.md)
+for the full code list.
 
 ---
 

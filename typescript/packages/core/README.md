@@ -178,9 +178,14 @@ try {
 
 **Error codes:**
 - `INVALID_SCHEMA` - Tool definition or parameters invalid
-- `EXECUTION_FAILED` - Tool execution failed (network, timeout, etc.)
-- `AUTH_FAILED` - Authentication/authorization error
+- `EXECUTION_FAILED` - HTTP error other than 401/403/429 (e.g. 400, 404, 500) or a command/function failure
+- `AUTH_FAILED` - Authentication/authorization error, including a live 401/403 response
+- `RATE_LIMIT_EXCEEDED` - HTTP 429 from the target API
+- `TIMEOUT` - Request exceeded the tool's `execution.timeout`
+- `NETWORK_ERROR` - Connection-level failure with no HTTP response at all (DNS, connection refused)
 - `TOOL_NOT_FOUND` - Tool not found in registry
+
+HTTP-sourced errors also carry `details.retryable` (`true` for 429, 5xx, timeouts, and network failures) — see the [Error Codes Reference](../../../docs/api-reference/ERRORS.md) for the complete list.
 
 **Error chaining:**
 The optional `cause` field preserves the original error for debugging:
@@ -368,6 +373,11 @@ All tool execution includes automatic validation:
 - Function executor validates return value against `output_schema` (for HTTP tools)
 - Invalid responses/returns throw `MatimoError(EXECUTION_FAILED)`
 - Zod provides detailed validation error messages
+
+**Response Size Guardrail:**
+- Every `execute()` call caps the result to an effective byte budget before returning it — this is the one choke point every execution path (direct SDK, LangChain, CrewAI, MCP) funnels through
+- Precedence: this tool's `output_schema.max_response_size` > the instance's `defaultMaxResponseSize` (`MatimoInstance.init()` option) > a built-in 256 KB default
+- Oversized results are truncated, not rejected — arrays/strings/objects each get a size-aware truncation strategy with an explicit marker, never a silent drop
 
 **Example (core `execute` tool):**
 ```yaml

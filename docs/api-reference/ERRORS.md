@@ -179,21 +179,23 @@ const result = await m.execute('calculator', {
 
 ### EXECUTION_FAILED
 
-Tool execution encountered an error.
+Tool execution encountered an HTTP error that isn't a recognized auth or
+rate-limit failure. `fromHttpError()`/`from_http_error()` maps HTTP
+responses to a specific code first — 401/403 become `AUTH_FAILED`, 429
+becomes `RATE_LIMIT_EXCEEDED` — so `EXECUTION_FAILED` is what remains for
+everything else (400, 404, other 4xx/5xx, tool-specific API errors).
 
 ```typescript
 if (error.code === 'EXECUTION_FAILED') {
   console.log('Tool error:', error.details);
-  // Details vary by tool type
+  console.log('Retryable:', error.details.retryable); // true for 5xx, false otherwise
 }
 ```
 
 **Common causes:**
 
-- Tool returned error (e.g., API returned 500)
+- Tool returned an error response other than 401/403/429 (e.g., 400, 404, 500)
 - Command execution failed
-- Network error
-- Authentication failed
 
 **Resolution:**
 
@@ -205,11 +207,13 @@ try {
     body: 'Test',
   });
 } catch (error) {
-  if (error.code === 'EXECUTION_FAILED') {
-    if (error.details.statusCode === 401) {
+  if (error instanceof MatimoError) {
+    if (error.code === 'AUTH_FAILED') {
       console.error('❌ Authentication failed - check token');
-    } else if (error.details.statusCode === 429) {
+    } else if (error.code === 'RATE_LIMIT_EXCEEDED') {
       console.error('⏱️ Rate limited - retry later');
+    } else if (error.code === 'EXECUTION_FAILED' && error.details.retryable) {
+      console.error('Server error - safe to retry:', error.message);
     } else {
       console.error('Tool error:', error.message);
     }
@@ -287,12 +291,15 @@ const result = await m.execute('calculator', {
 
 ### AUTH_FAILED
 
-Authentication error (missing or invalid token).
+Authentication error — either a missing/invalid token detected before the
+call, or a live API responding with HTTP 401/403 (auto-mapped by
+`fromHttpError()`/`from_http_error()`, no per-tool code needed).
 
 ```typescript
 if (error.code === 'AUTH_FAILED') {
   console.log('Auth error:', error.message);
   // e.g., "Missing GMAIL_ACCESS_TOKEN environment variable"
+  // or:   "HTTP error executing tool 'slack_send_message'" with details.statusCode === 401
 }
 ```
 
@@ -301,6 +308,7 @@ if (error.code === 'AUTH_FAILED') {
 - OAuth2 token not set in environment variable
 - Token expired
 - Token invalid or revoked
+- Live API returned 401 Unauthorized or 403 Forbidden
 
 **Resolution:**
 
@@ -347,6 +355,68 @@ ls -la ./tools/calculator/definition.yaml
 # Use correct path when initializing
 const m = await MatimoInstance.init('./tools');
 ```
+
+---
+
+### RATE_LIMIT_EXCEEDED
+
+The remote API responded with HTTP 429. `details.retryable` is always `true` for this code.
+
+```typescript
+if (error.code === 'RATE_LIMIT_EXCEEDED') {
+  console.log('Rate limited:', error.details.statusCode); // 429
+}
+```
+
+**Resolution:**
+
+```typescript
+try {
+  await m.execute('slack_send_channel_message', params);
+} catch (error) {
+  if (error instanceof MatimoError && error.code === ErrorCode.RATE_LIMIT_EXCEEDED) {
+    await sleep(60_000); // or read a Retry-After header if the tool's error_handling exposes one
+    return m.execute('slack_send_channel_message', params);
+  }
+  throw error;
+}
+```
+
+---
+
+### TIMEOUT
+
+The request exceeded the tool's `execution.timeout` (or the default) before a response arrived. Distinct from a real HTTP error — no status code is available. TypeScript maps `ECONNABORTED`/`ETIMEDOUT`; Python maps `httpx.TimeoutException`. `details.retryable` is `true`.
+
+```typescript
+if (error.code === 'TIMEOUT') {
+  console.log('Timed out after:', error.details.timeoutMs);
+}
+```
+
+**Resolution:**
+
+- Increase the tool's `execution.timeout` in its YAML definition
+- Check the target API's own latency/status page
+- Retry with backoff — timeouts are marked `retryable: true`
+
+---
+
+### NETWORK_ERROR
+
+A connection-level failure with no HTTP response at all (DNS failure, connection refused, TLS error) — as opposed to `EXECUTION_FAILED`, which means a response *was* received, just an error one. `details.retryable` is `true`.
+
+```typescript
+if (error.code === 'NETWORK_ERROR') {
+  console.log('Network failure:', error.message);
+}
+```
+
+**Resolution:**
+
+- Check connectivity to the target host
+- Verify the tool's `execution.url` is correct and reachable
+- Retry with backoff
 
 ---
 
@@ -423,23 +493,44 @@ try {
 }
 ```
 
+### Pattern 4: Reading Structured Errors Over MCP
+
+When a tool is called through the MCP server rather than the SDK directly, `MatimoError` can't cross the process/protocol boundary as a thrown exception — so the same `code`/`statusCode`/`retryable`/`message` data is carried in the tool result's `structuredContent` field instead of being flattened into free text:
+
+```json
+{
+  "content": [{ "type": "text", "text": "Error: Rate limit exceeded" }],
+  "isError": true,
+  "structuredContent": {
+    "code": "RATE_LIMIT_EXCEEDED",
+    "statusCode": 429,
+    "retryable": true,
+    "message": "Rate limit exceeded"
+  }
+}
+```
+
+Non-`MatimoError` exceptions (including ones from a tool's own code) are caught too and mapped to `code: "UNKNOWN_ERROR"`, so an MCP client can always branch on `structuredContent.code` rather than parsing the text. See [MCP Server docs — Tool Metadata & Error Responses](../MCP.md#tool-metadata--error-responses).
+
 ---
 
 ## Error Codes Reference
 
-| Code                  | ErrorCode Enum                  | Cause                    | Resolution                             |
-| --------------------- | ------------------------------- | ------------------------ | -------------------------------------- |
-| `TOOL_NOT_FOUND`      | `ErrorCode.TOOL_NOT_FOUND`      | Tool doesn't exist       | Check tool name, use `listTools()`     |
-| `INVALID_PARAMETER`   | `ErrorCode.INVALID_PARAMETER`   | Missing/wrong params     | Check tool definition                  |
-| `EXECUTION_FAILED`    | `ErrorCode.EXECUTION_FAILED`    | Tool execution error     | Check tool error details               |
-| `INVALID_SCHEMA`      | `ErrorCode.INVALID_SCHEMA`      | Bad tool definition      | Fix tool YAML, run `validate-tools`    |
-| `VALIDATION_FAILED`   | `ErrorCode.VALIDATION_FAILED`   | Param validation failed  | Check constraints (enum, regex, range) |
-| `AUTH_FAILED`         | `ErrorCode.AUTH_FAILED`         | Missing/invalid token    | Set OAuth2 env var                     |
-| `FILE_NOT_FOUND`      | `ErrorCode.FILE_NOT_FOUND`      | File/dir missing         | Verify paths exist                     |
-| `RATE_LIMIT_EXCEEDED` | `ErrorCode.RATE_LIMIT_EXCEEDED` | API rate limit hit       | Wait and retry                         |
-| `TIMEOUT`             | `ErrorCode.TIMEOUT`             | Operation timeout        | Increase timeout or check network      |
-| `NETWORK_ERROR`       | `ErrorCode.NETWORK_ERROR`       | Network/connection error | Check connectivity                     |
-| `UNKNOWN_ERROR`       | `ErrorCode.UNKNOWN_ERROR`       | Unknown error            | Check error details                    |
+| Code                  | ErrorCode Enum                   | Cause                                    | Retryable | Resolution                              |
+| --------------------- | --------------------------------- | ----------------------------------------- | --------- | ---------------------------------------- |
+| `TOOL_NOT_FOUND`      | `ErrorCode.TOOL_NOT_FOUND`       | Tool doesn't exist                       | No        | Check tool name, use `listTools()`      |
+| `INVALID_PARAMETER`   | `ErrorCode.INVALID_PARAMETER`    | Missing/wrong params                     | No        | Check tool definition                   |
+| `EXECUTION_FAILED`    | `ErrorCode.EXECUTION_FAILED`     | HTTP error other than 401/403/429        | 5xx only  | Check tool error details                |
+| `INVALID_SCHEMA`      | `ErrorCode.INVALID_SCHEMA`       | Bad tool definition                      | No        | Fix tool YAML, run `validate-tools`     |
+| `VALIDATION_FAILED`   | `ErrorCode.VALIDATION_FAILED`    | Param validation failed                  | No        | Check constraints (enum, regex, range)  |
+| `AUTH_FAILED`         | `ErrorCode.AUTH_FAILED`          | Missing/invalid token, or HTTP 401/403   | No        | Set OAuth2 env var                      |
+| `FILE_NOT_FOUND`      | `ErrorCode.FILE_NOT_FOUND`       | File/dir missing                         | No        | Verify paths exist                      |
+| `RATE_LIMIT_EXCEEDED` | `ErrorCode.RATE_LIMIT_EXCEEDED`  | HTTP 429                                 | Yes       | Wait and retry                          |
+| `TIMEOUT`             | `ErrorCode.TIMEOUT`              | Request exceeded `execution.timeout`     | Yes       | Increase timeout or check network       |
+| `NETWORK_ERROR`       | `ErrorCode.NETWORK_ERROR`        | No HTTP response (DNS, connection)       | Yes       | Check connectivity                      |
+| `UNKNOWN_ERROR`       | `ErrorCode.UNKNOWN_ERROR`        | Unrecognized error shape                 | No        | Check error details                     |
+
+`retryable` lives on `error.details.retryable` and is only populated for HTTP-sourced errors (via `fromHttpError()`/`from_http_error()`) — `true` for 429, 5xx, timeouts, and network-level failures.
 
 ---
 

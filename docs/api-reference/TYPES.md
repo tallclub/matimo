@@ -224,6 +224,7 @@ interface OutputSchema {
   properties?: Record<string, OutputSchema>;
   items?: OutputSchema;
   required?: string[];
+  max_response_size?: number; // Bytes. Overrides the instance/default response-size cap for this tool.
 }
 ```
 

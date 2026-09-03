@@ -25,6 +25,7 @@ Expose your Matimo tools to AI assistants via the [Model Context Protocol](https
 - [Secret Management](#secret-management)
 - [Tool Filtering](#tool-filtering)
 - [Approval-Required Tools](#approval-required-tools)
+- [Tool Metadata & Error Responses](#tool-metadata--error-responses)
 - [Programmatic Usage](#programmatic-usage)
 - [Architecture](#architecture)
 - [Troubleshooting](#troubleshooting)
@@ -930,6 +931,45 @@ This prevents accidental destructive operations (deletes, drops, etc.).
 
 ---
 
+## Tool Metadata & Error Responses
+
+### Standard MCP annotations
+
+Every tool Matimo registers over MCP carries the protocol's standard [tool annotations](https://modelcontextprotocol.io/specification/2025-06-18/server/tools#annotations) — `readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint` — plus a humanized `title` (`slack_get_channel_history` → `"Slack Get Channel History"`). Clients that understand these hints (Claude Desktop, Cursor, etc.) can use them to decide when to prompt a user before invoking a tool, independent of Matimo's own policy gate.
+
+Annotations are derived from `execution.type` and HTTP method, not from the aggregate policy risk tier — the two can diverge (a GET and a DELETE tool can share a risk tier while having opposite `readOnlyHint`/`destructiveHint`):
+
+| Execution | `readOnlyHint` | `destructiveHint` | `idempotentHint` | `openWorldHint` |
+| --- | --- | --- | --- | --- |
+| `type: function` / `type: command` | `false` | `true` | `false` | `true` |
+| HTTP `GET` | `true` | `false` | `true` | `true` |
+| HTTP `PUT` | `false` | `false` | `true` | `true` |
+| HTTP `DELETE` | `false` | `true` | `true` | `true` |
+| HTTP `POST` / `PATCH` / other | `false` | `false` | `false` | `true` |
+
+A tool with `requires_approval: true` always gets `destructiveHint: true`, regardless of the table above.
+
+### Structured error responses
+
+Failed tool calls return `isError: true` with a `structuredContent` field carrying machine-readable error data, instead of only a freeform error string:
+
+```json
+{
+  "content": [{ "type": "text", "text": "Error: Rate limit exceeded" }],
+  "isError": true,
+  "structuredContent": {
+    "code": "RATE_LIMIT_EXCEEDED",
+    "statusCode": 429,
+    "retryable": true,
+    "message": "Rate limit exceeded"
+  }
+}
+```
+
+This applies uniformly to every error path: a thrown `MatimoError` (its `code`/`details.statusCode`/`details.retryable` map directly), any other exception (`code: "UNKNOWN_ERROR"`), and an approval-rejection response (`code: "EXECUTION_FAILED"`) — so a client can always branch on `structuredContent.code` rather than parsing the text. See the [Error Codes Reference](./api-reference/ERRORS.md) for the full code list and what `retryable` means for each.
+
+---
+
 ## Programmatic Usage
 
 Use the MCP server directly from TypeScript:
@@ -1017,7 +1057,11 @@ Tool Call Flow:
       → Auth injection (from process.env)
       → Executor (HTTP / Command / Function)
       → Validate response against output_schema
+      → Response-size guardrail (truncates oversized results — see Tool Execution Flow in
+        docs/architecture/OVERVIEW.md)
       → Return as MCP content
+        (errors return isError: true + structuredContent — see Tool Metadata & Error
+        Responses above)
 ```
 
 ### Python Implementation Details
@@ -1035,6 +1079,8 @@ The Python MCP implementation mirrors TypeScript with full feature parity:
 | Skill resources | `registerSkillResources()` | `_register_skill_resources()` | Registers skills as MCP resources |
 | HTTP transport | `StreamableHTTPServerTransport` | `StreamableHTTPSessionManager` | Stateless HTTP with bearer auth, CORS |
 | Stdio transport | `StdioServerTransport` | `stdio_server()` | JSON-RPC over pipe for Claude Desktop |
+| Tool annotations | `deriveToolAnnotations()` | `derive_tool_annotations()` | readOnlyHint/destructiveHint/idempotentHint/openWorldHint |
+| Structured errors | `structuredContent` in `registerTool()` catch block | `_build_error_result()` | code/statusCode/retryable/message on every error path, incl. a generic-exception catch-all |
 
 #### Auto-Discovery Implementation
 

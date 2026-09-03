@@ -474,6 +474,8 @@ throw new Error('Something went wrong');
 throw new Error(`Failed with token: ${apiKey}`);
 ```
 
+> Matimo's own built-in HTTP executor already does this HTTP-error → `MatimoError` wrapping for you via `fromHttpError()`/`from_http_error()`, and doesn't collapse every status to `EXECUTION_FAILED` — it maps 401/403 → `AUTH_FAILED`, 429 → `RATE_LIMIT_EXCEEDED`, and records a `retryable` flag on `details`. Reach for the pattern above only when writing a custom `type: function` executor that talks to something other than a standard HTTP tool. See the [Error Codes Reference](../api-reference/ERRORS.md).
+
 ### Error Handling Pattern
 
 ```typescript

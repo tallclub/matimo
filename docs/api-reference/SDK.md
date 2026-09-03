@@ -53,6 +53,7 @@ static async init(options?: InitOptions | string): Promise<MatimoInstance>
     - `autoDiscover` (boolean, optional) - Automatically discover tools from `node_modules/@matimo/*` packages
     - `toolPaths` (string[], optional) - Array of explicit tool directory paths
     - `includeCore` (boolean, optional) - Include core built-in tools (default: true when using InitOptions)
+    - `defaultMaxResponseSize` (number, optional) - Instance-wide response-size cap in bytes, applied to every tool call via `execute()` unless that tool's own `output_schema.max_response_size` overrides it (default: 262144 / 256 KB — see [Response Size Guardrail](../architecture/OVERVIEW.md#tool-execution-flow))
   - String: Backward-compatible single directory path (e.g., `'./tools'`)
 
 **Returns:** `Promise<MatimoInstance>` - Initialized instance ready to execute tools
@@ -116,7 +117,7 @@ interface ExecuteOptions {
 - `options.timeout` (number, optional) - Execution timeout in milliseconds
 - `options.credentials` (object, optional) - Per-call credential overrides (see Multi-tenant Usage below)
 
-**Returns:** `Promise<unknown>` - Tool result (validated against output schema)
+**Returns:** `Promise<unknown>` - Tool result (validated against output schema). If the raw result exceeds the effective response-size cap (`output_schema.max_response_size`, else `defaultMaxResponseSize`, else a built-in 256 KB), it is truncated rather than rejected — see [Response Size Guardrail](../architecture/OVERVIEW.md#tool-execution-flow).
 
 **Throws:**
 
@@ -762,6 +763,7 @@ async def init(
     hitl_timeout_ms: int | None = None,
     log_level: str | None = None,
     log_format: str | None = None,
+    default_max_response_size: int | None = None,
 ) -> 'Matimo'
 ```
 
@@ -787,6 +789,7 @@ Every option is a direct keyword-only argument on `init()` itself — there is n
 | `hitl_timeout_ms` | `int` | `None` | Timeout for the HITL callback; `None` waits indefinitely |
 | `log_level` | `str` | `None` | `'debug' \| 'info' \| 'warn' \| 'error' \| 'silent'` (resolved from env/defaults when unset) |
 | `log_format` | `str` | `None` | `'simple' \| 'json'` (resolved from env/defaults when unset) |
+| `default_max_response_size` | `int` | `None` | Instance-wide response-size cap in bytes, applied to every tool call via `execute()` unless that tool's own `output_schema.max_response_size` overrides it (falls back to a built-in 262144 / 256 KB when unset — see [Response Size Guardrail](../architecture/OVERVIEW.md#tool-execution-flow)) |
 
 If no `policy`/`policy_config`/`policy_file` is given, `init()` always constructs a `DefaultPolicyEngine()` — a zero-config Python instance is never left ungated (this always was Python's behavior; the equivalent TypeScript `MatimoInstance.init()` was fixed to match it).
 
@@ -842,7 +845,7 @@ async def execute(
 ) -> object
 ```
 
-Execute a tool by name. Raises `MatimoError` on failure.
+Execute a tool by name. Raises `MatimoError` on failure. If the raw result exceeds the effective response-size cap (`output_schema.max_response_size`, else `default_max_response_size`, else a built-in 256 KB), it's truncated rather than rejected — see [Response Size Guardrail](../architecture/OVERVIEW.md#tool-execution-flow).
 
 ```python
 from matimo import Matimo, MatimoError
