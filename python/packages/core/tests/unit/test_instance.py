@@ -95,6 +95,55 @@ class TestMatimoExecute:
         result = await matimo.execute("get_data", {"resource_id": "42"})
         assert result["id"] == 42
 
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_execute_truncates_oversized_result_via_default_max_response_size(self) -> None:
+        """The response-size guardrail (Fix 3) must fire inside execute() itself —
+        the single choke point every execution path funnels through — not just
+        in the MCP server layer."""
+        huge_items = [{"id": i, "blob": "x" * 80} for i in range(5000)]
+        respx.get("https://api.example.com/data/42").mock(
+            return_value=httpx.Response(200, json=huge_items)
+        )
+        reg = ToolRegistry()
+        reg.register(_make_get_tool())
+        matimo = Matimo(
+            registry=reg,
+            policy_engine=DefaultPolicyEngine(),
+            loader=MagicMock(),
+            tool_paths=[],
+            on_event=None,
+            on_hitl=None,
+            matimo_logger=MagicMock(),
+            default_max_response_size=2_000,
+        )
+        result = await matimo.execute("get_data", {"resource_id": "42"})
+        assert isinstance(result, list)
+        assert len(result) < len(huge_items) + 1
+        assert isinstance(result[-1], str)
+        assert "truncated" in result[-1]
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_execute_leaves_small_result_unchanged(self) -> None:
+        respx.get("https://api.example.com/data/42").mock(
+            return_value=httpx.Response(200, json={"id": 42, "name": "item"})
+        )
+        reg = ToolRegistry()
+        reg.register(_make_get_tool())
+        matimo = Matimo(
+            registry=reg,
+            policy_engine=DefaultPolicyEngine(),
+            loader=MagicMock(),
+            tool_paths=[],
+            on_event=None,
+            on_hitl=None,
+            matimo_logger=MagicMock(),
+            default_max_response_size=2_000,
+        )
+        result = await matimo.execute("get_data", {"resource_id": "42"})
+        assert result == {"id": 42, "name": "item"}
+
     @pytest.mark.asyncio
     async def test_execute_tool_not_found(self) -> None:
         reg = ToolRegistry()

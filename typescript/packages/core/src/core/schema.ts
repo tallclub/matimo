@@ -111,6 +111,13 @@ export const OutputSchemaSchema = z.object({
   properties: z.record(z.string(), OutputPropertySchema).optional(),
   required: z.array(z.string()).optional(),
   description: z.string().optional(),
+  /**
+   * Opt-in per-tool cap (in UTF-8 bytes) on a tool's serialized response
+   * size, enforced by applyResponseSizeGuardrail() in matimo-instance.ts.
+   * Overrides the instance-level `defaultMaxResponseSize` option and the
+   * built-in DEFAULT_MAX_RESPONSE_SIZE_BYTES fallback for this tool only.
+   */
+  max_response_size: z.number().positive().optional(),
 });
 
 export type OutputSchema = z.infer<typeof OutputSchemaSchema>;

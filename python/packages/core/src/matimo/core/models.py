@@ -205,6 +205,12 @@ class OutputSchema(BaseModel):
     required: list[str] | None = None
     description: str | None = None
     enum: list[Any] | None = None
+    # Opt-in per-tool cap (UTF-8 bytes) on a tool's serialized response size,
+    # enforced by apply_response_size_guardrail() in instance.py. Overrides
+    # the instance-level default_max_response_size option and the built-in
+    # DEFAULT_MAX_RESPONSE_SIZE_BYTES fallback for this tool only.
+    # Mirrors output_schema.max_response_size in schema.ts.
+    max_response_size: int | None = Field(default=None, gt=0)
 
 
 class ErrorHandlingConfig(BaseModel):

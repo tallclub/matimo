@@ -5,6 +5,7 @@ Mirrors: packages/core/src/executors/http-executor.ts
 from __future__ import annotations
 
 import base64
+import json
 import logging
 import re
 import time
@@ -20,6 +21,14 @@ from matimo.policy.content_validator import is_ssrf_target
 logger = logging.getLogger("matimo")
 
 _PLACEHOLDER_RE = re.compile(r"\{([^}]+)\}")
+
+# Coarse upstream ceiling on response size, independent of the JSON-level
+# response-size guardrail applied later in Matimo.execute(). Mirrors
+# HTTP_MAX_CONTENT_LENGTH_BYTES / axios's maxContentLength+maxBodyLength in
+# http-executor.ts. httpx has no direct maxContentLength option, so this is
+# enforced manually by streaming the response and aborting once the byte
+# budget is exceeded, rather than buffering an unbounded body first.
+HTTP_MAX_CONTENT_LENGTH_BYTES = 50 * 1024 * 1024  # 50 MB
 
 
 class HttpExecutor:
@@ -133,16 +142,42 @@ class HttpExecutor:
         timeout_s = timeout_ms / 1000.0
 
         try:
-            async with httpx.AsyncClient(timeout=timeout_s) as client:
-                response = await client.request(
-                    method=exec_cfg.method,
-                    url=url,
-                    headers=headers,
-                    params=query_params if query_params else None,
-                    json=request_json,
-                    data=request_data,
-                    content=request_content,
-                )
+            async with httpx.AsyncClient(timeout=timeout_s) as client, client.stream(
+                method=exec_cfg.method,
+                url=url,
+                headers=headers,
+                params=query_params if query_params else None,
+                json=request_json,
+                data=request_data,
+                content=request_content,
+            ) as response:
+                declared_length = response.headers.get("content-length")
+                if declared_length is not None and int(declared_length) > HTTP_MAX_CONTENT_LENGTH_BYTES:
+                    raise MatimoError(
+                        f"Response for tool '{tool.name}' exceeds maximum allowed size "
+                        f"({HTTP_MAX_CONTENT_LENGTH_BYTES} bytes)",
+                        ErrorCode.NETWORK_ERROR,
+                        {
+                            "tool_name": tool.name,
+                            "content_length": int(declared_length),
+                            "retryable": True,
+                        },
+                    )
+
+                body = bytearray()
+                async for chunk in response.aiter_bytes():
+                    body.extend(chunk)
+                    if len(body) > HTTP_MAX_CONTENT_LENGTH_BYTES:
+                        raise MatimoError(
+                            f"Response for tool '{tool.name}' exceeds maximum allowed size "
+                            f"({HTTP_MAX_CONTENT_LENGTH_BYTES} bytes)",
+                            ErrorCode.NETWORK_ERROR,
+                            {"tool_name": tool.name, "retryable": True},
+                        )
+
+                content_type_resp = response.headers.get("content-type", "")
+                response_text = bytes(body).decode("utf-8", errors="replace")
+
                 response.raise_for_status()
         except httpx.TimeoutException as exc:
             duration = time.monotonic() - start
@@ -162,11 +197,13 @@ class HttpExecutor:
                 cause=exc,
             ) from exc
 
-        # 11. Parse response
-        content_type_resp = response.headers.get("content-type", "")
+        # 11. Parse response — parsed from the manually-buffered `body` bytes
+        # above rather than response.json()/response.text, since accessing
+        # httpx's cached content property after a streamed read is unreliable
+        # across httpx versions (raises ResponseNotRead in some).
         if "application/json" in content_type_resp:
-            return response.json()
-        return response.text
+            return json.loads(response_text)
+        return response_text
 
     # ------------------------------------------------------------------
     # Templating helpers

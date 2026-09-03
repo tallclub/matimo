@@ -4,6 +4,9 @@ import { applyParameterEncodings } from '../encodings/parameter-encoding.js';
 import { MatimoError, ErrorCode, fromHttpError } from '../errors/matimo-error.js';
 import { isSSRFTarget } from '../policy/content-validator.js';
 
+/** Coarse upstream ceiling (bytes) on request/response body size, independent of the JSON-level response-size guardrail. */
+const HTTP_MAX_CONTENT_LENGTH_BYTES = 50 * 1024 * 1024; // 50 MB
+
 /**
  * HttpExecutor - Executes HTTP requests
  * Handles authentication, retries, and response validation
@@ -83,6 +86,11 @@ export class HttpExecutor {
     const requestConfig: AxiosRequestConfig = {
       method,
       url: finalUrl,
+      // Coarse upstream ceiling independent of the JSON-level response-size
+      // guardrail applied later in MatimoInstance.execute() — stops a
+      // pathologically huge download before it's even fully buffered.
+      maxContentLength: HTTP_MAX_CONTENT_LENGTH_BYTES,
+      maxBodyLength: HTTP_MAX_CONTENT_LENGTH_BYTES,
     };
 
     if (Object.keys(templatedHeaders).length > 0) {

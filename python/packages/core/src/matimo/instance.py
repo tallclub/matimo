@@ -36,6 +36,7 @@ from matimo.core.models import (
     ToolDefinition,
 )
 from matimo.core.registry import ToolRegistry
+from matimo.core.response_size_guardrail import apply_response_size_guardrail
 from matimo.core.skill_loader import SkillLoader
 from matimo.core.skill_registry import SemanticSearchResult, SkillRegistry
 from matimo.errors import ErrorCode, MatimoError
@@ -101,6 +102,9 @@ class InitOptions:
     log_level: str | None = None
     log_format: str | None = None
 
+    # Response size guardrail
+    default_max_response_size: int | None = None
+
 
 class Matimo:
     """
@@ -125,6 +129,7 @@ class Matimo:
         approval_manifest: ApprovalManifest | None = None,
         skill_paths: list[str] | None = None,
         skill_loader: SkillLoader | None = None,
+        default_max_response_size: int | None = None,
     ) -> None:
         self._registry = registry
         self._policy = policy_engine
@@ -139,6 +144,7 @@ class Matimo:
         self._approval_manifest = approval_manifest
         self._skill_paths = skill_paths or []
         self._skill_loader = skill_loader or SkillLoader()
+        self._default_max_response_size = default_max_response_size
 
         self._http_executor = HttpExecutor()
         self._command_executor = CommandExecutor()
@@ -168,6 +174,7 @@ class Matimo:
         hitl_timeout_ms: int | None = None,
         log_level: str | None = None,
         log_format: str | None = None,
+        default_max_response_size: int | None = None,
     ) -> Matimo:
         """
         Initialise Matimo by loading tool definitions and configuring the policy engine.
@@ -188,6 +195,10 @@ class Matimo:
                            is auto-rejected. Defaults to None (waits indefinitely).
             log_level:     One of 'silent' | 'error' | 'warn' | 'info' | 'debug'.
             log_format:    'json' | 'simple'.
+            default_max_response_size: Instance-wide default cap (UTF-8 bytes) on a
+                           tool's serialized response size, applied to every tool that
+                           doesn't declare its own output_schema.max_response_size.
+                           Falls back to DEFAULT_MAX_RESPONSE_SIZE_BYTES when unset.
 
         Returns:
             Configured Matimo instance.
@@ -266,6 +277,7 @@ class Matimo:
             approval_manifest=approval_manifest,
             skill_paths=skill_discovery_paths,
             skill_loader=skill_loader,
+            default_max_response_size=default_max_response_size,
         )
 
     # ------------------------------------------------------------------
@@ -362,7 +374,7 @@ class Matimo:
 
         # Execute
         try:
-            result = await self._dispatch(tool, working_params, credentials)
+            raw_result = await self._dispatch(tool, working_params, credentials)
         except MatimoError:
             raise
         except Exception as exc:
@@ -372,6 +384,14 @@ class Matimo:
                 {"tool_name": tool_name, "trace_id": trace_id},
                 cause=exc,
             ) from exc
+
+        # Cap the result size here — the one place every execution path
+        # (direct SDK, LangChain, CrewAI, MCP) funnels through — so an
+        # oversized page doesn't silently consume the caller's whole
+        # context budget regardless of which entry point they used.
+        result = apply_response_size_guardrail(
+            tool, raw_result, self._default_max_response_size
+        )
 
         duration = time.monotonic() - start
         self._emit_event({

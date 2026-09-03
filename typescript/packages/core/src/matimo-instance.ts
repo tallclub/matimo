@@ -32,6 +32,7 @@ import { loadPolicyFromFile } from './policy/policy-loader.js';
 import { ToolIntegrityTracker } from './policy/integrity-tracker.js';
 import { ApprovalManifest } from './policy/approval-manifest.js';
 import type { MatimoEvent, MatimoEventHandler } from './policy/events.js';
+import { applyResponseSizeGuardrail } from './core/response-size-guardrail.js';
 
 /**
  * Find the core skills directory by walking up from process.cwd().
@@ -107,6 +108,13 @@ export interface InitOptions extends LoggerConfig {
    * Defaults to no timeout (waits indefinitely).
    */
   hitlTimeoutMs?: number;
+  /**
+   * Instance-wide default cap (UTF-8 bytes) on a tool's serialized response
+   * size, applied to every tool that doesn't declare its own
+   * `output_schema.max_response_size`. Falls back to
+   * DEFAULT_MAX_RESPONSE_SIZE_BYTES when unset.
+   */
+  defaultMaxResponseSize?: number;
 }
 
 /**
@@ -128,6 +136,7 @@ export class MatimoInstance {
   private functionExecutor: FunctionExecutor;
   private logger: MatimoLogger;
   private approvalHandler: ApprovalHandler;
+  private defaultMaxResponseSize: number | undefined;
 
   // Policy engine fields — runtime-enforced encapsulation via ES #private
   #policy: PolicyEngine;
@@ -155,11 +164,13 @@ export class MatimoInstance {
       onHITL?: HITLCallback;
       hitlTimeoutMs?: number;
       policyFile?: string;
+      defaultMaxResponseSize?: number;
     }
   ) {
     this.toolPaths = toolPaths;
     this.skillPaths = skillPaths;
     this.logger = logger;
+    this.defaultMaxResponseSize = policyOptions.defaultMaxResponseSize;
     this.loader = new ToolLoader();
     this.registry = new ToolRegistry();
     this.skillLoader = new SkillLoader();
@@ -324,6 +335,7 @@ export class MatimoInstance {
       hitlTimeoutMs: finalOptions.hitlTimeoutMs,
       approvalTtlSeconds: finalOptions.approvalTtlSeconds,
       policyFile: finalOptions.policyFile,
+      defaultMaxResponseSize: finalOptions.defaultMaxResponseSize,
     });
 
     // Load tools from all paths
@@ -554,7 +566,17 @@ export class MatimoInstance {
           : tool;
 
       const executor = this.getExecutor(effectiveTool);
-      const result = await executor.execute(effectiveTool, finalParams, credentials);
+      const rawResult = await executor.execute(effectiveTool, finalParams, credentials);
+
+      // Cap the result size here — the one place every execution path
+      // (direct SDK, LangChain, CrewAI, MCP) funnels through — so an
+      // oversized page doesn't silently consume the caller's whole
+      // context budget regardless of which entry point they used.
+      const result = applyResponseSizeGuardrail(
+        effectiveTool,
+        rawResult,
+        this.defaultMaxResponseSize
+      );
 
       this.logger.debug(`Tool executed successfully: ${toolName}`, {
         toolName,

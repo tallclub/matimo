@@ -2,6 +2,7 @@ import {
   ParameterSchema,
   AuthConfigSchema,
   ExecutionConfigSchema,
+  OutputSchemaSchema,
   validateToolDefinition,
   validateProviderDefinition,
 } from '../../src/core/schema';
@@ -188,6 +189,37 @@ describe('Schema Validation', () => {
         args: ['test'],
       };
       expect(() => ExecutionConfigSchema.parse(exec)).toThrow();
+    });
+  });
+
+  describe('OutputSchemaSchema', () => {
+    it('should validate an output schema with max_response_size', () => {
+      const output = { type: 'object', max_response_size: 262_144 };
+      expect(OutputSchemaSchema.parse(output)).toEqual(output);
+    });
+
+    it('should validate an output schema without max_response_size (optional)', () => {
+      const output = { type: 'object' };
+      expect(OutputSchemaSchema.parse(output)).toEqual(output);
+    });
+
+    it('should reject a non-positive max_response_size', () => {
+      expect(() => OutputSchemaSchema.parse({ max_response_size: 0 })).toThrow();
+      expect(() => OutputSchemaSchema.parse({ max_response_size: -1 })).toThrow();
+    });
+
+    it('should validate a full tool definition with output_schema.max_response_size', () => {
+      const tool = {
+        name: 'list-items',
+        description: 'Lists items',
+        version: '1.0.0',
+        execution: { type: 'http', method: 'GET', url: 'https://api.example.com/items' },
+        output_schema: {
+          type: 'object',
+          max_response_size: 100_000,
+        },
+      };
+      expect(() => validateToolDefinition(tool)).not.toThrow();
     });
   });
 
