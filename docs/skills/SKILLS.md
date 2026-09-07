@@ -25,6 +25,7 @@
   - [Listing Skills](#listing-skills)
   - [Reading a Skill](#reading-a-skill)
   - [Validating a Skill](#validating-a-skill)
+- [Pluggable Skill Storage — Bring Your Own Backend](#pluggable-skill-storage--bring-your-own-backend)
 - [MCP Server — Skills as Resources](#mcp-server--skills-as-resources)
 - [LangChain Agent with Skills](#langchain-agent-with-skills)
 - [Storage Paths](#storage-paths)
@@ -477,6 +478,93 @@ Validation checks:
 - `name` field present and matches directory name
 - `description` field present
 - Name follows spec rules (lowercase, hyphens, 1–64 chars, no leading/trailing hyphens)
+
+---
+
+## Pluggable Skill Storage — Bring Your Own Backend
+
+Matimo OSS doesn't own skill storage — the same way it doesn't ship a database for Tools. A host platform (Matimo Workbench or your own) decides where skills actually live; Matimo OSS only needs two things from you: **a location to read from**, and **a direct way to push content in**.
+
+| Your skills live in... | Use |
+|---|---|
+| A filesystem — local disk, NFS/EFS/SMB, a synced git checkout, a FUSE-mounted bucket | `skillPaths` (init-time) or `matimo.addSkillPath(path)` (runtime), then `matimo.reloadSkills()` |
+| Anything else — Postgres, MongoDB, S3's API, an internal service | `matimo.registerSkill(skill)` / `matimo.registerSkills(skills)` |
+
+`addSkillPath()` only adds a directory to the list Matimo will scan — call `reloadSkills()` afterward to actually read its `SKILL.md` files. `registerSkill()`/`registerSkills()` take effect immediately with no filesystem round-trip; they accept plain `SkillDefinition` objects (`{ name, description, body, ... }`) fetched however you like.
+
+### Recipe: loading skills from S3
+
+```typescript
+import { MatimoInstance } from 'matimo';
+import { S3Client, ListObjectsV2Command, GetObjectCommand } from '@aws-sdk/client-s3';
+
+const s3 = new S3Client({});
+const matimo = await MatimoInstance.init({ autoDiscover: true });
+
+const { Contents } = await s3.send(
+  new ListObjectsV2Command({ Bucket: 'my-skills', Prefix: 'skills/' })
+);
+const skills = await Promise.all(
+  (Contents ?? [])
+    .filter((o) => o.Key?.endsWith('SKILL.md'))
+    .map(async (o) => {
+      const obj = await s3.send(new GetObjectCommand({ Bucket: 'my-skills', Key: o.Key! }));
+      const body = await obj.Body!.transformToString();
+      const name = o.Key!.split('/').at(-2)!; // skills/{name}/SKILL.md
+      const description = /^description:\s*(.+)$/m.exec(body)?.[1] ?? '';
+      return { name, description, body };
+    })
+);
+
+matimo.registerSkills(skills);
+```
+
+### Recipe: loading skills from Postgres
+
+```typescript
+import { MatimoInstance } from 'matimo';
+import { Pool } from 'pg';
+
+const pool = new Pool();
+const matimo = await MatimoInstance.init({ autoDiscover: true });
+
+const { rows } = await pool.query(
+  'SELECT name, description, body FROM tenant_skills WHERE tenant_id = $1',
+  [tenantId]
+);
+matimo.registerSkills(rows.map((r) => ({ name: r.name, description: r.description, body: r.body })));
+```
+
+Matimo OSS ships no S3 or Postgres client in either recipe — bring whatever library you already use. `registerSkills()` has no opinion on where the rows came from.
+
+### Observing agent-created skills
+
+When an agent calls `matimo_create_skill`, Matimo emits a `skill:created` event through the same `onEvent` handler used for tool/policy events, so a host can mirror an agent-created skill into its own storage the moment it happens instead of polling the filesystem:
+
+```typescript
+const matimo = await MatimoInstance.init({
+  autoDiscover: true,
+  onEvent: (event) => {
+    if (event.type === 'skill:created') {
+      // event.skillName, event.source ('user' | 'catalog'), event.timestamp
+      // e.g. read the file matimo_create_skill just wrote and push it into your DB
+    }
+  },
+});
+```
+
+### Configuring where agent-created skills get written
+
+By default, `matimo_create_skill` writes to `./matimo-tools/skills` unless the caller passes `target_dir` explicitly. Set `defaultSkillWriteDir` once at startup instead of relying on every agent call to pass `target_dir` correctly:
+
+```typescript
+const matimo = await MatimoInstance.init({
+  autoDiscover: true,
+  defaultSkillWriteDir: '/var/matimo/tenant-42/skills',
+});
+```
+
+**Python:** the same API exists under snake_case — `matimo.add_skill_path(path)`, `await matimo.reload_skills()`, `matimo.register_skill(skill)` / `register_skills(skills)`, `InitOptions(default_skill_write_dir=...)`, and an `on_event` handler that receives a `{"type": "skill:created", "skill_name": ..., "source": ..., "timestamp": ...}` dict.
 
 ---
 

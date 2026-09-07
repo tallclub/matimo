@@ -176,6 +176,13 @@ class ToolsReloadedEvent(BaseModel):
     timestamp: str
 
 
+class SkillCreatedEvent(BaseModel):
+    type: Literal["skill:created"] = "skill:created"
+    skill_name: str
+    source: Literal["user", "catalog"] = "user"
+    timestamp: str
+
+
 MatimoEvent = (
     ToolCreatedEvent
     | ToolApprovedEvent
@@ -188,6 +195,7 @@ MatimoEvent = (
     | ToolQuarantineRejectedEvent
     | PolicyReloadedEvent
     | ToolsReloadedEvent
+    | SkillCreatedEvent
 )
 
 MatimoEventHandler = Callable[[MatimoEvent], None]

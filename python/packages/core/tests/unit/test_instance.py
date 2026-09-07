@@ -12,6 +12,7 @@ from matimo.core.models import (
     HttpExecution,
     Parameter,
     ParameterType,
+    SkillDefinition,
     ToolDefinition,
 )
 from matimo.core.registry import ToolRegistry
@@ -914,6 +915,128 @@ class TestInstanceSkillsAndCoverage:
 
         assert result["removed"] == 1
         assert not any(s.name == "temp-skill" for s in matimo.list_skills())
+
+    # ------------------------------------------------------------------
+    # add_skill_path()
+    # ------------------------------------------------------------------
+
+    @pytest.mark.asyncio
+    async def test_add_skill_path_is_picked_up_by_reload_skills(self, tmp_path: Path) -> None:
+        skills_root = tmp_path / "skills"
+        skills_root.mkdir()
+        (skills_root / "added-skill").mkdir()
+        (skills_root / "added-skill" / "SKILL.md").write_text(
+            "---\nname: added-skill\ndescription: Added at runtime\n---\n\nContent."
+        )
+
+        matimo = await Matimo.init([])
+        assert str(skills_root) not in matimo.get_skill_paths()
+        assert matimo.list_skills() == []
+
+        matimo.add_skill_path(str(skills_root))
+        assert str(skills_root) in matimo.get_skill_paths()
+        assert matimo.list_skills() == []  # not read until reload_skills()
+
+        await matimo.reload_skills()
+        assert any(s.name == "added-skill" for s in matimo.list_skills())
+
+    @pytest.mark.asyncio
+    async def test_add_skill_path_dedups_existing_path(self, tmp_path: Path) -> None:
+        skills_root = tmp_path / "skills"
+        skills_root.mkdir()
+
+        matimo = await Matimo.init([], skill_paths=[str(skills_root)])
+        before = len(matimo.get_skill_paths())
+
+        matimo.add_skill_path(str(skills_root))
+
+        assert len(matimo.get_skill_paths()) == before
+
+    # ------------------------------------------------------------------
+    # register_skill() / register_skills()
+    # ------------------------------------------------------------------
+
+    def test_register_skill_makes_skill_visible_immediately(self) -> None:
+        matimo = self._make_matimo()
+        assert matimo.get_skill("external-skill") is None
+
+        matimo.register_skill(
+            SkillDefinition(
+                name="external-skill",
+                description="Pushed in directly, no filesystem involved",
+                body="# External\n\nFrom an external store.",
+            )
+        )
+
+        assert matimo.get_skill("external-skill") is not None
+        assert any(s.name == "external-skill" for s in matimo.list_skills())
+
+    def test_register_skills_registers_multiple_at_once(self) -> None:
+        matimo = self._make_matimo()
+
+        matimo.register_skills([
+            SkillDefinition(name="bulk-skill-a", description="A", body="# A"),
+            SkillDefinition(name="bulk-skill-b", description="B", body="# B"),
+        ])
+
+        names = {s.name for s in matimo.list_skills()}
+        assert {"bulk-skill-a", "bulk-skill-b"} <= names
+
+    # ------------------------------------------------------------------
+    # get_default_skill_write_dir()
+    # ------------------------------------------------------------------
+
+    def test_get_default_skill_write_dir_defaults_to_none(self) -> None:
+        matimo = self._make_matimo()
+        assert matimo.get_default_skill_write_dir() is None
+
+    @pytest.mark.asyncio
+    async def test_get_default_skill_write_dir_returns_configured_value(
+        self, tmp_path: Path
+    ) -> None:
+        custom_dir = str(tmp_path / "custom-skills")
+        matimo = await Matimo.init([], default_skill_write_dir=custom_dir)
+        assert matimo.get_default_skill_write_dir() == custom_dir
+
+    # ------------------------------------------------------------------
+    # notify_skill_created()
+    # ------------------------------------------------------------------
+
+    def test_notify_skill_created_emits_event_with_default_source(self) -> None:
+        events: list[dict] = []
+        matimo = Matimo(
+            registry=ToolRegistry(),
+            policy_engine=DefaultPolicyEngine(),
+            loader=MagicMock(),
+            tool_paths=[],
+            on_event=events.append,
+            on_hitl=None,
+            matimo_logger=MagicMock(),
+        )
+
+        matimo.notify_skill_created("agent-made-skill")
+
+        created = [e for e in events if e["type"] == "skill:created"]
+        assert len(created) == 1
+        assert created[0]["skill_name"] == "agent-made-skill"
+        assert created[0]["source"] == "user"
+
+    def test_notify_skill_created_accepts_explicit_source(self) -> None:
+        events: list[dict] = []
+        matimo = Matimo(
+            registry=ToolRegistry(),
+            policy_engine=DefaultPolicyEngine(),
+            loader=MagicMock(),
+            tool_paths=[],
+            on_event=events.append,
+            on_hitl=None,
+            matimo_logger=MagicMock(),
+        )
+
+        matimo.notify_skill_created("catalog-skill", "catalog")
+
+        created = [e for e in events if e["type"] == "skill:created"]
+        assert created[0]["source"] == "catalog"
 
     # ------------------------------------------------------------------
     # Lines 299-306: matimo_reload_tools interception in execute()

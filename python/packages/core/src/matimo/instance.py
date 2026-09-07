@@ -105,6 +105,12 @@ class InitOptions:
     # Response size guardrail
     default_max_response_size: int | None = None
 
+    # Skills
+    default_skill_write_dir: str | None = None
+    """Default directory matimo_create_skill writes new skills to when the
+    caller doesn't pass target_dir explicitly. Falls back to
+    ./matimo-tools/skills."""
+
 
 class Matimo:
     """
@@ -130,6 +136,7 @@ class Matimo:
         skill_paths: list[str] | None = None,
         skill_loader: SkillLoader | None = None,
         default_max_response_size: int | None = None,
+        default_skill_write_dir: str | None = None,
     ) -> None:
         self._registry = registry
         self._policy = policy_engine
@@ -145,6 +152,7 @@ class Matimo:
         self._skill_paths = skill_paths or []
         self._skill_loader = skill_loader or SkillLoader()
         self._default_max_response_size = default_max_response_size
+        self._default_skill_write_dir = default_skill_write_dir
 
         self._http_executor = HttpExecutor()
         self._command_executor = CommandExecutor()
@@ -175,6 +183,7 @@ class Matimo:
         log_level: str | None = None,
         log_format: str | None = None,
         default_max_response_size: int | None = None,
+        default_skill_write_dir: str | None = None,
     ) -> Matimo:
         """
         Initialise Matimo by loading tool definitions and configuring the policy engine.
@@ -199,6 +208,9 @@ class Matimo:
                            tool's serialized response size, applied to every tool that
                            doesn't declare its own output_schema.max_response_size.
                            Falls back to DEFAULT_MAX_RESPONSE_SIZE_BYTES when unset.
+            default_skill_write_dir: Default directory matimo_create_skill writes new
+                           skills to when the caller doesn't pass target_dir explicitly.
+                           Falls back to ./matimo-tools/skills.
 
         Returns:
             Configured Matimo instance.
@@ -278,6 +290,7 @@ class Matimo:
             skill_paths=skill_discovery_paths,
             skill_loader=skill_loader,
             default_max_response_size=default_max_response_size,
+            default_skill_write_dir=default_skill_write_dir,
         )
 
     # ------------------------------------------------------------------
@@ -450,6 +463,56 @@ class Matimo:
     def get_skill_content(self, name: str, options: SkillContentOptions | None = None) -> str | None:
         """Return the full markdown content of a skill, or None if not found."""
         return self._skill_registry.get_skill_content(name, options)
+
+    def get_skill_paths(self) -> list[str]:
+        """Return the configured skill directories."""
+        return list(self._skill_paths)
+
+    def add_skill_path(self, skill_path: str) -> None:
+        """
+        Add a skill path at runtime — the mutable counterpart to the
+        construction-time `skill_paths` option. A skill path is a filesystem
+        directory (local disk, or anything the OS mounts as one — NFS/EFS/SMB,
+        a synced git checkout, a FUSE-mounted bucket); it is read on the next
+        `reload_skills()` call, not eagerly. For skills that don't live on a
+        filesystem (Postgres, S3 via its API, an internal service), use
+        `register_skill()`/`register_skills()` instead.
+        """
+        if skill_path not in self._skill_paths:
+            self._skill_paths.append(skill_path)
+            self._logger.debug(f"Skill path added: {skill_path}")
+
+    def get_default_skill_write_dir(self) -> str | None:
+        """Return the default directory matimo_create_skill writes new skills to."""
+        return self._default_skill_write_dir
+
+    def register_skill(self, skill: SkillDefinition) -> None:
+        """
+        Register a single skill directly, bypassing the filesystem entirely.
+        The "storage can be anywhere" answer for skills: a host with skills in
+        Postgres, MongoDB, S3, or an internal API fetches them however it
+        wants and pushes plain SkillDefinition objects straight into the
+        running instance — visible immediately to list_skills()/search_skills().
+        """
+        self._skill_registry.register(skill)
+
+    def register_skills(self, skills: list[SkillDefinition]) -> None:
+        """Register multiple skills directly. See register_skill()."""
+        self._skill_registry.register_all(skills)
+
+    def notify_skill_created(self, skill_name: str, source: str = "user") -> None:
+        """
+        Emit a skill:created event to the configured on_event handler. Called
+        by the matimo_create_skill meta-tool after it successfully writes a
+        new skill to disk, so a host can observe an agent's skill creation in
+        real time and mirror it into its own storage.
+        """
+        self._emit_event({
+            "type": "skill:created",
+            "skill_name": skill_name,
+            "source": source,
+            "timestamp": _now(),
+        })
 
     async def execute_tool(
         self,

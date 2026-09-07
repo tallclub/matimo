@@ -115,6 +115,13 @@ export interface InitOptions extends LoggerConfig {
    * DEFAULT_MAX_RESPONSE_SIZE_BYTES when unset.
    */
   defaultMaxResponseSize?: number;
+  /**
+   * Default directory `matimo_create_skill` writes new skills to when the
+   * caller doesn't pass `target_dir` explicitly. Lets a host configure the
+   * write location once at startup instead of relying on every agent call
+   * to pass `target_dir` correctly. Falls back to `./matimo-tools/skills`.
+   */
+  defaultSkillWriteDir?: string;
 }
 
 /**
@@ -137,6 +144,7 @@ export class MatimoInstance {
   private logger: MatimoLogger;
   private approvalHandler: ApprovalHandler;
   private defaultMaxResponseSize: number | undefined;
+  private defaultSkillWriteDir: string | undefined;
 
   // Policy engine fields — runtime-enforced encapsulation via ES #private
   #policy: PolicyEngine;
@@ -165,12 +173,14 @@ export class MatimoInstance {
       hitlTimeoutMs?: number;
       policyFile?: string;
       defaultMaxResponseSize?: number;
+      defaultSkillWriteDir?: string;
     }
   ) {
     this.toolPaths = toolPaths;
     this.skillPaths = skillPaths;
     this.logger = logger;
     this.defaultMaxResponseSize = policyOptions.defaultMaxResponseSize;
+    this.defaultSkillWriteDir = policyOptions.defaultSkillWriteDir;
     this.loader = new ToolLoader();
     this.registry = new ToolRegistry();
     this.skillLoader = new SkillLoader();
@@ -336,6 +346,7 @@ export class MatimoInstance {
       approvalTtlSeconds: finalOptions.approvalTtlSeconds,
       policyFile: finalOptions.policyFile,
       defaultMaxResponseSize: finalOptions.defaultMaxResponseSize,
+      defaultSkillWriteDir: finalOptions.defaultSkillWriteDir,
     });
 
     // Load tools from all paths
@@ -820,6 +831,72 @@ export class MatimoInstance {
    */
   getSkillPaths(): string[] {
     return [...this.skillPaths];
+  }
+
+  /**
+   * Add a skill path at runtime — the mutable counterpart to the
+   * construction-time `skillPaths` option. A `skillPath` is a filesystem
+   * directory (local disk, or anything the OS mounts as one — NFS/EFS/SMB,
+   * a synced git checkout, a FUSE-mounted bucket); it is read on the next
+   * `reloadSkills()` call, not eagerly. For skills that don't live on a
+   * filesystem (Postgres, S3 via its API, an internal service), use
+   * `registerSkill()`/`registerSkills()` instead.
+   *
+   * @example
+   * matimo.addSkillPath('/mnt/tenant-42/skills');
+   * await matimo.reloadSkills();
+   */
+  addSkillPath(skillPath: string): void {
+    if (!this.skillPaths.includes(skillPath)) {
+      this.skillPaths.push(skillPath);
+      this.logger.debug('Skill path added', { skillPath });
+    }
+  }
+
+  /**
+   * Get the default directory `matimo_create_skill` writes new skills to
+   * when the caller doesn't pass `target_dir` explicitly.
+   */
+  getDefaultSkillWriteDir(): string | undefined {
+    return this.defaultSkillWriteDir;
+  }
+
+  /**
+   * Register a single skill directly, bypassing the filesystem entirely.
+   * The "storage can be anywhere" answer for skills: a host with skills in
+   * Postgres, MongoDB, S3, or an internal API fetches them however it
+   * wants and pushes plain `SkillDefinition` objects straight into the
+   * running instance — visible immediately to `listSkills()`/
+   * `searchSkills()`/the `matimo_search_skills` meta-tool.
+   *
+   * @example
+   * matimo.registerSkill({ name: 'my-skill', description: '...', body: '...' });
+   */
+  registerSkill(skill: SkillDefinition): void {
+    this.skillRegistry.register(skill);
+  }
+
+  /**
+   * Register multiple skills directly. See `registerSkill()`.
+   */
+  registerSkills(skills: SkillDefinition[]): void {
+    this.skillRegistry.registerAll(skills);
+  }
+
+  /**
+   * Emit a `skill:created` event to the configured `onEvent` handler.
+   * Called by the `matimo_create_skill` meta-tool after it successfully
+   * writes a new skill to disk, so a host can observe an agent's skill
+   * creation in real time and mirror it into its own storage — the
+   * counterpart to `registerSkill()` for content flowing the other way.
+   */
+  notifySkillCreated(skillName: string, source: 'user' | 'catalog' = 'user'): void {
+    this.#emitEvent({
+      type: 'skill:created',
+      skillName,
+      source,
+      timestamp: new Date().toISOString(),
+    });
   }
 
   /**

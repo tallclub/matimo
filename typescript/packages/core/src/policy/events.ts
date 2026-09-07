@@ -98,6 +98,12 @@ export type MatimoEvent =
       loaded: number;
       removed: number;
       timestamp: string;
+    }
+  | {
+      type: 'skill:created';
+      skillName: string;
+      source: 'user' | 'catalog';
+      timestamp: string;
     };
 
 export type MatimoEventHandler = (event: MatimoEvent) => void;

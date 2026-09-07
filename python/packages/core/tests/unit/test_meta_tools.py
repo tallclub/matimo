@@ -945,6 +945,136 @@ class TestMatimoCreateSkill:
 
         assert result["success"] is True
 
+    @pytest.mark.asyncio
+    async def test_tolerates_global_instance_lookup_raising(self, tmp_path: Path) -> None:
+        from matimo.tools.matimo_create_skill.matimo_create_skill import run
+
+        with patch(
+            "matimo.decorators.get_global_matimo_instance",
+            side_effect=ImportError("no module"),
+        ):
+            result = await run({
+                "name": "my-skill",
+                "content": _VALID_SKILL_CONTENT,
+                "target_dir": str(tmp_path),
+            })
+
+        assert result["success"] is True
+        assert (tmp_path / "my-skill" / "SKILL.md").exists()
+
+    @pytest.mark.asyncio
+    async def test_uses_default_target_dir_when_no_global_instance(self, tmp_path: Path) -> None:
+        from matimo.tools.matimo_create_skill.matimo_create_skill import run
+
+        with patch("matimo.decorators.get_global_matimo_instance", return_value=None):
+            result = await run({"name": "my-skill", "content": _VALID_SKILL_CONTENT})
+
+        assert result["success"] is True
+        assert result["path"] == str(Path("./matimo-tools/skills") / "my-skill" / "SKILL.md")
+
+        import shutil
+
+        shutil.rmtree("./matimo-tools", ignore_errors=True)
+
+    @pytest.mark.asyncio
+    async def test_uses_instance_default_skill_write_dir(self, tmp_path: Path) -> None:
+        from matimo.tools.matimo_create_skill.matimo_create_skill import run
+
+        mock_instance = MagicMock()
+        mock_instance.get_default_skill_write_dir.return_value = str(tmp_path)
+
+        with patch(
+            "matimo.decorators.get_global_matimo_instance",
+            return_value=mock_instance,
+        ):
+            result = await run({"name": "my-skill", "content": _VALID_SKILL_CONTENT})
+
+        assert result["success"] is True
+        assert (tmp_path / "my-skill" / "SKILL.md").exists()
+
+    @pytest.mark.asyncio
+    async def test_explicit_target_dir_overrides_instance_default(self, tmp_path: Path) -> None:
+        from matimo.tools.matimo_create_skill.matimo_create_skill import run
+
+        other_dir = tmp_path / "other"
+        write_dir = tmp_path / "explicit"
+        mock_instance = MagicMock()
+        mock_instance.get_default_skill_write_dir.return_value = str(other_dir)
+
+        with patch(
+            "matimo.decorators.get_global_matimo_instance",
+            return_value=mock_instance,
+        ):
+            result = await run({
+                "name": "my-skill",
+                "content": _VALID_SKILL_CONTENT,
+                "target_dir": str(write_dir),
+            })
+
+        assert result["success"] is True
+        assert (write_dir / "my-skill" / "SKILL.md").exists()
+        assert not other_dir.exists()
+
+    @pytest.mark.asyncio
+    async def test_notifies_instance_on_successful_creation(self, tmp_path: Path) -> None:
+        from matimo.tools.matimo_create_skill.matimo_create_skill import run
+
+        mock_instance = MagicMock()
+        mock_instance.get_default_skill_write_dir.return_value = None
+
+        with patch(
+            "matimo.decorators.get_global_matimo_instance",
+            return_value=mock_instance,
+        ):
+            result = await run({
+                "name": "my-skill",
+                "content": _VALID_SKILL_CONTENT,
+                "target_dir": str(tmp_path),
+            })
+
+        assert result["success"] is True
+        mock_instance.notify_skill_created.assert_called_once_with("my-skill", "user")
+
+    @pytest.mark.asyncio
+    async def test_does_not_notify_instance_on_failure(self, tmp_path: Path) -> None:
+        from matimo.tools.matimo_create_skill.matimo_create_skill import run
+
+        mock_instance = MagicMock()
+        mock_instance.get_default_skill_write_dir.return_value = None
+
+        with patch(
+            "matimo.decorators.get_global_matimo_instance",
+            return_value=mock_instance,
+        ):
+            result = await run({
+                "name": "Bad_Name!",
+                "content": _VALID_SKILL_CONTENT,
+                "target_dir": str(tmp_path),
+            })
+
+        assert result["success"] is False
+        mock_instance.notify_skill_created.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_tolerates_notify_skill_created_raising(self, tmp_path: Path) -> None:
+        from matimo.tools.matimo_create_skill.matimo_create_skill import run
+
+        mock_instance = MagicMock()
+        mock_instance.get_default_skill_write_dir.return_value = None
+        mock_instance.notify_skill_created.side_effect = RuntimeError("handler exploded")
+
+        with patch(
+            "matimo.decorators.get_global_matimo_instance",
+            return_value=mock_instance,
+        ):
+            result = await run({
+                "name": "my-skill",
+                "content": _VALID_SKILL_CONTENT,
+                "target_dir": str(tmp_path),
+            })
+
+        assert result["success"] is True
+
 
 # ===========================================================================
 # matimo_list_skills

@@ -295,4 +295,142 @@ describe('MatimoInstance — Skill & Reload Coverage', () => {
       expect(events.some((e) => e.type === 'skills:reloaded')).toBe(true);
     });
   });
+
+  // ─── addSkillPath ────────────────────────────────────────────────
+
+  describe('addSkillPath', () => {
+    it('should make a newly added path visible to reloadSkills', async () => {
+      writeToolYaml('add-path-tool');
+      const matimo = await MatimoInstance.init({
+        toolPaths: [toolDir],
+        logLevel: 'silent',
+      });
+
+      expect(matimo.getSkillPaths()).not.toContain(skillDir);
+
+      writeSkill('added-path-skill');
+      matimo.addSkillPath(skillDir);
+
+      expect(matimo.getSkillPaths()).toContain(skillDir);
+      expect(matimo.listSkills().some((s) => s.name === 'added-path-skill')).toBe(false);
+
+      await matimo.reloadSkills();
+      expect(matimo.listSkills().some((s) => s.name === 'added-path-skill')).toBe(true);
+    });
+
+    it('should dedup against an already-registered path', async () => {
+      writeToolYaml('dedup-tool');
+      const matimo = await MatimoInstance.init({
+        toolPaths: [toolDir],
+        skillPaths: [skillDir],
+        logLevel: 'silent',
+      });
+
+      const before = matimo.getSkillPaths().length;
+      matimo.addSkillPath(skillDir);
+      expect(matimo.getSkillPaths().length).toBe(before);
+    });
+  });
+
+  // ─── registerSkill / registerSkills ──────────────────────────────
+
+  describe('registerSkill', () => {
+    it('should make a directly-registered skill visible immediately', async () => {
+      writeToolYaml('register-tool');
+      const matimo = await MatimoInstance.init({
+        toolPaths: [toolDir],
+        logLevel: 'silent',
+      });
+
+      expect(matimo.getSkill('external-skill')).toBeNull();
+
+      matimo.registerSkill({
+        name: 'external-skill',
+        description: 'Pushed in directly, no filesystem involved',
+        body: '# External\n\nFrom an external store.',
+      });
+
+      expect(matimo.listSkills().some((s) => s.name === 'external-skill')).toBe(true);
+      expect(
+        matimo.searchSkills({ query: 'external' }).some((s) => s.name === 'external-skill')
+      ).toBe(true);
+    });
+  });
+
+  describe('registerSkills', () => {
+    it('should register multiple skills at once', async () => {
+      writeToolYaml('register-many-tool');
+      const matimo = await MatimoInstance.init({
+        toolPaths: [toolDir],
+        logLevel: 'silent',
+      });
+
+      matimo.registerSkills([
+        { name: 'bulk-skill-a', description: 'A', body: '# A' },
+        { name: 'bulk-skill-b', description: 'B', body: '# B' },
+      ]);
+
+      expect(matimo.listSkills().some((s) => s.name === 'bulk-skill-a')).toBe(true);
+      expect(matimo.listSkills().some((s) => s.name === 'bulk-skill-b')).toBe(true);
+    });
+  });
+
+  // ─── getDefaultSkillWriteDir ──────────────────────────────────────
+
+  describe('getDefaultSkillWriteDir', () => {
+    it('should return undefined when not configured', async () => {
+      writeToolYaml('no-default-dir-tool');
+      const matimo = await MatimoInstance.init({
+        toolPaths: [toolDir],
+        logLevel: 'silent',
+      });
+      expect(matimo.getDefaultSkillWriteDir()).toBeUndefined();
+    });
+
+    it('should return the configured default write dir', async () => {
+      writeToolYaml('default-dir-tool');
+      const matimo = await MatimoInstance.init({
+        toolPaths: [toolDir],
+        logLevel: 'silent',
+        defaultSkillWriteDir: '/tmp/custom-skills',
+      });
+      expect(matimo.getDefaultSkillWriteDir()).toBe('/tmp/custom-skills');
+    });
+  });
+
+  // ─── notifySkillCreated ───────────────────────────────────────────
+
+  describe('notifySkillCreated', () => {
+    it('should emit a skill:created event with the given source', async () => {
+      writeToolYaml('notify-tool');
+      const events: Array<{ type: string; skillName?: string; source?: string }> = [];
+      const matimo = await MatimoInstance.init({
+        toolPaths: [toolDir],
+        logLevel: 'silent',
+        onEvent: (event) => events.push(event),
+      });
+
+      matimo.notifySkillCreated('agent-made-skill');
+
+      const created = events.find((e) => e.type === 'skill:created');
+      expect(created).toBeDefined();
+      expect(created!.skillName).toBe('agent-made-skill');
+      expect(created!.source).toBe('user');
+    });
+
+    it('should support an explicit source', async () => {
+      writeToolYaml('notify-catalog-tool');
+      const events: Array<{ type: string; source?: string }> = [];
+      const matimo = await MatimoInstance.init({
+        toolPaths: [toolDir],
+        logLevel: 'silent',
+        onEvent: (event) => events.push(event),
+      });
+
+      matimo.notifySkillCreated('catalog-skill', 'catalog');
+
+      const created = events.find((e) => e.type === 'skill:created');
+      expect(created!.source).toBe('catalog');
+    });
+  });
 });

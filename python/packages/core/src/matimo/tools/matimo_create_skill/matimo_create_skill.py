@@ -36,10 +36,25 @@ def _extract_frontmatter(content: str) -> dict | None:  # type: ignore[type-arg]
         return None
 
 
+def _get_global_instance() -> object | None:
+    try:
+        from matimo.decorators import get_global_matimo_instance
+
+        return get_global_matimo_instance()
+    except Exception as exc:
+        logger.debug("matimo_create_skill: global instance lookup failed: %s", exc)
+        return None
+
+
 async def run(params: dict) -> dict:  # type: ignore[type-arg]
     name: str = (params.get("name") or "").strip()
     content: str = params.get("content", "")
-    target_dir: str = params.get("target_dir", "./matimo-tools/skills")
+
+    instance = _get_global_instance()
+    default_write_dir = None
+    if instance is not None and hasattr(instance, "get_default_skill_write_dir"):
+        default_write_dir = instance.get_default_skill_write_dir()
+    target_dir: str = params.get("target_dir") or default_write_dir or "./matimo-tools/skills"
 
     err = _validate_name(name)
     if err:
@@ -61,4 +76,11 @@ async def run(params: dict) -> dict:  # type: ignore[type-arg]
     file_path.write_text(content, encoding="utf-8")
 
     logger.info("matimo_create_skill: created path=%s", file_path)
+
+    if instance is not None and hasattr(instance, "notify_skill_created"):
+        try:
+            instance.notify_skill_created(name, "user")
+        except Exception as exc:
+            logger.debug("matimo_create_skill: failed to emit skill:created event: %s", exc)
+
     return {"success": True, "path": str(file_path), "message": f'Skill "{name}" created successfully.'}
