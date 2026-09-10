@@ -24,7 +24,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import UTC
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 from matimo.auth.injection import inject_auth_parameters
 from matimo.core.loader import ToolLoader
@@ -247,7 +247,7 @@ class Matimo:
 
         # Load tools
         registry = ToolRegistry()
-        all_tools = loader.load_tools_from_multiple_paths(cast("list[str | Path]", paths))
+        all_tools = loader.load_tools_from_multiple_paths(paths)
         for tool in all_tools.values():
             try:
                 registry.register(tool)
@@ -605,9 +605,7 @@ class Matimo:
         if self._approval_manifest is not None:
             self._approval_manifest.refresh()
 
-        new_tools = self._loader.load_tools_from_multiple_paths(
-            cast("list[str | Path]", self._tool_paths)
-        )
+        new_tools = self._loader.load_tools_from_multiple_paths(self._tool_paths)
         existing_names = {t.name for t in self._registry.get_all()}
         new_names = set(new_tools.keys())
 
@@ -846,7 +844,7 @@ class _MatimoNamespace:
     @staticmethod
     async def init(
         tool_paths: str | list[str] | None = None,
-        **kwargs: Any,  # noqa: ANN401
+        **kwargs: object,
     ) -> Matimo:
         return await Matimo.init(tool_paths, **kwargs)
 
