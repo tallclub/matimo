@@ -155,6 +155,31 @@ class TestExtractSkillContent:
         result_limited = extract_skill_content(parsed, SkillContentOptions(max_tokens=5))
         assert len(result_limited) < len(result_full)
 
+    def test_truncates_to_nonempty_prefix_with_single_root_heading(self) -> None:
+        # Regression test: when the whole skill lives under one H1 (a common
+        # shape — SKILL.md with a single title heading and nested H2/H3s),
+        # render_section() used to flatten the entire subtree into one blob
+        # before any budget check ran. A max_tokens below the total then
+        # made the *whole* top-level section fail the budget check and get
+        # dropped, returning "" instead of a truncated prefix.
+        body = (
+            "# Top Level Wrapper\n\n"
+            "Intro under the single H1.\n\n"
+            "## Section A\n\n"
+            "Some content in section A that is reasonably long so it has a nontrivial "
+            "token count for testing truncation behavior across the whole document.\n\n"
+            "## Section B\n\n"
+            "Some more content in section B, also fairly long, to make sure the whole "
+            "document exceeds a small max_tokens budget when both sections are combined together."
+        )
+        parsed = self._parse(body)
+        full = extract_skill_content(parsed)
+        limited = extract_skill_content(parsed, SkillContentOptions(max_tokens=20))
+
+        assert len(limited) > 0
+        assert len(limited) < len(full)
+        assert "Top Level Wrapper" in limited
+
     def test_max_depth_limits_children(self) -> None:
         body = "# H1\n\n## H2\n\n### H3\n\nDeep content."
         parsed = self._parse(body)

@@ -219,6 +219,34 @@ Example code here.`;
       expect(limited.length).toBeLessThan(full.length);
     });
 
+    it('should truncate to a non-empty prefix when a single top-level heading wraps everything', () => {
+      // Regression test: when the whole skill lives under one H1 (a common
+      // shape — SKILL.md with a single title heading and nested H2/H3s),
+      // renderSection() used to flatten the entire subtree into one blob
+      // before any budget check ran. A maxTokens below the total then made
+      // the *whole* top-level section fail the budget check and get
+      // dropped, returning "" instead of a truncated prefix.
+      const singleRootBody = `# Top Level Wrapper
+
+Intro under the single H1.
+
+## Section A
+
+Some content in section A that is reasonably long so it has a nontrivial token count for testing truncation behavior across the whole document.
+
+## Section B
+
+Some more content in section B, also fairly long, to make sure the whole document exceeds a small maxTokens budget when both sections are combined together.`;
+
+      const parsed = parseSkillSections(singleRootBody);
+      const full = extractSkillContent(parsed);
+      const limited = extractSkillContent(parsed, { maxTokens: 20 });
+
+      expect(limited.length).toBeGreaterThan(0);
+      expect(limited.length).toBeLessThan(full.length);
+      expect(limited).toContain('Top Level Wrapper');
+    });
+
     it('should use partial matching for section names', () => {
       const parsed = parseSkillSections(body);
       const result = extractSkillContent(parsed, {
