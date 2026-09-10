@@ -1,0 +1,36 @@
+name: matimo_get_skill_sections
+version: '1.0.0'
+description: >-
+  Inventory a skill's Markdown sections and their approximate token costs,
+  without loading the full content. Progressive disclosure Level 2.5 — use
+  this to decide which sections to load via matimo_get_skill_content before
+  spending context budget on the whole file.
+requires_approval: false
+tags:
+  - matimo
+  - meta
+  - skill
+parameters:
+  name:
+    type: string
+    required: true
+    description: Name of the skill to inspect (must match a loaded skill's name)
+
+execution:
+  type: function
+  code: './matimo_get_skill_sections.js'
+
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+    name:
+      type: string
+    sections:
+      type: array
+      description: 'Section inventory: { path, level, tokenEstimate }'
+    total:
+      type: number
+    message:
+      type: string

@@ -24,7 +24,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import UTC
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from matimo.auth.injection import inject_auth_parameters
 from matimo.core.loader import ToolLoader
@@ -43,6 +43,7 @@ from matimo.errors import ErrorCode, MatimoError
 from matimo.executors.command_executor import CommandExecutor
 from matimo.executors.function_executor import FunctionExecutor
 from matimo.executors.http_executor import HttpExecutor
+from matimo.integrations.langchain import build_relevant_skill_prompt
 from matimo.logging import MatimoLogger, setup_logger
 from matimo.policy.approval_manifest import ApprovalManifest
 from matimo.policy.default_policy import DefaultPolicyEngine, PolicyEngine
@@ -246,7 +247,7 @@ class Matimo:
 
         # Load tools
         registry = ToolRegistry()
-        all_tools = loader.load_tools_from_multiple_paths(paths)
+        all_tools = loader.load_tools_from_multiple_paths(cast("list[str | Path]", paths))
         for tool in all_tools.values():
             try:
                 registry.register(tool)
@@ -464,6 +465,10 @@ class Matimo:
         """Return the full markdown content of a skill, or None if not found."""
         return self._skill_registry.get_skill_content(name, options)
 
+    def get_skill_sections(self, name: str) -> list[dict[str, object]] | None:
+        """List a skill's sections and their token costs (Level 2.5 progressive disclosure)."""
+        return self._skill_registry.get_skill_sections(name)
+
     def get_skill_paths(self) -> list[str]:
         """Return the configured skill directories."""
         return list(self._skill_paths)
@@ -513,6 +518,25 @@ class Matimo:
             "source": source,
             "timestamp": _now(),
         })
+
+    async def build_skill_prompt_context(
+        self,
+        query: str,
+        *,
+        top_k: int = 3,
+        min_score: float = 0.3,
+        header: str | None = None,
+    ) -> str:
+        """
+        Build a per-request system-prompt snippet from semantically relevant skills.
+        Instance-method counterpart to the standalone `build_relevant_skill_prompt()`
+        in `matimo.integrations.langchain` — for integrators who already hold a
+        `Matimo` instance and would rather call a method than import a free function.
+        Both call styles do the same thing; see `docs/skills/SKILLS.md`.
+        """
+        return await build_relevant_skill_prompt(
+            self, query, top_k=top_k, min_score=min_score, header=header
+        )
 
     async def execute_tool(
         self,
@@ -581,7 +605,9 @@ class Matimo:
         if self._approval_manifest is not None:
             self._approval_manifest.refresh()
 
-        new_tools = self._loader.load_tools_from_multiple_paths(self._tool_paths)
+        new_tools = self._loader.load_tools_from_multiple_paths(
+            cast("list[str | Path]", self._tool_paths)
+        )
         existing_names = {t.name for t in self._registry.get_all()}
         new_names = set(new_tools.keys())
 
@@ -820,7 +846,7 @@ class _MatimoNamespace:
     @staticmethod
     async def init(
         tool_paths: str | list[str] | None = None,
-        **kwargs: object,
+        **kwargs: Any,  # noqa: ANN401
     ) -> Matimo:
         return await Matimo.init(tool_paths, **kwargs)
 

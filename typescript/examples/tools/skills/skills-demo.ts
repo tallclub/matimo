@@ -43,6 +43,7 @@ import {
   buildRelevantSkillPrompt,
   setGlobalMatimoInstance,
   getGlobalApprovalHandler,
+  tool,
 } from 'matimo';
 import type { ToolDefinition } from 'matimo';
 
@@ -477,6 +478,7 @@ ${SAMPLE_CODE_TO_REVIEW}
     header('PHASE 4: Non-MCP Progressive Disclosure');
 
     const matimoWithSkills = await MatimoInstance.init({
+      autoDiscover: true,
       skillPaths: [skillsDir],
       logLevel: 'silent',
     });
@@ -524,6 +526,112 @@ ${SAMPLE_CODE_TO_REVIEW}
       console.info(`  "${relevantPrompt.slice(0, 300)}…"\n`);
     }
 
+    // ── PHASE 5: New Meta-Tools — Search, Sections, Content ─────────
+    //
+    // matimo_search_skills / matimo_get_skill_sections / matimo_get_skill_content
+    // wrap semanticSearchSkills() / getSkillSections() / getSkillContent() as
+    // agent-callable meta-tools (see "Searching and Loading Skills Selectively"
+    // in docs/skills/SKILLS.md). Demonstrated here via the two SDK integration
+    // patterns that don't require an LLM call: factory (direct execute) and
+    // decorator (@tool-wrapped service class). The third required pattern —
+    // a LangChain agent calling matimo_search_skills to pick a skill
+    // semantically before loading it — lives in
+    // examples/tools/agents/langchain-skills-policy-agent.ts.
+
+    header('PHASE 5: New Meta-Tools — Factory & Decorator Patterns');
+
+    subheader('5a. Factory pattern — direct matimo.execute()');
+
+    const searchExec = (await matimoWithSkills.execute('matimo_search_skills', {
+      query: testQuery,
+      limit: 5,
+      min_score: 0.1,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    })) as any;
+    result(
+      `matimo.execute('matimo_search_skills', { query: '${testQuery}' }) — ${searchExec.total} result(s)`,
+      searchExec.success ? PASS : FAIL
+    );
+
+    const topSkillName: string | undefined = searchExec.results?.[0]?.name;
+
+    const sectionsExec = topSkillName
+      ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ((await matimoWithSkills.execute('matimo_get_skill_sections', {
+          name: topSkillName,
+        })) as any)
+      : null;
+    result(
+      `matimo.execute('matimo_get_skill_sections', { name: '${topSkillName ?? 'n/a'}' }) — ${sectionsExec?.total ?? 0} section(s)`,
+      sectionsExec?.success ? PASS : WARN
+    );
+
+    const contentExec = topSkillName
+      ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ((await matimoWithSkills.execute('matimo_get_skill_content', {
+          name: topSkillName,
+          max_tokens: 200,
+        })) as any)
+      : null;
+    result(
+      `matimo.execute('matimo_get_skill_content', { name: '${topSkillName ?? 'n/a'}', max_tokens: 200 }) — ${contentExec?.tokensUsed ?? 0} tokens`,
+      contentExec?.success ? PASS : WARN
+    );
+
+    subheader('5b. Decorator pattern — @tool-wrapped service class');
+
+    /** Wraps the 3 new meta-tools as strongly-typed methods, mirroring slack-decorator.ts. */
+    class SkillsMetaToolsService {
+      @tool('matimo_search_skills')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      async search(query: string, limit?: number, min_score?: number): Promise<any> {
+        // Decorator auto-calls matimo.execute('matimo_search_skills', { query, limit, min_score })
+        return undefined;
+      }
+
+      @tool('matimo_get_skill_sections')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      async sections(name: string): Promise<any> {
+        // Decorator auto-calls matimo.execute('matimo_get_skill_sections', { name })
+        return undefined;
+      }
+
+      @tool('matimo_get_skill_content')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      async content(name: string, sections?: string[], max_tokens?: number): Promise<any> {
+        // Decorator auto-calls matimo.execute('matimo_get_skill_content', { name, sections, max_tokens })
+        return undefined;
+      }
+    }
+
+    // @tool resolves the target instance via the global — route it at matimoWithSkills
+    // (the instance that has the agent-created skills loaded) for this section.
+    setGlobalMatimoInstance(matimoWithSkills);
+    const skillsMetaService = new SkillsMetaToolsService();
+
+    const decoratorSearch = await skillsMetaService.search(testQuery, 5, 0.1);
+    result(
+      `service.search() via @tool('matimo_search_skills') — ${decoratorSearch.total} result(s)`,
+      decoratorSearch.success ? PASS : FAIL
+    );
+
+    const decoratorSections = topSkillName ? await skillsMetaService.sections(topSkillName) : null;
+    result(
+      `service.sections() via @tool('matimo_get_skill_sections') — ${decoratorSections?.total ?? 0} section(s)`,
+      decoratorSections?.success ? PASS : WARN
+    );
+
+    const decoratorContent = topSkillName
+      ? await skillsMetaService.content(topSkillName, undefined, 200)
+      : null;
+    result(
+      `service.content() via @tool('matimo_get_skill_content') — ${decoratorContent?.tokensUsed ?? 0} tokens`,
+      decoratorContent?.success ? PASS : WARN
+    );
+
+    // Restore the global instance used by the rest of the demo.
+    setGlobalMatimoInstance(matimo);
+
     // ── Summary ─────────────────────────────────────────────────────
 
     header('SUMMARY');
@@ -547,6 +655,11 @@ ${SAMPLE_CODE_TO_REVIEW}
     ${meta.length > 0 ? PASS : WARN}  getSkillsMetadata() → Level 1: ${meta.length} skill(s), names + descriptions only
     ${searchResults.length > 0 ? PASS : WARN}  semanticSearchSkills(query) → TF-IDF raw rankings: ${searchResults.length} result(s) with scores
     ${relevantPrompt.length > 0 ? PASS : WARN}  buildRelevantSkillPrompt(query) → Level 2: TF-IDF search → ${relevantPrompt.length} chars loaded
+
+  New Meta-Tools — matimo_search_skills / matimo_get_skill_sections / matimo_get_skill_content:
+    ${searchExec.success ? PASS : FAIL}  Factory pattern   — matimo.execute(...) for all 3 tools
+    ${decoratorSearch.success ? PASS : FAIL}  Decorator pattern — @tool-wrapped service class for all 3 tools
+    ${INFO}  LangChain agent pattern — see examples/tools/agents/langchain-skills-policy-agent.ts
 
   Skills on Disk:
     ${INFO}  Directory: ${skillsDir}

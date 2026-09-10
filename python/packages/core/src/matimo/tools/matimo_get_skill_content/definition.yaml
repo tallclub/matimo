@@ -1,0 +1,54 @@
+name: matimo_get_skill_content
+version: '1.0.0'
+description: >-
+  Load only specific sections of a skill instead of the entire SKILL.md —
+  token-efficient context loading. Pair with matimo_get_skill_sections to
+  first inventory a skill's sections, then request only the ones needed.
+requires_approval: false
+tags:
+  - matimo
+  - meta
+  - skill
+parameters:
+  name:
+    type: string
+    required: true
+    description: Name of the skill to load content from (must match a loaded skill's name)
+  sections:
+    type: array
+    required: false
+    description: >-
+      Only return sections matching these heading paths (case-insensitive
+      partial match, e.g. ["Messaging", "Error Handling"]). Omit to return
+      all sections.
+  max_tokens:
+    type: number
+    required: false
+    description: Maximum total tokens to return (content is truncated once the budget is hit)
+  include_preamble:
+    type: boolean
+    required: false
+    description: Whether to include the intro content before the first heading (default true)
+  max_depth:
+    type: number
+    required: false
+    description: Depth limit for nested section inclusion (1 = top-level only)
+
+execution:
+  type: function
+  code: './matimo_get_skill_content.py'
+
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+    name:
+      type: string
+    content:
+      type: string
+    tokensUsed:
+      type: number
+      description: Approximate token count of the returned content
+    message:
+      type: string

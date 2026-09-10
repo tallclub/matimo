@@ -433,6 +433,29 @@ async function main(): Promise<void> {
       status('Skill names (Level 1) injected into system prompt');
     }
 
+    // ── Demo: Semantic Skill Discovery (matimo_search_skills) ───────
+    //
+    // matimo_search_skills ranks skills by meaning instead of requiring an
+    // exact name match — useful when the agent doesn't know a skill's exact
+    // name yet. This scripted step proves the search-then-load pattern
+    // before handing control to the interactive mission below.
+
+    header('DEMO: Semantic Skill Discovery Before Loading');
+    console.info(
+      `    ${INFO} Goal: "Find the skill most relevant to rate limiting" — agent discovers matimo_search_skills before matimo_get_skill.\n`
+    );
+    await runMission(
+      llm,
+      tools as ToolDefinition[],
+      coreTools,
+      providerNames,
+      matimo,
+      'Find the skill that is most relevant to "handling API rate limits and retries", using ' +
+        'semantic search rather than guessing its exact name. Then load that skill and ' +
+        'summarize its key guidance in 2-3 sentences.',
+      agentSystemPrompt
+    );
+
     // ── Interactive: Agent takes mission from user ─────────────────
 
     header('AGENT MISSION');

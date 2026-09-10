@@ -1845,3 +1845,288 @@ class TestMatimoListSkillsBranchCoverage:
             result = await run({"skills_dir": str(tmp_path)})
 
         assert result["total"] == 1
+
+
+class TestMatimoSearchSkills:
+    """Tests for matimo_search_skills.run() — thin wrapper around semantic_search_skills()."""
+
+    @pytest.mark.asyncio
+    async def test_rejects_empty_query(self) -> None:
+        from matimo.tools.matimo_search_skills.matimo_search_skills import run
+
+        result = await run({"query": ""})
+
+        assert result["success"] is False
+        assert "required" in result["message"].lower()
+        assert result["results"] == []
+        assert result["total"] == 0
+
+    @pytest.mark.asyncio
+    async def test_rejects_whitespace_only_query(self) -> None:
+        from matimo.tools.matimo_search_skills.matimo_search_skills import run
+
+        result = await run({"query": "   "})
+
+        assert result["success"] is False
+        assert "required" in result["message"].lower()
+
+    @pytest.mark.asyncio
+    async def test_no_active_instance_returns_failure(self) -> None:
+        from matimo.tools.matimo_search_skills.matimo_search_skills import run
+
+        with patch("matimo.decorators.get_global_matimo_instance", return_value=None):
+            result = await run({"query": "rate limiting"})
+
+        assert result["success"] is False
+        assert "no active matimo instance" in result["message"].lower()
+
+    @pytest.mark.asyncio
+    async def test_instance_lookup_raising_is_treated_as_no_instance(self) -> None:
+        from matimo.tools.matimo_search_skills.matimo_search_skills import run
+
+        with patch("matimo.decorators.get_global_matimo_instance", side_effect=Exception("boom")):
+            result = await run({"query": "rate limiting"})
+
+        assert result["success"] is False
+        assert "no active matimo instance" in result["message"].lower()
+
+    @pytest.mark.asyncio
+    async def test_returns_ranked_results(self) -> None:
+        from matimo.tools.matimo_search_skills.matimo_search_skills import run
+
+        hit1 = MagicMock()
+        hit1.skill.name = "slack"
+        hit1.skill.description = "Slack messaging"
+        hit1.score = 0.82
+
+        hit2 = MagicMock()
+        hit2.skill.name = "postgres"
+        hit2.skill.description = "SQL queries"
+        hit2.score = 0.41
+
+        mock_instance = MagicMock()
+        mock_instance.semantic_search_skills = AsyncMock(return_value=[hit1, hit2])
+
+        with patch("matimo.decorators.get_global_matimo_instance", return_value=mock_instance):
+            result = await run({"query": "rate limiting and retries"})
+
+        assert result["success"] is True
+        assert result["total"] == 2
+        assert result["results"] == [
+            {"name": "slack", "description": "Slack messaging", "relevanceScore": 0.82},
+            {"name": "postgres", "description": "SQL queries", "relevanceScore": 0.41},
+        ]
+        mock_instance.semantic_search_skills.assert_awaited_once_with(
+            "rate limiting and retries", limit=10, min_score=0.1
+        )
+
+    @pytest.mark.asyncio
+    async def test_passes_through_custom_limit_and_min_score(self) -> None:
+        from matimo.tools.matimo_search_skills.matimo_search_skills import run
+
+        mock_instance = MagicMock()
+        mock_instance.semantic_search_skills = AsyncMock(return_value=[])
+
+        with patch("matimo.decorators.get_global_matimo_instance", return_value=mock_instance):
+            await run({"query": "slack", "limit": 3, "min_score": 0.5})
+
+        mock_instance.semantic_search_skills.assert_awaited_once_with("slack", limit=3, min_score=0.5)
+
+    @pytest.mark.asyncio
+    async def test_returns_failure_message_when_search_raises(self) -> None:
+        from matimo.tools.matimo_search_skills.matimo_search_skills import run
+
+        mock_instance = MagicMock()
+        mock_instance.semantic_search_skills = AsyncMock(side_effect=RuntimeError("embedding provider down"))
+
+        with patch("matimo.decorators.get_global_matimo_instance", return_value=mock_instance):
+            result = await run({"query": "slack"})
+
+        assert result["success"] is False
+        assert "search failed" in result["message"].lower()
+        assert "embedding provider down" in result["message"]
+
+
+class TestMatimoGetSkillSections:
+    """Tests for matimo_get_skill_sections.run() — thin wrapper around get_skill_sections()."""
+
+    @pytest.mark.asyncio
+    async def test_rejects_empty_name(self) -> None:
+        from matimo.tools.matimo_get_skill_sections.matimo_get_skill_sections import run
+
+        result = await run({"name": ""})
+
+        assert result["success"] is False
+        assert "required" in result["message"].lower()
+        assert result["sections"] == []
+
+    @pytest.mark.asyncio
+    async def test_no_active_instance_returns_failure(self) -> None:
+        from matimo.tools.matimo_get_skill_sections.matimo_get_skill_sections import run
+
+        with patch("matimo.decorators.get_global_matimo_instance", return_value=None):
+            result = await run({"name": "slack"})
+
+        assert result["success"] is False
+        assert "no active matimo instance" in result["message"].lower()
+
+    @pytest.mark.asyncio
+    async def test_instance_lookup_raising_is_treated_as_no_instance(self) -> None:
+        from matimo.tools.matimo_get_skill_sections.matimo_get_skill_sections import run
+
+        with patch("matimo.decorators.get_global_matimo_instance", side_effect=Exception("boom")):
+            result = await run({"name": "slack"})
+
+        assert result["success"] is False
+        assert "no active matimo instance" in result["message"].lower()
+
+    @pytest.mark.asyncio
+    async def test_returns_failure_for_missing_skill(self) -> None:
+        from matimo.tools.matimo_get_skill_sections.matimo_get_skill_sections import run
+
+        mock_instance = MagicMock()
+        mock_instance.get_skill_sections.return_value = None
+
+        with patch("matimo.decorators.get_global_matimo_instance", return_value=mock_instance):
+            result = await run({"name": "nonexistent"})
+
+        assert result["success"] is False
+        assert "not found" in result["message"].lower()
+        mock_instance.get_skill_sections.assert_called_once_with("nonexistent")
+
+    @pytest.mark.asyncio
+    async def test_returns_section_inventory_in_camel_case(self) -> None:
+        from matimo.tools.matimo_get_skill_sections.matimo_get_skill_sections import run
+
+        mock_instance = MagicMock()
+        mock_instance.get_skill_sections.return_value = [
+            {"path": "Messaging", "level": 1, "token_estimate": 120},
+            {"path": "Messaging.Error Handling", "level": 2, "token_estimate": 45},
+        ]
+
+        with patch("matimo.decorators.get_global_matimo_instance", return_value=mock_instance):
+            result = await run({"name": "slack"})
+
+        assert result["success"] is True
+        assert result["total"] == 2
+        assert result["sections"] == [
+            {"path": "Messaging", "level": 1, "tokenEstimate": 120},
+            {"path": "Messaging.Error Handling", "level": 2, "tokenEstimate": 45},
+        ]
+
+    @pytest.mark.asyncio
+    async def test_returns_empty_inventory_for_skill_with_no_headings(self) -> None:
+        from matimo.tools.matimo_get_skill_sections.matimo_get_skill_sections import run
+
+        mock_instance = MagicMock()
+        mock_instance.get_skill_sections.return_value = []
+
+        with patch("matimo.decorators.get_global_matimo_instance", return_value=mock_instance):
+            result = await run({"name": "flat-skill"})
+
+        assert result["success"] is True
+        assert result["sections"] == []
+        assert result["total"] == 0
+
+
+class TestMatimoGetSkillContent:
+    """Tests for matimo_get_skill_content.run() — thin wrapper around get_skill_content()."""
+
+    @pytest.mark.asyncio
+    async def test_rejects_empty_name(self) -> None:
+        from matimo.tools.matimo_get_skill_content.matimo_get_skill_content import run
+
+        result = await run({"name": ""})
+
+        assert result["success"] is False
+        assert "required" in result["message"].lower()
+
+    @pytest.mark.asyncio
+    async def test_no_active_instance_returns_failure(self) -> None:
+        from matimo.tools.matimo_get_skill_content.matimo_get_skill_content import run
+
+        with patch("matimo.decorators.get_global_matimo_instance", return_value=None):
+            result = await run({"name": "slack"})
+
+        assert result["success"] is False
+        assert "no active matimo instance" in result["message"].lower()
+
+    @pytest.mark.asyncio
+    async def test_instance_lookup_raising_is_treated_as_no_instance(self) -> None:
+        from matimo.tools.matimo_get_skill_content.matimo_get_skill_content import run
+
+        with patch("matimo.decorators.get_global_matimo_instance", side_effect=Exception("boom")):
+            result = await run({"name": "slack"})
+
+        assert result["success"] is False
+        assert "no active matimo instance" in result["message"].lower()
+
+    @pytest.mark.asyncio
+    async def test_returns_failure_for_missing_skill(self) -> None:
+        from matimo.tools.matimo_get_skill_content.matimo_get_skill_content import run
+
+        mock_instance = MagicMock()
+        mock_instance.get_skill_content.return_value = None
+
+        with patch("matimo.decorators.get_global_matimo_instance", return_value=mock_instance):
+            result = await run({"name": "nonexistent"})
+
+        assert result["success"] is False
+        assert "not found" in result["message"].lower()
+
+    @pytest.mark.asyncio
+    async def test_returns_content_and_approximate_token_count(self) -> None:
+        from matimo.tools.matimo_get_skill_content.matimo_get_skill_content import run
+
+        mock_instance = MagicMock()
+        mock_instance.get_skill_content.return_value = "Send a message via the Slack API."
+
+        with patch("matimo.decorators.get_global_matimo_instance", return_value=mock_instance):
+            result = await run({"name": "slack"})
+
+        assert result["success"] is True
+        assert result["content"] == "Send a message via the Slack API."
+        assert result["tokensUsed"] > 0
+        assert "tokens" in result["message"].lower()
+
+    @pytest.mark.asyncio
+    async def test_passes_selective_loading_options_through(self) -> None:
+        from matimo.core.models import SkillContentOptions
+        from matimo.tools.matimo_get_skill_content.matimo_get_skill_content import run
+
+        mock_instance = MagicMock()
+        mock_instance.get_skill_content.return_value = "content"
+
+        with patch("matimo.decorators.get_global_matimo_instance", return_value=mock_instance):
+            await run(
+                {
+                    "name": "slack",
+                    "sections": ["Messaging"],
+                    "max_tokens": 500,
+                    "include_preamble": False,
+                    "max_depth": 1,
+                }
+            )
+
+        mock_instance.get_skill_content.assert_called_once()
+        call_name, call_options = mock_instance.get_skill_content.call_args.args
+        assert call_name == "slack"
+        assert isinstance(call_options, SkillContentOptions)
+        assert call_options.sections == ["Messaging"]
+        assert call_options.max_tokens == 500
+        assert call_options.include_preamble is False
+        assert call_options.max_depth == 1
+
+    @pytest.mark.asyncio
+    async def test_returns_zero_tokens_for_empty_content(self) -> None:
+        from matimo.tools.matimo_get_skill_content.matimo_get_skill_content import run
+
+        mock_instance = MagicMock()
+        mock_instance.get_skill_content.return_value = ""
+
+        with patch("matimo.decorators.get_global_matimo_instance", return_value=mock_instance):
+            result = await run({"name": "empty-skill"})
+
+        assert result["success"] is True
+        assert result["content"] == ""
+        assert result["tokensUsed"] == 0

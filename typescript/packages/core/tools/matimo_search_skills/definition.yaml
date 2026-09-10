@@ -1,0 +1,45 @@
+name: matimo_search_skills
+version: '1.0.0'
+description: >-
+  Semantic search across all loaded skills by natural language query. Ranks
+  skills by meaning (TF-IDF by default, or a custom embedding provider if
+  one is configured) rather than exact keyword match. Use this to discover
+  which skill to load before calling matimo_get_skill or
+  matimo_get_skill_content.
+requires_approval: false
+tags:
+  - matimo
+  - meta
+  - skill
+parameters:
+  query:
+    type: string
+    required: true
+    description: Natural language search query (e.g. "rate limiting and retries")
+  limit:
+    type: number
+    required: false
+    description: Maximum number of results to return (default 10)
+  min_score:
+    type: number
+    required: false
+    description: Minimum cosine similarity score (0-1) a result must meet (default 0.1)
+
+execution:
+  type: function
+  code: './matimo_search_skills.js'
+
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+    query:
+      type: string
+    results:
+      type: array
+      description: 'Ranked matches: { name, description, relevanceScore }'
+    total:
+      type: number
+    message:
+      type: string

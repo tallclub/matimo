@@ -1039,6 +1039,61 @@ class TestInstanceSkillsAndCoverage:
         assert created[0]["source"] == "catalog"
 
     # ------------------------------------------------------------------
+    # build_skill_prompt_context()
+    # ------------------------------------------------------------------
+
+    async def test_build_skill_prompt_context_returns_relevant_content(self) -> None:
+        matimo = self._make_matimo()
+        matimo.register_skill(
+            SkillDefinition(
+                name="postgres-locking",
+                description="Diagnosing Postgres row locking",
+                body="# Overview\n\nHow to diagnose and resolve Postgres row locking issues.",
+            )
+        )
+
+        context = await matimo.build_skill_prompt_context(
+            "Postgres locking issue", top_k=1, min_score=0
+        )
+
+        assert "postgres-locking" in context
+
+    async def test_build_skill_prompt_context_empty_when_nothing_matches(self) -> None:
+        matimo = self._make_matimo()
+        matimo.register_skill(
+            SkillDefinition(
+                name="unrelated-skill",
+                description="Completely unrelated",
+                body="# Overview\n\nCompletely unrelated content.",
+            )
+        )
+
+        context = await matimo.build_skill_prompt_context("xyzzy plugh quux", min_score=0.99)
+
+        assert context == ""
+
+    async def test_build_skill_prompt_context_matches_standalone_helper(self) -> None:
+        from matimo.integrations.langchain import build_relevant_skill_prompt
+
+        matimo = self._make_matimo()
+        matimo.register_skill(
+            SkillDefinition(
+                name="parity-skill",
+                description="Parity check",
+                body="# Overview\n\nParity check content for prompt context.",
+            )
+        )
+
+        standalone = await build_relevant_skill_prompt(
+            matimo, "parity check content", top_k=1, min_score=0
+        )
+        via_instance = await matimo.build_skill_prompt_context(
+            "parity check content", top_k=1, min_score=0
+        )
+
+        assert via_instance == standalone
+
+    # ------------------------------------------------------------------
     # Lines 299-306: matimo_reload_tools interception in execute()
     # ------------------------------------------------------------------
 
@@ -1114,6 +1169,29 @@ class TestInstanceSkillsAndCoverage:
         """Line 390: get_skill_content() returns None for unknown skill."""
         matimo = self._make_matimo()
         assert matimo.get_skill_content("nonexistent") is None
+
+    def test_get_skill_sections_returns_none_when_absent(self) -> None:
+        """get_skill_sections() returns None for unknown skill."""
+        matimo = self._make_matimo()
+        assert matimo.get_skill_sections("nonexistent") is None
+
+    @pytest.mark.asyncio
+    async def test_get_skill_sections_returns_section_inventory(self, tmp_path: Path) -> None:
+        """get_skill_sections() lists headings with token estimates for a loaded skill."""
+        skills_dir = tmp_path / "skills" / "slack-messaging"
+        skills_dir.mkdir(parents=True)
+        (skills_dir / "SKILL.md").write_text(
+            "---\nname: slack-messaging\ndescription: Sending Slack messages\n---\n\n"
+            "# Messaging\n\nSend a message via the Slack API.\n\n"
+            "# Error Handling\n\nRetry on rate limits."
+        )
+        matimo = await Matimo.init([], skill_paths=[str(tmp_path / "skills")])
+        sections = matimo.get_skill_sections("slack-messaging")
+        assert sections is not None
+        paths = [s["path"] for s in sections]
+        assert "Messaging" in paths
+        assert "Error Handling" in paths
+        assert all("token_estimate" in s for s in sections)
 
     # ------------------------------------------------------------------
     # Line 400: semantic_search_skills
