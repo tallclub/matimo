@@ -20,6 +20,9 @@ Meta-tools are built-in tools that live in `packages/core/tools/` and provide to
 | [`matimo_list_skills`](#matimo_list_skills) | List skills in a directory with metadata | No |
 | [`matimo_get_skill`](#matimo_get_skill) | Read a skill's full content by name | No |
 | [`matimo_validate_skill`](#matimo_validate_skill) | Validate a skill against the Agent Skills spec | No |
+| [`matimo_search_skills`](#matimo_search_skills) | Semantically search skills by relevance (TF-IDF) | No |
+| [`matimo_get_skill_sections`](#matimo_get_skill_sections) | List a skill's section inventory with token estimates | No |
+| [`matimo_get_skill_content`](#matimo_get_skill_content) | Load a skill's content, optionally scoped to specific sections | No |
 
 > **Note on `matimo_doctor`:** Examples, prompts, and older docs may refer to `matimo_doctor`. This is an informal human-readable alias for `matimo_validate_tool` — it is **not a separate tool**. The actual registered tool name you must use in `matimo.execute()` is `matimo_validate_tool`.
 
@@ -50,7 +53,10 @@ I want to...
 ```
 I want to...
   ├─ Discover what skills are available              →  matimo_list_skills
+  ├─ Find the most relevant skill by meaning          →  matimo_search_skills
   ├─ Read the full content of a skill                →  matimo_get_skill
+  ├─ See a skill's sections before loading it whole   →  matimo_get_skill_sections
+  ├─ Load only specific sections of a skill           →  matimo_get_skill_content
   ├─ Create a new SKILL.md at runtime                →  matimo_create_skill
   └─ Check if a skill follows the Agent Skills spec  →  matimo_validate_skill
 ```
@@ -71,6 +77,9 @@ I want to...
 | `matimo_get_skill` | When agent needs specific domain knowledge for a task | Agent works without guidelines, prone to API misuse |
 | `matimo_create_skill` | Team wants to package reusable agent expertise | Knowledge scattered in system prompts, not reusable |
 | `matimo_validate_skill` | After creating a skill — verify spec compliance | Skill may fail to load or have invalid frontmatter silently |
+| `matimo_search_skills` | Agent needs to find the right skill by meaning, not exact name | Agent falls back to `matimo_list_skills` and guesses from titles alone |
+| `matimo_get_skill_sections` | Before loading a large skill — check its shape and size first | Agent loads the whole skill and burns context budget on irrelevant sections |
+| `matimo_get_skill_content` | Agent only needs specific sections of a skill | Agent must load (and pay for) the entire skill via `matimo_get_skill` |
 
 ### Typical Agent Workflows
 
@@ -102,6 +111,13 @@ I want to...
 1. matimo_search_tools     → Check if a similar tool already exists (free — no approval)
 2. matimo_get_tool         → Inspect the full YAML if a close match is found (free — no approval)
 3. matimo_create_tool      → Only create if nothing suitable exists (needs human ✅)
+```
+
+**Workflow E — Agent discovers and selectively loads a skill (progressive disclosure)**
+```
+1. matimo_search_skills       → Find the most relevant skill by meaning (free — no approval)
+2. matimo_get_skill_sections  → Check the skill's section inventory and token estimates (free — no approval)
+3. matimo_get_skill_content   → Load only the sections needed for the task (free — no approval)
 ```
 
 ---
@@ -1026,6 +1042,163 @@ if (result.valid) {
 
 ---
 
+## matimo_search_skills
+
+Semantic search across all loaded skills by natural language query. Ranks skills by meaning (TF-IDF by default, or a custom embedding provider if one is configured) rather than exact keyword match. Use this to discover which skill to load before calling `matimo_get_skill` or `matimo_get_skill_content`.
+
+**Does not require approval** — read-only operation.
+
+### Parameters
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|:--------:|---------|-------------|
+| `query` | string | Yes | — | Natural language search query (e.g. `"rate limiting and retries"`) |
+| `limit` | number | No | `10` | Maximum number of results to return |
+| `min_score` | number | No | `0.1` | Minimum cosine similarity score (0-1) a result must meet |
+
+### Response
+
+```typescript
+{
+  success: true,
+  query: 'rate limiting and retries',
+  results: [
+    { name: 'slack', description: 'Slack API integration patterns', relevanceScore: 0.42 },
+  ],
+  total: 1,
+  message: 'Found 1 matching skill(s).'
+}
+```
+
+### Example
+
+```typescript
+const result = await matimo.execute('matimo_search_skills', {
+  query: 'rate limiting and retries',
+  limit: 5,
+});
+// result.results → ranked matches with { name, description, relevanceScore }
+```
+
+### Internal Flow
+
+1. Requires an active global Matimo instance (via `setGlobalMatimoInstance`/`set_global_matimo_instance`, same as the `@tool` decorator) — returns a clear failure message if none is registered.
+2. Delegates to `MatimoInstance.semanticSearchSkills()` / `Matimo.semantic_search_skills()`, which ranks by TF-IDF cosine similarity over each skill's `name` + `description` **only** — the skill `body` is not indexed for ranking.
+3. Flattens each `{ skill, score }` hit into `{ name, description, relevanceScore }` and truncates to `limit`.
+
+> **Note:** because ranking is based on name+description text overlap, a near-duplicate corpus (skills with very similar descriptions) can collapse TF-IDF's IDF term to near-zero for every result — a varied corpus produces more meaningful scores.
+
+---
+
+## matimo_get_skill_sections
+
+Inventory a skill's Markdown sections and their approximate token costs, without loading the full content. Progressive disclosure Level 2.5 — use this to decide which sections to load via `matimo_get_skill_content` before spending context budget on the whole file.
+
+**Does not require approval** — read-only operation.
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|:--------:|-------------|
+| `name` | string | Yes | Name of the skill to inspect (must match a loaded skill's name) |
+
+### Response
+
+```typescript
+// Success
+{
+  success: true,
+  name: 'slack',
+  sections: [
+    { path: 'Messaging', level: 2, tokenEstimate: 340 },
+    { path: 'Messaging > Threads', level: 3, tokenEstimate: 120 },
+    { path: 'Error Handling', level: 2, tokenEstimate: 210 },
+  ],
+  total: 3,
+  message: 'Found 3 section(s) for skill "slack".'
+}
+
+// Skill not found
+{
+  success: false,
+  name: 'nonexistent',
+  sections: [],
+  total: 0,
+  message: 'Skill "nonexistent" not found'
+}
+```
+
+### Example
+
+```typescript
+const result = await matimo.execute('matimo_get_skill_sections', { name: 'slack' });
+// result.sections → { path, level, tokenEstimate } per heading, in document order
+```
+
+### Internal Flow
+
+1. Requires an active global Matimo instance — same requirement as `matimo_search_skills`.
+2. Delegates to `MatimoInstance.getSkillSections()` / `Matimo.get_skill_sections()`, which walks the skill's parsed Markdown heading tree and returns each section's dotted heading path, nesting level, and a word-count-based token estimate.
+3. Returns `null` from the underlying method (surfaced here as `success: false`) if no loaded skill matches `name`.
+
+---
+
+## matimo_get_skill_content
+
+Load only specific sections of a skill instead of the entire SKILL.md — token-efficient context loading. Pair with `matimo_get_skill_sections` to first inventory a skill's sections, then request only the ones needed.
+
+**Does not require approval** — read-only operation.
+
+### Parameters
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|:--------:|---------|-------------|
+| `name` | string | Yes | — | Name of the skill to load content from (must match a loaded skill's name) |
+| `sections` | array | No | all sections | Only return sections matching these heading paths (case-insensitive partial match, e.g. `["Messaging", "Error Handling"]`) |
+| `max_tokens` | number | No | unbounded | Maximum total tokens to return — content is truncated once the budget is hit |
+| `include_preamble` | boolean | No | `true` | Whether to include the intro content before the first heading |
+| `max_depth` | number | No | unbounded | Depth limit for nested section inclusion (`1` = top-level only) |
+
+### Response
+
+```typescript
+// Success
+{
+  success: true,
+  name: 'slack',
+  content: '## Messaging\n\n...\n\n## Error Handling\n\n...',
+  tokensUsed: 550,           // Approximate token count of the returned content
+  message: 'Retrieved content for skill "slack" (550 tokens).'
+}
+
+// Skill not found
+{
+  success: false,
+  name: 'nonexistent',
+  message: 'Skill "nonexistent" not found'
+}
+```
+
+### Example
+
+```typescript
+const content = await matimo.execute('matimo_get_skill_content', {
+  name: 'slack',
+  sections: ['Messaging'],
+  max_tokens: 500,
+});
+```
+
+### Internal Flow
+
+1. Requires an active global Matimo instance — same requirement as `matimo_search_skills`.
+2. Delegates to `MatimoInstance.getSkillContent()` / `Matimo.get_skill_content()`, passing through `sections`/`max_tokens`/`include_preamble`/`max_depth` as `SkillContentOptions`.
+3. When `max_tokens` is set, the underlying section-tree walk budget-checks **each individual section node** (pre-order), not the whole rendered subtree at once — a skill can be truncated to a partial prefix rather than returning empty content the moment any single top-level section exceeds the budget.
+4. Returns `null` from the underlying method (surfaced here as `success: false`) if no loaded skill matches `name`.
+5. `tokensUsed` is computed locally in the tool wrapper via a words÷0.75 heuristic — the same estimate used for `matimo_get_skill_sections`' `tokenEstimate` field.
+
+---
+
 ## Usage Across Interfaces
 
 All meta-tools work consistently across SDK (TypeScript or Python), LangChain, and MCP:
@@ -1109,10 +1282,10 @@ For tools with `requires_approval: true`, MCP clients must include `_matimo_appr
 
 ## File Locations
 
-All meta-tools are located in `packages/core/tools/`:
+All meta-tools are located in `typescript/packages/core/tools/` (Python mirror: `python/packages/core/src/matimo/tools/`):
 
 ```
-packages/core/tools/
+typescript/packages/core/tools/
   matimo_validate_tool/
     definition.yaml
     matimo_validate_tool.ts
@@ -1149,6 +1322,15 @@ packages/core/tools/
   matimo_validate_skill/
     definition.yaml
     matimo_validate_skill.ts
+  matimo_search_skills/
+    definition.yaml
+    matimo_search_skills.ts
+  matimo_get_skill_sections/
+    definition.yaml
+    matimo_get_skill_sections.ts
+  matimo_get_skill_content/
+    definition.yaml
+    matimo_get_skill_content.ts
   shared/
     skill-validation.ts
 ```

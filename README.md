@@ -29,7 +29,7 @@
 
 ## Governance First - Then Tools, Meta-Tools, and Universal Integration
 
-Every tool call - built-in, third-party, or agent-created - passes through Matimo's **policy engine** before it executes. On top of that governance layer, agents get **139+ production-ready tools** (plus a governed 449-tool Composio catalog), **12 meta-tools** to create/validate/approve new capabilities at runtime, and **one YAML definition** that runs across every framework you use.
+Every tool call - built-in, third-party, or agent-created - passes through Matimo's **policy engine** before it executes. On top of that governance layer, agents get **139+ production-ready tools** (plus a governed 449-tool Composio catalog), **15 meta-tools** to create/validate/approve new capabilities at runtime, and **one YAML definition** that runs across every framework you use.
 
 **Why this matters:**
 

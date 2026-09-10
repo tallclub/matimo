@@ -75,6 +75,9 @@ await matimo.execute('calculator', { operation: 'add', a: 1, b: 2 });
 - **`matimo_list_skills`** - List skills in a directory with name, description, and path
 - **`matimo_get_skill`** - Read a skill's full content by name for agent context
 - **`matimo_validate_skill`** - Validate a skill against the Agent Skills specification
+- **`matimo_search_skills`** - Semantically rank skills by relevance to a query (TF-IDF)
+- **`matimo_get_skill_sections`** - Inventory a skill's sections and token costs without loading it
+- **`matimo_get_skill_content`** - Load only specific sections of a skill (token-efficient)
 
 All core tools use **function-based execution** (not shell commands) for better performance and reliability.
 

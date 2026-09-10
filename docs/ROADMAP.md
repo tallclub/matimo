@@ -15,7 +15,7 @@ Matimo v0.1.8 stable (Python: v0.1.3) is now **production-ready** with full Type
 - Tool execution (function, command, and HTTP types)
 - YAML-based tool definitions + Zod (TS) / Pydantic v2 (Python) validation
 - **4 SDK patterns**: Factory, Decorator, LangChain, CrewAI
-- **12 meta-tools** for runtime tool and skill management
+- **15 meta-tools** for runtime tool and skill management
 - CLI: list, search, install, help, doctor, review, validate, mcp
 - MCP Server (stdio + HTTP on port 3101, Claude Desktop compatible)
 - Skills system with TF-IDF semantic search
@@ -77,22 +77,24 @@ Matimo v0.1.8 stable (Python: v0.1.3) is now **production-ready** with full Type
 
 > **Theme:** Skills Meta-Tools & Agent Call Ability — Expose skills discovery and content loading as first-class agent-callable meta-tools
 
-### Skills Meta-Tools (Planned)
+### Skills Meta-Tools ✅ SHIPPED
 
-- [ ] **`matimo_search_skills`** — Wrap `semanticSearchSkills()` as a meta-tool
+- [x] **`matimo_search_skills`** — Wraps `semanticSearchSkills()` as a meta-tool
   - Allows LangChain agents and MCP clients to semantic-search skills by natural language query
   - Backed by TF-IDF or custom embedding provider
-  - Returns: `Array<{ name, description, relevanceScore }>`
-  
-- [ ] **`matimo_get_skill_sections`** — Expose `getSkillSections()` as a meta-tool
+  - Returns: `{ success, query, results: Array<{ name, description, relevanceScore }>, total, message }`
+
+- [x] **`matimo_get_skill_sections`** — Exposes `getSkillSections()` as a meta-tool
   - Enables agents to inventory a skill's sections and token costs before loading
   - Progressive disclosure Level 2.5
-  - Returns: `Array<{ sectionName, tokenEstimate }>`
-  
-- [ ] **`matimo_get_skill_content`** — Expose `getSkillContent()` as a meta-tool
+  - Returns: `{ success, name, sections: Array<{ path, level, tokenEstimate }>, total, message }`
+
+- [x] **`matimo_get_skill_content`** — Exposes `getSkillContent()` as a meta-tool
   - Allows agents to load only specific sections of a skill (token-efficient)
   - Replaces full-file loads with selective section retrieval
-  - Returns: `{ skillName, content, tokensUsed }`
+  - Returns: `{ success, name, content, tokensUsed, message }`
+
+See [Searching and Loading Skills Selectively](./skills/SKILLS.md#searching-and-loading-skills-selectively) for full usage.
 
 ### Context Window Tooling (Planned)
 
@@ -268,7 +270,7 @@ v0.1.0 Stable Release (✅ Released — May 1, 2026)
 
 v0.1.1 Patch Release (📅 Planned — Q3 2026)
   Priorities:
-    - Skills meta-tools (matimo_search_skills, matimo_get_skill_sections, matimo_get_skill_content)
+    - Skills meta-tools (matimo_search_skills, matimo_get_skill_sections, matimo_get_skill_content) ✅ Shipped
     - Dynamic tool filtering for context window management
     - Additional provider enhancements
 

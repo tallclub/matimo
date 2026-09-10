@@ -242,6 +242,9 @@ Built-in tools that let agents manage other tools at runtime:
 | `matimo_list_skills` | List available skills | No |
 | `matimo_get_skill` | Read skill content | No |
 | `matimo_validate_skill` | Validate skill spec | No |
+| `matimo_search_skills` | Semantically rank skills by relevance (TF-IDF) | No |
+| `matimo_get_skill_sections` | Inventory a skill's sections and token costs | No |
+| `matimo_get_skill_content` | Load only specific sections of a skill | No |
 
 ---
 

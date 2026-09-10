@@ -12,7 +12,7 @@
 
 > The First AI SDK with Meta-Tools, Policy Engine, and Human-in-the-Loop Control
 
-Give your agents **139+ production-ready tools** to start (plus a governed 449-tool Composio catalog). Then activate **12 meta-tools** that let them create, validate, and approve new capabilities at runtime — governed by your **policy engine** with **human approval workflows** for critical actions.
+Give your agents **139+ production-ready tools** to start (plus a governed 449-tool Composio catalog). Then activate **15 meta-tools** that let them create, validate, and approve new capabilities at runtime — governed by your **policy engine** with **human approval workflows** for critical actions.
 
 **Self-extending agents with enterprise-grade control:**
 - 🔧 **Meta-Tools** — Agents write new tool definitions in YAML, validate schemas, approve for production, and hot-reload — all mid-conversation
@@ -145,6 +145,9 @@ Complete documentation for Matimo **v0.1.8** (TypeScript & Python).
   - `matimo_list_skills` — List skills in a directory
   - `matimo_get_skill` — Read a skill's content by name
   - `matimo_validate_skill` — Validate a skill against the Agent Skills spec
+  - `matimo_search_skills` — Semantically rank skills by relevance (TF-IDF)
+  - `matimo_get_skill_sections` — Inventory a skill's sections and token costs
+  - `matimo_get_skill_content` — Load only specific sections of a skill
 
 - **[Approval System](./api-reference/APPROVAL-SYSTEM.md)** — Approval handler configuration
   - Auto-approve and interactive approval
@@ -309,7 +312,7 @@ docs/
 │   ├── SDK.md                    # Complete SDK API (TypeScript + Python)
 │   ├── ERRORS.md                 # Error handling and error codes
 │   ├── TYPES.md                  # TypeScript type definitions
-│   ├── META_TOOLS.md             # Built-in meta-tools reference (12 tools)
+│   ├── META_TOOLS.md             # Built-in meta-tools reference (15 tools)
 │   ├── POLICY_AND_LIFECYCLE.md   # Policy engine and tool lifecycle
 │   ├── APPROVAL-SYSTEM.md        # Approval handler configuration
 │   └── LOGGING.md                # Logger API and formats

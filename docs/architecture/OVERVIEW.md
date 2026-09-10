@@ -17,7 +17,8 @@ packages/core              # Core SDK (matimo on npm)
 │   ├── matimo_validate_tool / matimo_create_tool / matimo_approve_tool
 │   ├── matimo_reload_tools / matimo_list_user_tools / matimo_get_tool_status
 │   ├── matimo_get_tool / matimo_search_tools
-│   └── matimo_create_skill / matimo_list_skills / matimo_get_skill / matimo_validate_skill
+│   ├── matimo_create_skill / matimo_list_skills / matimo_get_skill / matimo_validate_skill
+│   └── matimo_search_skills / matimo_get_skill_sections / matimo_get_skill_content
 └── skills/ (built-in SKILL.md domain knowledge)
     ├── tool-creation/
     ├── meta-tools-lifecycle/
@@ -122,6 +123,9 @@ examples/tools             # Working examples
      │   packages/{provider}/           │    │   ├─ matimo_get_skill                   │
      │   ├─ definition.yaml (OAuth2)    │    │   ├─ matimo_create_skill                │
      │   └─ tools/{tool}/def.yaml       │    │   ├─ matimo_validate_skill              │
+     │                                  │    │   ├─ matimo_search_skills               │
+     │                                  │    │   ├─ matimo_get_skill_sections          │
+     │                                  │    │   ├─ matimo_get_skill_content           │
      │                                  │    │   └─ matimo_get_tool / search_tools     │
      │                                  │    │   packages/core/skills/                 │
      │                                  │    │   ├─ tool-creation/SKILL.md             │
@@ -320,6 +324,9 @@ Built-in tools that manage the tool lifecycle from within the agent. They are al
 | `matimo_list_skills` | List available SKILL.md files |
 | `matimo_get_skill` | Read a skill by name |
 | `matimo_validate_skill` | Validate a skill against the Agent Skills spec |
+| `matimo_search_skills` | Semantically rank skills by relevance to a query (TF-IDF) |
+| `matimo_get_skill_sections` | Inventory a skill's sections and token costs without loading it |
+| `matimo_get_skill_content` | Load only specific sections of a skill (token-efficient) |
 
 For full details see [Meta-Tools Reference](../api-reference/META_TOOLS.md).
 
@@ -349,9 +356,9 @@ packages/core/skills/
 └── tool-discovery/SKILL.md       # How to discover available tools
 ```
 
-Agent runtime skills live in `./matimo-tools/skills/` (created by `matimo_create_skill`).
+Agent runtime skills live in `./matimo-tools/skills/` (created by `matimo_create_skill`). Skills also support progressive disclosure — `matimo_search_skills` finds the right skill by meaning, `matimo_get_skill_sections` inventories its headings and token costs, and `matimo_get_skill_content` loads only the needed sections instead of the whole file.
 
-For full details see [Skills System](../tool-development/SKILLS.md).
+For full details see [Skills System](../skills/SKILLS.md).
 
 ---
 
@@ -834,6 +841,6 @@ Policy engine is on from the start:
 - **[Policy Engine & Lifecycle](../api-reference/POLICY_AND_LIFECYCLE.md)** — Security controls and tool lifecycle
 - **[Meta-Tools Reference](../api-reference/META_TOOLS.md)** — Built-in tool management
 - **[Approval System](../api-reference/APPROVAL-SYSTEM.md)** — Approval handler configuration
-- **[Skills System](../tool-development/SKILLS.md)** — Domain knowledge via SKILL.md
+- **[Skills System](../skills/SKILLS.md)** — Domain knowledge via SKILL.md
 - **[Logging](../api-reference/LOGGING.md)** — Winston logger integration
 - **[Troubleshooting](../troubleshooting/FAQ.md)** — Common issues
