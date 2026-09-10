@@ -9,7 +9,6 @@
 import fs from 'fs';
 import path from 'path';
 import * as YAML from 'js-yaml';
-import { z } from 'zod';
 import {
   SkillDefinition,
   SkillFrontmatter,
@@ -17,6 +16,7 @@ import {
   BundledResources,
   SkillSummary,
 } from './types.js';
+import { SkillFrontmatterSchema } from './schema.js';
 import { parseSkillSections } from './skill-content-parser.js';
 // @ts-ignore
 import { getGlobalMatimoLogger } from '../logging/index.js';
@@ -58,19 +58,6 @@ function validateSkillName(name: string): { valid: boolean; error?: string } {
 // ─── YAML Parser & Validation ──────────────────────────────────────────────
 
 /**
- * Parser schema for skill frontmatter (using Zod for runtime validation)
- */
-const FrontmatterSchema = z.object({
-  name: z.string().min(1, 'name is required'),
-  description: z.string().min(1, 'description is required').max(1024),
-  version: z.string().optional(),
-  license: z.string().optional(),
-  compatibility: z.string().max(500).optional(),
-  'allowed-tools': z.union([z.string(), z.array(z.string())]).optional(),
-  metadata: z.record(z.string(), z.string()).optional(),
-});
-
-/**
  * Helper: Extract and validate YAML frontmatter
  * @returns { frontmatter, body, error }
  */
@@ -109,10 +96,10 @@ function extractFrontmatter(content: string): {
   }
 
   // Validate with Zod
-  const validationResult = FrontmatterSchema.safeParse(parsed);
+  const validationResult = SkillFrontmatterSchema.safeParse(parsed);
   if (!validationResult.success) {
     const errors = validationResult.error.issues
-      .map((e: z.ZodIssue) => `${e.path.join('.')}: ${e.message}`)
+      .map((e) => `${e.path.join('.')}: ${e.message}`)
       .join('; ');
     return { error: `Frontmatter validation failed: ${errors}` };
   }

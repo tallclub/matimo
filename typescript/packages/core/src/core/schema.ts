@@ -209,6 +209,26 @@ export const ProviderDefinitionSchema = z.object({
 export type ProviderDefinition = z.infer<typeof ProviderDefinitionSchema>;
 
 /**
+ * YAML frontmatter for a SKILL.md file. Runtime counterpart to the
+ * `SkillFrontmatter` interface in `core/types.ts` — used by `SkillLoader` to
+ * validate frontmatter on load, and exported here (rather than kept private
+ * inside `skill-loader.ts`) so external validation — a host platform checking
+ * a `SkillDefinition` before calling `registerSkill()`, for example — can
+ * reuse the exact same rules tool definitions get via `ToolDefinitionSchema`.
+ */
+export const SkillFrontmatterSchema = z.object({
+  name: z.string().min(1, 'name is required'),
+  description: z.string().min(1, 'description is required').max(1024),
+  version: z.string().optional(),
+  license: z.string().optional(),
+  compatibility: z.string().max(500).optional(),
+  'allowed-tools': z.union([z.string(), z.array(z.string())]).optional(),
+  metadata: z.record(z.string(), z.string()).optional(),
+});
+
+export type SkillFrontmatterZod = z.infer<typeof SkillFrontmatterSchema>;
+
+/**
  * Validate a tool definition against the schema
  * Provides detailed error messages for validation failures
  *

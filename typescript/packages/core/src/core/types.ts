@@ -328,7 +328,12 @@ export interface SkillDefinition {
   source: 'builtin' | 'user' | 'catalog';
   _path?: string; // Internal: path to skill directory
   catalogInfo?: SkillCatalogInfo;
-  // Skill composition (Phase 4)
+  /**
+   * Names of other skills this one depends on. Unscheduled placeholder for
+   * future skill composition (a skill declaring it needs another loaded
+   * first) — nothing in the loader, registry, or meta-tools reads or
+   * enforces this field today. Left in place intentionally; not active work.
+   */
   dependsOn?: string[];
 }
 
