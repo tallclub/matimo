@@ -46,7 +46,7 @@ def convert_tools_to_crewai(
         ImportError if crewai is not installed.
     """
     try:
-        from crewai.tools import BaseTool  # noqa: F401
+        from crewai.tools import BaseTool  # type: ignore[import] # noqa: F401
     except ImportError as exc:
         raise ImportError(
             "crewai is required for CrewAI integration. "
@@ -69,7 +69,7 @@ def _make_crewai_tool(
     Returns Any because BaseTool is from an optional dependency (crewai).
     """
     import pydantic
-    from crewai.tools import BaseTool
+    from crewai.tools import BaseTool  # type: ignore[import]
 
     from matimo.integrations._pydantic_utils import (
         is_secret_parameter,
@@ -93,7 +93,7 @@ def _make_crewai_tool(
     class MatimoCrewTool(BaseTool):
         name: str = tool_def.name
         description: str = tool_def.description
-        args_schema: type[pydantic.BaseModel] = ArgsSchema
+        args_schema: type[pydantic.BaseModel] = ArgsSchema  # type: ignore[assignment]
 
         def _run(self, **kwargs: object) -> Any:  # noqa: ANN401
             """Synchronous execution — runs async execute in an event loop."""
