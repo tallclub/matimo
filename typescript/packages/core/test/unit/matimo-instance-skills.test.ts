@@ -433,4 +433,66 @@ describe('MatimoInstance — Skill & Reload Coverage', () => {
       expect(created!.source).toBe('catalog');
     });
   });
+
+  // ─── buildSkillPromptContext ───────────────────────────────────────
+
+  describe('buildSkillPromptContext', () => {
+    it('should return relevant skill content for a matching query', async () => {
+      writeToolYaml('prompt-context-tool');
+      writeSkill(
+        'postgres-locking',
+        '# Overview\n\nHow to diagnose and resolve Postgres row locking issues.'
+      );
+      const matimo = await MatimoInstance.init({
+        toolPaths: [toolDir],
+        skillPaths: [skillDir],
+        logLevel: 'silent',
+      });
+
+      const context = await matimo.buildSkillPromptContext('Postgres locking issue', {
+        topK: 1,
+        minScore: 0,
+      });
+
+      expect(context).toContain('postgres-locking');
+    });
+
+    it('should return an empty string when nothing scores above minScore', async () => {
+      writeToolYaml('prompt-context-empty-tool');
+      writeSkill('unrelated-skill', '# Overview\n\nCompletely unrelated content.');
+      const matimo = await MatimoInstance.init({
+        toolPaths: [toolDir],
+        skillPaths: [skillDir],
+        logLevel: 'silent',
+      });
+
+      const context = await matimo.buildSkillPromptContext('xyzzy plugh quux', {
+        minScore: 0.99,
+      });
+
+      expect(context).toBe('');
+    });
+
+    it('should behave identically to the standalone buildRelevantSkillPrompt', async () => {
+      writeToolYaml('prompt-context-parity-tool');
+      writeSkill('parity-skill', '# Overview\n\nParity check content for prompt context.');
+      const matimo = await MatimoInstance.init({
+        toolPaths: [toolDir],
+        skillPaths: [skillDir],
+        logLevel: 'silent',
+      });
+
+      const { buildRelevantSkillPrompt } = await import('../../src/integrations/langchain.js');
+      const standalone = await buildRelevantSkillPrompt(matimo, 'parity check content', {
+        topK: 1,
+        minScore: 0,
+      });
+      const viaInstance = await matimo.buildSkillPromptContext('parity check content', {
+        topK: 1,
+        minScore: 0,
+      });
+
+      expect(viaInstance).toBe(standalone);
+    });
+  });
 });

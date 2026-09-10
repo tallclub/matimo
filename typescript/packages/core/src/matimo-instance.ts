@@ -33,6 +33,7 @@ import { ToolIntegrityTracker } from './policy/integrity-tracker.js';
 import { ApprovalManifest } from './policy/approval-manifest.js';
 import type { MatimoEvent, MatimoEventHandler } from './policy/events.js';
 import { applyResponseSizeGuardrail } from './core/response-size-guardrail.js';
+import { buildRelevantSkillPrompt } from './integrations/langchain.js';
 
 /**
  * Find the core skills directory by walking up from process.cwd().
@@ -897,6 +898,23 @@ export class MatimoInstance {
       source,
       timestamp: new Date().toISOString(),
     });
+  }
+
+  /**
+   * Build a per-request system prompt snippet from semantically relevant skills.
+   * Instance-method counterpart to the standalone `buildRelevantSkillPrompt()`
+   * export in `integrations/langchain.js` — for integrators who already hold a
+   * `MatimoInstance` and would rather call a method than import a free function.
+   * Both call styles do the same thing; see `docs/skills/SKILLS.md`.
+   *
+   * @example
+   * const skillContext = await matimo.buildSkillPromptContext(userMessage, { topK: 2 });
+   */
+  async buildSkillPromptContext(
+    query: string,
+    options?: { topK?: number; minScore?: number; header?: string }
+  ): Promise<string> {
+    return buildRelevantSkillPrompt(this, query, options);
   }
 
   /**
