@@ -19,7 +19,7 @@ SETUP:
 ────────────────────────────────────────────────────────────────────────────
   Set in .env:
     OPENAI_API_KEY=sk-…
-    HUBSPOT_ACCESS_TOKEN=pat-…
+    MATIMO_HUBSPOT_API_KEY=pat-…
 
 USAGE:
 ────────────────────────────────────────────────────────────────────────────
@@ -55,7 +55,7 @@ async def run(task: str) -> None:
     print("║     HubSpot Tools — CrewAI Crew                        ║")
     print("╚════════════════════════════════════════════════════════╝\n")
 
-    for key, label in [("OPENAI_API_KEY", "OpenAI"), ("HUBSPOT_ACCESS_TOKEN", "HubSpot token")]:
+    for key, label in [("OPENAI_API_KEY", "OpenAI"), ("MATIMO_HUBSPOT_API_KEY", "HubSpot token")]:
         if not os.environ.get(key):
             print(f"❌  {label} ({key}) not set in .env")
             sys.exit(1)

@@ -16,13 +16,17 @@ import json
 import os
 import re
 import sys
+from pathlib import Path
 from typing import Any
 
+from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from matimo import Matimo
 from matimo.decorators import tool, set_global_matimo_instance
+
+load_dotenv(Path(__file__).parent.parent.parent / ".env")
 
 
 class DecoratorPatternAgent:

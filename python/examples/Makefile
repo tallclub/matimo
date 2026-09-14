@@ -16,7 +16,7 @@
   extract-from-file-factory extract-from-file-decorator extract-from-file-langchain extract-from-file-crewai \
   convert-to-file-factory convert-to-file-decorator convert-to-file-langchain convert-to-file-crewai \
   web-scraper-factory web-scraper-decorator web-scraper-langchain web-scraper-crewai \
-  credentials policy skills meta-flow \
+  credentials policy skills skills-crewai meta-flow \
   mcp-server-stdio mcp-server-http \
   mcp-agent-stdio mcp-agent-http mcp-agent mcp-agent-http-mode mcp-agent-multi mcp-diagnose mcp-test \
   agent-langchain agent-crewai multi-agent-crewai agent-langchain-skills-policy
@@ -132,6 +132,7 @@ help:
 	@echo "  make credentials          Credential management demo"
 	@echo "  make policy               Policy engine demo"
 	@echo "  make skills               Skills knowledge layer demo"
+	@echo "  make skills-crewai        CrewAI agent using skill helpers + skill meta-tools"
 	@echo "  make meta-flow            Meta-tools integration"
 	@echo ""
 	@echo "  ─ MCP ──────────────────────────────────────"
@@ -356,6 +357,8 @@ policy:
 	$(PYTHON) native/policy/policy_demo.py
 skills:
 	$(PYTHON) native/skills/skills_demo.py
+skills-crewai:
+	$(PYTHON) crewai/skills/skills_crewai.py
 meta-flow:
 	$(PYTHON) native/meta_flow/meta_tools_integration.py
 

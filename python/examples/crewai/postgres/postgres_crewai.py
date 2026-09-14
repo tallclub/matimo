@@ -18,13 +18,13 @@ SETUP:
 ────────────────────────────────────────────────────────────────────────────
   Set in .env:
     OPENAI_API_KEY=sk-…
-    POSTGRES_CONNECTION_STRING=postgresql://user:password@host:5432/dbname
+    MATIMO_POSTGRES_URL=postgresql://user:password@host:5432/dbname
     # or individual vars:
-    POSTGRES_HOST=localhost
-    POSTGRES_PORT=5432
-    POSTGRES_DB=mydb
-    POSTGRES_USER=myuser
-    POSTGRES_PASSWORD=mypassword
+    MATIMO_POSTGRES_HOST=localhost
+    MATIMO_POSTGRES_PORT=5432
+    MATIMO_POSTGRES_DB=mydb
+    MATIMO_POSTGRES_USER=myuser
+    MATIMO_POSTGRES_PASSWORD=mypassword
 
 USAGE:
 ────────────────────────────────────────────────────────────────────────────
