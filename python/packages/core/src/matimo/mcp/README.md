@@ -10,6 +10,11 @@ This module mirrors the TypeScript `@matimo/core/mcp` implementation and maintai
 - **Skill resources** - exposes Matimo skills as MCP resources (`skills://name`)
 - **HTTP transport** - Streamable HTTP with bearer-token auth, CORS, health endpoint
 - **Stdio transport** - stdio server for Claude Desktop integration
+- **mcp SDK 1.x/2.x compatibility** - mcp 2.0 replaced `Server`'s decorator-based
+  handler registration with constructor callables; `server.py` detects the
+  installed SDK's major version (`_mcp_major_version()`) and builds the server
+  via `_build_server_v1()` (decorators, mcp<2.0) or `_build_server_v2()`
+  (`on_list_tools=`/`on_call_tool=`/... constructor kwargs, mcp>=2.0)
 
 ---
 
@@ -190,8 +195,13 @@ embedding application provides a server-trusted approval signal.
 
 **Solution:** Register skills as MCP resources so clients can browse them like files:
 
+On mcp<2.0 this is registered post-construction via decorators
+(`_register_skill_resources_v1`); on mcp>=2.0 the same mapping is built as a
+pair of constructor callables instead (`_build_skill_resource_handlers_v2`),
+since `@server.list_resources()`/`@server.read_resource()` no longer exist.
+
 ```python
-def _register_skill_resources(self, server: Any) -> None:
+def _register_skill_resources_v1(self, server: Any) -> None:
     skills = self._matimo.list_skills()
     
     @server.list_resources()  # MCP: resources/list
@@ -488,7 +498,7 @@ If a tool name matches both `tools` (allowlist) and `exclude_tools` (denylist), 
 | Auth param filtering | ✅ `isAuthParameter()` | ✅ `_is_auth_parameter()` | Parity |
 | `_matimo_approved` | ✅ `toolToMcpRegistration()` | ✅ `tool_to_mcp_registration()` | Parity |
 | Pre-resolved secrets | ✅ `seedEnvironmentSecrets()` | ✅ `_seed_environment_secrets()` | Parity |
-| Skill resources | ✅ `registerSkillResources()` | ✅ `_register_skill_resources()` | Parity |
+| Skill resources | ✅ `registerSkillResources()` | ✅ `_register_skill_resources_v1()` / `_build_skill_resource_handlers_v2()` | Parity |
 | HTTP transport | ✅ `StreamableHTTPServerTransport` + sessions | ✅ `StreamableHTTPSessionManager` + stateless | Parity |
 | Stdio logging suppression | ✅ `logLevel: 'silent'` | ✅ `logging.setLevel(CRITICAL+1)` | Parity |
 | Test coverage | 95%+ | 95%+ | Parity |

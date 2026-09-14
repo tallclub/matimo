@@ -6,6 +6,9 @@ Exposes Matimo tools over the MCP protocol so Claude and other MCP-compatible
 clients can discover and call them.
 
 Dependencies: mcp>=1.0  (install with: pip install matimo[mcp])
+Supports both the mcp>=1.0,<2.0 decorator-based Server API and the mcp>=2.0
+constructor-callback Server API (see _mcp_major_version() / _build_server_v1()
+/ _build_server_v2() below).
 """
 from __future__ import annotations
 
@@ -21,6 +24,23 @@ if TYPE_CHECKING:
     from matimo.instance import Matimo
 
 logger = logging.getLogger("matimo")
+
+
+def _mcp_major_version() -> int:
+    """Return the installed `mcp` SDK's major version, defaulting to 1 if unknown.
+
+    mcp 2.0 replaced Server's decorator-based handler registration
+    (@server.list_tools(), etc.) with constructor callables (on_list_tools=,
+    etc.) — the decorator methods don't exist on Server in 2.x at all, so this
+    must be checked before constructing the server, not discovered by trying
+    and catching AttributeError.
+    """
+    try:
+        from importlib.metadata import version
+
+        return int(version("mcp").split(".")[0])
+    except Exception:
+        return 1
 
 
 @dataclass
@@ -92,9 +112,8 @@ class MCPServer:
             logging.getLogger("matimo").setLevel(logging.CRITICAL + 1)
 
         try:
-            import mcp.types as mcp_types  # type: ignore[import]
-            from mcp.server import Server  # type: ignore[import]
-            from mcp.server.models import InitializationOptions  # type: ignore[import]  # noqa: F401
+            import mcp.types as mcp_types
+            from mcp.server.models import InitializationOptions  # noqa: F401
         except ImportError as exc:
             raise MatimoError(
                 "MCP Python SDK not installed. Install with: pip install matimo[mcp]",
@@ -105,24 +124,17 @@ class MCPServer:
         from matimo.decorators import set_global_matimo_instance
         set_global_matimo_instance(self._matimo)
 
-        server = Server("matimo")
+        # mcp>=2.0 replaced Server's post-construction @server.list_tools()/
+        # @server.call_tool()/@server.list_resources()/@server.read_resource()
+        # decorators with on_list_tools=/on_call_tool=/... constructor callables
+        # (the decorator methods no longer exist on Server at all). Branch on the
+        # installed SDK's major version so matimo[mcp] keeps working across both
+        # mcp 1.x and 2.x without pinning either extras/... consumer to one side.
+        if _mcp_major_version() >= 2:
+            server = self._build_server_v2(mcp_types)
+        else:
+            server = self._build_server_v1(mcp_types)
         self._server = server
-
-        # Register tools/list handler
-        @server.list_tools()  # type: ignore[misc]
-        async def handle_list_tools() -> list[mcp_types.Tool]:
-            return self._get_mcp_tools()
-
-        # Register tools/call handler
-        @server.call_tool()  # type: ignore[misc]
-        async def handle_call_tool(
-            name: str, arguments: dict[str, Any]
-        ) -> list[mcp_types.TextContent] | mcp_types.CallToolResult:
-            return await self._call_tool(name, arguments)
-
-        # Register skill resources (skills://name) so MCP clients can read them.
-        # Mirrors registerSkillResources() in mcp-server.ts.
-        self._register_skill_resources(server)
 
         # Pre-resolve all auth secrets once at startup.
         # Mirrors seedEnvironmentSecrets() in mcp-server.ts.
@@ -135,14 +147,69 @@ class MCPServer:
         else:
             await self._run_http(server)
 
+    def _build_server_v1(self, mcp_types: Any) -> Any:  # noqa: ANN401
+        """Build a Server using the mcp<2.0 decorator-based registration API."""
+        from mcp.server import Server
+
+        server = Server("matimo")
+
+        @server.list_tools()  # type: ignore[no-untyped-call, untyped-decorator]
+        async def handle_list_tools() -> list[mcp_types.Tool]:
+            return self._get_mcp_tools()
+
+        @server.call_tool()  # type: ignore[untyped-decorator]
+        async def handle_call_tool(
+            name: str, arguments: dict[str, Any]
+        ) -> list[mcp_types.TextContent] | mcp_types.CallToolResult:
+            return await self._call_tool(name, arguments)
+
+        # Register skill resources (skills://name) so MCP clients can read them.
+        # Mirrors registerSkillResources() in mcp-server.ts.
+        self._register_skill_resources_v1(server)
+
+        return server
+
+    def _build_server_v2(self, mcp_types: Any) -> Any:  # noqa: ANN401
+        """Build a Server using the mcp>=2.0 constructor-callback registration API.
+
+        The Server constructor takes on_list_tools/on_call_tool/on_list_resources/
+        on_read_resource callables directly — there is no post-construction
+        decorator to register them with, and the callbacks' wrapped return types
+        (ListToolsResult, CallToolResult, ListResourcesResult, ReadResourceResult)
+        replace the bare list/str returns the mcp<2.0 decorators accepted.
+        """
+        from mcp.server import Server
+
+        async def on_list_tools(ctx: Any, params: Any) -> Any:  # noqa: ANN401, ARG001
+            return mcp_types.ListToolsResult(tools=self._get_mcp_tools())
+
+        async def on_call_tool(ctx: Any, params: Any) -> Any:  # noqa: ANN401, ARG001
+            result = await self._call_tool(params.name, dict(params.arguments or {}))
+            if isinstance(result, list):
+                return mcp_types.CallToolResult(content=result)
+            return result  # already a CallToolResult (error path)
+
+        kwargs: dict[str, Any] = {
+            "on_list_tools": on_list_tools,
+            "on_call_tool": on_call_tool,
+        }
+
+        skills = self._matimo.list_skills()
+        if skills:
+            on_list_resources, on_read_resource = self._build_skill_resource_handlers_v2(mcp_types)
+            kwargs["on_list_resources"] = on_list_resources
+            kwargs["on_read_resource"] = on_read_resource
+
+        return Server("matimo", **kwargs)
+
     async def _run_stdio(self, server: Any) -> None:  # noqa: ANN401
         """Run as stdio MCP server (for Claude Desktop integration).
 
         server: Any because the MCP Server type is from an optional dependency (mcp).
         """
-        from mcp.server import NotificationOptions  # type: ignore[import]
-        from mcp.server.models import InitializationOptions  # type: ignore[import]
-        from mcp.server.stdio import stdio_server  # type: ignore[import]
+        from mcp.server import NotificationOptions
+        from mcp.server.models import InitializationOptions
+        from mcp.server.stdio import stdio_server
 
         async with stdio_server() as (read_stream, write_stream):
             await server.run(
@@ -166,7 +233,7 @@ class MCPServer:
         Mirrors connectHttp() + bearer-token auth in mcp-server.ts.
         """
         import uvicorn
-        from mcp.server.streamable_http_manager import (  # type: ignore[import]
+        from mcp.server.streamable_http_manager import (
             StreamableHTTPSessionManager,
         )
 
@@ -283,7 +350,7 @@ class MCPServer:
     def _get_mcp_tools(self) -> list[Any]:
         """Convert Matimo tools to MCP Tool objects, filtering auth parameters."""
         try:
-            import mcp.types as mcp_types  # type: ignore[import]
+            import mcp.types as mcp_types
         except ImportError:
             return []
 
@@ -318,7 +385,7 @@ class MCPServer:
         a plain-text list, matching the TS side's use of `structuredContent`.
         """
         try:
-            import mcp.types as mcp_types  # type: ignore[import]
+            import mcp.types as mcp_types
         except ImportError:
             return []
 
@@ -423,8 +490,8 @@ class MCPServer:
             # Also store with MATIMO_ prefix for env-var compatibility
             self._resolved_secrets[f"MATIMO_{key}"] = value
 
-    def _register_skill_resources(self, server: Any) -> None:  # noqa: ANN401
-        """Register Matimo skills as MCP resources (skills://name).
+    def _register_skill_resources_v1(self, server: Any) -> None:  # noqa: ANN401
+        """Register Matimo skills as MCP resources (skills://name) — mcp<2.0.
 
         Mirrors registerSkillResources() in mcp-server.ts, allowing MCP clients
         (Claude Desktop, Cursor, etc.) to attach skill context from the resource
@@ -433,7 +500,7 @@ class MCPServer:
         server: Any because the MCP Server type is from an optional dependency (mcp).
         """
         try:
-            import mcp.types as mcp_types  # type: ignore[import]
+            import mcp.types as mcp_types
         except ImportError:
             return
 
@@ -441,9 +508,9 @@ class MCPServer:
         if not skills:
             return
 
-        @server.list_resources()  # type: ignore[misc]
+        @server.list_resources()  # type: ignore[untyped-decorator]
         async def handle_list_resources() -> list[mcp_types.Resource]:
-            from pydantic import AnyUrl  # type: ignore[import]
+            from pydantic import AnyUrl
             return [
                 mcp_types.Resource(
                     uri=AnyUrl(f"skills://{s.name}"),
@@ -454,11 +521,52 @@ class MCPServer:
                 for s in skills
             ]
 
-        @server.read_resource()  # type: ignore[misc]
+        @server.read_resource()  # type: ignore[untyped-decorator]
         async def handle_read_resource(uri: Any) -> str:  # noqa: ANN401
             skill_name = str(uri).removeprefix("skills://")
             content = self._matimo.get_skill_content(skill_name)
             return content or f'Skill "{skill_name}" content unavailable'
+
+    def _build_skill_resource_handlers_v2(
+        self, mcp_types: Any  # noqa: ANN401
+    ) -> tuple[Any, Any]:
+        """Build on_list_resources/on_read_resource callables — mcp>=2.0.
+
+        Same skills://name resource mapping as _register_skill_resources_v1,
+        but mcp 2.0's Server takes these as constructor callables instead of
+        post-construction decorators, and their return types are the wrapped
+        ListResourcesResult/ReadResourceResult rather than a bare list/str.
+        Also, mcp 2.0 typed Resource.uri/TextResourceContents.uri as plain str
+        instead of pydantic.AnyUrl.
+        """
+
+        async def on_list_resources(ctx: Any, params: Any) -> Any:  # noqa: ANN401, ARG001
+            return mcp_types.ListResourcesResult(
+                resources=[
+                    mcp_types.Resource(
+                        uri=f"skills://{s.name}",
+                        name=s.name,
+                        description=getattr(s, "description", None),
+                        mimeType="text/markdown",
+                    )
+                    for s in self._matimo.list_skills()
+                ]
+            )
+
+        async def on_read_resource(ctx: Any, params: Any) -> Any:  # noqa: ANN401, ARG001
+            skill_name = str(params.uri).removeprefix("skills://")
+            content = self._matimo.get_skill_content(skill_name)
+            return mcp_types.ReadResourceResult(
+                contents=[
+                    mcp_types.TextResourceContents(
+                        uri=params.uri,
+                        mimeType="text/markdown",
+                        text=content or f'Skill "{skill_name}" content unavailable',
+                    )
+                ]
+            )
+
+        return on_list_resources, on_read_resource
 
     def _filter_tools(self, tools: list[Any]) -> list[Any]:
         """
