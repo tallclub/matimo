@@ -520,6 +520,7 @@ async def main() -> None:
         header("PHASE 4: Non-MCP Progressive Disclosure (agentskills.io spec)")
 
         matimo_with_skills = await Matimo.init(
+            auto_discover=True,
             skill_paths=[str(skills_dir)],
             log_level="silent",
         )
@@ -587,6 +588,13 @@ async def main() -> None:
 
         header("PHASE 5: New Meta-Tools -- Factory & Decorator Patterns")
 
+        # matimo_search_skills / matimo_get_skill_sections / matimo_get_skill_content are
+        # 'type: function' tools that reach their owning instance via
+        # get_global_matimo_instance() rather than the instance execute() was called on --
+        # route the global at matimo_with_skills (the instance with the agent-created
+        # skills loaded) before either the factory or decorator pattern calls them.
+        set_global_matimo_instance(matimo_with_skills)
+
         subheader("5a. Factory pattern -- direct matimo.execute()")
 
         search_exec = await matimo_with_skills.execute(
@@ -650,9 +658,7 @@ async def main() -> None:
                 """Decorator auto-calls matimo.execute('matimo_get_skill_content', {...})."""
                 ...
 
-        # @tool resolves the target instance via the global -- route it at
-        # matimo_with_skills (the instance with the agent-created skills loaded).
-        set_global_matimo_instance(matimo_with_skills)
+        # @tool resolves the target instance via the same global set above.
         skills_meta_service = SkillsMetaToolsService()
 
         decorator_search = await skills_meta_service.search(

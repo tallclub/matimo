@@ -54,7 +54,7 @@ from pathlib import Path
 from crewai import Agent, Crew, Process, Task
 from dotenv import load_dotenv
 
-from matimo import Matimo, SkillDefinition
+from matimo import Matimo, SkillDefinition, set_global_matimo_instance
 from matimo.integrations.crewai import (
     build_relevant_skill_prompt,
     convert_tools_to_crewai,
@@ -114,6 +114,12 @@ async def run(task: str) -> None:
     print("🚀  Initialising Matimo…")
     matimo = await Matimo.init(auto_discover=True, log_level="silent")
     matimo.register_skills(SEED_SKILLS)
+
+    # matimo_search_skills / matimo_get_skill_sections / matimo_get_skill_content
+    # resolve their Matimo instance via get_global_matimo_instance() rather than
+    # whichever instance convert_tools_to_crewai() was called with below — see
+    # examples/native/skills/skills_demo.py for the same requirement.
+    set_global_matimo_instance(matimo)
 
     meta = get_skills_metadata(matimo)
     print(f"✅  {len(meta)} skill(s) registered: {', '.join(m['name'] for m in meta)}\n")
