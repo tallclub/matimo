@@ -58,10 +58,9 @@ def validate_tool_content(
     """
     violations: list[ContentViolation] = []
     skip = skip_rules or frozenset()
-    exec_type = tool.execution.type
 
     # 1. No function execution
-    if exec_type == "function" and not policy.allow_function_tools:
+    if tool.execution.type == "function" and not policy.allow_function_tools:
         violations.append(ContentViolation(
             rule="no-function-execution",
             severity=RiskLevel.CRITICAL,
@@ -69,7 +68,7 @@ def validate_tool_content(
         ))
 
     # 2. No command execution
-    if exec_type == "command" and not policy.allow_command_tools:
+    if tool.execution.type == "command" and not policy.allow_command_tools:
         violations.append(ContentViolation(
             rule="no-command-execution",
             severity=RiskLevel.CRITICAL,
@@ -77,8 +76,8 @@ def validate_tool_content(
         ))
 
     # 3. SSRF protection (HTTP tools)
-    if exec_type == "http":
-        url: str = tool.execution.url  # type: ignore[attr-defined]
+    if tool.execution.type == "http":
+        url: str = tool.execution.url
         ssrf = _check_ssrf(url)
         if ssrf:
             violations.append(ContentViolation(
@@ -121,8 +120,8 @@ def validate_tool_content(
         ))
 
     # 7. Blocked HTTP method
-    if exec_type == "http":
-        method: str = tool.execution.method  # type: ignore[attr-defined]
+    if tool.execution.type == "http":
+        method: str = tool.execution.method
         if method not in policy.allowed_http_methods:
             violations.append(ContentViolation(
                 rule="blocked-http-method",
@@ -131,8 +130,8 @@ def validate_tool_content(
             ))
 
     # 8. Blocked domain
-    if exec_type == "http" and policy.allowed_domains:
-        url = tool.execution.url  # type: ignore[attr-defined]
+    if tool.execution.type == "http" and policy.allowed_domains:
+        url = tool.execution.url
         try:
             parsed = urlparse(url)
             host = parsed.hostname or ""
@@ -203,15 +202,14 @@ def _check_ssrf(url: str) -> str | None:
 def _extract_placeholders(tool: ToolDefinition) -> set[str]:
     """Extract all {placeholder} names from execution config."""
     placeholders: set[str] = set()
-    exec_type = tool.execution.type
-    if exec_type == "http":
+    if tool.execution.type == "http":
         exec_ = tool.execution
-        _scan_obj(exec_.url, placeholders)            # type: ignore[attr-defined]
-        _scan_obj(exec_.headers or {}, placeholders)  # type: ignore[attr-defined]
-        _scan_obj(exec_.body, placeholders)            # type: ignore[attr-defined]
-    elif exec_type == "command":
-        _scan_obj(tool.execution.command, placeholders)     # type: ignore[attr-defined]
-        for arg in tool.execution.args or []:               # type: ignore[attr-defined]
+        _scan_obj(exec_.url, placeholders)
+        _scan_obj(exec_.headers or {}, placeholders)
+        _scan_obj(exec_.body, placeholders)
+    elif tool.execution.type == "command":
+        _scan_obj(tool.execution.command, placeholders)
+        for arg in tool.execution.args or []:
             _scan_obj(arg, placeholders)
     return placeholders
 

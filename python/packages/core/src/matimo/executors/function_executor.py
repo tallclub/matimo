@@ -23,7 +23,7 @@ import logging
 import time
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from matimo.core.models import FunctionExecution, ToolDefinition
 from matimo.errors import ErrorCode, MatimoError
@@ -122,7 +122,13 @@ class FunctionExecutor:
         then fall back to self._base_path. Supports both relative and absolute paths.
         """
         exec_cfg = tool.execution
-        code_str: str = exec_cfg.code  # type: ignore[attr-defined]
+        if not isinstance(exec_cfg, FunctionExecution):
+            raise MatimoError(
+                f"Tool '{tool.name}' is not a function tool",
+                ErrorCode.EXECUTION_FAILED,
+                {"tool_name": tool.name, "execution_type": exec_cfg.type},
+            )
+        code_str: str = exec_cfg.code
 
         # Resolve relative to the definition file directory first
         base = (
@@ -173,7 +179,7 @@ class FunctionExecutor:
 
         module = importlib.util.module_from_spec(spec)
         try:
-            spec.loader.exec_module(module)  # type: ignore[union-attr]
+            spec.loader.exec_module(module)
         except Exception as exc:
             raise MatimoError(
                 f"Error importing module for tool '{tool_name}': {exc}",
@@ -190,4 +196,4 @@ class FunctionExecutor:
                 {"tool_name": tool_name, "py_path": str(py_path)},
             )
 
-        return run_fn
+        return cast("Callable[..., Any]", run_fn)

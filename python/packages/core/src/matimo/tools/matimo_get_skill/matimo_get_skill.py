@@ -52,8 +52,9 @@ def _find_skill_dir(name: str, explicit_dir: str | None) -> Path | None:
         instance = get_global_matimo_instance()
         if instance is not None and hasattr(instance, "list_skills"):
             for s in instance.list_skills():
-                if s.name == name and getattr(s, "_path", None):
-                    p = Path(s._path)  # type: ignore[union-attr]
+                s_path = getattr(s, "_path", None)
+                if s.name == name and s_path:
+                    p = Path(s_path)
                     if (p / "SKILL.md").exists():
                         return p
     except Exception as exc:

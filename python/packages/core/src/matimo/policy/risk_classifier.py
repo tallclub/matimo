@@ -39,18 +39,16 @@ def _classify_automatic_risk(tool: ToolDefinition) -> RiskLevel:
         POST / PUT / PATCH → medium
         GET (default)     → low
     """
-    exec_type = tool.execution.type
-
-    if exec_type == "function":
+    if tool.execution.type == "function":
         return RiskLevel.CRITICAL
 
-    if exec_type == "command":
+    if tool.execution.type == "command":
         return RiskLevel.HIGH
 
-    if exec_type == "http":
+    if tool.execution.type == "http":
         if tool.requires_approval:
             return RiskLevel.HIGH
-        method = tool.execution.method.upper()  # type: ignore[attr-defined]
+        method = tool.execution.method.upper()
         if method == "DELETE":
             return RiskLevel.HIGH
         if method in ("POST", "PUT", "PATCH"):

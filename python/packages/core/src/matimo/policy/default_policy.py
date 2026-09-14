@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from matimo.core.models import PolicyContext, ToolDefinition
 from matimo.policy.content_validator import ContentViolation, validate_tool_content
-from matimo.policy.risk_classifier import RiskLevel, classify_risk
+from matimo.policy.risk_classifier import classify_risk
 from matimo.policy.types import (
     PolicyAllowed,
     PolicyConfig,
@@ -18,6 +18,7 @@ from matimo.policy.types import (
     PolicyDenied,
     PolicyPendingApproval,
     PolicyTier,
+    RiskLevel,
 )
 
 if TYPE_CHECKING:

@@ -95,6 +95,7 @@ def setup_logger(
     stdlib_logger.setLevel(numeric_level)
 
     # Create formatter based on format
+    formatter: logging.Formatter
     if resolved_format == "json":
         formatter = _JsonFormatter()
     else:
@@ -105,15 +106,15 @@ def setup_logger(
 
     # Update or create handlers
     if not stdlib_logger.handlers:
-        handler = logging.StreamHandler(sys.stderr)
-        handler.setLevel(numeric_level)
-        handler.setFormatter(formatter)
-        stdlib_logger.addHandler(handler)
+        new_handler = logging.StreamHandler(sys.stderr)
+        new_handler.setLevel(numeric_level)
+        new_handler.setFormatter(formatter)
+        stdlib_logger.addHandler(new_handler)
     else:
         # Reconfigure existing handlers with new level and formatter
-        for handler in stdlib_logger.handlers:
-            handler.setLevel(numeric_level)
-            handler.setFormatter(formatter)
+        for existing_handler in stdlib_logger.handlers:
+            existing_handler.setLevel(numeric_level)
+            existing_handler.setFormatter(formatter)
 
     stdlib_logger.propagate = False
 

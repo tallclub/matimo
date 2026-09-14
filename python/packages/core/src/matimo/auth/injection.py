@@ -71,21 +71,20 @@ def extract_parameter_placeholders(tool: ToolDefinition) -> set[str]:
     """
     placeholders: set[str] = set()
     exec_cfg = tool.execution
-    exec_type = exec_cfg.type
 
-    if exec_type == "http":
-        _scan_string(exec_cfg.url, placeholders)  # type: ignore[attr-defined]
-        _scan_object(exec_cfg.headers, placeholders)  # type: ignore[attr-defined]
-        _scan_object(exec_cfg.body, placeholders)  # type: ignore[attr-defined]
-        _scan_object(exec_cfg.query_params, placeholders)  # type: ignore[attr-defined]
-        _scan_object(exec_cfg.params, placeholders)  # type: ignore[attr-defined]
+    if exec_cfg.type == "http":
+        _scan_string(exec_cfg.url, placeholders)
+        _scan_object(exec_cfg.headers, placeholders)
+        _scan_object(exec_cfg.body, placeholders)
+        _scan_object(exec_cfg.query_params, placeholders)
+        _scan_object(exec_cfg.params, placeholders)
 
-    elif exec_type == "command":
-        _scan_string(exec_cfg.command, placeholders)  # type: ignore[attr-defined]
-        for arg in exec_cfg.args or []:  # type: ignore[attr-defined]
+    elif exec_cfg.type == "command":
+        _scan_string(exec_cfg.command, placeholders)
+        for arg in exec_cfg.args or []:
             _scan_string(arg, placeholders)
 
-    elif exec_type == "function":
+    elif exec_cfg.type == "function":
         # Function tools may have params passed directly — nothing to scan
         pass
 

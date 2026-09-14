@@ -8,6 +8,7 @@ embeddings (TF-IDF fallback).
 """
 from __future__ import annotations
 
+import builtins
 import logging
 from dataclasses import dataclass
 
@@ -121,7 +122,7 @@ class SkillRegistry:
         """List all skills (Level 1 discovery — minimal context)."""
         return [self._to_summary(s) for s in self._skills.values()]
 
-    def get_all(self) -> list[SkillDefinition]:
+    def get_all(self) -> builtins.list[SkillDefinition]:
         return list(self._skills.values())
 
     def has(self, name: str) -> bool:
@@ -134,7 +135,7 @@ class SkillRegistry:
     # Search (substring + optional semantic)
     # ------------------------------------------------------------------
 
-    def search(self, options: SearchSkillsOptions | None = None) -> list[SkillSummary]:
+    def search(self, options: SearchSkillsOptions | None = None) -> builtins.list[SkillSummary]:
         if options is None:
             options = SearchSkillsOptions()
 
@@ -206,7 +207,7 @@ class SkillRegistry:
         *,
         limit: int = 10,
         min_score: float = 0.1,
-    ) -> list[SemanticSearchResult]:
+    ) -> builtins.list[SemanticSearchResult]:
         await self._ensure_embeddings()
 
         provider: EmbeddingProvider = self._embedding_provider or self._get_default_provider()
@@ -264,8 +265,8 @@ class SkillRegistry:
     def _rank_by_similarity(
         self,
         query: str,
-        candidates: list[SkillDefinition],
-    ) -> list[SemanticSearchResult]:
+        candidates: builtins.list[SkillDefinition],
+    ) -> builtins.list[SemanticSearchResult]:
         provider = self._get_default_provider()
         texts = [self._skill_to_text(s) for s in candidates]
         provider.fit([*texts, query])

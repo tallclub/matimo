@@ -31,7 +31,7 @@ def _extract_frontmatter(content: str) -> dict | None:  # type: ignore[type-arg]
     if end == -1:
         return None
     try:
-        return yaml.safe_load(content[3:end]) or {}  # type: ignore[return-value]
+        return yaml.safe_load(content[3:end]) or {}
     except Exception:
         return None
 

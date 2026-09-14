@@ -40,7 +40,7 @@ def convert_tools_to_langchain(
         ImportError if langchain-core is not installed.
     """
     try:
-        from langchain_core.tools import StructuredTool  # type: ignore[import] # noqa: F401
+        from langchain_core.tools import StructuredTool  # noqa: F401
     except ImportError as exc:
         raise ImportError(
             "langchain-core is required for LangChain integration. "
@@ -64,7 +64,7 @@ def _make_langchain_tool(
     Returns Any because StructuredTool is from an optional dependency (langchain-core).
     """
     import pydantic
-    from langchain_core.tools import StructuredTool  # type: ignore[import]
+    from langchain_core.tools import StructuredTool
 
     # Build a Pydantic model for the tool's non-secret parameters
     fields: dict[str, Any] = {}

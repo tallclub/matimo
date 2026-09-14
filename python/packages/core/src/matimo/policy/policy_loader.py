@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
+from typing import Any
 
 import yaml
 from pydantic import ValidationError
@@ -96,9 +97,9 @@ _CAMEL_TO_SNAKE: dict[str, str] = {
 }
 
 
-def _normalise_keys(data: dict) -> dict:
+def _normalise_keys(data: dict[str, Any]) -> dict[str, Any]:
     """Convert camelCase policy.yaml keys to snake_case for Pydantic."""
-    result: dict = {}
+    result: dict[str, Any] = {}
     for k, v in data.items():
         snake_key = _CAMEL_TO_SNAKE.get(k, k)
         if snake_key == "quarantine_risk_levels" and isinstance(v, list):

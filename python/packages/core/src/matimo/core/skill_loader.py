@@ -290,7 +290,7 @@ class SkillLoader:
             total_tokens=parsed.total_tokens,
             resources=resources,
             source=source,  # type: ignore[arg-type]
-            **{"_path": str(skill_dir)},
+            _path=str(skill_dir),
         )
 
     def load_skill_resource(

@@ -111,7 +111,9 @@ def _resolve_instance(self: object) -> Matimo:
     return instance
 
 
-def _build_params(fn: Callable[..., Any], args: tuple, kwargs: dict) -> dict[str, Any]:
+def _build_params(
+    fn: Callable[..., Any], args: tuple[Any, ...], kwargs: dict[str, Any]
+) -> dict[str, Any]:
     """
     Map positional and keyword arguments to a parameter dict,
     using the function's signature (excluding 'self').

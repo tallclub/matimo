@@ -54,7 +54,7 @@ class DotenvSecretResolver:
             logger.debug("DotenvSecretResolver: file not found at %s", self._path)
             return
         try:
-            from dotenv import dotenv_values  # type: ignore[import]
+            from dotenv import dotenv_values
             self._values = {k: v for k, v in dotenv_values(self._path).items() if v is not None}
             self._loaded = True
         except ImportError:
@@ -115,7 +115,7 @@ class VaultSecretResolver:
         if self._cache and (now - self._cache_ts) < self._cache_ttl_s:
             return self._cache
         try:
-            import hvac  # type: ignore[import]
+            import hvac
         except ImportError:
             logger.warning(
                 "hvac not installed — VaultSecretResolver unavailable. "
@@ -173,7 +173,7 @@ class AwsSecretsManagerResolver:
         if self._cache and (now - self._cache_ts) < self._cache_ttl_s:
             return self._cache
         try:
-            import boto3  # type: ignore[import]
+            import boto3
         except ImportError:
             logger.warning(
                 "boto3 not installed — AwsSecretsManagerResolver unavailable. "
@@ -214,7 +214,7 @@ class SecretResolverChain:
     async def resolve(self, key: str) -> str | None:
         for r in self._resolvers:
             try:
-                val = await r.resolve(key)
+                val: str | None = await r.resolve(key)
                 if val is not None:
                     return val
             except Exception as exc:  # noqa: BLE001

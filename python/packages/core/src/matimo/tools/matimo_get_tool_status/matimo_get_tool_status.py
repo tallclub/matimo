@@ -18,7 +18,7 @@ async def run(params: dict) -> dict:  # type: ignore[type-arg]
     from matimo.policy.approval_manifest import ApprovalManifest
     from matimo.policy.default_policy import get_tier_for_tool
     from matimo.policy.risk_classifier import classify_risk
-    from matimo.policy.types import PolicyTier
+    from matimo.policy.types import PolicyTier, RiskLevel
 
     name: str = params.get("name", "")
     tool_dir: str = params.get("tool_dir", "./matimo-tools")
@@ -45,7 +45,7 @@ async def run(params: dict) -> dict:  # type: ignore[type-arg]
     try:
         risk_level = classify_risk(tool_def)
     except Exception:
-        risk_level = "medium"
+        risk_level = RiskLevel.MEDIUM
 
     content_hash = hashlib.sha256(yaml_content.encode("utf-8")).hexdigest()
     manifest = ApprovalManifest(str(Path(tool_dir).resolve()))

@@ -12,6 +12,7 @@ logger = logging.getLogger("matimo")
 async def run(params: dict) -> dict:  # type: ignore[type-arg]
     from matimo.core.models import ToolDefinition
     from matimo.policy.risk_classifier import classify_risk
+    from matimo.policy.types import RiskLevel
 
     query: str = params.get("query", "")
     limit: int = int(params.get("limit", 20))
@@ -20,7 +21,7 @@ async def run(params: dict) -> dict:  # type: ignore[type-arg]
         try:
             risk = classify_risk(tool)
         except Exception:
-            risk = "medium"
+            risk = RiskLevel.MEDIUM
         return {
             "name": tool.name,
             "description": tool.description,
