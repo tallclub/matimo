@@ -670,6 +670,14 @@ describe('convertToolsToLangChain', () => {
       matimo.execute = jest.fn().mockResolvedValue({ success: true });
       const langTools = await convertToolsToLangChain([tool], matimo);
       expect(langTools).toHaveLength(1);
+
+      // Regression: an untyped array used to fall back to z.unknown() items,
+      // which serialize to a JSON-schema `items` entry with no 'type' key —
+      // rejected by OpenAI's function-calling schema validator, most visibly
+      // once an optional array field's schema is wrapped in `anyOf`.
+      const schema = langTools[0].schema as z.ZodObject<Record<string, z.ZodTypeAny>>;
+      expect(schema.shape.items.parse(['a', 'b'])).toEqual(['a', 'b']);
+      expect(() => schema.shape.items.parse([1, 2])).toThrow();
     });
 
     it('should handle object parameters with properties', async () => {

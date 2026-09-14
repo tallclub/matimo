@@ -44,6 +44,21 @@ describe('parameterToZod', () => {
     expect(() => schema.parse([1, 2])).toThrow();
   });
 
+  it('should default untyped array items to string, not unknown', () => {
+    // Regression: z.unknown() array items serialize to a JSON-schema `items`
+    // entry with no 'type' key, which OpenAI's function-calling schema
+    // validator rejects — most visibly once an optional array field's schema
+    // is wrapped in `anyOf`. Declared-items arrays are unaffected.
+    const param: Parameter = {
+      type: 'array',
+      required: false,
+      description: 'Undeclared item type',
+    };
+    const schema = parameterToZod(param);
+    expect(schema.parse(['a', 'b'])).toEqual(['a', 'b']);
+    expect(() => schema.parse([1, 2])).toThrow();
+  });
+
   it('should convert object parameter with properties', () => {
     const param: Parameter = {
       type: 'object',

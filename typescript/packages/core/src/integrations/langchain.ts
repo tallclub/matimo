@@ -91,7 +91,12 @@ function parameterToZod(param: Parameter): z.ZodType<unknown> {
         schema = z.boolean();
         break;
       case 'array': {
-        const itemSchema = param.items ? parameterToZod(param.items) : z.unknown();
+        // z.unknown() serializes to a JSON-schema items entry with no 'type' key,
+        // which OpenAI's function-calling schema validator rejects outright
+        // (especially once wrapped in the anyOf an optional field produces).
+        // Default untyped items to string — the overwhelming majority of
+        // undeclared array params in this codebase are string lists.
+        const itemSchema = param.items ? parameterToZod(param.items) : z.string();
         schema = z.array(itemSchema);
         break;
       }

@@ -9,7 +9,10 @@ import { ParameterEncodingConfig } from '../encodings/parameter-encoding.js';
  */
 export interface Parameter {
   type: 'string' | 'number' | 'boolean' | 'array' | 'object';
-  description: string;
+  // Required on top-level tool parameters by convention; optional here so nested
+  // items/properties sub-schemas (e.g. `items: { type: string }`) don't need one —
+  // the parent array/object parameter's description already documents the field.
+  description?: string;
   required?: boolean;
   enum?: (string | number | boolean)[];
   default?: unknown;

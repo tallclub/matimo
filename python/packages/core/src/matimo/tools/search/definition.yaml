@@ -36,6 +36,8 @@ parameters:
 
   excludePatterns:
     type: array
+    items:
+      type: string
     description: Glob patterns to exclude
     required: false
     example: ['node_modules/**', 'dist/**']

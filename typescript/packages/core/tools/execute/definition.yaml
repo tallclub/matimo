@@ -12,6 +12,8 @@ parameters:
 
   args:
     type: array
+    items:
+      type: string
     description: Command arguments as array of strings (optional, can also embed in command)
     required: false
     example: ['--verbose', '--color']

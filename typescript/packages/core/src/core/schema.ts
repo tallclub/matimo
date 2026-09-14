@@ -1,22 +1,39 @@
 import { z } from 'zod';
 import { MatimoError, ErrorCode } from '../errors/matimo-error.js';
+import type { Parameter } from './types.js';
 
 /**
  * Core Zod validation schemas for all Matimo tool properties.
  * These schemas ensure YAML tools conform to the spec on load.
  */
 
-// Parameter types that tools can define
-export const ParameterSchema = z.object({
-  type: z.enum(['string', 'number', 'boolean', 'array', 'object']),
-  description: z.string(),
-  required: z.boolean().optional(),
-  enum: z.array(z.any()).optional(),
-  default: z.any().optional(),
-  examples: z.array(z.any()).optional(),
-});
+// Recursive parameter shape, used for items/properties sub-schemas where a
+// description is optional — the parent array/object parameter's own
+// description already documents the field.
+// Recursive (items/properties reference this schema itself), so it needs
+// z.lazy() plus an explicit type annotation — see Zod's recursive-schema pattern.
+const ParameterShapeSchema: z.ZodType<Parameter> = z.lazy(() =>
+  z.object({
+    type: z.enum(['string', 'number', 'boolean', 'array', 'object']),
+    description: z.string().optional(),
+    required: z.boolean().optional(),
+    enum: z.array(z.any()).optional(),
+    default: z.any().optional(),
+    examples: z.array(z.any()).optional(),
+    items: ParameterShapeSchema.optional(),
+    properties: z.record(z.string(), ParameterShapeSchema).optional(),
+  })
+);
 
-export type Parameter = z.infer<typeof ParameterSchema>;
+// Top-level tool parameters (the values of a tool's `parameters:` map) must
+// carry their own description; nested items/properties may omit theirs (see
+// ParameterShapeSchema above).
+export const ParameterSchema: z.ZodType<Parameter> = ParameterShapeSchema.refine(
+  (param) => typeof param.description === 'string' && param.description.length > 0,
+  { message: 'description is required', path: ['description'] }
+);
+
+export type { Parameter };
 
 // Authentication configuration
 export const AuthConfigSchema = z.object({

@@ -16,6 +16,8 @@ parameters:
     description: Name of the skill to load content from (must match a loaded skill's name)
   sections:
     type: array
+    items:
+      type: string
     required: false
     description: >-
       Only return sections matching these heading paths (case-insensitive

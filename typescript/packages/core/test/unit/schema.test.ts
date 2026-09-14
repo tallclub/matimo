@@ -73,6 +73,42 @@ describe('Schema Validation', () => {
       };
       expect(() => ParameterSchema.parse(param)).toThrow();
     });
+
+    // Regression: `items`/`properties` used to be silently stripped by this
+    // schema at YAML-load time (not declared on ParameterSchema at all), so
+    // e.g. `sections: { type: array, items: { type: string } }` lost its
+    // items sub-schema before it ever reached the LangChain/MCP converters.
+    // Those converters then fell back to an untyped array, which serializes
+    // to a JSON-schema `items` entry with no 'type' key — rejected by
+    // OpenAI's function-calling schema validator.
+    it('should preserve items on an array parameter', () => {
+      const param = {
+        type: 'array',
+        description: 'Sections to return',
+        items: { type: 'string' },
+      };
+      expect(ParameterSchema.parse(param)).toEqual(param);
+    });
+
+    it('should not require a description on a nested items schema', () => {
+      const param = {
+        type: 'array',
+        description: 'Scores',
+        items: { type: 'number' },
+      };
+      expect(() => ParameterSchema.parse(param)).not.toThrow();
+    });
+
+    it('should preserve properties on an object parameter', () => {
+      const param = {
+        type: 'object',
+        description: 'A page cover',
+        properties: {
+          url: { type: 'string' },
+        },
+      };
+      expect(ParameterSchema.parse(param)).toEqual(param);
+    });
   });
 
   describe('AuthConfigSchema', () => {
