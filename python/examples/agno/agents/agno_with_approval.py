@@ -56,7 +56,7 @@ from matimo.integrations.agno import MatimoTools
 from matimo.policy.risk_classifier import classify_risk
 
 # Load .env from examples directory (where this project lives)
-load_dotenv(Path(__file__).parent.parent.parent / ".env")
+load_dotenv(Path(__file__).parent.parent.parent / ".env", override=True)
 
 DEFAULT_TASK = (
     "Find the matimo repository owned by tallclub and report its description, "

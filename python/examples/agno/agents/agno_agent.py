@@ -47,7 +47,7 @@ from matimo import Matimo
 from matimo.integrations.agno import MatimoTools
 
 # Load .env from examples directory (where this project lives)
-load_dotenv(Path(__file__).parent.parent.parent / ".env")
+load_dotenv(Path(__file__).parent.parent.parent / ".env", override=True)
 
 DEFAULT_MISSION = (
     "List the tools you have available, then use a read-only one to fetch "

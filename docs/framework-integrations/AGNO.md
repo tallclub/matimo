@@ -360,6 +360,20 @@ print(classify_risk(matimo.get_tool("my_tool")).value)
 
 **The model says a tool takes no arguments:** do not register Matimo tools through Agno's `async_tools=[(callable, name)]` parameter. Agno derives a schema from the callable's signature, and these entrypoints take `**kwargs`, which yields an empty parameter list. `MatimoTools` handles this correctly.
 
+**`400 Function tools with reasoning_effort are not supported ... in /v1/chat/completions`:** the model is a reasoning model, and Agno's `OpenAIChat` posts to `/v1/chat/completions`. Use `OpenAIResponses`, which posts to `/v1/responses`:
+
+```python
+from agno.models.openai import OpenAIResponses
+
+agent = Agent(model=OpenAIResponses(id="gpt-5.6"), tools=[MatimoTools(matimo)])
+```
+
+**`401 invalid_api_key` even though the key in `.env` is good:** `load_dotenv()` does not override variables already present in the environment, so a stale `OPENAI_API_KEY` in your shell wins. Pass `override=True`:
+
+```python
+load_dotenv(Path(__file__).parent / ".env", override=True)
+```
+
 **Credentials not reaching the API:** keys in `credentials` must match the placeholder names in the YAML (`SLACK_BOT_TOKEN`), not the tool's parameter names. An unresolved placeholder raises `ErrorCode.INVALID_PARAMETER`.
 
 **Tool call fails only under `agent.run()`:** the sync entrypoint drives Matimo's async `execute()` through a worker thread when a loop is already running. If you are inside an existing event loop, prefer `agent.arun()`, which reaches `execute()` directly.
