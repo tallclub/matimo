@@ -223,6 +223,30 @@ def convert_tools_to_crewai(
     return _inner(tools, matimo_instance, credentials)
 
 
+def convert_tools_to_agno(
+    tools: list[ToolDefinition],
+    matimo_instance: Matimo,
+    credentials: dict[str, str] | None = None,
+    **kwargs: object,
+) -> list[object]:
+    """Convert Matimo tools to Agno Function list. Requires agno."""
+    from matimo.integrations.agno import convert_tools_to_agno as _inner
+    return _inner(tools, matimo_instance, credentials, **kwargs)  # type: ignore[arg-type]
+
+
+def MatimoTools(  # noqa: N802
+    matimo_instance: Matimo,
+    tools: list[ToolDefinition] | None = None,
+    **kwargs: object,
+) -> object:
+    """Build an Agno Toolkit exposing governed Matimo tools. Requires agno.
+
+    Named in CapWords to match Agno's <Name>Tools toolkit convention.
+    """
+    from matimo.integrations.agno import MatimoTools as _inner
+    return _inner(matimo_instance, tools, **kwargs)  # type: ignore[arg-type]
+
+
 def get_core_tools_path() -> str:
     """Return the absolute path to matimo-core's bundled tool definitions.
 
@@ -303,6 +327,7 @@ __all__ = [
     # Integrations
     "convert_tools_to_langchain", "get_skills_metadata",
     "build_relevant_skill_prompt", "convert_tools_to_crewai",
+    "convert_tools_to_agno", "MatimoTools",
     # Decorators
     "tool", "set_global_matimo_instance", "get_global_matimo_instance",
     # Logging

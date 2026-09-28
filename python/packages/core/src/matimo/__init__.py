@@ -231,6 +231,36 @@ def convert_tools_to_crewai(
     return _inner(tools, matimo_instance, credentials)
 
 
+def convert_tools_to_agno(
+    tools: list[Any],
+    matimo_instance: Matimo,
+    credentials: dict[str, str] | None = None,
+    **kwargs: Any,  # noqa: ANN401
+) -> list[Any]:
+    """Convert Matimo tools to Agno Function list. Requires agno.
+
+    Extra keyword arguments (context, confirm_risk_levels) are forwarded to
+    matimo.integrations.agno.convert_tools_to_agno.
+    """
+    from matimo.integrations.agno import convert_tools_to_agno as _inner
+    return _inner(tools, matimo_instance, credentials, **kwargs)
+
+
+def MatimoTools(  # noqa: N802
+    matimo_instance: Matimo,
+    tools: list[Any] | None = None,
+    **kwargs: Any,  # noqa: ANN401
+) -> Any:  # noqa: ANN401
+    """Build an Agno Toolkit exposing governed Matimo tools. Requires agno.
+
+    Named in CapWords to match Agno's <Name>Tools toolkit convention. Returns Any
+    because Toolkit comes from an optional dependency (agno). Extra keyword
+    arguments are forwarded to matimo.integrations.agno.MatimoTools.
+    """
+    from matimo.integrations.agno import MatimoTools as _inner
+    return _inner(matimo_instance, tools, **kwargs)
+
+
 # ---------------------------------------------------------------------------
 # Decorators
 # ---------------------------------------------------------------------------
@@ -303,6 +333,8 @@ __all__ = [
     "get_skills_metadata",
     "build_relevant_skill_prompt",
     "convert_tools_to_crewai",
+    "convert_tools_to_agno",
+    "MatimoTools",
     # Decorators
     "tool", "set_global_matimo_instance", "get_global_matimo_instance",
     # Logging

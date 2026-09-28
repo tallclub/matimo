@@ -368,7 +368,8 @@ nest_asyncio.apply()  # Allow nested event loops
 
 ## See Also
 
-- [LangChain Integration](./LANGCHAIN.md) — Use with LangChain agents
+- [LangChain Integration](./LANGCHAIN.md)
+- [Agno Integration](./AGNO.md) — Use with LangChain agents
 - [Native Python Patterns](../user-guide/SDK_PATTERNS.md#python) — SDK without framework
 - [Provider Tools Reference](../tools/) — Full tool documentation
 - [API Reference](../api-reference/SDK.md#python) — Python SDK API

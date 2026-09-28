@@ -19,7 +19,8 @@
   credentials policy skills skills-crewai meta-flow \
   mcp-server-stdio mcp-server-http \
   mcp-agent-stdio mcp-agent-http mcp-agent mcp-agent-http-mode mcp-agent-multi mcp-diagnose mcp-test \
-  agent-langchain agent-crewai multi-agent-crewai agent-langchain-skills-policy
+  agent-langchain agent-crewai multi-agent-crewai agent-langchain-skills-policy \
+  agent-agno agno-approval
 
 # ── Detect the right Python runner ──────────────────────────────────────────
 PYTHON := $(shell command -v uv >/dev/null 2>&1 && echo "uv run python" || echo "python")
@@ -35,6 +36,8 @@ help:
 	@echo "  make agent-langchain      LangChain ReAct agent"
 	@echo "  make agent-crewai         CrewAI single-agent (all tools)"
 	@echo "  make multi-agent-crewai   CrewAI multi-agent crew (role-based tools)"
+	@echo "  make agent-agno           Agno agent (all tools, governed)"
+	@echo "  make agno-approval        Agno agent with risk-driven confirmation"
 	@echo ""
 	@echo "  ─ Slack ───────────────────────────────────"
 	@echo "  make slack-factory        Direct tool execution (native)"
@@ -160,6 +163,10 @@ agent-crewai:
 	$(PYTHON) crewai/agents/crewai_agent.py
 multi-agent-crewai:
 	$(PYTHON) crewai/agents/multi_agent_crew.py
+agent-agno:
+	$(PYTHON) agno/agents/agno_agent.py
+agno-approval:
+	$(PYTHON) agno/agents/agno_with_approval.py
 
 # ── Slack ─────────────────────────────────────────────────────────────────────
 slack-factory:

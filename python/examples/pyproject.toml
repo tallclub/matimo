@@ -30,6 +30,8 @@ dependencies = [
     "langgraph>=0.2",
     # CrewAI integration
     "crewai>=0.80",
+    # Agno integration
+    "agno>=3.0",
     # Utilities
     "python-dotenv>=1.0",
 ]
