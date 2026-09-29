@@ -88,6 +88,7 @@ npm install matimo @matimo/slack @matimo/gmail
 pip install matimo
 pip install "matimo[langchain]"   # with LangChain support
 pip install "matimo[crewai]"      # with CrewAI support
+pip install "matimo[agno]"        # with Agno support
 pip install "matimo[all]"         # all extras
 ```
 
@@ -144,7 +145,7 @@ Matimo ships with built-in support for:
 - **Auto-Discovery**: Automatic detection of `@matimo/*` providers from npm
 - **Matimo CLI**: Tool discovery, setup wizard, MCP config generation
 - **OAuth2 Support**: Provider-agnostic authorization for Slack, Gmail, GitHub, etc.
-- **Framework Support**: Factory pattern, Decorator pattern, LangChain, CrewAI
+- **Framework Support**: Factory pattern, Decorator pattern, LangChain, CrewAI, Agno
 - **TypeScript SDK**: Full type safety and IDE support
 - **Python SDK**: Full feature parity with TypeScript - factory pattern, decorator, LangChain, CrewAI, MCP, policy engine
 - **Agent Skills System**: [SKILL.md](https://agentskills.io) knowledge files with semantic search, content chunking, and progressive disclosure
@@ -246,6 +247,7 @@ const matimo = await MatimoInstance.init({ autoDiscover: true });
 pip install matimo
 pip install "matimo[langchain]"   # LangChain support
 pip install "matimo[crewai]"      # CrewAI support
+pip install "matimo[agno]"        # Agno support
 pip install "matimo[all]"         # all extras
 ```
 

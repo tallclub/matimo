@@ -54,6 +54,7 @@ Complete documentation for Matimo **v0.1.8** (TypeScript & Python).
 1. **[Quick Start](./getting-started/QUICK_START.md#python)** — 5-minute setup with `pip install matimo`
 2. **[LangChain Integration](./framework-integrations/LANGCHAIN.md#python-langchain-integration)** — Build ReAct agents
 3. **[CrewAI Integration](./framework-integrations/CREWAI.md)** — Multi-agent orchestration
+4. **[Agno Integration](./framework-integrations/AGNO.md)** — Governed Agno agents, teams and workflows
 4. **[API Reference](./api-reference/SDK.md#python)** — Python SDK documentation
 
 ### 📦 **Installation & Requirements**
@@ -327,6 +328,8 @@ docs/
 ├── framework-integrations/
 │   ├── LANGCHAIN.md              # LangChain (Python + TypeScript)
 │   ├── CREWAI.md                 # CrewAI multi-agent (Python)
+│   ├── AGNO.md                   # Agno agents/teams/workflows (Python)
+│   ├── BRUNO.md                  # Bruno API testing
 │   └── VERCEL_AI.md              # Vercel AI SDK (TypeScript)
 ├── skills/
 │   ├── SKILLS.md                 # Skills system guide

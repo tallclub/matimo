@@ -47,6 +47,7 @@ python/
     native/            # Pure Python examples (factory, decorator, provider-specific)
     langchain/         # LangChain integration examples
     crewai/            # CrewAI integration examples
+    agno/              # Agno integration examples
   scripts/
     build_providers.py # Build all provider packages
     validate_tools.py  # Validate all YAML tool definitions
@@ -66,6 +67,7 @@ Each package has independent versioning and dependencies. The core package is th
 pip install matimo
 pip install "matimo[langchain]"   # LangChain
 pip install "matimo[crewai]"      # CrewAI
+pip install "matimo[agno]"        # Agno
 pip install "matimo[mcp]"         # Model Context Protocol
 pip install "matimo[all]"         # All extras
 ```

@@ -30,6 +30,9 @@ uv add matimo
 pip install "matimo[langchain]"
 uv add "matimo[langchain]"
 
+# With Agno integration
+pip install "matimo[agno]"
+
 # With CrewAI integration
 pip install "matimo[crewai]"
 

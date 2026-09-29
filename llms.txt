@@ -1,6 +1,6 @@
 # Matimo
 
-> Matimo is an MIT-licensed, policy-governed tool-execution SDK for AI agents. Every tool call — built-in, third-party, or agent-created — passes through a policy engine (risk classification, deterministic security rules, human-in-the-loop approval) before it executes. Dual TypeScript and Python implementation with feature parity; one YAML tool definition runs across TypeScript, Python, LangChain, CrewAI, and MCP.
+> Matimo is an MIT-licensed, policy-governed tool-execution SDK for AI agents. Every tool call — built-in, third-party, or agent-created — passes through a policy engine (risk classification, deterministic security rules, human-in-the-loop approval) before it executes. Dual TypeScript and Python implementation with feature parity; one YAML tool definition runs across TypeScript, Python, LangChain, CrewAI, Agno, and MCP.
 
 Install: `npm install @matimo/core` (TypeScript) or `pip install matimo` (Python). Provider packages install separately, e.g. `npm install @matimo/slack` / `pip install "matimo[slack]"`. CLI: `npm install -g @matimo/cli`.
 
@@ -20,6 +20,7 @@ Core capabilities: 139+ production tools across 10 first-party provider packages
 - [MCP Server](./docs/MCP.md) / [MCP Setup Guide](./docs/mcp/SETUP_GUIDE.md): stdio/HTTP transport, client config for Claude Desktop/Cursor/Windsurf
 - [LangChain Integration](./docs/framework-integrations/LANGCHAIN.md)
 - [CrewAI Integration](./docs/framework-integrations/CREWAI.md)
+- [Agno Integration](./docs/framework-integrations/AGNO.md): Python-only, maps risk classification onto Agno's confirmation flow
 - [Skills System](./docs/skills/SKILLS.md): SKILL.md spec, semantic search, progressive disclosure
 - [Architecture Overview](./docs/architecture/OVERVIEW.md)
 - [Python SDK Reference](./python/README.md): full parity reference for the Python implementation
