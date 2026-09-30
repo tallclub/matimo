@@ -33,6 +33,8 @@ Example: pnpm agent:skills → agent tries to create a tool → you see the YAML
 Use when: CI/CD test runs, integration tests, automated pipelines
 Benefit: Zero interruption — tests run end-to-end without human prompts
 Risk: Every destructive op proceeds without review — never use in production
+Exception: matimo_approve_tool always asks a human, whatever this or
+MATIMO_APPROVED_PATTERNS says — approving a tool lets agent-written code run
 Example: GitHub Actions test suite, pnpm test runs
 ```
 

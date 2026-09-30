@@ -344,3 +344,33 @@ class TestPerCallApprovalCallback:
             await matimo.execute("wipe", {}, on_approval=cannot_ask)
         assert [e["type"] for e in events] == ["tool:approval_denied"]
         assert "no one to ask" in events[0]["reason"]
+
+
+class TestNeverPreApproved:
+    """matimo_approve_tool always reaches a human — mirrors NEVER_PRE_APPROVED_TOOLS in TS."""
+
+    def test_auto_approve_and_patterns_do_not_cover_it(self) -> None:
+        handler = _handler()
+        handler.auto_approve = True
+        handler.add_approved_pattern("*")
+        assert handler.is_pre_approved("matimo_approve_tool") is False
+        assert handler.is_pre_approved("anything_else") is True
+
+    async def test_request_approval_still_asks_the_callback(self) -> None:
+        handler = _handler(False)
+        handler.auto_approve = True
+        request = ApprovalRequest(tool_name="matimo_approve_tool", description=None, params={})
+        assert await handler.request_approval(request) is False
+        assert await handler.request_approval(
+            ApprovalRequest(tool_name="other", description=None, params={})
+        ) is True
+
+    async def test_execute_asks_a_human_even_with_auto_approve_on(self) -> None:
+        tool = _http_tool("matimo_approve_tool", "POST", requires_approval=True)
+        handler = _handler()
+        handler.auto_approve = True
+        human = AsyncMock(return_value=False)
+        matimo = _matimo(tool, handler=handler, on_approval=human)
+        with pytest.raises(MatimoError, match="rejected"):
+            await matimo.execute("matimo_approve_tool", {})
+        human.assert_awaited_once()

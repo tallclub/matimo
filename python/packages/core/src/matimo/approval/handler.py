@@ -25,6 +25,13 @@ DEFAULT_DESTRUCTIVE_KEYWORDS: list[str] = [
 ]
 
 
+# Tools whose approval prompt nothing may skip: neither MATIMO_AUTO_APPROVE nor
+# an approved pattern (not even "*"). Approving a tool is the step that lets
+# agent-written code run, so a human must always see it.
+# Mirrors NEVER_PRE_APPROVED_TOOLS in approval-handler.ts.
+NEVER_PRE_APPROVED_TOOLS: frozenset[str] = frozenset({"matimo_approve_tool"})
+
+
 def definition_requires_approval(tool: ToolDefinition) -> bool:
     """
     Whether a tool's definition alone makes every call need approval.
@@ -102,7 +109,10 @@ class ApprovalHandler:
         return False
 
     def is_pre_approved(self, tool_name: str) -> bool:
-        """True when MATIMO_AUTO_APPROVE is on or the tool matches an approved pattern."""
+        """True when MATIMO_AUTO_APPROVE is on or the tool matches an approved pattern.
+        Never for NEVER_PRE_APPROVED_TOOLS."""
+        if tool_name in NEVER_PRE_APPROVED_TOOLS:
+            return False
         return self.auto_approve or self._matches_approved_pattern(tool_name)
 
     async def request_approval(
@@ -115,17 +125,11 @@ class ApprovalHandler:
         instance passes its own `on_approval` here).
         """
         callback = callback if callback is not None else self._callback
-        # 1. Hard auto-approve (CI / testing)
-        if self.auto_approve:
+        # 1-2. MATIMO_AUTO_APPROVE (CI / testing) or an approved pattern —
+        # never for NEVER_PRE_APPROVED_TOOLS
+        if self.is_pre_approved(request.tool_name):
             logger.debug(
-                "Auto-approving tool '%s' (MATIMO_AUTO_APPROVE=true)", request.tool_name
-            )
-            return True
-
-        # 2. Pattern allowlist
-        if self._matches_approved_pattern(request.tool_name):
-            logger.debug(
-                "Tool '%s' matches approved pattern — skipping approval prompt",
+                "Tool '%s' is pre-approved (MATIMO_AUTO_APPROVE or approved pattern)",
                 request.tool_name,
             )
             return True

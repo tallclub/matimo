@@ -1,6 +1,7 @@
 import {
   ApprovalHandler,
   getGlobalApprovalHandler,
+  NEVER_PRE_APPROVED_TOOLS,
   type ApprovalRequest,
 } from '../../src/approval/approval-handler';
 import { MatimoError, ErrorCode } from '../../src/errors/matimo-error';
@@ -307,6 +308,19 @@ describe('ApprovalHandler', () => {
 
       await expect(handler.requestApproval(request)).rejects.toThrow();
       expect(callback2).toHaveBeenCalled();
+    });
+  });
+
+  describe('tools that are never pre-approved', () => {
+    it('keeps matimo_approve_tool out of MATIMO_AUTO_APPROVE and every pattern', () => {
+      process.env.MATIMO_AUTO_APPROVE = 'true';
+      process.env.MATIMO_APPROVED_PATTERNS = '*,matimo_*';
+      const strict = new ApprovalHandler();
+      delete process.env.MATIMO_APPROVED_PATTERNS;
+
+      expect(NEVER_PRE_APPROVED_TOOLS.has('matimo_approve_tool')).toBe(true);
+      expect(strict.isPreApproved('matimo_approve_tool')).toBe(false);
+      expect(strict.isPreApproved('anything_else')).toBe(true);
     });
   });
 

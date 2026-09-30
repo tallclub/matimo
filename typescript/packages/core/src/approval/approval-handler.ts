@@ -4,6 +4,13 @@ import { MatimoError, ErrorCode } from '../errors/matimo-error.js';
 import type { ToolDefinition } from '../core/schema.js';
 
 /**
+ * Tools whose approval prompt nothing may skip: neither MATIMO_AUTO_APPROVE
+ * nor an approved pattern (not even `*`). Approving a tool is the step that
+ * lets agent-written code run, so a human must always see it.
+ */
+export const NEVER_PRE_APPROVED_TOOLS: ReadonlySet<string> = new Set(['matimo_approve_tool']);
+
+/**
  * Whether a tool's definition alone makes every call need approval.
  * An explicit `requires_approval` in the YAML always wins, so a developer can
  * opt a tool out with `requires_approval: false`. When it is absent, the calls
@@ -206,6 +213,10 @@ export class ApprovalHandler {
    * Check if operation is pre-approved via env vars
    */
   isPreApproved(toolName: string): boolean {
+    if (NEVER_PRE_APPROVED_TOOLS.has(toolName)) {
+      return false;
+    }
+
     // Auto-approve everything
     if (this.autoApprove) {
       return true;
