@@ -144,6 +144,11 @@ export interface ToolDefinition {
    */
   requires_approval?: boolean;
   /**
+   * Declared risk level. It can only raise the automatically computed risk,
+   * never lower it; a function tool is classified by it (and must declare it).
+   */
+  risk?: 'low' | 'medium' | 'high' | 'critical';
+  /**
    * Tool lifecycle status. Tools without a status are treated as 'approved'.
    * - draft: Agent-created, not yet human-reviewed
    * - approved: Human-reviewed and ready for use

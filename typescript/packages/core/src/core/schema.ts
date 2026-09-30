@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { MatimoError, ErrorCode } from '../errors/matimo-error.js';
-import type { Parameter } from './types.js';
+import type { Parameter, ToolDefinition as PublicToolDefinition } from './types.js';
 
 /**
  * Core Zod validation schemas for all Matimo tool properties.
@@ -197,6 +197,16 @@ export type ToolDefinition = z.infer<typeof ToolDefinitionSchema> & {
 };
 
 // export type ToolDefinition = z.infer<typeof ToolDefinitionSchema>;
+
+/**
+ * Build-time guard: every field this schema accepts must also be on the
+ * public `ToolDefinition` interface in core/types.ts. When one is missing,
+ * `pnpm build` fails here naming it.
+ */
+type AssertNoMissingFields<Missing extends never> = Missing;
+export type ToolDefinitionFieldsInSync = AssertNoMissingFields<
+  Exclude<keyof ToolDefinition, keyof PublicToolDefinition>
+>;
 
 // OAuth2 provider endpoints schema
 export const OAuth2EndpointsSchema = z.object({
