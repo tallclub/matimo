@@ -1,0 +1,16 @@
+{
+  "description": "Whether a tool definition alone makes every call need per-call approval (definitionRequiresApproval / definition_requires_approval). An explicit requires_approval wins; otherwise HTTP DELETE and command tools need approval. Both SDKs' test suites run every case.",
+  "cases": [
+    { "name": "get", "tool": { "execution": { "type": "http", "method": "GET" } }, "expected": false },
+    { "name": "post", "tool": { "execution": { "type": "http", "method": "POST" } }, "expected": false },
+    { "name": "put", "tool": { "execution": { "type": "http", "method": "PUT" } }, "expected": false },
+    { "name": "patch", "tool": { "execution": { "type": "http", "method": "PATCH" } }, "expected": false },
+    { "name": "delete", "tool": { "execution": { "type": "http", "method": "DELETE" } }, "expected": true },
+    { "name": "delete_opted_out", "tool": { "requires_approval": false, "execution": { "type": "http", "method": "DELETE" } }, "expected": false },
+    { "name": "get_opted_in", "tool": { "requires_approval": true, "execution": { "type": "http", "method": "GET" } }, "expected": true },
+    { "name": "command", "tool": { "execution": { "type": "command", "command": "echo" } }, "expected": true },
+    { "name": "command_opted_out", "tool": { "requires_approval": false, "execution": { "type": "command", "command": "echo" } }, "expected": false },
+    { "name": "function", "tool": { "risk": "critical", "execution": { "type": "function", "code": "./x.ts" } }, "expected": false },
+    { "name": "function_opted_in", "tool": { "requires_approval": true, "execution": { "type": "function", "code": "./x.ts" } }, "expected": true }
+  ]
+}

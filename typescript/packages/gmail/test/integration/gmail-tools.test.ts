@@ -257,7 +257,10 @@ describe('Gmail Tools Integration', () => {
         messageId: 'msg123',
       };
 
-      const result = (await matimo.execute('gmail-delete-message', params)) as MatimoResult;
+      // gmail-delete-message requires approval; approve this call out of band
+      const result = (await matimo.execute('gmail-delete-message', params, {
+        approved: true,
+      })) as MatimoResult;
 
       expect(result.success).toBe(true);
 

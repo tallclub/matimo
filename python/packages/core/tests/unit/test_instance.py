@@ -522,6 +522,7 @@ class TestMatimoHitl:
             on_hitl=fast_callback,
             matimo_logger=MagicMock(),
             hitl_timeout_ms=5000,  # generous timeout
+            approval_handler=_approving_handler(),  # DELETE also needs per-call approval
         )
 
         with respx.mock:
@@ -760,7 +761,8 @@ class TestMatimoInstanceMissingLines:
             matimo_logger=MagicMock(),
         )
         with patch.object(matimo._command_executor, "execute", new=AsyncMock(return_value={"ok": True})):
-            result = await matimo.execute("cmd_tool", {})
+            # command tools need per-call approval by default; approve out of band
+            result = await matimo.execute("cmd_tool", {}, approved=True)
         assert result["ok"] is True
 
     @pytest.mark.asyncio

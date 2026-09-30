@@ -41,6 +41,7 @@ from matimo.approval.handler import (  # noqa: E402
     ApprovalCallback,
     ApprovalHandler,
     ApprovalRequest,
+    definition_requires_approval,
     get_global_approval_handler,
     set_global_approval_handler,
 )
@@ -309,6 +310,7 @@ __all__ = [
     # Approval
     "ApprovalHandler", "ApprovalRequest", "ApprovalCallback",
     "get_global_approval_handler", "set_global_approval_handler",
+    "definition_requires_approval",
     # Encodings
     "apply_parameter_encodings",
     # Policy

@@ -100,6 +100,23 @@ describe('MatimoInstance per-instance approval callback', () => {
     expect(globalCallback).toHaveBeenCalledTimes(1);
   });
 
+  it('asks for approval on command tools that do not declare requires_approval', async () => {
+    const dir = path.join(toolDir, 'plain-echo');
+    fs.mkdirSync(dir);
+    fs.writeFileSync(
+      path.join(dir, 'definition.yaml'),
+      "name: plain-echo\nversion: '1.0.0'\ndescription: Echo\nexecution:\n  type: command\n  command: echo\n  args: ['hi']\n"
+    );
+    const requests: string[] = [];
+    const matimo = await init(async (r) => {
+      requests.push(r.toolName);
+      return true;
+    });
+
+    await expect(matimo.execute('plain-echo', {})).resolves.toBeDefined();
+    expect(requests).toEqual(['plain-echo']);
+  });
+
   it('fails closed when no callback is configured anywhere', async () => {
     const matimo = await init();
     await expect(matimo.execute('guarded-echo', { text: 'hi' })).rejects.toThrow(

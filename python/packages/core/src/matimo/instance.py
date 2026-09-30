@@ -31,6 +31,7 @@ from matimo.approval.handler import (
     ApprovalCallback,
     ApprovalHandler,
     ApprovalRequest,
+    definition_requires_approval,
     get_global_approval_handler,
 )
 from matimo.auth.injection import inject_auth_parameters
@@ -889,7 +890,9 @@ class Matimo:
         decides, and with no callback the call fails closed.
         """
         handler = self._approval_handler
-        if not handler.requires_approval(tool.requires_approval, _approval_scan_content(tool, params)):
+        if not handler.requires_approval(
+            definition_requires_approval(tool), _approval_scan_content(tool, params)
+        ):
             return
         if skip_prompt or handler.is_pre_approved(tool.name):
             return

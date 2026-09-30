@@ -142,7 +142,11 @@ export type { ReloadResult } from './matimo-instance.js';
 // Generic Approval System - Simple, scalable flow for any tool
 // Tools declare requires_approval in YAML, or system detects destructive keywords
 // Single approval callback handles all tools - no per-provider logic needed
-export { ApprovalHandler, getGlobalApprovalHandler } from './approval/approval-handler.js';
+export {
+  ApprovalHandler,
+  definitionRequiresApproval,
+  getGlobalApprovalHandler,
+} from './approval/approval-handler.js';
 export type { ApprovalRequest, ApprovalCallback } from './approval/approval-handler.js';
 
 // MCP Server - Model Context Protocol integration

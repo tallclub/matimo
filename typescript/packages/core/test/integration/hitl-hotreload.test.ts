@@ -63,7 +63,8 @@ execution:
       });
 
       // safe-tool uses command executor, so execute it
-      const result = await matimo.execute('safe-tool', {});
+      // command tools need per-call approval by default; this test is not about that
+      const result = await matimo.execute('safe-tool', {}, { approved: true });
       expect(result).toBeDefined();
     });
 
@@ -154,7 +155,8 @@ execution:
         return true;
       });
 
-      const result = await matimo.execute('post-init-tool', {});
+      // command tools need per-call approval by default; this test is not about that
+      const result = await matimo.execute('post-init-tool', {}, { approved: true });
       expect(result).toBeDefined();
     });
 

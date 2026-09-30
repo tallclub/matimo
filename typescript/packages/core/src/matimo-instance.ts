@@ -26,6 +26,7 @@ import {
 } from './logging/index.js';
 import {
   ApprovalHandler,
+  definitionRequiresApproval,
   getGlobalApprovalHandler,
   type ApprovalCallback,
 } from './approval/approval-handler.js';
@@ -521,7 +522,7 @@ export class MatimoInstance {
       }
 
       const requiresApproval = this.approvalHandler.requiresApproval(
-        tool.requires_approval,
+        definitionRequiresApproval(tool),
         scanContent
       );
 

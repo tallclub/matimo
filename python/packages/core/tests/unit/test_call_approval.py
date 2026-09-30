@@ -26,22 +26,27 @@ from matimo.policy.types import PolicyConfig
 pytestmark = pytest.mark.asyncio
 
 
-def _http_tool(name: str, method: str = "GET", *, requires_approval: bool = False) -> ToolDefinition:
+def _http_tool(
+    name: str, method: str = "GET", *, requires_approval: bool | None = None
+) -> ToolDefinition:
+    """`requires_approval=None` leaves the field unset, as in a YAML that omits it."""
+    extra = {} if requires_approval is None else {"requires_approval": requires_approval}
     return ToolDefinition(
         name=name,
         description=f"{method} tool",
         parameters={"sql": Parameter(type=ParameterType.STRING, description="q", required=False)},
         execution=HttpExecution(type="http", method=method, url="https://api.example.com/x"),
-        requires_approval=requires_approval,
+        **extra,
     )
 
 
-def _command_tool() -> ToolDefinition:
+def _command_tool(**overrides: Any) -> ToolDefinition:  # noqa: ANN401
     return ToolDefinition(
         name="run_shell",
         description="Run a shell command",
         parameters={"command": Parameter(type=ParameterType.STRING, description="c", required=True)},
         execution=CommandExecution(type="command", command="sh", args=["-c", "{command}"]),
+        **overrides,
     )
 
 
@@ -133,13 +138,15 @@ class TestRequiresApprovalFlag:
 
 
 class TestDestructiveContentScan:
+    """Tools opted out with requires_approval: false are still scanned."""
+
     async def test_destructive_shell_command_prompts(self) -> None:
-        matimo = _matimo(_command_tool(), handler=_handler(False))
+        matimo = _matimo(_command_tool(requires_approval=False), handler=_handler(False))
         with pytest.raises(MatimoError, match="rejected"):
             await matimo.execute("run_shell", {"command": "DELETE everything"})
 
     async def test_harmless_shell_command_runs(self) -> None:
-        matimo = _matimo(_command_tool(), handler=_handler(False))
+        matimo = _matimo(_command_tool(requires_approval=False), handler=_handler(False))
         assert await matimo.execute("run_shell", {"command": "echo hi"}) == {"ok": True}
 
     async def test_destructive_sql_param_prompts(self) -> None:
@@ -284,3 +291,21 @@ class TestAutoApproveWarning:
     def test_stays_quiet_otherwise(self) -> None:
         logger = self._build(_handler())
         logger.warn.assert_not_called()
+
+
+class TestApprovalRequiredByDefinition:
+    """definition_requires_approval — mirrors definitionRequiresApproval() in TS."""
+
+    async def test_delete_needs_approval_by_default(self) -> None:
+        matimo = _matimo(_http_tool("wipe", "DELETE"), handler=_handler())
+        with pytest.raises(MatimoError, match="requires approval: wipe"):
+            await matimo.execute("wipe", {})
+
+    async def test_command_tool_needs_approval_by_default(self) -> None:
+        matimo = _matimo(_command_tool(), handler=_handler())
+        with pytest.raises(MatimoError, match="requires approval: run_shell"):
+            await matimo.execute("run_shell", {"command": "echo hi"})
+
+    async def test_explicit_false_opts_out(self) -> None:
+        matimo = _matimo(_http_tool("wipe", "DELETE", requires_approval=False), handler=_handler())
+        assert await matimo.execute("wipe", {}) == {"ok": True}

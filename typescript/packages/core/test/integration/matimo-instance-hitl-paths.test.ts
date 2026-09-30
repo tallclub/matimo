@@ -105,8 +105,10 @@ quarantineRiskLevels:
         },
       });
 
-      await matimo.execute('persisted-tool', {});
-      await matimo.execute('persisted-tool', {});
+      // approved: true answers the per-call prompt command tools get by
+      // default; the HITL quarantine under test still runs
+      await matimo.execute('persisted-tool', {}, { approved: true });
+      await matimo.execute('persisted-tool', {}, { approved: true });
       expect(calls).toBe(1);
     });
   });

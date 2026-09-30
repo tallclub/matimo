@@ -1,6 +1,24 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { MatimoError, ErrorCode } from '../errors/matimo-error.js';
+import type { ToolDefinition } from '../core/schema.js';
+
+/**
+ * Whether a tool's definition alone makes every call need approval.
+ * An explicit `requires_approval` in the YAML always wins, so a developer can
+ * opt a tool out with `requires_approval: false`. When it is absent, the calls
+ * that can't be undone or can do anything need approval by default: HTTP
+ * DELETE and `type: command` (shell) tools.
+ */
+export function definitionRequiresApproval(tool: ToolDefinition): boolean {
+  if (tool.requires_approval !== undefined) {
+    return tool.requires_approval;
+  }
+  const exec = tool.execution;
+  return (
+    exec.type === 'command' || (exec.type === 'http' && exec.method.toUpperCase() === 'DELETE')
+  );
+}
 
 /**
  * Approval request for any tool operation

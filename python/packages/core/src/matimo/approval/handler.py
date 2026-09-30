@@ -9,7 +9,10 @@ import logging
 import os
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from matimo.core.models import ToolDefinition
 
 logger = logging.getLogger("matimo")
 
@@ -20,6 +23,22 @@ DEFAULT_DESTRUCTIVE_KEYWORDS: list[str] = [
     "EDIT", "WRITE", "APPEND", "REMOVE", "PURGE", "RENAME", "SHUTDOWN",
     "EXECUTE", "EXEC",
 ]
+
+
+def definition_requires_approval(tool: ToolDefinition) -> bool:
+    """
+    Whether a tool's definition alone makes every call need approval.
+    Mirrors definitionRequiresApproval() in approval-handler.ts: an explicit
+    `requires_approval` in the YAML always wins, so a developer can opt a tool
+    out with `requires_approval: false`. When it is absent, HTTP DELETE and
+    `type: command` (shell) tools need approval by default.
+    """
+    if "requires_approval" in tool.model_fields_set:
+        return tool.requires_approval
+    execution = tool.execution
+    if execution.type == "command":
+        return True
+    return execution.type == "http" and execution.method.upper() == "DELETE"
 
 
 @dataclass
