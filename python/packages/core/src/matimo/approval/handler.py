@@ -86,11 +86,16 @@ class ApprovalHandler:
         """True when MATIMO_AUTO_APPROVE is on or the tool matches an approved pattern."""
         return self.auto_approve or self._matches_approved_pattern(tool_name)
 
-    async def request_approval(self, request: ApprovalRequest) -> bool:
+    async def request_approval(
+        self, request: ApprovalRequest, callback: ApprovalCallback | None = None
+    ) -> bool:
         """
         Gate execution on approval.
         Returns True if approved, False if denied.
+        `callback` overrides this handler's callback for this request (a Matimo
+        instance passes its own `on_approval` here).
         """
+        callback = callback if callback is not None else self._callback
         # 1. Hard auto-approve (CI / testing)
         if self.auto_approve:
             logger.debug(
@@ -107,8 +112,8 @@ class ApprovalHandler:
             return True
 
         # 3. HITL callback
-        if self._callback is not None:
-            approved = await self._callback(request)
+        if callback is not None:
+            approved = await callback(request)
             if not approved:
                 logger.info(
                     "Approval denied for tool '%s' by callback", request.tool_name

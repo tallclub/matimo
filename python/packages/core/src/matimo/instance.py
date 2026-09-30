@@ -28,6 +28,7 @@ from pathlib import Path
 from typing import Any
 
 from matimo.approval.handler import (
+    ApprovalCallback,
     ApprovalHandler,
     ApprovalRequest,
     get_global_approval_handler,
@@ -103,6 +104,7 @@ class InitOptions:
     # Events / HITL
     on_event: MatimoEventHandler | None = None
     on_hitl: HITLCallback | None = None
+    on_approval: ApprovalCallback | None = None
     hitl_timeout_ms: int | None = None
 
     # Logging
@@ -145,6 +147,7 @@ class Matimo:
         default_max_response_size: int | None = None,
         default_skill_write_dir: str | None = None,
         approval_handler: ApprovalHandler | None = None,
+        on_approval: ApprovalCallback | None = None,
     ) -> None:
         self._registry = registry
         self._policy = policy_engine
@@ -168,6 +171,7 @@ class Matimo:
         self._approval_handler: ApprovalHandler = (
             approval_handler or get_global_approval_handler()
         )
+        self._on_approval = on_approval
 
     # ------------------------------------------------------------------
     # Factory
@@ -190,6 +194,7 @@ class Matimo:
         approval_ttl_seconds: int | None = None,
         on_event: MatimoEventHandler | None = None,
         on_hitl: HITLCallback | None = None,
+        on_approval: ApprovalCallback | None = None,
         hitl_timeout_ms: int | None = None,
         log_level: str | None = None,
         log_format: str | None = None,
@@ -210,6 +215,12 @@ class Matimo:
             untrusted_paths: Paths considered agent-created (undergo content validation).
             on_event:      Audit event handler.
             on_hitl:       Human-in-the-loop callback for quarantined tools.
+            on_approval:   Per-call approval callback for this instance: decides
+                           calls to tools that declare requires_approval or whose
+                           command/SQL contains a destructive keyword. Takes
+                           precedence over the global approval handler's callback,
+                           so instances serving different tenants never share a
+                           reviewer.
             hitl_timeout_ms: Timeout in milliseconds for the HITL callback.
                            If the callback does not resolve within this time the tool
                            is auto-rejected. Defaults to None (waits indefinitely).
@@ -293,6 +304,7 @@ class Matimo:
             tool_paths=paths,
             on_event=on_event,
             on_hitl=on_hitl,
+            on_approval=on_approval,
             matimo_logger=matimo_logger,
             hitl_timeout_ms=hitl_timeout_ms,
             skill_registry=skill_reg,
@@ -455,6 +467,14 @@ class Matimo:
     ) -> list[ToolDefinition]:
         """Return only the tools this agent context is permitted to use."""
         return self._policy.filter_for_agent(context, self._registry.get_all())
+
+    def set_approval_callback(self, callback: ApprovalCallback | None) -> None:
+        """
+        Set this instance's per-call approval callback (see `on_approval`).
+        Pass None to fall back to the global approval handler's callback.
+        Mirrors MatimoInstance.setApprovalCallback().
+        """
+        self._on_approval = callback
 
     def has_policy(self) -> bool:
         """Return True if a policy engine is configured (always True in Matimo)."""
@@ -867,7 +887,8 @@ class Matimo:
             return
 
         agent_id = context.agent_id if context else None
-        if handler.get_approval_callback() is None:
+        callback = self._on_approval or handler.get_approval_callback()
+        if callback is None:
             error = MatimoError(
                 f"Destructive operation requires approval: {tool.name}",
                 ErrorCode.EXECUTION_FAILED,
@@ -878,7 +899,8 @@ class Matimo:
                 },
             )
         elif not await handler.request_approval(
-            ApprovalRequest(tool_name=tool.name, description=tool.description, params=params)
+            ApprovalRequest(tool_name=tool.name, description=tool.description, params=params),
+            callback,
         ):
             error = MatimoError(
                 f"Operation rejected by approval handler: {tool.name}",

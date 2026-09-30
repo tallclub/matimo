@@ -12,7 +12,7 @@ Matimo has a **single, unified approval system** that works across all providers
 
 | Situation | Recommended Mode |
 |-----------|------------------|
-| Production agent — user must confirm destructive ops | Interactive callback — `handler.setApprovalCallback(...)` |
+| Production agent — user must confirm destructive ops | Per-instance callback — `init({ onApproval })` (TS) / `init(on_approval=...)` (Python) |
 | CI/CD pipeline — automated testing, no human available | `MATIMO_AUTO_APPROVE=true` |
 | Staging — some tools auto-approved, some need review | `MATIMO_APPROVED_PATTERNS="safe-*,read-*"` |
 | Agent creates new tools at runtime | Always require approval — `matimo_create_tool` has `requires_approval: true` built-in |
@@ -107,21 +107,39 @@ All tools requiring approval are auto-approved.
 
 ### 2. Interactive Approval (Terminal)
 
+Give each instance its own reviewer with `onApproval`:
+
 ```typescript
-import { MatimoInstance, getGlobalApprovalHandler } from '@matimo/core';
+import { MatimoInstance } from '@matimo/core';
 
-const matimo = await MatimoInstance.init({ autoDiscover: true });
-
-const handler = getGlobalApprovalHandler();
-handler.setApprovalCallback(async (request) => {
-  // User sees: tool name, description, parameters
-  // User decides: approve or reject
-  console.info(`\nApprove ${request.toolName}?`);
-  return true; // or false
+const matimo = await MatimoInstance.init({
+  autoDiscover: true,
+  onApproval: async (request) => {
+    // User sees: tool name, description, parameters
+    // User decides: approve or reject
+    console.info(`\nApprove ${request.toolName}?`);
+    return true; // or false
+  },
 });
 
 await matimo.execute('sql-delete-user', { id: 'user123' });
 ```
+
+```python
+from matimo import Matimo
+
+async def on_approval(request) -> bool:
+    print(f"Approve {request.tool_name}?")
+    return True  # or False
+
+matimo = await Matimo.init(auto_discover=True, on_approval=on_approval)
+```
+
+The callback can be swapped later with `matimo.setApprovalCallback(cb)` /
+`matimo.set_approval_callback(cb)`; passing `null`/`None` falls back to the
+process-wide `getGlobalApprovalHandler().setApprovalCallback()`, which older
+code uses. Prefer `onApproval`: the global callback is shared by every
+instance in the process, so two tenants' instances would share a reviewer.
 
 ### 3. Pre-Approve Patterns  
 

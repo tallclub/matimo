@@ -2,6 +2,7 @@
 MatimoInstance.execute() (typescript/packages/core/src/matimo-instance.ts)."""
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -49,6 +50,7 @@ def _matimo(
     handler: ApprovalHandler,
     events: list[dict[str, Any]] | None = None,
     policy: PolicyConfig | None = None,
+    on_approval: Any = None,  # noqa: ANN401
 ) -> Matimo:
     reg = ToolRegistry()
     for tool in tools:
@@ -62,6 +64,7 @@ def _matimo(
         on_hitl=None,
         matimo_logger=MagicMock(),
         approval_handler=handler,
+        on_approval=on_approval,
     )
     matimo._dispatch = AsyncMock(return_value={"ok": True})  # type: ignore[method-assign]
     return matimo
@@ -200,3 +203,54 @@ class TestApprovedFlagCannotBypassPolicy:
             await matimo.execute("wipe", {}, approved=True)
         assert exc.value.code == ErrorCode.POLICY_DENIED
         matimo._dispatch.assert_not_awaited()  # type: ignore[attr-defined]
+
+
+class TestPerInstanceApprovalCallback:
+    """on_approval / set_approval_callback() — mirrors MatimoInstance onApproval."""
+
+    async def test_on_approval_takes_precedence_over_the_handler_callback(self) -> None:
+        handler = _handler(False)
+        on_approval = AsyncMock(return_value=True)
+        matimo = _matimo(
+            _http_tool("wipe", requires_approval=True), handler=handler, on_approval=on_approval
+        )
+        assert await matimo.execute("wipe", {}) == {"ok": True}
+        on_approval.assert_awaited_once()
+        handler_callback = handler.get_approval_callback()
+        assert isinstance(handler_callback, AsyncMock)
+        handler_callback.assert_not_awaited()
+
+    async def test_instances_sharing_a_handler_stay_isolated(self) -> None:
+        shared = _handler()
+        tenant_a = AsyncMock(return_value=True)
+        tenant_b = AsyncMock(return_value=False)
+        a = _matimo(_http_tool("wipe", requires_approval=True), handler=shared, on_approval=tenant_a)
+        b = _matimo(_http_tool("wipe", requires_approval=True), handler=shared, on_approval=tenant_b)
+        assert await a.execute("wipe", {}) == {"ok": True}
+        with pytest.raises(MatimoError, match="rejected"):
+            await b.execute("wipe", {})
+        tenant_a.assert_awaited_once()
+        tenant_b.assert_awaited_once()
+
+    async def test_clearing_falls_back_to_the_handler_callback(self) -> None:
+        handler = _handler(True)
+        matimo = _matimo(
+            _http_tool("wipe", requires_approval=True),
+            handler=handler,
+            on_approval=AsyncMock(return_value=False),
+        )
+        matimo.set_approval_callback(None)
+        assert await matimo.execute("wipe", {}) == {"ok": True}
+
+    async def test_init_wires_on_approval(self, tmp_path: Path) -> None:
+        tool_dir = tmp_path / "guarded"
+        tool_dir.mkdir()
+        (tool_dir / "definition.yaml").write_text(
+            "name: guarded\ndescription: d\nrequires_approval: true\n"
+            "execution:\n  type: http\n  method: GET\n  url: https://api.example.com/g\n"
+        )
+        on_approval = AsyncMock(return_value=False)
+        matimo = await Matimo.init(str(tmp_path), on_approval=on_approval, log_level="silent")
+        with pytest.raises(MatimoError, match="rejected by approval handler: guarded"):
+            await matimo.execute("guarded", {})
+        on_approval.assert_awaited_once()

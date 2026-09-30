@@ -24,7 +24,11 @@ import {
   createLogger,
   setGlobalMatimoLogger,
 } from './logging/index.js';
-import { ApprovalHandler, getGlobalApprovalHandler } from './approval/approval-handler.js';
+import {
+  ApprovalHandler,
+  getGlobalApprovalHandler,
+  type ApprovalCallback,
+} from './approval/approval-handler.js';
 import type { ExecuteOptions } from './core/types.js';
 import type { PolicyEngine, PolicyContext, PolicyConfig, HITLCallback } from './policy/types.js';
 import { DefaultPolicyEngine } from './policy/default-policy.js';
@@ -104,6 +108,14 @@ export interface InitOptions extends LoggerConfig {
    */
   onHITL?: HITLCallback;
   /**
+   * Per-call approval callback for this instance: decides calls to tools that
+   * declare `requires_approval` or whose command/SQL contains a destructive
+   * keyword. Takes precedence over the process-wide
+   * `getGlobalApprovalHandler().setApprovalCallback()`, so instances serving
+   * different tenants never share a reviewer.
+   */
+  onApproval?: ApprovalCallback;
+  /**
    * Timeout in milliseconds for the HITL callback.
    * If the callback does not resolve within this time, the tool is auto-rejected.
    * Defaults to no timeout (waits indefinitely).
@@ -154,6 +166,7 @@ export class MatimoInstance {
   #onEvent: MatimoEventHandler | null;
   #hitlCallback: HITLCallback | null;
   #hitlTimeoutMs: number | null;
+  #approvalCallback: ApprovalCallback | null;
   #trustedPaths: string[];
   #untrustedPaths: string[];
   #policyFile: string | null;
@@ -171,6 +184,7 @@ export class MatimoInstance {
       approvalTtlSeconds?: number;
       onEvent?: MatimoEventHandler;
       onHITL?: HITLCallback;
+      onApproval?: ApprovalCallback;
       hitlTimeoutMs?: number;
       policyFile?: string;
       defaultMaxResponseSize?: number;
@@ -202,6 +216,7 @@ export class MatimoInstance {
     this.#onEvent = policyOptions.onEvent ?? null;
     this.#hitlCallback = policyOptions.onHITL ?? null;
     this.#hitlTimeoutMs = policyOptions.hitlTimeoutMs ?? null;
+    this.#approvalCallback = policyOptions.onApproval ?? null;
     this.#policyFile = policyOptions.policyFile ?? null;
 
     // Approval manifest
@@ -343,6 +358,7 @@ export class MatimoInstance {
       approvalDir: finalOptions.approvalDir,
       onEvent: finalOptions.onEvent,
       onHITL: finalOptions.onHITL,
+      onApproval: finalOptions.onApproval,
       hitlTimeoutMs: finalOptions.hitlTimeoutMs,
       approvalTtlSeconds: finalOptions.approvalTtlSeconds,
       policyFile: finalOptions.policyFile,
@@ -513,11 +529,10 @@ export class MatimoInstance {
       ) {
         this.logger.debug(`Approval required for: ${toolName}`, { toolName });
         try {
-          await this.approvalHandler.requestApproval({
-            toolName,
-            description: tool.description,
-            params,
-          });
+          await this.approvalHandler.requestApproval(
+            { toolName, description: tool.description, params },
+            this.#approvalCallback ?? this.approvalHandler.getApprovalCallback()
+          );
         } catch (approvalError) {
           this.#emitEvent({
             type: 'tool:approval_denied',
@@ -1422,6 +1437,14 @@ export class MatimoInstance {
    */
   setHITLCallback(callback: HITLCallback | null): void {
     this.#hitlCallback = callback;
+  }
+
+  /**
+   * Set this instance's per-call approval callback (see `InitOptions.onApproval`).
+   * Pass `null` to fall back to the global approval handler's callback.
+   */
+  setApprovalCallback(callback: ApprovalCallback | null): void {
+    this.#approvalCallback = callback;
   }
 
   /**

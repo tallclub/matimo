@@ -201,10 +201,15 @@ export class ApprovalHandler {
   /**
    * Request approval for an operation
    * Throws if not approved and no callback available
+   * @param callback - Overrides this handler's callback for this request
+   *   (a MatimoInstance passes its own `onApproval` here).
    */
-  async requestApproval(request: ApprovalRequest): Promise<void> {
+  async requestApproval(
+    request: ApprovalRequest,
+    callback: ApprovalCallback | null = this.approvalCallback
+  ): Promise<void> {
     // If no callback set, fail safely
-    if (!this.approvalCallback) {
+    if (!callback) {
       throw new MatimoError(
         `Destructive operation requires approval: ${request.toolName}`,
         ErrorCode.EXECUTION_FAILED,
@@ -216,7 +221,7 @@ export class ApprovalHandler {
     }
 
     // Call callback to get approval
-    const approved = await this.approvalCallback(request);
+    const approved = await callback(request);
     if (!approved) {
       throw new MatimoError(
         `Operation rejected by approval handler: ${request.toolName}`,
