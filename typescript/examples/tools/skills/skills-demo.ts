@@ -42,7 +42,6 @@ import {
   getSkillsMetadata,
   buildRelevantSkillPrompt,
   setGlobalMatimoInstance,
-  getGlobalApprovalHandler,
   tool,
 } from 'matimo';
 import type { ToolDefinition } from 'matimo';
@@ -284,13 +283,10 @@ async function main(): Promise<void> {
   try {
     header('PHASE 1: Initialize Matimo with Skills Meta-Tools');
 
-    // Set up approval handler
-    const approvalHandler = getGlobalApprovalHandler();
-    approvalHandler.setApprovalCallback(interactiveApproval);
-
     const matimo = await MatimoInstance.init({
       autoDiscover: true,
       logLevel: 'silent',
+      onApproval: interactiveApproval, // Prompts before calls that need approval
     });
     setGlobalMatimoInstance(matimo);
 
@@ -481,6 +477,7 @@ ${SAMPLE_CODE_TO_REVIEW}
       autoDiscover: true,
       skillPaths: [skillsDir],
       logLevel: 'silent',
+      onApproval: interactiveApproval, // Each instance has its own approval callback
     });
 
     // Level 1 — metadata only

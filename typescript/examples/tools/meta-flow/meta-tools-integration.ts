@@ -41,7 +41,6 @@ import {
   convertToolsToLangChain,
   getSkillsMetadata,
   MatimoError,
-  getGlobalApprovalHandler,
   setGlobalMatimoInstance,
 } from 'matimo';
 import type { ToolDefinition } from 'matimo';
@@ -338,16 +337,13 @@ async function main(): Promise<void> {
 
     header('PHASE 1: Setup');
 
-    // Set up approval handler
-    const approvalHandler = getGlobalApprovalHandler();
-    approvalHandler.setApprovalCallback(interactiveApproval);
-
     const matimo = await MatimoInstance.init({
       autoDiscover: true,
       toolPaths: [toolsDir],
       logLevel: 'silent',
       untrustedPaths: [toolsDir],
       policyConfig: {}, // Enable policy engine for this example
+      onApproval: interactiveApproval, // Prompts before calls that need approval
     });
     setGlobalMatimoInstance(matimo);
 

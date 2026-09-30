@@ -301,7 +301,7 @@ MATIMO_LOG_LEVEL=debug  # See internal logging
 | "OpenAI API timeout" | Increase `timeout` in ChatOpenAI config (default: 30s) |
 | "Agent doesn't conclude" | MAX_ITERATIONS may be too low (default: 12) |
 | "Tools don't execute" | Check reload was called after review approval |
-| "No terminal prompt" | Verify approval handler is set: `approvalHandler.setApprovalCallback(...)` |
+| "No terminal prompt" | Verify `onApproval` is passed to `MatimoInstance.init()` |
 | "Policy doesn't block" | Check PolicyConfig is passed to MatimoInstance.init() |
 
 ## Next: Using in Production

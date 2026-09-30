@@ -1,10 +1,4 @@
-import {
-  MatimoInstance,
-  setGlobalMatimoInstance,
-  tool,
-  getGlobalApprovalHandler,
-  type ApprovalRequest,
-} from '@matimo/core';
+import { MatimoInstance, setGlobalMatimoInstance, tool, type ApprovalRequest } from '@matimo/core';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -29,8 +23,8 @@ function createApprovalCallback() {
 
     if (!isInteractive) {
       console.info('\n❌ REJECTED - Non-interactive environment (no terminal)');
-      console.info('\n💡 To enable auto-approval in CI/scripts:');
-      console.info('   export MATIMO_AUTO_APPROVE=true');
+      console.info('\n💡 To pre-approve this tool in CI/scripts:');
+      console.info('   export MATIMO_APPROVED_PATTERNS="extract_from_file"');
       console.info('\n' + '='.repeat(70) + '\n');
       return false;
     }
@@ -64,21 +58,22 @@ class FileExtractor {
 }
 
 async function decoratorExample() {
-  const matimo = await MatimoInstance.init({ autoDiscover: true });
+  const matimo = await MatimoInstance.init({
+    autoDiscover: true,
+    // Decides every call that needs approval, for this instance only.
+    onApproval: createApprovalCallback(),
+  });
   setGlobalMatimoInstance(matimo);
-
-  const approvalHandler = getGlobalApprovalHandler();
-  approvalHandler.setApprovalCallback(createApprovalCallback());
 
   console.info('\n' + '='.repeat(70));
   console.info('🚀 Extract From File Tool - Decorator Pattern Example');
   console.info('='.repeat(70));
 
-  const autoApproveEnabled = process.env.MATIMO_AUTO_APPROVE === 'true';
+  const approvedPatterns = process.env.MATIMO_APPROVED_PATTERNS;
   console.info('\n🔐 APPROVAL CONFIGURATION:');
   console.info(
-    autoApproveEnabled
-      ? '   ✅ MATIMO_AUTO_APPROVE=true — extraction requests will be AUTO-APPROVED'
+    approvedPatterns
+      ? `   ✅ MATIMO_APPROVED_PATTERNS="${approvedPatterns}" — matching extraction requests are pre-approved`
       : '   ⚠️  INTERACTIVE MODE ENABLED — you will be prompted to approve extractions'
   );
 

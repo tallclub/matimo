@@ -15,7 +15,7 @@
  *   - Core skills (tool-discovery, skill-creator, policy-validation, etc.)
  *   - Provider skills (@matimo/slack, @matimo/gmail, etc.)
  *   - Policy engine blocks unsafe tools
- *   - HITL quarantine for medium/high-risk tools
+ *   - HITL quarantine for tools at or above medium risk (hitlMinRiskLevel)
  *   - Audit event logging for all decisions
  *   - Agent can create new tools via matimo_create_tool
  *
@@ -41,7 +41,6 @@ import {
   convertToolsToLangChain,
   getSkillsMetadata,
   buildRelevantSkillPrompt,
-  getGlobalApprovalHandler,
   setGlobalMatimoInstance,
 } from 'matimo';
 import type { ToolDefinition, PolicyConfig, MatimoEvent, HITLRequest } from 'matimo';
@@ -344,6 +343,9 @@ async function main(): Promise<void> {
       allowFunctionTools: false,
       protectedNamespaces: ['matimo_'],
       enableHITL: true,
+      // Execution: quarantine every call whose risk is at or above this level.
+      hitlMinRiskLevel: 'medium',
+      // Creation: agent-written tools at these levels wait for review.
       quarantineRiskLevels: ['medium', 'high'],
     };
 
@@ -351,6 +353,7 @@ async function main(): Promise<void> {
     console.info(`    • allowedDomains:          ${policyConfig.allowedDomains!.join(', ')}`);
     console.info(`    • allowCommandTools:       ${policyConfig.allowCommandTools}`);
     console.info(`    • enableHITL:              ${policyConfig.enableHITL}`);
+    console.info(`    • hitlMinRiskLevel:        ${policyConfig.hitlMinRiskLevel}`);
     console.info(`    • quarantineRiskLevels:    ${policyConfig.quarantineRiskLevels!.join(', ')}`);
 
     // autoDiscover: true — discovers all @matimo/* tools AND skills automatically
@@ -376,10 +379,10 @@ async function main(): Promise<void> {
           console.info(`    🔄 POLICY RELOADED at ${event.timestamp}`);
         }
       },
-      onHITL: hitlApproval,
+      onHITL: hitlApproval, // Quarantined calls (risk ≥ hitlMinRiskLevel)
+      onApproval: interactiveApproval, // Calls to requires_approval tools
     });
 
-    getGlobalApprovalHandler().setApprovalCallback(interactiveApproval);
     setGlobalMatimoInstance(matimo);
 
     const tools = matimo.listTools();

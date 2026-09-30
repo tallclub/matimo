@@ -1,10 +1,4 @@
-import {
-  MatimoInstance,
-  setGlobalMatimoInstance,
-  tool,
-  getGlobalApprovalHandler,
-  type ApprovalRequest,
-} from '@matimo/core';
+import { MatimoInstance, setGlobalMatimoInstance, tool, type ApprovalRequest } from '@matimo/core';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -33,9 +27,7 @@ function createApprovalCallback() {
 
     if (!isInteractive) {
       console.info('\n❌ REJECTED - Non-interactive environment (no terminal)');
-      console.info('\n💡 To enable auto-approval in CI/scripts:');
-      console.info('   export MATIMO_AUTO_APPROVE=true');
-      console.info('\n💡 Or approve specific patterns:');
+      console.info('\n💡 To pre-approve this tool in CI/scripts:');
       console.info('   export MATIMO_APPROVED_PATTERNS="edit"');
       console.info('\n' + '='.repeat(70) + '\n');
       return false;
@@ -100,26 +92,22 @@ class FileEditor {
 
 async function decoratorExample() {
   // Set up decorator support with autoDiscover
-  const matimo = await MatimoInstance.init({ autoDiscover: true });
+  const matimo = await MatimoInstance.init({
+    autoDiscover: true,
+    // Decides every call that needs approval, for this instance only.
+    onApproval: createApprovalCallback(),
+  });
   setGlobalMatimoInstance(matimo);
-
-  // Configure centralized approval handler
-  const approvalHandler = getGlobalApprovalHandler();
-  approvalHandler.setApprovalCallback(createApprovalCallback());
 
   console.info('\n' + '='.repeat(70));
   console.info('🚀 Edit Tool - Decorator Pattern Example');
   console.info('='.repeat(70));
 
   // Show current approval mode
-  const autoApproveEnabled = process.env.MATIMO_AUTO_APPROVE === 'true';
   const approvedPatterns = process.env.MATIMO_APPROVED_PATTERNS;
 
   console.info('\n🔐 APPROVAL CONFIGURATION:');
-  if (autoApproveEnabled) {
-    console.info('   ✅ MATIMO_AUTO_APPROVE=true');
-    console.info('   → All destructive operations will be AUTO-APPROVED');
-  } else if (approvedPatterns) {
+  if (approvedPatterns) {
     console.info(`   ✅ MATIMO_APPROVED_PATTERNS="${approvedPatterns}"`);
     console.info('   → Matching operations will be auto-approved');
   } else {

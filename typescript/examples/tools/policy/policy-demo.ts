@@ -54,7 +54,6 @@ import {
   classifyRisk,
   ToolIntegrityTracker,
   ApprovalManifest,
-  getGlobalApprovalHandler,
   setGlobalMatimoInstance,
   MCPServer,
 } from 'matimo';
@@ -431,19 +430,20 @@ async function main(): Promise<void> {
       logLevel: 'silent',
       untrustedPaths: [tempDir], // Agent-created tools are untrusted until approved
       onEvent: (event: MatimoEvent) => auditLog.push(event),
+      // Human-in-the-loop: calls to tools with `requires_approval: true`
+      // prompt in the terminal before they run.
+      onApproval: interactiveApproval,
     });
     setGlobalMatimoInstance(matimo);
     console.info(`    ${INFO} untrustedPaths: [${tempDir}]`);
     console.info(`    ${INFO} Agent-created tools in this dir will be picked up on reload.`);
 
-    // ── Set up interactive terminal approval (human-in-the-loop) ────
+    // ── Interactive terminal approval (human-in-the-loop) ────────────
     //
-    // When a tool with `requires_approval: true` is called by the agent,
-    // the approval handler prompts the human in the terminal. If approved,
-    // the tool name is added to a session whitelist.
-    const approvalHandler = getGlobalApprovalHandler();
-    approvalHandler.setApprovalCallback(interactiveApproval);
-    result('Interactive terminal approval callback installed', PASS);
+    // onApproval above is this instance's approval callback: when the agent
+    // calls a tool with `requires_approval: true`, it prompts the human in
+    // the terminal. If approved, the tool name is added to a session whitelist.
+    result('Interactive terminal approval callback installed (onApproval)', PASS);
     console.info(`    ${INFO} Tools with requires_approval will prompt for human consent.`);
 
     const tools = matimo.listTools();

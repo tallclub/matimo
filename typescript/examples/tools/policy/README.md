@@ -335,21 +335,35 @@ const policyConfig: PolicyConfig = {
 User/Agent calls matimo.execute('tool_name', params)
          │
          ▼
-┌─ Is tool.requires_approval === true? ──┐
-│  OR does content contain destructive   │
-│  keywords (DELETE, DROP, etc.)?        │
+┌─ Policy engine: canExecute() ─────────┐
+│  denied → throws                      │
+│  risk ≥ hitlMinRiskLevel (enableHITL) │
+│    → onHITL decides (quarantine)      │
+└───────────────┬────────────────────────┘
+                │ allowed
+                ▼
+┌─ Does this call need approval? ───────┐
+│  tool.requires_approval === true      │
+│  OR HTTP DELETE / command tool with   │
+│     no requires_approval (secure mode)│
+│  OR its sql/command contains a        │
+│     destructive keyword (DELETE, ...) │
 └───────────────┬────────────────────────┘
                 │ yes
                 ▼
 ┌─ Is tool pre-approved? ───────────────┐
-│  MATIMO_AUTO_APPROVE=true?            │
 │  matches MATIMO_APPROVED_PATTERNS?    │
+│  (MATIMO_AUTO_APPROVE=true approves   │
+│   everything unseen; logs a warning)  │
 └───────────────┬────────────────────────┘
                 │ no
                 ▼
-┌─ Call approval callback ──────────────┐
-│  interactiveApproval(request)         │
-│  Shows: tool name, description, params│
+┌─ Call the approval callback ──────────┐
+│  execute(..., { onApproval })         │
+│  else InitOptions.onApproval          │
+│  else the global handler's callback   │
+│  none → rejected                      │
+│  This demo: interactiveApproval       │
 │  Human types y/n                      │
 │  If approved → add to whitelist       │
 └───────────────┬────────────────────────┘

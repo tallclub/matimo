@@ -1,4 +1,4 @@
-import { MatimoInstance, getGlobalApprovalHandler, type ApprovalRequest } from '@matimo/core';
+import { MatimoInstance, type ApprovalRequest } from '@matimo/core';
 import * as readline from 'readline';
 
 /**
@@ -22,8 +22,8 @@ function createApprovalCallback() {
 
     if (!isInteractive) {
       console.info('\n❌ REJECTED - Non-interactive environment (no terminal)');
-      console.info('\n💡 To enable auto-approval in CI/scripts:');
-      console.info('   export MATIMO_AUTO_APPROVE=true');
+      console.info('\n💡 To pre-approve this tool in CI/scripts:');
+      console.info('   export MATIMO_APPROVED_PATTERNS="web_scraper"');
       console.info('\n' + '='.repeat(70) + '\n');
       return false;
     }
@@ -51,10 +51,11 @@ function createApprovalCallback() {
  * bounded by maxPages/maxDepth, with interactive approval.
  */
 async function webScraperExample() {
-  const matimo = await MatimoInstance.init({ autoDiscover: true });
-
-  const approvalHandler = getGlobalApprovalHandler();
-  approvalHandler.setApprovalCallback(createApprovalCallback());
+  const matimo = await MatimoInstance.init({
+    autoDiscover: true,
+    // Decides every call that needs approval, for this instance only.
+    onApproval: createApprovalCallback(),
+  });
 
   console.info('=== Web Scraper Tool - Factory Pattern (Interactive Approval) ===\n');
 
