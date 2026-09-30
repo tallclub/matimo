@@ -271,6 +271,7 @@ matimo = await Matimo.init("./tools", policy_config=config, on_hitl=approve)
 - Risk classification: `function` → CRITICAL, `command` → HIGH, DELETE → HIGH, POST/PUT → MEDIUM
 - Content validation: SSRF protection, blocked HTTP methods, reserved namespaces
 - Integrity tracking: detect tool tampering via checksums
+- Audit events for every call; `audit_sink=JsonlFileSink(path)` writes them to a hash-chained log that `verify_audit_log(path)` checks
 
 ---
 

@@ -121,7 +121,7 @@ await server.start()
 ### `Matimo.init()`
 
 ```python
-from matimo import Matimo, InitOptions
+from matimo import InitOptions, JsonlFileSink, Matimo
 
 matimo = await Matimo.init(
     tool_paths=['./tools', './agent-tools'],  # or a single string
@@ -132,6 +132,7 @@ matimo = await Matimo.init(
     log_level='info',          # silent | error | warn | info | debug
     log_format='json',         # json | simple
     on_event=my_event_handler,
+    audit_sink=JsonlFileSink('./logs/matimo-audit.jsonl'),  # hash-chained audit log
     on_hitl=my_approval_callback,
 )
 ```
@@ -175,7 +176,7 @@ execution:
 ## Policy Engine
 
 ```python
-from matimo import Matimo, InitOptions
+from matimo import InitOptions, JsonlFileSink, Matimo
 
 matimo = await Matimo.init('./tools', InitOptions(
     policy_file='./policy.yaml',

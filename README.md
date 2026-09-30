@@ -33,9 +33,9 @@ Every tool call - built-in, third-party, or agent-created - passes through Matim
 
 **Why this matters:**
 
-- 🛡️ **Policy Engine (Governance)**: Every execution - not just agent-created tools - is classified by risk level (low/medium/high/critical), checked against deterministic security rules, and logged to an audit trail. This is the layer everything else sits on top of.
+- 🛡️ **Policy Engine (Governance)**: Every execution - not just agent-created tools - is classified by risk level (low/medium/high/critical), checked against deterministic security rules, and reported as an audit event. Add an audit sink and every event is written to a hash-chained log that shows any edit or deletion. This is the layer everything else sits on top of.
 
-- 🤝 **Human-in-the-Loop (HITL)**: Critical or high-risk actions pause for human approval before execution. Configurable timeouts, HMAC-signed approval manifests, full audit trails. You stay in control even as agents gain autonomy.
+- 🤝 **Human-in-the-Loop (HITL)**: With HITL on, every call at or above your risk threshold pauses for human approval before it runs. HTTP DELETE and shell-command tools ask before every call. Configurable timeouts, HMAC-signed approval manifests, and an audit event for every decision. You stay in control even as agents gain autonomy.
 
 - 🔧 **Meta-Tools & Self-Extension**: Agents write new tool definitions in YAML, submit them for policy validation, get human approval when required, and hot-reload - all mid-conversation. No restart. No redeployment. Every agent-created tool is governed the same way as your built-in ones.
 
@@ -323,6 +323,7 @@ const matimo = await MatimoInstance.init({
     return promptUser();
   },
   onEvent: (event) => auditLog.push(event),
+  auditSink: new JsonlFileSink('./logs/matimo-audit.jsonl'), // hash-chained audit log
 });
 
 // Hot-reload policy at runtime (no restart needed)
@@ -332,10 +333,11 @@ await matimo.reloadPolicy('./policy-prod.yaml');
 **Key features:**
 
 - 9 deterministic security rules (SSRF detection, namespace protection, credential allowlists)
-- HITL quarantine - medium-risk tools pause for human approval instead of auto-rejecting
+- HITL quarantine - every tool at or above the risk threshold (`hitlMinRiskLevel`) pauses for human approval
 - Policy hot-reload - swap policies at runtime with automatic tool re-validation
 - SHA-256 integrity tracking + HMAC approval manifest
-- Full audit trail via structured events
+- Audit events for every call (`tool:executed`, `tool:execution_failed`, denials, approvals), identical in both SDKs
+- `JsonlFileSink` writes them to a hash-chained log; `verifyAuditLog` finds the first edited or deleted line
 
 See [Policy & Lifecycle Docs](./docs/api-reference/POLICY_AND_LIFECYCLE.md) for the complete reference.
 
