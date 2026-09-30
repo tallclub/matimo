@@ -10,7 +10,12 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from matimo.core.models import PolicyContext, ToolDefinition
 from matimo.policy.content_validator import ContentViolation, validate_tool_content
-from matimo.policy.risk_classifier import classify_risk
+from matimo.policy.risk_classifier import (
+    classify_execution_risk,
+    classify_risk,
+    lowest_risk,
+    meets_risk_threshold,
+)
 from matimo.policy.types import (
     PolicyAllowed,
     PolicyConfig,
@@ -187,7 +192,7 @@ class DefaultPolicyEngine:
         - Tool is deprecated
         - Tool is in 'draft' status in a production environment without admin role
         - Tool requires explicit approval in production without admin/operator role
-        - Policy HITL is enabled and tool risk level is in quarantineRiskLevels
+        - Policy HITL is enabled and tool execution risk meets the HITL threshold
         """
         env = (context.environment or "").lower()
         roles = context.roles or []
@@ -215,10 +220,15 @@ class DefaultPolicyEngine:
                     reason=f"Tool '{tool.name}' requires approval and the current context lacks admin/operator role",
                 )
 
-        # 4. HITL quarantine for high-risk tools
+        # 4. HITL quarantine for tools at or above the threshold. A threshold
+        # (not list membership) so that quarantining medium-risk writes can
+        # never let a high-risk DELETE or critical tool straight through.
         if self.config.enable_hitl:
-            risk = classify_risk(tool)
-            if risk in self.config.quarantine_risk_levels:
+            risk = classify_execution_risk(tool)
+            threshold = self.config.hitl_min_risk_level or lowest_risk(
+                self.config.quarantine_risk_levels
+            )
+            if threshold is not None and meets_risk_threshold(risk, threshold):
                 return PolicyPendingApproval(
                     allowed="pending_approval",
                     reason=f"Tool '{tool.name}' has risk level '{risk.value}' and requires human approval",

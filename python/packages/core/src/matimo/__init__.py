@@ -154,7 +154,11 @@ from matimo.policy.content_validator import ContentViolation, validate_tool_cont
 from matimo.policy.default_policy import DefaultPolicyEngine, PolicyEngine, get_tier_for_tool
 from matimo.policy.integrity_tracker import IntegrityAction, ToolIntegrityTracker
 from matimo.policy.policy_loader import load_policy_from_file
-from matimo.policy.risk_classifier import classify_risk
+from matimo.policy.risk_classifier import (
+    classify_execution_risk,
+    classify_risk,
+    meets_risk_threshold,
+)
 from matimo.policy.types import (
     HITLCallback,
     HITLRequest,
@@ -318,7 +322,7 @@ __all__ = [
     "RiskLevel", "PolicyTier",
     "MatimoEvent", "MatimoEventHandler", "HITLCallback", "HITLRequest",
     "ContentViolation", "validate_tool_content",
-    "classify_risk", "get_tier_for_tool",
+    "classify_risk", "classify_execution_risk", "meets_risk_threshold", "get_tier_for_tool",
     "ToolIntegrityTracker", "IntegrityAction",
     "ApprovalManifest", "ApprovalRecord",
     "load_policy_from_file",

@@ -85,6 +85,11 @@ class PolicyConfig(BaseModel):
     protected_namespaces: list[str] = ["matimo_"]
     enable_hitl: bool = False
     quarantine_risk_levels: list[RiskLevel] = [RiskLevel.MEDIUM]
+    """Risk levels quarantined (instead of rejected) when an agent *creates* a tool.
+    Its least severe entry is also the execution threshold unless hitl_min_risk_level is set."""
+    hitl_min_risk_level: RiskLevel | None = None
+    """Execution-time quarantine threshold: with enable_hitl, every tool whose execution
+    risk is at or above this level is quarantined."""
     approval_ttl_seconds: int | None = None
     """Number of seconds after which an approval expires. None means never expire."""
 

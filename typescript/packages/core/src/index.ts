@@ -123,7 +123,11 @@ export type {
 } from './policy/types.js';
 export { DefaultPolicyEngine, getTierForTool } from './policy/default-policy.js';
 export { validateToolContent, isSSRFTarget } from './policy/content-validator.js';
-export { classifyRisk } from './policy/risk-classifier.js';
+export {
+  classifyRisk,
+  classifyExecutionRisk,
+  meetsRiskThreshold,
+} from './policy/risk-classifier.js';
 export { ToolIntegrityTracker } from './policy/integrity-tracker.js';
 export { ApprovalManifest } from './policy/approval-manifest.js';
 export { loadPolicyFromFile, parsePolicyFile } from './policy/policy-loader.js';

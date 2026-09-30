@@ -361,14 +361,21 @@ interface PolicyConfig {
   allowedCredentials?: string[];
 
   /**
-   * Enable quarantine/HITL for medium-risk tools in production. When true,
-   * `canCreate()`/`canExecute()` return `pending_approval` instead of `allowed: false`
-   * for tools whose risk level is in `quarantineRiskLevels`. Default: false.
+   * Enable quarantine/HITL. When true, `canCreate()` quarantines agent-proposed tools
+   * whose risk is listed in `quarantineRiskLevels`, and `canExecute()` quarantines every
+   * tool whose execution risk is at or above `hitlMinRiskLevel`. Default: false.
    */
   enableHITL?: boolean;
 
-  /** Risk levels eligible for HITL quarantine instead of outright rejection. Default: ['medium'] */
+  /**
+   * Risk levels quarantined (instead of rejected) when an agent creates a tool. Its least
+   * severe entry is also the execution threshold unless `hitlMinRiskLevel` is set.
+   * Default: ['medium']
+   */
   quarantineRiskLevels?: RiskLevel[];
+
+  /** Execution-time quarantine threshold. Default: least severe entry of quarantineRiskLevels. */
+  hitlMinRiskLevel?: RiskLevel;
 
   /** Seconds after which an approval expires and the tool must be re-approved. Default: never expires. */
   approvalTtlSeconds?: number;
@@ -1092,7 +1099,33 @@ By default, `quarantineRiskLevels` is `['medium']`. However, note that the conte
 
 > **Recommendation:** Use `quarantineRiskLevels: ['medium', 'high']` for production deployments where you want human review of agent-created tools.
 
-You can also update quarantine levels at runtime via `setHITLCallback()`:
+#### At execution time: a threshold, not a list
+
+`canExecute()` quarantines a tool when its **execution risk** is at or above
+`hitlMinRiskLevel` (default: the least severe entry of `quarantineRiskLevels`, so
+`'medium'` out of the box). Listing `medium` therefore also quarantines `high` and
+`critical` tools — a DELETE can never slip past a policy that reviews POSTs.
+
+Execution risk is `classifyRisk()` with one difference: a `type: function` tool uses its
+declared `risk:` (default `high`, raised to `high` by `requires_approval: true`) instead of
+always rating `critical`. Function tools in the registry are always developer-authored —
+agent-created function tools are rejected at creation — so `calculator` (`risk: low`) is
+not quarantined while `execute` (`risk: critical`) is.
+
+| Tool | Execution risk | `enableHITL: true` (defaults) |
+|------|----------------|-------------------------------|
+| HTTP GET | low | runs |
+| HTTP POST / PUT / PATCH | medium | quarantined |
+| HTTP DELETE, `requires_approval: true`, `type: command` | high | quarantined |
+| `type: function` with `risk: low` | low | runs |
+| `type: function` with no `risk:` | high | quarantined |
+
+An approval is recorded in the signed approval manifest against the tool's definition
+hash, so the reviewer is asked once per tool definition — and again if the YAML changes.
+The full matrix both SDKs are tested against lives in
+`conformance/policy/execution-quarantine.json`.
+
+You can also update the HITL callback at runtime via `setHITLCallback()`:
 
 ```typescript
 // Set or change the HITL callback at any time

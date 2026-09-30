@@ -93,6 +93,7 @@ _CAMEL_TO_SNAKE: dict[str, str] = {
     "protectedNamespaces": "protected_namespaces",
     "enableHITL": "enable_hitl",
     "quarantineRiskLevels": "quarantine_risk_levels",
+    "hitlMinRiskLevel": "hitl_min_risk_level",
     "approvalTtlSeconds": "approval_ttl_seconds",
 }
 
@@ -104,5 +105,7 @@ def _normalise_keys(data: dict[str, Any]) -> dict[str, Any]:
         snake_key = _CAMEL_TO_SNAKE.get(k, k)
         if snake_key == "quarantine_risk_levels" and isinstance(v, list):
             v = [RiskLevel(level) for level in v]
+        elif snake_key == "hitl_min_risk_level" and isinstance(v, str):
+            v = RiskLevel(v)
         result[snake_key] = v
     return result

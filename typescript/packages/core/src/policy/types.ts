@@ -122,17 +122,29 @@ export interface PolicyConfig {
   /** Tool name prefixes reserved for built-in tools (default: ['matimo_']). */
   protectedNamespaces?: string[];
   /**
-   * Enable quarantine/HITL for medium-risk tools in production.
-   * When true, `canCreate()` returns `pending_approval` instead of `allowed: false`
-   * for medium-risk tools, allowing a human reviewer to approve or reject.
-   * Default: false (original binary behavior preserved).
+   * Enable quarantine/HITL.
+   * - At creation (`canCreate()`), agent-proposed tools whose risk is listed in
+   *   `quarantineRiskLevels` return `pending_approval` instead of `allowed: false`.
+   * - At execution (`canExecute()`), any tool whose execution risk is at or above
+   *   `hitlMinRiskLevel` returns `pending_approval` and must be approved (once per
+   *   tool definition) via the HITL callback or approval manifest.
+   * Default: false.
    */
   enableHITL?: boolean;
   /**
-   * Risk levels eligible for HITL quarantine instead of outright rejection.
-   * Default: ['medium'] — critical/high are always blocked, low is always auto.
+   * Risk levels eligible for HITL quarantine instead of outright rejection when
+   * an agent *creates* a tool. Also sets the execution threshold (its least
+   * severe entry) when `hitlMinRiskLevel` is not given.
+   * Default: ['medium'].
    */
   quarantineRiskLevels?: RiskLevel[];
+  /**
+   * Execution-time quarantine threshold: with `enableHITL`, every tool whose
+   * execution risk is at or above this level is quarantined. Defaults to the
+   * least severe entry of `quarantineRiskLevels` ('medium' by default), so
+   * listing a level never lets a *more* severe tool through.
+   */
+  hitlMinRiskLevel?: RiskLevel;
   /**
    * Number of seconds after which an approval expires and the tool must be re-approved.
    * If not set, approvals never expire.
