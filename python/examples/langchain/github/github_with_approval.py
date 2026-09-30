@@ -10,6 +10,11 @@ Same ReAct loop as github_langchain.py, but any write operation (create
 issue, create PR, merge PR, create release, etc.) pauses and waits for
 explicit human approval before executing.
 
+Matimo decides which calls need approval: every GitHub write tool declares
+`requires_approval: true` in its YAML, so the agent code keeps no list of
+"write tools". Each such call goes to the `on_approval` callback passed to
+Matimo.init(); a rejected call raises and the agent sees the error.
+
 Use this pattern when:
   ✅ The LLM is empowered to perform mutations (create/update/delete)
   ✅ You need an audit trail of AI-proposed vs human-approved actions
@@ -22,7 +27,7 @@ SETUP:
 USAGE:
 ────────────────────────────────────────────────────────────────────────────
   make github-approval
-  # or non-interactive (auto-approve all, for CI):
+  # or approve every write without asking (CI only):
   uv run python github/github_with_approval.py --auto-approve "Create an issue titled 'Test'"
 
 ============================================================================
@@ -38,28 +43,34 @@ from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langchain_openai import ChatOpenAI
 from matimo_github import get_tools_path
 
-from matimo import Matimo
+from matimo import ApprovalCallback, ApprovalRequest, Matimo
 from matimo.integrations.langchain import convert_tools_to_langchain
 
 load_dotenv(Path(__file__).parent.parent.parent / ".env")
-
-# Tools that mutate state — require approval
-WRITE_TOOLS = {
-    "github-create-repository",
-    "github-delete-repository",
-    "github-create-issue",
-    "github-update-issue",
-    "github-create-pull-request",
-    "github-merge-pull-request",
-    "github-create-release",
-    "github-add-collaborator",
-    "github-update-code-alert",
-}
 
 DEFAULT_TASK = (
     "List the open issues in the matimo-ai/matimo repository and then "
     "create a new issue titled 'Automated test issue from Matimo Python SDK'."
 )
+
+
+def make_approval_callback(auto_approve: bool) -> ApprovalCallback:
+    """Matimo calls this before every call that needs approval."""
+
+    async def approve(request: ApprovalRequest) -> bool:
+        print(f"    🔴  {request.tool_name} needs approval: {request.params}")
+        if auto_approve:
+            print("    ✅  Auto-approved (--auto-approve flag set)")
+            return True
+        try:
+            answer = input("    ⚠️   This is a WRITE operation. Approve? [y/N] ")
+        except EOFError:
+            answer = ""
+        approved = answer.strip().lower() == "y"
+        print("    ✅  Approved" if approved else "    🚫  Declined — not executed")
+        return approved
+
+    return approve
 
 
 async def run(task: str, auto_approve: bool = False) -> None:
@@ -72,7 +83,9 @@ async def run(task: str, auto_approve: bool = False) -> None:
             print(f"❌  {label} ({key}) not set in .env")
             sys.exit(1)
 
-    matimo = await Matimo.init(get_tools_path())
+    matimo = await Matimo.init(
+        get_tools_path(), on_approval=make_approval_callback(auto_approve)
+    )
     gh_tools = [t for t in matimo.list_tools() if t.name.startswith("github")]
     lc_tools = convert_tools_to_langchain(gh_tools, matimo)
     tool_map = {t.name: t for t in lc_tools}
@@ -95,34 +108,17 @@ async def run(task: str, auto_approve: bool = False) -> None:
 
         for call in response.tool_calls:
             tool_name = call["name"]
-            tool_args = call["args"]
-            is_write = tool_name in WRITE_TOOLS
-
-            print(f"\n{'🔴' if is_write else '🔵'}  Tool: {tool_name}")
-            print(f"    Args: {tool_args}")
-
-            # ── Approval gate for write operations ───────────────────────────
-            if is_write:
-                if auto_approve:
-                    print("    ✅  Auto-approved (--auto-approve flag set)")
-                    approved = True
-                else:
-                    try:
-                        answer = input("    ⚠️   This is a WRITE operation. Approve? [y/N] ").strip().lower()
-                        approved = answer == "y"
-                    except EOFError:
-                        approved = False
-
-                if not approved:
-                    result = "Action declined by user — not executed."
-                    print(f"    🚫  {result}")
-                    messages.append(ToolMessage(content=result, tool_call_id=call["id"]))
-                    continue
+            print(f"\n🔵  Tool: {tool_name}")
+            print(f"    Args: {call['args']}")
 
             lc_tool = tool_map.get(tool_name)
             try:
-                result = await lc_tool.ainvoke(tool_args) if lc_tool else f"Tool not found: {tool_name}"
+                if lc_tool is None:
+                    result = f"Tool not found: {tool_name}"
+                else:
+                    result = await lc_tool.ainvoke(call["args"])
             except Exception as exc:
+                # A declined approval arrives here as a MatimoError.
                 result = f"Error: {exc}"
             print(f"    → {str(result)[:200]}")
             messages.append(ToolMessage(content=str(result), tool_call_id=call["id"]))
