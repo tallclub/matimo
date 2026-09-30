@@ -682,6 +682,11 @@ async function main(): Promise<void> {
       untrustedPaths: [tempDir],
       mcpToken: mcpToken,
       policyConfig,
+      // This script is the MCP client and cannot answer an elicitation
+      // request, so it confirms calls itself with `_matimo_approved: true`.
+      // Only trust that flag from a client that asks its own user first,
+      // never from one driven by a model.
+      trustClientApproval: true,
     });
 
     try {
@@ -818,7 +823,8 @@ async function main(): Promise<void> {
 
         // 11f: Execute matimo_reload_tools via MCP tools/call
         // This proves an MCP client can trigger hot-reload without SDK access.
-        // The tool requires approval, so we pass _matimo_approved: true (MCP pattern).
+        // The tool requires approval. The server trusts this client's
+        // `_matimo_approved: true` because it runs with trustClientApproval.
         const reloadRes = await fetch(`http://localhost:${mcpPort}/mcp`, {
           method: 'POST',
           headers: {
