@@ -1,5 +1,6 @@
 name: search_tool
 version: "1.0.0"
+risk: low
 description: "Search for information"
 parameters:
   query:

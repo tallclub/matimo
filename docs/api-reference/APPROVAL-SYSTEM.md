@@ -56,6 +56,18 @@ name: github-delete-repository
 requires_approval: true
 ```
 
+**Default — HTTP DELETE and command tools**
+```
+When a tool's YAML does not set requires_approval at all, two kinds of tool
+need approval on every call anyway:
+  execution.type: http with method: DELETE   → can't be undone
+  execution.type: command                    → runs a shell command
+Set requires_approval: false to opt a tool out deliberately; the destructive
+keyword scan below still applies to it. Tools shipped in this repo must spell
+out requires_approval: true on DELETE — `pnpm validate-tools` /
+`make validate-tools` reject a DELETE tool that doesn't.
+```
+
 **Trigger 2 — Keyword auto-detection**
 ```
 When to use: Tool might be destructive depending on SQL content or command params
@@ -89,7 +101,7 @@ Benefit: Agent can NEVER modify the live tool registry without human sign-off
 ## Overview
 
 The approval system prevents accidental execution of destructive operations by:
-1. **Checking YAML flag**: Tool defines `requires_approval: true` or auto-detect via destructive keywords
+1. **Checking YAML flag**: Tool defines `requires_approval: true`, is an HTTP DELETE or command tool that doesn't set it, or its SQL/command contains a destructive keyword
 2. **Checking pre-approvals**: Environment variables or pre-approved patterns
 3. **Requesting approval**: Single generic callback (interactive or automatic)
 4. **Executing**: If approved, proceeds; if rejected, throws MatimoError

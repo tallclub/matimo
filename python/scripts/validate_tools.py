@@ -24,6 +24,25 @@ invalid = 0
 skipped = 0
 
 
+def governance_problems(raw: dict[str, object]) -> list[str]:
+    """
+    Governance rules for tools shipped in this repo, on top of the schema.
+    Mirrors governanceProblems() in typescript/scripts/validate-tool.ts.
+    """
+    problems: list[str] = []
+    execution = raw.get("execution")
+    execution = execution if isinstance(execution, dict) else {}
+    if (
+        execution.get("type") == "http"
+        and str(execution.get("method", "")).upper() == "DELETE"
+        and raw.get("requires_approval") is not True
+    ):
+        problems.append("HTTP DELETE tools must declare requires_approval: true")
+    if execution.get("type") == "function" and not raw.get("risk"):
+        problems.append("function tools must declare risk: low | medium | high | critical")
+    return problems
+
+
 def validate_file(path: Path) -> bool:
     """Validate a single definition.yaml and print the result."""
     global valid, invalid
@@ -37,6 +56,9 @@ def validate_file(path: Path) -> bool:
             label = "provider"
         else:
             ToolDefinition.model_validate(raw)
+            problems = governance_problems(raw)
+            if problems:
+                raise ValueError("; ".join(problems))
             label = "tool"
 
         rel = path.relative_to(REPO_ROOT)
