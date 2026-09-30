@@ -281,7 +281,8 @@ class TestAgnoRiskConfirmationMapping:
         )
         assert functions[0].requires_confirmation is True
 
-    def test_function_execution_is_critical_and_confirms(self) -> None:
+    def test_undeclared_function_tool_is_high_and_confirms(self) -> None:
+        """An undeclared function tool's execution risk is high (classify_execution_risk)."""
         pytest.importorskip("agno")
         from matimo.integrations.agno import convert_tools_to_agno
 
@@ -322,6 +323,128 @@ class TestAgnoRiskConfirmationMapping:
         )
         assert functions[0].requires_confirmation is False
 
+    def test_declared_low_risk_function_tool_does_not_confirm(self) -> None:
+        """Execution risk of a developer-authored function tool is its declared risk."""
+        pytest.importorskip("agno")
+        from matimo.integrations.agno import convert_tools_to_agno
+
+        tool = ToolDefinition(
+            name="calc",
+            description="adds numbers",
+            parameters={},
+            risk="low",
+            execution=FunctionExecution(type="function", code="./calc.py"),
+        )
+        assert convert_tools_to_agno([tool], _make_matimo())[0].requires_confirmation is False
+
+    def test_requires_approval_tool_confirms_whatever_its_risk(self) -> None:
+        """A GET tool that declares requires_approval pauses the run like Matimo would."""
+        pytest.importorskip("agno")
+        from matimo.integrations.agno import convert_tools_to_agno
+
+        functions = convert_tools_to_agno(
+            [_make_tool(method="GET", requires_approval=True)], _make_matimo()
+        )
+        assert functions[0].requires_confirmation is True
+
+    def test_explicit_requires_approval_false_on_delete_follows_risk(self) -> None:
+        """requires_approval: false opts out of the DELETE default; high risk still confirms."""
+        pytest.importorskip("agno")
+        from matimo.integrations.agno import convert_tools_to_agno
+
+        functions = convert_tools_to_agno(
+            [_make_tool(method="DELETE", requires_approval=False)],
+            _make_matimo(),
+            confirm_risk_levels=["critical"],
+        )
+        assert functions[0].requires_confirmation is False
+
+    def test_empty_confirm_levels_leave_requires_approval_to_matimo(self) -> None:
+        pytest.importorskip("agno")
+        from matimo.integrations.agno import convert_tools_to_agno
+
+        matimo_mock = _make_matimo()
+        functions = convert_tools_to_agno(
+            [_make_tool("send", requires_approval=True)], matimo_mock, confirm_risk_levels=[]
+        )
+        assert functions[0].requires_confirmation is False
+        functions[0].entrypoint(query="x")
+        matimo_mock.execute.assert_awaited_once_with(
+            "send", {"query": "x"}, credentials=None, context=None, approved=False
+        )
+
+    def test_legacy_mode_drops_the_delete_default_but_not_its_risk(self) -> None:
+        pytest.importorskip("agno")
+        from matimo.integrations.agno import convert_tools_to_agno
+
+        matimo_mock = _make_matimo()
+        matimo_mock.get_governance_mode.return_value = "legacy"
+        delete = convert_tools_to_agno([_make_tool(method="DELETE")], matimo_mock)
+        assert delete[0].requires_confirmation is True  # still high risk
+        low_delete = convert_tools_to_agno(
+            [_make_tool(method="DELETE")], matimo_mock, confirm_risk_levels=["critical"]
+        )
+        assert low_delete[0].requires_confirmation is False
+
+
+class TestAgnoConfirmationIsTheApproval:
+    """A call the human confirmed in Agno is not asked again by Matimo."""
+
+    def test_confirmed_tool_executes_as_approved(self) -> None:
+        pytest.importorskip("agno")
+        from matimo.integrations.agno import convert_tools_to_agno
+
+        matimo_mock = _make_matimo()
+        functions = convert_tools_to_agno([_make_tool("wipe", method="DELETE")], matimo_mock)
+        assert functions[0].requires_confirmation is True
+        functions[0].entrypoint(query="x")
+        matimo_mock.execute.assert_awaited_once_with(
+            "wipe", {"query": "x"}, credentials=None, context=None, approved=True
+        )
+
+    @pytest.mark.asyncio
+    async def test_async_confirmed_tool_executes_as_approved(self) -> None:
+        pytest.importorskip("agno")
+        from matimo.integrations.agno import MatimoTools
+
+        matimo_mock = _make_matimo()
+        toolkit = MatimoTools(matimo_mock, [_make_tool("wipe", method="DELETE")])
+        await toolkit.async_functions["wipe"].entrypoint(query="x")
+        matimo_mock.execute.assert_awaited_once_with(
+            "wipe", {"query": "x"}, credentials=None, context=None, approved=True
+        )
+
+    @pytest.mark.asyncio
+    async def test_real_instance_runs_a_confirmed_requires_approval_tool(
+        self, tmp_path: object
+    ) -> None:
+        """End to end: no on_approval callback, yet the Agno-confirmed call runs."""
+        pytest.importorskip("agno")
+        from pathlib import Path
+
+        from matimo import Matimo
+        from matimo.approval.handler import get_global_approval_handler
+        from matimo.integrations.agno import convert_tools_to_agno
+
+        tools_dir = Path(str(tmp_path)) / "tools" / "wipe"
+        tools_dir.mkdir(parents=True)
+        (tools_dir / "definition.yaml").write_text(
+            "name: wipe\nversion: '1.0.0'\ndescription: Echo\nrequires_approval: true\n"
+            "execution:\n  type: command\n  command: echo\n  args: ['hi']\n"
+        )
+        get_global_approval_handler().set_approval_callback(None)
+        from matimo.policy.types import PolicyConfig
+
+        matimo = await Matimo.init(
+            str(tools_dir.parent),
+            log_level="silent",
+            policy_config=PolicyConfig(allow_command_tools=True),
+        )
+        function = convert_tools_to_agno([matimo.get_tool("wipe")], matimo)[0]
+        assert function.requires_confirmation is True
+        result = await asyncio.to_thread(function.entrypoint)
+        assert result["success"] is True
+
 
 class TestAgnoEntrypointExecution:
     def test_entrypoint_routes_through_matimo_execute(self) -> None:
@@ -333,7 +456,7 @@ class TestAgnoEntrypointExecution:
 
         assert functions[0].entrypoint(query="hello") == {"posted": True}
         matimo_mock.execute.assert_awaited_once_with(
-            "send", {"query": "hello"}, credentials=None, context=None
+            "send", {"query": "hello"}, credentials=None, context=None, approved=False
         )
 
     def test_entrypoint_forwards_credentials(self) -> None:
@@ -347,7 +470,7 @@ class TestAgnoEntrypointExecution:
         functions[0].entrypoint(query="test")
 
         matimo_mock.execute.assert_awaited_once_with(
-            "send", {"query": "test"}, credentials={"MY_TOKEN": "secret"}, context=None
+            "send", {"query": "test"}, credentials={"MY_TOKEN": "secret"}, context=None, approved=False
         )
 
     def test_entrypoint_forwards_policy_context(self) -> None:
@@ -360,7 +483,7 @@ class TestAgnoEntrypointExecution:
         functions[0].entrypoint(query="test")
 
         matimo_mock.execute.assert_awaited_once_with(
-            "send", {"query": "test"}, credentials=None, context=ctx
+            "send", {"query": "test"}, credentials=None, context=ctx, approved=False
         )
 
     def test_entrypoint_drops_agno_injected_params(self) -> None:
@@ -372,7 +495,7 @@ class TestAgnoEntrypointExecution:
         functions[0].entrypoint(query="hi", agent=object(), run_context=object())
 
         matimo_mock.execute.assert_awaited_once_with(
-            "send", {"query": "hi"}, credentials=None, context=None
+            "send", {"query": "hi"}, credentials=None, context=None, approved=False
         )
 
     def test_entrypoint_propagates_policy_denial(self) -> None:
@@ -456,7 +579,7 @@ class TestMatimoToolsToolkit:
 
         assert result == {"ok": 1}
         matimo_mock.execute.assert_awaited_once_with(
-            "send", {"query": "hi"}, credentials=None, context=None
+            "send", {"query": "hi"}, credentials=None, context=None, approved=False
         )
 
     def test_default_toolkit_name(self) -> None:

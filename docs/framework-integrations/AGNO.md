@@ -2,7 +2,7 @@
 
 Matimo integrates with **[Agno](https://docs.agno.com)** for agents, teams and workflows. Convert any Matimo tool to an Agno `Function`, or hand an agent a whole governed toolkit with one call.
 
-The difference from a plain tool list: Agno keeps deciding *which* tool to call, and Matimo keeps deciding *whether* it may run. A tool Matimo classifies as high or critical risk arrives in Agno with `requires_confirmation` already set, so the run pauses for a human without you writing any policy code.
+The difference from a plain tool list: Agno keeps deciding *which* tool to call, and Matimo keeps deciding *whether* it may run. A tool that Matimo would ask a human about arrives in Agno with `requires_confirmation` already set, so the run pauses for a human without you writing any policy code, and the human's answer is the approval: Matimo does not ask again.
 
 - [Installation](#installation)
 - [Basic Setup](#basic-setup)
@@ -81,16 +81,21 @@ asyncio.run(setup())
 
 ## Risk to Confirmation Mapping
 
-Matimo classifies every tool from its YAML definition. The connector maps that classification onto Agno's human-in-the-loop flag:
+A tool arrives in Agno with `requires_confirmation=True` when either of these holds:
 
-| Matimo risk | How it is reached | Agno behavior |
+1. **Its definition needs approval on every call:** it declares `requires_approval: true`, or it is an HTTP `DELETE` or `type: command` tool without `requires_approval: false` (the 0.2.0 default in `secure` governance mode; `legacy` mode has no such default).
+2. **Its execution risk is in `confirm_risk_levels`** (default `high` and `critical`), as computed by `classify_execution_risk()`:
+
+| Execution risk | How it is reached | Agno behavior by default |
 |---|---|---|
-| `low` | HTTP GET, read-only | Runs immediately |
-| `medium` | HTTP POST, PUT, PATCH | Runs immediately by default |
-| `high` | HTTP DELETE, `requires_approval: true`, `type: command` | `requires_confirmation=True`, run pauses |
-| `critical` | `type: function`, arbitrary code | `requires_confirmation=True`, run pauses |
+| `low` | HTTP GET, or a function tool declaring `risk: low` | Runs immediately |
+| `medium` | HTTP POST, PUT, PATCH, or a function tool declaring `risk: medium` | Runs immediately |
+| `high` | HTTP DELETE, an HTTP tool with `requires_approval: true`, `type: command`, a function tool declaring `risk: high` or no `risk:`, or a function tool with `requires_approval: true` | `requires_confirmation=True`, run pauses |
+| `critical` | A tool declaring `risk: critical` | `requires_confirmation=True`, run pauses |
 
-A tool's self-declared `risk:` can only raise the computed level, never lower it, so a `type: function` tool declaring `risk: low` still pauses.
+A declared `risk:` can only raise the level computed for HTTP and command tools, never lower it. For a `type: function` tool the declared risk is the execution risk, because every function tool in the registry is developer-authored.
+
+A call the human confirms in Agno reaches `Matimo.execute()` with `approved=True`, so Matimo's own approval prompt is skipped. The policy engine and HITL quarantine still run. A call that pauses nothing in Agno but still needs Matimo's approval (for example a `postgres-execute-sql` call whose SQL contains `DELETE`) goes to the `on_approval` callback passed to `Matimo.init()`; with no callback it is rejected.
 
 Change the set with `confirm_risk_levels`:
 
@@ -98,7 +103,7 @@ Change the set with `confirm_risk_levels`:
 # Also pause on writes
 MatimoTools(matimo, tools, confirm_risk_levels=["medium", "high", "critical"])
 
-# Never pause in Agno; rely on Matimo's own HITL callback instead
+# Never pause in Agno; every approval goes to Matimo's on_approval callback instead
 MatimoTools(matimo, tools, confirm_risk_levels=[])
 ```
 
@@ -140,7 +145,7 @@ asyncio.run(run("What is the latest quote for AAPL?"))
 
 ## Confirmation Flow
 
-When the model calls a high or critical risk tool, the run pauses instead of executing. Resolve the requirement, then continue:
+When the model calls a tool that needs confirmation, the run pauses instead of executing. Resolve the requirement, then continue:
 
 ```python
 result = await agent.arun("Buy 5 shares of AAPL")
@@ -160,7 +165,7 @@ if result.is_paused:
 print(result.content)
 ```
 
-A rejected requirement means the tool never executes, and Matimo never sees the call.
+A rejected requirement means the tool never executes, and Matimo never sees the call. A confirmed one runs as approved, so the human is asked once.
 
 ---
 
@@ -189,7 +194,7 @@ MatimoTools(
 | `tools` | `list[ToolDefinition] \| None` | Tools to expose. Defaults to `matimo.list_tools()` |
 | `credentials` | `dict[str, str] \| None` | Per-call credential overrides, keyed by the placeholder names the YAML references (for example `SLACK_BOT_TOKEN`), not by tool parameter name |
 | `context` | `PolicyContext \| None` | Agent id, environment and roles, forwarded to the policy engine on every call |
-| `confirm_risk_levels` | `Sequence[RiskLevel \| str] \| None` | Risk levels that pause the run. Defaults to `("high", "critical")` |
+| `confirm_risk_levels` | `Sequence[RiskLevel \| str] \| None` | Execution risk levels that pause the run, on top of tools whose definition needs approval on every call. Defaults to `("high", "critical")`; empty disables Agno-side confirmation |
 | `name` | `str` | Toolkit name shown in Agno logs |
 | `instructions` | `str \| None` | Usage guidance added to the agent's context |
 | `add_instructions` | `bool` | Whether to add `instructions` to the agent context |
@@ -350,13 +355,16 @@ See [MCP Server](../MCP.md) for transports and client configuration.
 
 **`ImportError: agno is required for the Agno integration`:** install the extra with `pip install "matimo[agno]"`.
 
-**The run never pauses on a destructive tool:** check the tool's computed risk. Only `high` and `critical` pause by default, and HTTP POST classifies as `medium`. Either declare `risk: high` in the YAML or pass `confirm_risk_levels=["medium", "high", "critical"]`.
+**The run never pauses on a destructive tool:** check the tool's execution risk and whether its definition needs approval. Only `high` and `critical` pause by default, and HTTP POST classifies as `medium`. Declare `requires_approval: true` or `risk: high` in the YAML, or pass `confirm_risk_levels=["medium", "high", "critical"]`.
 
 ```python
-from matimo.policy.risk_classifier import classify_risk
+from matimo import classify_execution_risk, definition_requires_approval
 
-print(classify_risk(matimo.get_tool("my_tool")).value)
+tool = matimo.get_tool("my_tool")
+print(classify_execution_risk(tool).value, definition_requires_approval(tool))
 ```
+
+**`Destructive operation requires approval` after the run was not paused:** the call needed Matimo's approval for a reason Agno could not see in advance, such as a destructive keyword in its SQL or command. Pass `on_approval=` to `Matimo.init()`, or pre-approve the tool with `MATIMO_APPROVED_PATTERNS`.
 
 **The model says a tool takes no arguments:** do not register Matimo tools through Agno's `async_tools=[(callable, name)]` parameter. Agno derives a schema from the callable's signature, and these entrypoints take `**kwargs`, which yields an empty parameter list. `MatimoTools` handles this correctly.
 

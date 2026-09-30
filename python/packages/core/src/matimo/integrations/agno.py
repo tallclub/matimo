@@ -13,10 +13,14 @@ Mirrors the LangChain and CrewAI integrations, adapted to Agno's `Function` and
 
 Every call still routes through ``Matimo.execute()``, so the policy engine, HITL
 quarantine and audit events apply exactly as they do everywhere else. On top of
-that, a tool's Matimo risk level is mapped onto Agno's own human-in-the-loop
-flag: ``high`` and ``critical`` tools arrive with ``requires_confirmation=True``,
-so an Agno run pauses for approval on a destructive call without the caller
-writing any policy code.
+that, Matimo's per-call approval is mapped onto Agno's own human-in-the-loop
+flag: a tool arrives with ``requires_confirmation=True`` when its definition
+needs approval on every call (``requires_approval``, or an HTTP DELETE or
+command tool in secure mode) or its execution risk is ``high`` or ``critical``.
+The Agno run pauses for the human, and a call they confirm reaches Matimo as
+already approved, so they are not asked twice. A call Agno does not confirm
+(for example one whose SQL contains a destructive keyword) is still decided by
+Matimo's ``on_approval`` callback.
 
 Lazy-imports agno to avoid a hard dependency.
 Install with: pip install matimo[agno]
@@ -26,9 +30,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from matimo.approval.handler import definition_requires_approval
 from matimo.integrations._async_bridge import run_coroutine_sync
 from matimo.integrations._pydantic_utils import is_secret_parameter
-from matimo.policy.risk_classifier import classify_risk
+from matimo.policy.risk_classifier import classify_execution_risk
 from matimo.policy.types import RiskLevel
 
 if TYPE_CHECKING:
@@ -148,6 +153,7 @@ def _make_sync_entrypoint(
     matimo: Matimo,
     credentials: dict[str, str] | None,
     context: PolicyContext | None,
+    approved: bool,
 ) -> Any:  # noqa: ANN401 (tool args and results are arbitrary JSON)
     """
     Build the sync entrypoint Agno uses for `agent.run()` / `print_response()`.
@@ -158,6 +164,10 @@ def _make_sync_entrypoint(
 
     `MatimoError` from a policy denial propagates unchanged, matching how the
     LangChain (Python) and CrewAI integrations behave.
+
+    `approved` is True for a tool built with `requires_confirmation=True`: Agno
+    only calls it after the human confirmed the paused call, so Matimo skips its
+    own approval prompt. Policy checks and HITL quarantine still run.
     """
     tool_name = tool.name
 
@@ -168,6 +178,7 @@ def _make_sync_entrypoint(
                 _strip_reserved(kwargs),
                 credentials=credentials,
                 context=context,
+                approved=approved,
             )
         )
 
@@ -181,6 +192,7 @@ def _make_async_entrypoint(
     matimo: Matimo,
     credentials: dict[str, str] | None,
     context: PolicyContext | None,
+    approved: bool,
 ) -> Any:  # noqa: ANN401 (see _make_sync_entrypoint)
     """
     Build the async entrypoint Agno uses for `agent.arun()` / `aprint_response()`.
@@ -195,17 +207,36 @@ def _make_async_entrypoint(
             _strip_reserved(kwargs),
             credentials=credentials,
             context=context,
+            approved=approved,
         )
 
     acall.__name__ = f"a{tool_name}"
     return acall
 
 
+def _needs_confirmation(
+    tool: ToolDefinition, matimo: Matimo, confirm_levels: frozenset[RiskLevel]
+) -> bool:
+    """
+    Whether Agno should pause for the human before this tool runs.
+
+    With Agno-side confirmation on (a non-empty `confirm_levels`), that is every
+    tool Matimo's definition makes ask on every call, plus every tool whose
+    execution risk is in `confirm_levels`. An empty set turns it off, leaving
+    each call to Matimo's own `on_approval` callback.
+    """
+    if not confirm_levels:
+        return False
+    if definition_requires_approval(tool, matimo.get_governance_mode()):
+        return True
+    return classify_execution_risk(tool) in confirm_levels
+
+
 def _build_function(
     function_cls: Any,  # noqa: ANN401 (agno's Function, an optional dependency)
     tool: ToolDefinition,
     entrypoint: Any,  # noqa: ANN401 (a closure over matimo.execute)
-    confirm_levels: frozenset[RiskLevel],
+    requires_confirmation: bool,
 ) -> Any:  # noqa: ANN401 (returns agno's Function)
     """
     Wrap one Matimo tool as an Agno `Function`.
@@ -219,7 +250,7 @@ def _build_function(
         description=tool.description,
         parameters=_build_parameters_schema(tool),
         entrypoint=entrypoint,
-        requires_confirmation=classify_risk(tool) in confirm_levels,
+        requires_confirmation=requires_confirmation,
     )
 
 
@@ -242,10 +273,12 @@ def convert_tools_to_agno(
                              `SLACK_BOT_TOKEN`), not by tool parameter name.
         context:             Optional `PolicyContext` (agent id, environment, roles)
                              forwarded to the policy engine on every call.
-        confirm_risk_levels: Risk levels that get `requires_confirmation=True`.
+        confirm_risk_levels: Execution risk levels that get
+                             `requires_confirmation=True`, on top of every tool
+                             whose definition needs approval on each call.
                              Defaults to `("high", "critical")`. Pass an empty
                              sequence to disable Agno-side confirmation entirely
-                             and rely on Matimo's own HITL callback instead.
+                             and let Matimo's `on_approval` callback decide.
 
     Returns:
         A list of Agno `Function` objects, ready for `Agent(tools=[...])`.
@@ -256,15 +289,18 @@ def convert_tools_to_agno(
     function_cls = _import_agno_function()
     confirm_levels = _resolve_confirm_levels(confirm_risk_levels)
 
-    return [
-        _build_function(
-            function_cls,
-            tool,
-            _make_sync_entrypoint(tool, matimo, credentials, context),
-            confirm_levels,
+    functions: list[Any] = []
+    for tool in tools:
+        confirm = _needs_confirmation(tool, matimo, confirm_levels)
+        functions.append(
+            _build_function(
+                function_cls,
+                tool,
+                _make_sync_entrypoint(tool, matimo, credentials, context, confirm),
+                confirm,
+            )
         )
-        for tool in tools
-    ]
+    return functions
 
 
 def MatimoTools(  # noqa: N802 (matches Agno's <Name>Tools toolkit convention)
@@ -309,8 +345,10 @@ def MatimoTools(  # noqa: N802 (matches Agno's <Name>Tools toolkit convention)
         credentials:         Optional per-call credential overrides, keyed by the
                              placeholder names the YAML references.
         context:             Optional `PolicyContext` forwarded on every call.
-        confirm_risk_levels: Risk levels that pause the run for confirmation.
-                             Defaults to `("high", "critical")`.
+        confirm_risk_levels: Execution risk levels that pause the run for
+                             confirmation, on top of every tool whose definition
+                             needs approval on each call. Defaults to
+                             `("high", "critical")`; empty disables it.
         name:                Toolkit name shown in Agno logs.
         instructions:        Optional usage guidance added to the agent's context.
                              A natural source is Matimo's skills layer, e.g.
@@ -342,20 +380,21 @@ def MatimoTools(  # noqa: N802 (matches Agno's <Name>Tools toolkit convention)
     # parameter list. The model would then be told the tool takes no arguments.
     functions: list[Any] = []
     for tool in tool_defs:
+        confirm = _needs_confirmation(tool, matimo, confirm_levels)
         functions.append(
             _build_function(
                 function_cls,
                 tool,
-                _make_sync_entrypoint(tool, matimo, credentials, context),
-                confirm_levels,
+                _make_sync_entrypoint(tool, matimo, credentials, context, confirm),
+                confirm,
             )
         )
         functions.append(
             _build_function(
                 function_cls,
                 tool,
-                _make_async_entrypoint(tool, matimo, credentials, context),
-                confirm_levels,
+                _make_async_entrypoint(tool, matimo, credentials, context, confirm),
+                confirm,
             )
         )
 
