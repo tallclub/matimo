@@ -86,6 +86,10 @@ class TestRequiresApprovalFlag:
         with pytest.raises(MatimoError, match="requires approval: wipe") as exc:
             await matimo.execute("wipe", {})
         assert exc.value.code == ErrorCode.EXECUTION_FAILED
+        # The hint points at a human reviewer, never at switching approval off
+        hint = str((exc.value.details or {}).get("hint"))
+        assert "on_approval" in hint
+        assert "MATIMO_AUTO_APPROVE" not in hint
         assert [e["type"] for e in events] == ["tool:approval_denied"]
         matimo._dispatch.assert_not_awaited()  # type: ignore[attr-defined]
 
@@ -254,3 +258,29 @@ class TestPerInstanceApprovalCallback:
         with pytest.raises(MatimoError, match="rejected by approval handler: guarded"):
             await matimo.execute("guarded", {})
         on_approval.assert_awaited_once()
+
+
+class TestAutoApproveWarning:
+    def _build(self, handler: ApprovalHandler) -> MagicMock:
+        logger = MagicMock()
+        Matimo(
+            registry=ToolRegistry(),
+            policy_engine=DefaultPolicyEngine(),
+            loader=MagicMock(),
+            tool_paths=[],
+            on_event=None,
+            on_hitl=None,
+            matimo_logger=logger,
+            approval_handler=handler,
+        )
+        return logger
+
+    def test_warns_while_auto_approve_is_active(self) -> None:
+        handler = _handler()
+        handler.auto_approve = True
+        logger = self._build(handler)
+        assert any("MATIMO_AUTO_APPROVE=true" in str(c.args[0]) for c in logger.warn.call_args_list)
+
+    def test_stays_quiet_otherwise(self) -> None:
+        logger = self._build(_handler())
+        logger.warn.assert_not_called()

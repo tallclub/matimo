@@ -73,6 +73,10 @@ export interface ReloadResult {
 /**
  * Options for MatimoInstance initialization
  */
+const AUTO_APPROVE_WARNING =
+  'MATIMO_AUTO_APPROVE=true: every tool call that needs approval (requires_approval, ' +
+  'destructive SQL/commands) is approved without a human seeing it. Use only in CI or tests.';
+
 export interface InitOptions extends LoggerConfig {
   toolPaths?: string[];
   /** Skill paths for discovering SKILL.md files (Level 1 discovery) */
@@ -206,6 +210,9 @@ export class MatimoInstance {
     this.httpExecutor = new HttpExecutor();
     this.functionExecutor = new FunctionExecutor(toolPaths[0] || '');
     this.approvalHandler = getGlobalApprovalHandler();
+    if (this.approvalHandler.isAutoApproveEnabled()) {
+      this.logger.warn(AUTO_APPROVE_WARNING);
+    }
 
     // Policy engine setup — always present; static init() defaults to a
     // DefaultPolicyEngine() when the caller supplies no policy option.

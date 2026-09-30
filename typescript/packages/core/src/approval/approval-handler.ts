@@ -179,6 +179,11 @@ export class ApprovalHandler {
     return false;
   }
 
+  /** True when MATIMO_AUTO_APPROVE=true: every approval request is granted unseen. */
+  isAutoApproveEnabled(): boolean {
+    return this.autoApprove;
+  }
+
   /**
    * Check if operation is pre-approved via env vars
    */
@@ -215,7 +220,7 @@ export class ApprovalHandler {
         ErrorCode.EXECUTION_FAILED,
         {
           toolName: request.toolName,
-          hint: 'Set MATIMO_AUTO_APPROVE=true or MATIMO_APPROVED_PATTERNS or install approval callback',
+          hint: 'Pass onApproval to MatimoInstance.init() (or matimo.setApprovalCallback()) to have a human decide, or pre-approve trusted tools with MATIMO_APPROVED_PATTERNS',
         }
       );
     }

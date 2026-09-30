@@ -142,6 +142,13 @@ describe('ApprovalHandler', () => {
       expect(result).toBe(true);
     });
 
+    it('reports whether MATIMO_AUTO_APPROVE is enabled', () => {
+      process.env.MATIMO_AUTO_APPROVE = 'true';
+      expect(new ApprovalHandler().isAutoApproveEnabled()).toBe(true);
+      process.env.MATIMO_AUTO_APPROVE = 'false';
+      expect(new ApprovalHandler().isAutoApproveEnabled()).toBe(false);
+    });
+
     it('should return false when MATIMO_AUTO_APPROVE is false', () => {
       process.env.MATIMO_AUTO_APPROVE = 'false';
       const freshHandler = new ApprovalHandler();
@@ -273,7 +280,9 @@ describe('ApprovalHandler', () => {
         expect(error).toBeInstanceOf(MatimoError);
         const matimoError = error as MatimoError;
         expect(matimoError.code).toBe(ErrorCode.EXECUTION_FAILED);
-        expect(String(matimoError.details?.hint)).toContain('MATIMO_AUTO_APPROVE');
+        // Points at a human reviewer, never at switching approval off
+        expect(String(matimoError.details?.hint)).toContain('onApproval');
+        expect(String(matimoError.details?.hint)).not.toContain('MATIMO_AUTO_APPROVE');
       }
     });
   });

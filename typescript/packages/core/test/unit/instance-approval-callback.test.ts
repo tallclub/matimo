@@ -106,4 +106,43 @@ describe('MatimoInstance per-instance approval callback', () => {
       /requires approval: guarded-echo/
     );
   });
+
+  describe('MATIMO_AUTO_APPROVE warning', () => {
+    const capture = () => {
+      const warnings: string[] = [];
+      const logger = {
+        info: () => {},
+        debug: () => {},
+        error: () => {},
+        warn: (message: string) => warnings.push(message),
+      };
+      return { warnings, logger };
+    };
+
+    it('warns on init while auto-approve is active', async () => {
+      const spy = jest
+        .spyOn(getGlobalApprovalHandler(), 'isAutoApproveEnabled')
+        .mockReturnValue(true);
+      const { warnings, logger } = capture();
+      try {
+        await MatimoInstance.init({ toolPaths: [toolDir], logger });
+      } finally {
+        spy.mockRestore();
+      }
+      expect(warnings.some((w) => w.includes('MATIMO_AUTO_APPROVE=true'))).toBe(true);
+    });
+
+    it('stays quiet otherwise', async () => {
+      const spy = jest
+        .spyOn(getGlobalApprovalHandler(), 'isAutoApproveEnabled')
+        .mockReturnValue(false);
+      const { warnings, logger } = capture();
+      try {
+        await MatimoInstance.init({ toolPaths: [toolDir], logger });
+      } finally {
+        spy.mockRestore();
+      }
+      expect(warnings.some((w) => w.includes('MATIMO_AUTO_APPROVE'))).toBe(false);
+    });
+  });
 });

@@ -121,6 +121,12 @@ class InitOptions:
     ./matimo-tools/skills."""
 
 
+_AUTO_APPROVE_WARNING = (
+    "MATIMO_AUTO_APPROVE=true: every tool call that needs approval (requires_approval, "
+    "destructive SQL/commands) is approved without a human seeing it. Use only in CI or tests."
+)
+
+
 class Matimo:
     """
     Main entry point for the Matimo Python SDK.
@@ -172,6 +178,8 @@ class Matimo:
             approval_handler or get_global_approval_handler()
         )
         self._on_approval = on_approval
+        if self._approval_handler.auto_approve:
+            self._logger.warn(_AUTO_APPROVE_WARNING)
 
     # ------------------------------------------------------------------
     # Factory
@@ -894,8 +902,9 @@ class Matimo:
                 ErrorCode.EXECUTION_FAILED,
                 {
                     "tool_name": tool.name,
-                    "hint": "Set MATIMO_AUTO_APPROVE=true or MATIMO_APPROVED_PATTERNS "
-                    "or install approval callback",
+                    "hint": "Pass on_approval to Matimo.init() (or matimo.set_approval_callback()) "
+                    "to have a human decide, or pre-approve trusted tools with "
+                    "MATIMO_APPROVED_PATTERNS",
                 },
             )
         elif not await handler.request_approval(
