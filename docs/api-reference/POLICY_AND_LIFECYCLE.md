@@ -53,6 +53,7 @@
 - [LangChain Agent Integration](#langchain-agent-integration)
 - [API Reference](#api-reference)
 - [Examples](#examples)
+- [Upgrading to 0.2.0](#upgrading-to-020)
 
 ---
 
@@ -1446,6 +1447,71 @@ result = await matimo.execute('my_tool', {'query': 'hello'})
 
 > See [`python/examples/native/policy/policy_demo.py`](../../python/examples/native/policy/policy_demo.py) for a complete 11-mission Python policy demo.
 > Run with: `cd python && make policy-demo`
+
+## Upgrading to 0.2.0
+
+0.2.0 (TypeScript and Python) makes the governance described in this guide the default. Most
+of the changes fix places where a tool call wasn't governed the way these docs said. Those
+fixes apply to everyone. One new default, approval for DELETE and shell tools, can be switched
+off with `governanceMode: 'legacy'`.
+
+### Quick path
+
+1. Upgrade, then run your test suite or agent once.
+2. If a DELETE or command tool now fails with `requires approval`, decide per tool:
+   - Wire a reviewer: `onApproval` / `on_approval` at init (see [Approval System](#approval-system)).
+   - Pre-approve it: `MATIMO_APPROVED_PATTERNS=my_delete_tool`.
+   - Opt the tool out in its YAML: `requires_approval: false`.
+   - Or restore the old default everywhere: `governanceMode: 'legacy'` in `InitOptions` or
+     `policy.yaml` (`governance_mode="legacy"` in Python).
+3. If you run `validate-tools` on your own tools, add `requires_approval` to each DELETE tool and
+   `risk` to each function tool (see below).
+
+### New default: DELETE and command tools ask before every call
+
+A tool whose YAML doesn't set `requires_approval` now needs per-call approval when it is an HTTP
+`DELETE` or a `type: command` tool. An explicit `requires_approval` always wins. The destructive
+keyword scan of `command` / `sql` parameters is unchanged. `governanceMode: 'legacy'` restores
+the old default, and nothing else. Both SDKs assert the same table,
+[`conformance/approval/definition-requires-approval.json`](../../conformance/approval/definition-requires-approval.json).
+
+### Fixes that change behaviour (both modes)
+
+| Area | Before 0.2.0 | 0.2.0 |
+|---|---|---|
+| HITL quarantine at execution | Quarantined a tool only when its risk was *listed* in `quarantineRiskLevels`, so with the default `['medium']` a high-risk DELETE ran unquarantined | Quarantines every tool whose risk is **at or above** `hitlMinRiskLevel` (default: least severe entry of `quarantineRiskLevels`) |
+| Function tool risk at execution | Always `critical` | The tool's declared `risk:`, or `high` if it declares none. `requires_approval: true` raises it to at least `high` |
+| HITL approvals for tools loaded at init | TypeScript wrote the approval but never read it back. Python never used the manifest. Either way the reviewer was asked again on every call | Read from and recorded in the signed approval manifest, in both SDKs |
+| Python `requires_approval` | Ignored; only HITL quarantine ran | Enforced per call, as in TypeScript |
+| Python `execute(..., approved=True)` | Skipped policy denials too | Skips only the approval prompt; policy denials still apply |
+| Approval callback scope | One process-wide callback | Per call (`execute(..., { onApproval })`), then per instance (`InitOptions.onApproval`), then the global handler. With none, the call fails closed |
+| MCP approval | The error told the model to retry with `_matimo_approved: true`, and the server trusted it | The server asks the human through MCP elicitation. `_matimo_approved` is offered and honoured only with `trustClientApproval` / `trust_client_approval` |
+| MCP HTTP bearer check | String comparison | Constant-time comparison |
+| `matimo_approve_tool` | Any caller could approve any tool, including one it had just created; `MATIMO_AUTO_APPROVE` and patterns applied | Refuses when the caller's `agentId` created the tool. Requires the `admin` role when a policy context is supplied. Never pre-approved |
+| `MATIMO_AUTO_APPROVE=true` | Silent, and recommended in the approval error hint | Logs a warning at init. The hint recommends `onApproval` or `MATIMO_APPROVED_PATTERNS` |
+
+### Events
+
+- TypeScript now emits `tool:executed` (it never did before) and the new `tool:execution_failed`.
+- Python renamed `duration` (seconds) to `duration_ms` (milliseconds). `trace_id` is a full UUID,
+  no longer 8 characters. Python also emits the new `tool:execution_failed`.
+- The fields are the same in both SDKs; see [Execution Events](#execution-events).
+
+### Tool authoring (validators)
+
+`pnpm validate-tools` and `make validate-tools` now reject:
+
+- An HTTP `DELETE` tool without an explicit `requires_approval` (set `true`, or `false` to opt out).
+- A `type: function` tool without a `risk:` level.
+
+### New, additive
+
+- `auditSink` / `audit_sink` with `JsonlFileSink`, a hash-chained audit log ([Audit Sink](#audit-sink)).
+- `governanceMode` / `governance_mode` and `getGovernanceMode()` / `get_governance_mode()`.
+- `hitlMinRiskLevel` / `hitl_min_risk_level` in `PolicyConfig` and `policy.yaml`.
+- Function tools receive the caller's policy context: `(params, { credentials, policyContext })`
+  in TypeScript, `run(params, context)` in Python.
+- The MCP server's `context` option sets the policy context for every MCP call.
 
 ---
 
