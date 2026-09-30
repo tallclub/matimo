@@ -55,6 +55,7 @@ from matimo.integrations.langchain import build_relevant_skill_prompt
 from matimo.logging import MatimoLogger, setup_logger
 from matimo.policy.approval_manifest import ApprovalManifest
 from matimo.policy.default_policy import DefaultPolicyEngine, PolicyEngine
+from matimo.policy.risk_classifier import classify_execution_risk
 from matimo.policy.types import (
     HITLCallback,
     MatimoEventHandler,
@@ -364,8 +365,7 @@ class Matimo:
             MatimoError(POLICY_DENIED)     if the policy engine blocks execution.
             MatimoError(EXECUTION_FAILED)  on runtime errors.
         """
-        trace_id = str(uuid.uuid4())[:8]
-        start = time.monotonic()
+        trace_id = str(uuid.uuid4())
 
         tool = self._registry.get_or_raise(tool_name)
 
@@ -402,6 +402,28 @@ class Matimo:
             tool, params, context, skip_prompt=approved, on_approval=on_approval
         )
 
+        # Every gate (policy, quarantine, approval) has passed: from here on
+        # this is the tool's own run, ending in tool:executed or
+        # tool:execution_failed. Gate refusals have their own events.
+        run_started = time.monotonic()
+        try:
+            result = await self._run_tool(tool, params, credentials, context, trace_id)
+        except Exception as exc:
+            self._emit_run_outcome(tool, context, trace_id, run_started, error=exc)
+            raise
+        self._emit_run_outcome(tool, context, trace_id, run_started, result=result)
+        return result
+
+    async def _run_tool(
+        self,
+        tool: ToolDefinition,
+        params: dict[str, Any],
+        credentials: dict[str, str] | None,
+        context: PolicyContext | None,
+        trace_id: str,
+    ) -> Any:  # noqa: ANN401
+        """Run a tool that has passed every gate and cap the size of its result."""
+        tool_name = tool.name
         # Built-in interception: matimo_reload_tools must run on the instance
         # itself because reload() clears/rebuilds the in-memory registry.
         # The function executor has no reference to the Matimo instance, so we
@@ -450,17 +472,44 @@ class Matimo:
             tool, raw_result, self._default_max_response_size
         )
 
-        duration = time.monotonic() - start
-        self._emit_event({
-            "type": "tool:executed",
-            "tool_name": tool_name,
-            "agent_id": context.agent_id if context else None,
-            "duration": duration,
-            "success": True,
+        return result
+
+    def _emit_run_outcome(
+        self,
+        tool: ToolDefinition,
+        context: PolicyContext | None,
+        trace_id: str,
+        started: float,
+        *,
+        result: Any = None,  # noqa: ANN401
+        error: BaseException | None = None,
+    ) -> None:
+        """
+        Emit how a tool's own run ended: tool:executed when it returned
+        (success False if it returned {"success": False}), or
+        tool:execution_failed when it raised. Fields follow
+        conformance/events/execution-events.json, shared with the TS SDK.
+        """
+        event: dict[str, Any] = {"tool_name": tool.name}
+        if context is not None and context.agent_id is not None:
+            event["agent_id"] = context.agent_id
+        event.update({
+            "trace_id": trace_id,
+            "duration_ms": round((time.monotonic() - started) * 1000),
+            "risk_level": classify_execution_risk(tool).value,
             "timestamp": _now(),
         })
-
-        return result
+        if error is not None:
+            code = error.code if isinstance(error, MatimoError) else ErrorCode.UNKNOWN_ERROR
+            self._emit_event({
+                "type": "tool:execution_failed",
+                **event,
+                "error_code": code.value,
+                "error": str(error),
+            })
+            return
+        reported_failure = isinstance(result, dict) and result.get("success") is False
+        self._emit_event({"type": "tool:executed", **event, "success": not reported_failure})
 
     # ------------------------------------------------------------------
     # Tool discovery API

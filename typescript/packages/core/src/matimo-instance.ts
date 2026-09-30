@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { ToolLoader } from './core/tool-loader.js';
@@ -33,6 +34,7 @@ import {
 import type { ExecuteOptions } from './core/types.js';
 import type { PolicyEngine, PolicyContext, PolicyConfig, HITLCallback } from './policy/types.js';
 import { DefaultPolicyEngine } from './policy/default-policy.js';
+import { classifyExecutionRisk } from './policy/risk-classifier.js';
 import { loadPolicyFromFile } from './policy/policy-loader.js';
 import { ToolIntegrityTracker } from './policy/integrity-tracker.js';
 import { ApprovalManifest } from './policy/approval-manifest.js';
@@ -455,6 +457,11 @@ export class MatimoInstance {
       paramCount: Object.keys(params).length,
     });
 
+    // Set once every gate (policy, quarantine, approval) has passed: from then
+    // on the call is the tool's own run and ends in tool:executed or
+    // tool:execution_failed. Gate refusals have their own events.
+    let run: { traceId: string; startedAt: number } | undefined;
+
     try {
       // Policy check: enforce RBAC and tool status before any execution
       const policyContext: PolicyContext = options?.context ?? {};
@@ -562,6 +569,7 @@ export class MatimoInstance {
         this.logger.info(`Destructive operation approved: ${toolName}`, { toolName });
       }
 
+      run = { traceId: randomUUID(), startedAt: Date.now() };
       const credentials = options?.credentials;
       const timeoutOverride = options?.timeout;
 
@@ -587,7 +595,7 @@ export class MatimoInstance {
           removed: reloadResult.removed,
           rejected: reloadResult.rejected.length,
         });
-        return {
+        const reloadSummary = {
           success: true,
           loaded: reloadResult.loaded,
           removed: reloadResult.removed,
@@ -595,6 +603,8 @@ export class MatimoInstance {
           rejected: reloadResult.rejected,
           message: `Reload complete. ${reloadResult.loaded} tools loaded, ${reloadResult.removed} removed, ${reloadResult.rejected.length} rejected.`,
         };
+        this.#emitRunOutcome(tool, options?.context, run, { result: reloadSummary });
+        return reloadSummary;
       }
 
       const effectiveTool =
@@ -630,14 +640,56 @@ export class MatimoInstance {
         hasResult: !!result,
       });
 
+      this.#emitRunOutcome(tool, options?.context, run, { result });
       return result;
     } catch (error) {
       this.logger.error(`Tool execution failed: ${toolName}`, {
         toolName,
         error: error instanceof Error ? error.message : String(error),
       });
+      if (run) {
+        this.#emitRunOutcome(tool, options?.context, run, { error });
+      }
       throw error;
     }
+  }
+
+  /**
+   * Emit how a tool's own run ended: `tool:executed` when it returned
+   * (`success: false` if it returned `{ success: false }`), or
+   * `tool:execution_failed` when it threw. Field names follow
+   * conformance/events/execution-events.json, shared with the Python SDK.
+   */
+  #emitRunOutcome(
+    tool: ToolDefinition,
+    context: PolicyContext | undefined,
+    run: { traceId: string; startedAt: number },
+    outcome: { result: unknown } | { error: unknown }
+  ): void {
+    const common = {
+      toolName: tool.name,
+      ...(context?.agentId !== undefined ? { agentId: context.agentId } : {}),
+      traceId: run.traceId,
+      durationMs: Date.now() - run.startedAt,
+      riskLevel: classifyExecutionRisk(tool),
+      timestamp: new Date().toISOString(),
+    };
+    if ('error' in outcome) {
+      const { error } = outcome;
+      this.#emitEvent({
+        type: 'tool:execution_failed',
+        ...common,
+        errorCode: error instanceof MatimoError ? error.code : ErrorCode.UNKNOWN_ERROR,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return;
+    }
+    const { result } = outcome;
+    const reportedFailure =
+      typeof result === 'object' &&
+      result !== null &&
+      (result as { success?: unknown }).success === false;
+    this.#emitEvent({ type: 'tool:executed', ...common, success: !reportedFailure });
   }
 
   /**

@@ -130,11 +130,29 @@ class ToolRevokedEvent(BaseModel):
 
 
 class ToolExecutedEvent(BaseModel):
+    """A tool ran to completion. ``success`` is False when it returned {"success": False}."""
+
     type: Literal["tool:executed"] = "tool:executed"
     tool_name: str
     agent_id: str | None = None
-    duration: float
+    trace_id: str
+    duration_ms: int  # time in the tool itself, after every gate passed
     success: bool
+    risk_level: RiskLevel
+    timestamp: str
+
+
+class ToolExecutionFailedEvent(BaseModel):
+    """A tool that passed every gate raised instead of returning."""
+
+    type: Literal["tool:execution_failed"] = "tool:execution_failed"
+    tool_name: str
+    agent_id: str | None = None
+    trace_id: str
+    duration_ms: int
+    risk_level: RiskLevel
+    error_code: str
+    error: str
     timestamp: str
 
 
@@ -194,6 +212,7 @@ MatimoEvent = (
     | ToolRejectedEvent
     | ToolRevokedEvent
     | ToolExecutedEvent
+    | ToolExecutionFailedEvent
     | ToolExecutionDeniedEvent
     | ToolQuarantinedEvent
     | ToolQuarantineApprovedEvent

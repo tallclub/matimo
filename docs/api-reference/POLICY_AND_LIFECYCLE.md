@@ -457,6 +457,24 @@ policyFile: process.env.POLICY_FILE || './policy.yaml'
 > **Tip:** You can also pass a custom `PolicyEngine` implementation via the `policy` option instead of `policyConfig`.
 ```
 
+### Execution Events
+
+Every call that passes the gates (policy, quarantine, approval) ends in exactly
+one of two events. A call a gate refuses gets that gate's event instead
+(`tool:execution_denied`, `tool:quarantine_rejected`, `tool:approval_denied`).
+
+| Event | When | Fields |
+|---|---|---|
+| `tool:executed` | the tool returned | `toolName`, `agentId`?, `traceId`, `durationMs`, `success`, `riskLevel`, `timestamp` |
+| `tool:execution_failed` | the tool threw | `toolName`, `agentId`?, `traceId`, `durationMs`, `riskLevel`, `errorCode`, `error`, `timestamp` |
+
+- `success` is `false` when the tool returned `{ success: false }` rather than throwing.
+- `durationMs` is time in the tool itself; approval waits are not counted.
+- `riskLevel` is the execution risk (`classifyExecutionRisk`).
+- The Python SDK emits the same events as dicts with snake_case keys
+  (`tool_name`, `trace_id`, `duration_ms`, ...). Both SDKs are tested against
+  [`conformance/events/execution-events.json`](../../conformance/events/execution-events.json).
+
 ### Immutability
 
 After `MatimoInstance.init()`, the policy configuration is `Object.freeze()`'d:
@@ -1296,14 +1314,14 @@ matimo = await Matimo.init('./tools', InitOptions(
 ### Policy Events (Python)
 
 ```python
-def on_event(event) -> None:
-    print(f"[{event.type}] {event.tool_name}")
+def on_event(event: dict) -> None:
+    print(f"[{event['type']}] {event.get('tool_name')}")
 
-matimo = await Matimo.init('./tools', InitOptions(
-    policy_file='./policy.yaml',
-    on_event=on_event,
-))
+matimo = await Matimo.init('./tools', policy_file='./policy.yaml', on_event=on_event)
 ```
+
+Events are dicts with snake_case keys; see [Execution Events](#execution-events)
+for `tool:executed` / `tool:execution_failed`.
 
 ### Risk Classification (Python)
 
