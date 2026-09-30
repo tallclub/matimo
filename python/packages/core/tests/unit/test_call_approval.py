@@ -309,3 +309,26 @@ class TestApprovalRequiredByDefinition:
     async def test_explicit_false_opts_out(self) -> None:
         matimo = _matimo(_http_tool("wipe", "DELETE", requires_approval=False), handler=_handler())
         assert await matimo.execute("wipe", {}) == {"ok": True}
+
+
+class TestPerCallApprovalCallback:
+    """execute(on_approval=...) — mirrors ExecuteOptions.onApproval in TS."""
+
+    async def test_per_call_callback_wins(self) -> None:
+        instance_callback = AsyncMock(return_value=False)
+        per_call = AsyncMock(return_value=True)
+        matimo = _matimo(
+            _http_tool("wipe", requires_approval=True),
+            handler=_handler(False),
+            on_approval=instance_callback,
+        )
+        assert await matimo.execute("wipe", {}, on_approval=per_call) == {"ok": True}
+        per_call.assert_awaited_once()
+        instance_callback.assert_not_awaited()
+
+    async def test_execute_tool_passes_it_through(self) -> None:
+        per_call = AsyncMock(return_value=False)
+        matimo = _matimo(_http_tool("wipe", requires_approval=True), handler=_handler(True))
+        with pytest.raises(MatimoError, match="rejected"):
+            await matimo.execute_tool("wipe", {}, on_approval=per_call)
+        per_call.assert_awaited_once()

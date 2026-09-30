@@ -337,6 +337,7 @@ class Matimo:
         credentials: dict[str, str] | None = None,
         context: PolicyContext | None = None,
         approved: bool = False,
+        on_approval: ApprovalCallback | None = None,
     ) -> Any:  # noqa: ANN401
         """
         Execute a tool by name.
@@ -350,6 +351,10 @@ class Matimo:
             approved:    Skip the per-call approval prompt (use when a human already
                          confirmed this call out-of-band). Policy denials and HITL
                          quarantine still apply.
+            on_approval: Approval callback for this call only. Takes precedence
+                         over the instance's on_approval and the global approval
+                         handler's callback (e.g. the MCP server asks the human
+                         behind the current session).
 
         Returns:
             Tool execution result — arbitrary value (JSON, text, etc.).
@@ -393,7 +398,9 @@ class Matimo:
                     {"tool_name": tool_name},
                 )
 
-        await self._require_call_approval(tool, params, context, skip_prompt=approved)
+        await self._require_call_approval(
+            tool, params, context, skip_prompt=approved, on_approval=on_approval
+        )
 
         # Built-in interception: matimo_reload_tools must run on the instance
         # itself because reload() clears/rebuilds the in-memory registry.
@@ -590,6 +597,7 @@ class Matimo:
         credentials: dict[str, str] | None = None,
         context: PolicyContext | None = None,
         approved: bool = False,
+        on_approval: ApprovalCallback | None = None,
     ) -> Any:  # noqa: ANN401
         """
         Execute a tool (alias for execute() with simpler params).
@@ -610,6 +618,7 @@ class Matimo:
             credentials=credentials,
             context=context,
             approved=approved,
+            on_approval=on_approval,
         )
 
 
@@ -881,6 +890,7 @@ class Matimo:
         context: PolicyContext | None,
         *,
         skip_prompt: bool,
+        on_approval: ApprovalCallback | None = None,
     ) -> None:
         """
         Per-call approval for tools that declare `requires_approval` or whose
@@ -898,7 +908,7 @@ class Matimo:
             return
 
         agent_id = context.agent_id if context else None
-        callback = self._on_approval or handler.get_approval_callback()
+        callback = on_approval or self._on_approval or handler.get_approval_callback()
         if callback is None:
             error = MatimoError(
                 f"Destructive operation requires approval: {tool.name}",

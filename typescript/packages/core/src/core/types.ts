@@ -247,6 +247,13 @@ export interface ExecuteOptions {
    * Default: false
    */
   approved?: boolean;
+  /**
+   * Approval callback for this call only. Takes precedence over the
+   * instance's `onApproval` and the global approval handler's callback.
+   * Used where one instance serves many users, e.g. the MCP server asks the
+   * human behind the current MCP session.
+   */
+  onApproval?: import('../approval/approval-handler').ApprovalCallback;
 }
 
 /**

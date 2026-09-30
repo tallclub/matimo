@@ -78,6 +78,18 @@ describe('MatimoInstance per-instance approval callback', () => {
     expect(globalCallback).not.toHaveBeenCalled();
   });
 
+  it('lets a per-call onApproval override the instance callback', async () => {
+    const instanceCallback = jest.fn(async () => false);
+    const perCall = jest.fn(async () => true);
+    const matimo = await init(instanceCallback);
+
+    await expect(
+      matimo.execute('guarded-echo', { text: 'hi' }, { onApproval: perCall })
+    ).resolves.toBeDefined();
+    expect(perCall).toHaveBeenCalledTimes(1);
+    expect(instanceCallback).not.toHaveBeenCalled();
+  });
+
   it('keeps instances isolated from each other', async () => {
     const tenantA = jest.fn(async () => true);
     const tenantB = jest.fn(async () => false);

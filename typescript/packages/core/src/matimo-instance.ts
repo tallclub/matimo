@@ -539,7 +539,9 @@ export class MatimoInstance {
         try {
           await this.approvalHandler.requestApproval(
             { toolName, description: tool.description, params },
-            this.#approvalCallback ?? this.approvalHandler.getApprovalCallback()
+            options?.onApproval ??
+              this.#approvalCallback ??
+              this.approvalHandler.getApprovalCallback()
           );
         } catch (approvalError) {
           this.#emitEvent({
