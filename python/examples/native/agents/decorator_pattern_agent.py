@@ -44,18 +44,18 @@ class DecoratorPatternAgent:
         # Decorator intercepts → matimo.execute('calculator', {operation, a, b})
         ...
 
-    @tool("echo-tool")
-    async def echo(self, message: str) -> Any:
-        # Decorator intercepts → matimo.execute('echo-tool', {message})
+    @tool("web")
+    async def fetch(self, url: str, method: str) -> Any:
+        # Decorator intercepts → matimo.execute('web', {url, method})
         ...
 
-    @tool("http-client")
-    async def fetch(self, method: str, url: str) -> Any:
-        # Decorator intercepts → matimo.execute('http-client', {method, url})
+    @tool("matimo_search_tools")
+    async def find_tools(self, query: str, limit: int) -> Any:
+        # Decorator intercepts → matimo.execute('matimo_search_tools', {query, limit})
         ...
 
     def _get_tool_schemas(self) -> list[dict]:
-        """Build OpenAI function schemas from Matimo tool definitions."""
+        """Build OpenAI function schemas for the tools this agent has a method for."""
         return [
             {
                 "type": "function",
@@ -79,6 +79,7 @@ class DecoratorPatternAgent:
                 },
             }
             for t in self._matimo.list_tools()
+            if t.name in self._TOOL_METHOD_MAP
         ]
 
     async def process(self, prompt: str) -> None:
@@ -123,7 +124,8 @@ class DecoratorPatternAgent:
 
             if isinstance(content, str):
                 try:
-                    parsed = json.loads(content)
+                    # Models often wrap the JSON in a ```json fence; strip it before parsing.
+                    parsed = json.loads(re.sub(r"^```(?:json)?\s*|\s*```$", "", content.strip()))
                     tool_name = parsed.get("tool") or parsed.get("function", {}).get("name")
                     tool_params = parsed.get("parameters") or parsed.get("function", {}).get("parameters") or parsed
                 except json.JSONDecodeError:
@@ -148,8 +150,8 @@ class DecoratorPatternAgent:
     # Tool name → (method name, positional arg order)
     _TOOL_METHOD_MAP: dict[str, tuple[str, list[str]]] = {
         "calculator": ("calculate", ["operation", "a", "b"]),
-        "echo-tool": ("echo", ["message"]),
-        "http-client": ("fetch", ["method", "url"]),
+        "web": ("fetch", ["url", "method"]),
+        "matimo_search_tools": ("find_tools", ["query", "limit"]),
     }
 
     async def _execute_via_decorator(self, tool_name: str, params: dict[str, Any]) -> None:
@@ -173,8 +175,10 @@ class DecoratorPatternAgent:
             print(f"\n❌ Method '{method_name}' not found")
             return
 
-        # Pass params in the order the method signature expects
-        args = [params.get(k) for k in arg_order]
+        # Pass params in the order the method signature expects. @tool sends
+        # only the arguments passed, so fill the optional ones explicitly.
+        defaults = {"method": "GET", "limit": 5}
+        args = [params.get(k, defaults.get(k)) for k in arg_order]
 
         try:
             result = await method(*args)
@@ -185,9 +189,9 @@ class DecoratorPatternAgent:
                         print("\n✅ Result:", json.loads(result["stdout"]))
                     except (json.JSONDecodeError, TypeError):
                         print("\n✅ Result:", result["stdout"])
-                elif "data" in result:
-                    data_str = json.dumps(result["data"])[:200]
-                    print(f"\n✅ Result (HTTP {result.get('status_code', '?')}): {data_str}")
+                elif "content" in result:
+                    content_str = json.dumps(result["content"])[:200]
+                    print(f"\n✅ Result (HTTP {result.get('statusCode', '?')}): {content_str}")
                 else:
                     print("\n✅ Result:", result)
             else:
@@ -214,11 +218,8 @@ async def main() -> None:
     # Register global instance so @tool decorators can resolve it
     set_global_matimo_instance(matimo)
 
-    tools = matimo.list_tools()
-    print(f"📦 Loaded {len(tools)} tools:\n")
-    for t in tools:
-        print(f"  • {t.name}")
-        print(f"    {t.description}\n")
+    print(f"📦 Loaded {len(matimo.list_tools())} tools")
+    print("   This agent offers the model: calculator, web, matimo_search_tools\n")
 
     print("🤖 Initializing OpenAI LLM (gpt-4o-mini)...\n")
     llm = ChatOpenAI(model="gpt-4o-mini", temperature=0, api_key=api_key)
@@ -227,8 +228,8 @@ async def main() -> None:
 
     prompts = [
         "🧮 What is 42 plus 8?",
-        '🔊 Echo the message: "Decorator pattern is elegant and powerful!"',
-        "🌐 Fetch the GitHub user profile for octocat using HTTP GET",
+        "🌐 Fetch the GitHub user profile for octocat from https://api.github.com/users/octocat",
+        "🔎 Search the tool registry for Slack tools",
     ]
 
     print("🧪 Testing AI Agent with 3 Different Prompts")

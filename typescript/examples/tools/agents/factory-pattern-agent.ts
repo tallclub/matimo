@@ -16,6 +16,9 @@ import { MatimoInstance } from 'matimo';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+/** The tools this agent offers the model. None of them needs approval. */
+const AGENT_TOOLS = ['calculator', 'web', 'matimo_search_tools'];
+
 /**
  * Factory Pattern Agent - Uses AI to decide which tool to call
  */
@@ -30,33 +33,38 @@ class FactoryPatternAgent {
 
   /**
    * Generate OpenAI function schemas from Matimo tool definitions
-   * Single source of truth - schemas come from tool YAML, not duplicated here
+   * Single source of truth - schemas come from tool YAML, not duplicated here.
+   * Only AGENT_TOOLS are offered: an agent should see the tools its task
+   * needs, not every tool (and credential) the process has loaded.
    */
   private getToolSchemas() {
-    return this.matimo.listTools().map((tool) => ({
-      type: 'function',
-      function: {
-        name: tool.name,
-        description: tool.description,
-        parameters: {
-          type: 'object',
-          properties: Object.entries(tool.parameters || {}).reduce(
-            (acc, [paramName, param]) => ({
-              ...acc,
-              [paramName]: {
-                type: param.type,
-                enum: param.enum,
-                description: param.description,
-              },
-            }),
-            {}
-          ),
-          required: Object.entries(tool.parameters || {})
-            .filter(([_, param]) => param.required)
-            .map(([paramName]) => paramName),
+    return this.matimo
+      .listTools()
+      .filter((tool) => AGENT_TOOLS.includes(tool.name))
+      .map((tool) => ({
+        type: 'function',
+        function: {
+          name: tool.name,
+          description: tool.description,
+          parameters: {
+            type: 'object',
+            properties: Object.entries(tool.parameters || {}).reduce(
+              (acc, [paramName, param]) => ({
+                ...acc,
+                [paramName]: {
+                  type: param.type,
+                  enum: param.enum,
+                  description: param.description,
+                },
+              }),
+              {}
+            ),
+            required: Object.entries(tool.parameters || {})
+              .filter(([_, param]) => param.required)
+              .map(([paramName]) => paramName),
+          },
         },
-      },
-    }));
+      }));
   }
 
   /**
@@ -82,7 +90,18 @@ Extract the tool name and parameters, then respond with JSON.`;
         },
         {
           type: 'human',
-          content: `User request: ${prompt}\n\nAvailable tools: ${toolSchemas.map((t) => `${t.function.name}: ${t.function.description}`).join(', ')}\n\nRespond with JSON: {"tool": "<tool_name>", "parameters": {...}}`,
+          content: `User request: ${prompt}\n\nAvailable tools:\n${toolSchemas
+            .map((t) => {
+              const params = Object.entries(t.function.parameters.properties)
+                .map(
+                  ([name, prop]: [string, any]) => `${name} (${prop.type}) - ${prop.description}`
+                )
+                .join('; ');
+              return `${t.function.name}: ${t.function.description}\n    Parameters: ${params}`;
+            })
+            .join(
+              '\n\n'
+            )}\n\nRespond with JSON using the exact parameter names: {"tool": "<tool_name>", "parameters": {...}}`,
         },
       ];
 
@@ -99,7 +118,8 @@ Extract the tool name and parameters, then respond with JSON.`;
       if (typeof content === 'string') {
         // Try to parse as JSON
         try {
-          const parsed = JSON.parse(content);
+          // Models often wrap the JSON in a ```json fence; strip it before parsing.
+          const parsed = JSON.parse(content.replace(/^```(?:json)?\s*|\s*```$/g, ''));
           toolName = parsed.tool || parsed.function?.name;
           toolParams = parsed.parameters || parsed.function?.parameters || parsed;
         } catch {
@@ -209,15 +229,11 @@ async function runFactoryPatternAgent() {
     console.log('🚀 Initializing Matimo...');
     const matimo = await MatimoInstance.init({ autoDiscover: true });
 
-    const matimoTools = matimo.listTools();
-    console.log(`📦 Loaded ${matimoTools.length} tools:\n`);
-    matimoTools.forEach((t) => {
-      console.log(`  • ${t.name}`);
-      console.log(`    ${t.description}\n`);
-    });
+    console.log(`📦 Loaded ${matimo.listTools().length} tools`);
+    console.log(`   This agent offers the model: ${AGENT_TOOLS.join(', ')}\n`);
 
     // Initialize OpenAI LLM
-    console.log('🤖 Initializing OpenAI LLM (gpt-3.5-turbo)...\n');
+    console.log('🤖 Initializing OpenAI LLM (gpt-4o-mini)...\n');
     const llm = new ChatOpenAI({
       modelName: 'gpt-4o-mini',
       temperature: 0,
@@ -230,8 +246,8 @@ async function runFactoryPatternAgent() {
     // Test prompts - each should trigger a different tool
     const prompts = [
       '🧮 What is 42 plus 8?',
-      '🔊 Echo the message: "Factory pattern works perfectly!"',
-      '🌐 Fetch the GitHub user profile for octocat using HTTP GET',
+      '🌐 Fetch the GitHub user profile for octocat from https://api.github.com/users/octocat',
+      '🔎 Search the tool registry for Slack tools',
     ];
 
     console.log('🧪 Testing AI Agent with 3 Different Prompts');

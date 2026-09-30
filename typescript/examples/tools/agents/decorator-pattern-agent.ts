@@ -41,54 +41,59 @@ class DecoratorPatternAgent {
   }
 
   /**
-   * Echo tool - automatically executes via @tool decorator
-   * Parameters map to tool parameter: message
+   * Web tool - automatically executes via @tool decorator
+   * Positional arguments map to the tool's own parameter order: url, method
    */
-  @tool('echo-tool')
-  async echo(message: string): Promise<unknown> {
-    // Decorator automatically calls: matimo.execute('echo-tool', { message })
+  @tool('web')
+  async fetch(url: string, method: string): Promise<unknown> {
+    // Decorator automatically calls: matimo.execute('web', { url, method })
     return undefined;
   }
 
   /**
-   * HTTP client tool - automatically executes via @tool decorator
-   * Parameters map to tool parameters: method, url
+   * Tool search - automatically executes via @tool decorator
+   * Positional arguments map to the tool's own parameter order: query, limit
    */
-  @tool('http-client')
-  async fetch(method: string, url: string): Promise<unknown> {
-    // Decorator automatically calls: matimo.execute('http-client', { method, url })
+  @tool('matimo_search_tools')
+  async findTools(query: string, limit: number): Promise<unknown> {
+    // Decorator automatically calls: matimo.execute('matimo_search_tools', { query, limit })
     return undefined;
   }
 
   /**
    * Generate OpenAI function schemas from Matimo tool definitions
-   * Single source of truth - schemas come from tool YAML, not duplicated here
+   * Single source of truth - schemas come from tool YAML, not duplicated here.
+   * Only the tools this agent has a decorated method for are offered.
    */
   private getToolSchemas() {
-    return this.matimo.listTools().map((tool) => ({
-      type: 'function',
-      function: {
-        name: tool.name,
-        description: tool.description,
-        parameters: {
-          type: 'object',
-          properties: Object.entries(tool.parameters || {}).reduce(
-            (acc, [paramName, param]) => ({
-              ...acc,
-              [paramName]: {
-                type: param.type,
-                enum: param.enum,
-                description: param.description,
-              },
-            }),
-            {}
-          ),
-          required: Object.entries(tool.parameters || {})
-            .filter(([_, param]) => param.required)
-            .map(([paramName]) => paramName),
+    const supported = this.getToolMethodMap();
+    return this.matimo
+      .listTools()
+      .filter((tool) => supported.has(tool.name))
+      .map((tool) => ({
+        type: 'function',
+        function: {
+          name: tool.name,
+          description: tool.description,
+          parameters: {
+            type: 'object',
+            properties: Object.entries(tool.parameters || {}).reduce(
+              (acc, [paramName, param]) => ({
+                ...acc,
+                [paramName]: {
+                  type: param.type,
+                  enum: param.enum,
+                  description: param.description,
+                },
+              }),
+              {}
+            ),
+            required: Object.entries(tool.parameters || {})
+              .filter(([_, param]) => param.required)
+              .map(([paramName]) => paramName),
+          },
         },
-      },
-    }));
+      }));
   }
 
   /**
@@ -149,7 +154,8 @@ Respond ONLY with valid JSON in this format: {"tool": "<tool_name>", "parameters
       if (typeof content === 'string') {
         // Try to parse as JSON
         try {
-          const parsed = JSON.parse(content);
+          // Models often wrap the JSON in a ```json fence; strip it before parsing.
+          const parsed = JSON.parse(content.replace(/^```(?:json)?\s*|\s*```$/g, ''));
           toolName = parsed.tool || parsed.function?.name;
           toolParams = parsed.parameters || parsed.function?.parameters || parsed;
         } catch {
@@ -205,8 +211,8 @@ Respond ONLY with valid JSON in this format: {"tool": "<tool_name>", "parameters
     // Manual mapping as fallback (decorators should set __toolName)
     // This ensures we catch all @tool decorated methods
     toolMap.set('calculator', 'calculate');
-    toolMap.set('echo-tool', 'echo');
-    toolMap.set('http-client', 'fetch');
+    toolMap.set('web', 'fetch');
+    toolMap.set('matimo_search_tools', 'findTools');
 
     return toolMap;
   }
@@ -266,13 +272,11 @@ Respond ONLY with valid JSON in this format: {"tool": "<tool_name>", "parameters
           } catch {
             console.info(`\n✅ Result:`, resultData.stdout);
           }
-        } else if (resultData.data) {
-          // HTTP response
+        } else if (resultData.content !== undefined) {
+          // web tool response
           console.info(
             `\n✅ Result (HTTP ${resultData.statusCode}):`,
-            typeof resultData.data === 'string'
-              ? resultData.data.substring(0, 200)
-              : JSON.stringify(resultData.data).substring(0, 200)
+            JSON.stringify(resultData.content).substring(0, 200)
           );
         } else {
           console.info(`\n✅ Result:`, result);
@@ -291,10 +295,10 @@ Respond ONLY with valid JSON in this format: {"tool": "<tool_name>", "parameters
     switch (toolName) {
       case 'calculator':
         return [params.operation, params.a, params.b];
-      case 'echo-tool':
-        return [params.message];
-      case 'http-client':
-        return [params.method, params.url];
+      case 'web':
+        return [params.url, params.method ?? 'GET'];
+      case 'matimo_search_tools':
+        return [params.query, params.limit ?? 5];
       default:
         return [];
     }
@@ -324,15 +328,11 @@ async function runDecoratorPatternAgent() {
     // Set global Matimo instance for @tool decorators
     setGlobalMatimoInstance(matimo);
 
-    const matimoTools = matimo.listTools();
-    console.info(`📦 Loaded ${matimoTools.length} tools:\n`);
-    matimoTools.forEach((t) => {
-      console.info(`  • ${t.name}`);
-      console.info(`    ${t.description}\n`);
-    });
+    console.info(`📦 Loaded ${matimo.listTools().length} tools`);
+    console.info('   This agent offers the model: calculator, web, matimo_search_tools\n');
 
     // Initialize OpenAI LLM
-    console.info('🤖 Initializing OpenAI LLM (gpt-3.5-turbo)...\n');
+    console.info('🤖 Initializing OpenAI LLM (gpt-4o-mini)...\n');
     const llm = new ChatOpenAI({
       modelName: 'gpt-4o-mini',
       temperature: 0,
@@ -345,8 +345,8 @@ async function runDecoratorPatternAgent() {
     // Test prompts - each should trigger a different tool
     const prompts = [
       '🧮 What is 42 plus 8?',
-      '🔊 Echo the message: "Decorator pattern is elegant and powerful!"',
-      '🌐 Fetch the GitHub user profile for octocat using HTTP GET',
+      '🌐 Fetch the GitHub user profile for octocat from https://api.github.com/users/octocat',
+      '🔎 Search the tool registry for Slack tools',
     ];
 
     console.info('🧪 Testing AI Agent with 3 Different Prompts');

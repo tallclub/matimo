@@ -27,6 +27,10 @@ from matimo import Matimo
 
 load_dotenv(Path(__file__).parent.parent.parent / ".env")
 
+# The tools this agent offers the model. None of them needs approval. An agent
+# should see the tools its task needs, not every tool (and credential) loaded.
+AGENT_TOOLS = ("calculator", "web", "matimo_search_tools")
+
 
 class FactoryPatternAgent:
     """
@@ -63,14 +67,22 @@ class FactoryPatternAgent:
                 },
             }
             for t in self._matimo.list_tools()
+            if t.name in AGENT_TOOLS
         ]
 
     async def process(self, prompt: str) -> None:
         print(f'\n❓ Prompt: "{prompt}"')
 
         tool_schemas = self._get_tool_schemas()
-        tool_summary = ", ".join(
-            f"{s['function']['name']}: {s['function']['description']}"
+        tool_summary = "\n\n".join(
+            "{name}: {desc}\n    Parameters: {params}".format(
+                name=s["function"]["name"],
+                desc=s["function"]["description"],
+                params="; ".join(
+                    f"{k} ({v.get('type', '')}) - {v.get('description', '')}"
+                    for k, v in s["function"]["parameters"]["properties"].items()
+                ),
+            )
             for s in tool_schemas
         )
 
@@ -85,8 +97,9 @@ class FactoryPatternAgent:
             HumanMessage(
                 content=(
                     f"User request: {prompt}\n\n"
-                    f"Available tools: {tool_summary}\n\n"
-                    'Respond with JSON: {"tool": "<tool_name>", "parameters": {...}}'
+                    f"Available tools:\n{tool_summary}\n\n"
+                    "Respond with JSON using the exact parameter names: "
+                    '{"tool": "<tool_name>", "parameters": {...}}'
                 )
             ),
         ]
@@ -100,7 +113,8 @@ class FactoryPatternAgent:
 
             if isinstance(content, str):
                 try:
-                    parsed = json.loads(content)
+                    # Models often wrap the JSON in a ```json fence; strip it before parsing.
+                    parsed = json.loads(re.sub(r"^```(?:json)?\s*|\s*```$", "", content.strip()))
                     tool_name = parsed.get("tool") or parsed.get("function", {}).get("name")
                     tool_params = parsed.get("parameters") or parsed.get("function", {}).get("parameters") or parsed
                 except json.JSONDecodeError:
@@ -171,11 +185,8 @@ async def main() -> None:
     print("🚀 Initializing Matimo...")
     matimo = await Matimo.init(auto_discover=True)
 
-    tools = matimo.list_tools()
-    print(f"📦 Loaded {len(tools)} tools:\n")
-    for t in tools:
-        print(f"  • {t.name}")
-        print(f"    {t.description}\n")
+    print(f"📦 Loaded {len(matimo.list_tools())} tools")
+    print(f"   This agent offers the model: {', '.join(AGENT_TOOLS)}\n")
 
     print("🤖 Initializing OpenAI LLM (gpt-4o-mini)...\n")
     llm = ChatOpenAI(model="gpt-4o-mini", temperature=0, api_key=api_key)
@@ -184,8 +195,8 @@ async def main() -> None:
 
     prompts = [
         "🧮 What is 42 plus 8?",
-        '🔊 Echo the message: "Factory pattern works perfectly!"',
-        "🌐 Fetch the GitHub user profile for octocat using HTTP GET",
+        "🌐 Fetch the GitHub user profile for octocat from https://api.github.com/users/octocat",
+        "🔎 Search the tool registry for Slack tools",
     ]
 
     print("🧪 Testing AI Agent with 3 Different Prompts")
