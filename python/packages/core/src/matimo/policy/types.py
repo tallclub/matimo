@@ -18,6 +18,18 @@ class RiskLevel(StrEnum):
     CRITICAL = "critical"
 
 
+GovernanceMode = Literal["secure", "legacy"]
+"""Which set of defaults governs tools that don't say otherwise.
+
+- "secure" (default since 0.2.0): HTTP DELETE and ``type: command`` tools need
+  per-call approval unless their YAML sets ``requires_approval: false``.
+- "legacy": the pre-0.2.0 defaults — only tools that declare
+  ``requires_approval: true`` (or hit a destructive keyword) need approval.
+
+Security fixes made in 0.2.0 apply in both modes. Mirrors GovernanceMode in types.ts.
+"""
+
+
 class PolicyTier(StrEnum):
     AUTO = "auto"
     APPROVAL_REQUIRED = "approval-required"
@@ -92,6 +104,9 @@ class PolicyConfig(BaseModel):
     risk is at or above this level is quarantined."""
     approval_ttl_seconds: int | None = None
     """Number of seconds after which an approval expires. None means never expire."""
+    governance_mode: GovernanceMode | None = None
+    """Default approval behaviour for tools that don't declare requires_approval
+    (see GovernanceMode). Matimo.init(governance_mode=) overrides it. None means "secure"."""
 
 
 # ---------------------------------------------------------------------------

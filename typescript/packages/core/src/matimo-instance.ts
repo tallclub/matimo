@@ -32,7 +32,13 @@ import {
   type ApprovalCallback,
 } from './approval/approval-handler.js';
 import type { ExecuteOptions } from './core/types.js';
-import type { PolicyEngine, PolicyContext, PolicyConfig, HITLCallback } from './policy/types.js';
+import type {
+  PolicyEngine,
+  PolicyContext,
+  PolicyConfig,
+  HITLCallback,
+  GovernanceMode,
+} from './policy/types.js';
 import { DefaultPolicyEngine } from './policy/default-policy.js';
 import { classifyExecutionRisk } from './policy/risk-classifier.js';
 import { loadPolicyFromFile } from './policy/policy-loader.js';
@@ -106,6 +112,13 @@ export interface InitOptions extends LoggerConfig {
    * and the tool must be re-approved. If not set, approvals never expire.
    */
   approvalTtlSeconds?: number;
+  /**
+   * Default approval behaviour for tools that don't declare
+   * `requires_approval`. 'secure' (default): HTTP DELETE and command tools ask
+   * before every call. 'legacy': the pre-0.2.0 defaults. Overrides
+   * `governanceMode` in the policy config or policy file.
+   */
+  governanceMode?: GovernanceMode;
   /** Event handler for audit events (tool creation, approval, execution, etc.) */
   onEvent?: MatimoEventHandler;
   /**
@@ -182,6 +195,7 @@ export class MatimoInstance {
   #hitlCallback: HITLCallback | null;
   #hitlTimeoutMs: number | null;
   #approvalCallback: ApprovalCallback | null;
+  #governanceMode: GovernanceMode | null;
   #trustedPaths: string[];
   #untrustedPaths: string[];
   #policyFile: string | null;
@@ -201,6 +215,7 @@ export class MatimoInstance {
       auditSink?: AuditSink;
       onHITL?: HITLCallback;
       onApproval?: ApprovalCallback;
+      governanceMode?: GovernanceMode;
       hitlTimeoutMs?: number;
       policyFile?: string;
       defaultMaxResponseSize?: number;
@@ -237,6 +252,7 @@ export class MatimoInstance {
     this.#hitlCallback = policyOptions.onHITL ?? null;
     this.#hitlTimeoutMs = policyOptions.hitlTimeoutMs ?? null;
     this.#approvalCallback = policyOptions.onApproval ?? null;
+    this.#governanceMode = policyOptions.governanceMode ?? null;
     this.#policyFile = policyOptions.policyFile ?? null;
 
     // Approval manifest
@@ -380,6 +396,7 @@ export class MatimoInstance {
       auditSink: finalOptions.auditSink,
       onHITL: finalOptions.onHITL,
       onApproval: finalOptions.onApproval,
+      governanceMode: finalOptions.governanceMode,
       hitlTimeoutMs: finalOptions.hitlTimeoutMs,
       approvalTtlSeconds: finalOptions.approvalTtlSeconds,
       policyFile: finalOptions.policyFile,
@@ -540,7 +557,7 @@ export class MatimoInstance {
       }
 
       const requiresApproval = this.approvalHandler.requiresApproval(
-        definitionRequiresApproval(tool),
+        definitionRequiresApproval(tool, this.getGovernanceMode()),
         scanContent
       );
 
@@ -1531,6 +1548,19 @@ export class MatimoInstance {
    */
   setHITLCallback(callback: HITLCallback | null): void {
     this.#hitlCallback = callback;
+  }
+
+  /**
+   * The governance mode in force: `InitOptions.governanceMode`, else the
+   * policy config's `governanceMode` (followed across `reloadPolicy()`), else
+   * 'secure'.
+   */
+  getGovernanceMode(): GovernanceMode {
+    if (this.#governanceMode) return this.#governanceMode;
+    if (this.#policy instanceof DefaultPolicyEngine) {
+      return this.#policy.getConfig().governanceMode ?? 'secure';
+    }
+    return 'secure';
   }
 
   /**

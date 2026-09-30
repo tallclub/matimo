@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { MatimoError, ErrorCode } from '../errors/matimo-error.js';
 import type { ToolDefinition } from '../core/schema.js';
+import type { GovernanceMode } from '../policy/types.js';
 
 /**
  * Tools whose approval prompt nothing may skip: neither MATIMO_AUTO_APPROVE
@@ -13,13 +14,20 @@ export const NEVER_PRE_APPROVED_TOOLS: ReadonlySet<string> = new Set(['matimo_ap
 /**
  * Whether a tool's definition alone makes every call need approval.
  * An explicit `requires_approval` in the YAML always wins, so a developer can
- * opt a tool out with `requires_approval: false`. When it is absent, the calls
- * that can't be undone or can do anything need approval by default: HTTP
- * DELETE and `type: command` (shell) tools.
+ * opt a tool out with `requires_approval: false`. When it is absent, in
+ * `secure` mode the calls that can't be undone or can do anything need
+ * approval by default: HTTP DELETE and `type: command` (shell) tools. `legacy`
+ * mode has no such default.
  */
-export function definitionRequiresApproval(tool: ToolDefinition): boolean {
+export function definitionRequiresApproval(
+  tool: ToolDefinition,
+  mode: GovernanceMode = 'secure'
+): boolean {
   if (tool.requires_approval !== undefined) {
     return tool.requires_approval;
+  }
+  if (mode === 'legacy') {
+    return false;
   }
   const exec = tool.execution;
   return (

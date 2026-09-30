@@ -170,6 +170,7 @@ from matimo.policy.risk_classifier import (
     meets_risk_threshold,
 )
 from matimo.policy.types import (
+    GovernanceMode,
     HITLCallback,
     HITLRequest,
     MatimoEvent,
@@ -331,7 +332,7 @@ __all__ = [
     "PolicyEngine", "DefaultPolicyEngine", "PolicyConfig",
     "PolicyDecision", "PolicyAllowed", "PolicyDenied", "PolicyPendingApproval",
     "RiskLevel", "PolicyTier",
-    "MatimoEvent", "MatimoEventHandler", "HITLCallback", "HITLRequest",
+    "MatimoEvent", "MatimoEventHandler", "GovernanceMode", "HITLCallback", "HITLRequest",
     "ContentViolation", "validate_tool_content",
     "classify_risk", "classify_execution_risk", "meets_risk_threshold", "get_tier_for_tool",
     "ToolIntegrityTracker", "IntegrityAction",

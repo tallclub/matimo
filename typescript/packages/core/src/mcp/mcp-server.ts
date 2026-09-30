@@ -458,6 +458,7 @@ export class MCPServer {
       try {
         const registration = toolToMcpRegistration(tool, {
           clientApproval: this.options.trustClientApproval === true,
+          governanceMode: matimo.getGovernanceMode(),
         });
 
         server.registerTool(

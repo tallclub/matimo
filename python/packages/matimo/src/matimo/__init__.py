@@ -173,6 +173,7 @@ from matimo.policy.integrity_tracker import IntegrityAction, ToolIntegrityTracke
 from matimo.policy.policy_loader import load_policy_from_file  # noqa: E402
 from matimo.policy.risk_classifier import classify_risk  # noqa: E402
 from matimo.policy.types import (  # noqa: E402
+    GovernanceMode,
     HITLCallback,
     HITLRequest,
     MatimoEvent,
@@ -325,7 +326,7 @@ __all__ = [
     # Policy
     "PolicyEngine", "DefaultPolicyEngine", "PolicyConfig",
     "PolicyDecision", "PolicyAllowed", "PolicyDenied", "PolicyPendingApproval",
-    "RiskLevel", "PolicyTier", "MatimoEvent", "MatimoEventHandler",
+    "RiskLevel", "PolicyTier", "MatimoEvent", "MatimoEventHandler", "GovernanceMode",
     "HITLCallback", "HITLRequest", "ContentViolation", "validate_tool_content",
     "classify_risk", "get_tier_for_tool", "ToolIntegrityTracker", "IntegrityAction",
     "ApprovalManifest", "ApprovalRecord", "load_policy_from_file",

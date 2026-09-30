@@ -24,9 +24,9 @@ import {
 import { extractAuthPlaceholders } from '../mcp/tool-converter.js';
 
 type ResolvedPolicyConfig = Required<
-  Omit<PolicyConfig, 'approvalTtlSeconds' | 'hitlMinRiskLevel'>
+  Omit<PolicyConfig, 'approvalTtlSeconds' | 'hitlMinRiskLevel' | 'governanceMode'>
 > &
-  Pick<PolicyConfig, 'approvalTtlSeconds' | 'hitlMinRiskLevel'>;
+  Pick<PolicyConfig, 'approvalTtlSeconds' | 'hitlMinRiskLevel' | 'governanceMode'>;
 
 const DEFAULT_CONFIG: ResolvedPolicyConfig = {
   allowedDomains: [],

@@ -11,6 +11,7 @@ export type {
   Violation,
   ValidationResult,
   ValidationContext,
+  GovernanceMode,
 } from './types.js';
 export { DefaultPolicyEngine } from './default-policy.js';
 export { validateToolContent, isSSRFTarget } from './content-validator.js';

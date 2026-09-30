@@ -33,4 +33,11 @@ def _build_tool(case: dict[str, Any]) -> ToolDefinition:
 
 @pytest.mark.parametrize("case", _CASES, ids=[c["name"] for c in _CASES])
 def test_definition_requires_approval(case: dict[str, Any]) -> None:
-    assert definition_requires_approval(_build_tool(case)) is case["expected"]
+    tool = _build_tool(case)
+    # A case without a mode runs in the default mode.
+    actual = (
+        definition_requires_approval(tool)
+        if "mode" not in case
+        else definition_requires_approval(tool, case["mode"])
+    )
+    assert actual is case["expected"]

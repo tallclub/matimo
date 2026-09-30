@@ -11,6 +11,20 @@ import type { ToolDefinition } from '../core/schema.js';
 
 export type RiskLevel = 'low' | 'medium' | 'high' | 'critical';
 
+// ─── Governance Mode ────────────────────────────────────────────────────
+
+/**
+ * Which set of defaults governs tools that don't say otherwise.
+ *
+ * - `secure` (default since 0.2.0): HTTP DELETE and `type: command` tools
+ *   need per-call approval unless their YAML sets `requires_approval: false`.
+ * - `legacy`: the pre-0.2.0 defaults — only tools that declare
+ *   `requires_approval: true` (or hit a destructive keyword) need approval.
+ *
+ * Security fixes made in 0.2.0 apply in both modes.
+ */
+export type GovernanceMode = 'secure' | 'legacy';
+
 // ─── Policy Tiers ────────────────────────────────────────────────────────
 
 /**
@@ -150,6 +164,12 @@ export interface PolicyConfig {
    * If not set, approvals never expire.
    */
   approvalTtlSeconds?: number;
+  /**
+   * Default approval behaviour for tools that don't declare `requires_approval`
+   * (see `GovernanceMode`). `InitOptions.governanceMode` overrides it.
+   * Default: 'secure'.
+   */
+  governanceMode?: GovernanceMode;
 }
 
 // ─── Policy Engine Interface ────────────────────────────────────────────

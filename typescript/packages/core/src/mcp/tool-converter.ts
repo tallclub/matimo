@@ -10,6 +10,7 @@ import { z } from 'zod';
 import type { Parameter } from '../core/types.js';
 import type { ToolDefinition } from '../core/schema.js';
 import { definitionRequiresApproval } from '../approval/approval-handler.js';
+import type { GovernanceMode } from '../policy/types.js';
 
 /**
  * Convert a single Matimo Parameter to a Zod schema.
@@ -248,6 +249,8 @@ export function toolToMcpRegistration(
      * Off by default so the model is never offered a way to approve itself.
      */
     clientApproval?: boolean;
+    /** Governance mode of the serving instance; decides which tools need approval. */
+    governanceMode?: GovernanceMode;
   } = {}
 ): {
   title: string;
@@ -257,7 +260,7 @@ export function toolToMcpRegistration(
 } {
   const schema = convertParametersToMcpSchema(tool.parameters || {});
 
-  if (options.clientApproval === true && definitionRequiresApproval(tool)) {
+  if (options.clientApproval === true && definitionRequiresApproval(tool, options.governanceMode)) {
     schema._matimo_approved = z
       .boolean()
       .optional()

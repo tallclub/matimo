@@ -330,6 +330,13 @@ protectedNamespaces:
   - matimo_
   # - internal_     # Uncomment to add your own
   # - company_prod_ # Can add as many as needed
+
+# Governance mode
+# Default approval behaviour for tools whose YAML doesn't set requires_approval.
+#   secure: HTTP DELETE and command tools ask before every call (default)
+#   legacy: the pre-0.2.0 behaviour, where they don't ask
+# See "Upgrading to 0.2.0" below.
+governanceMode: secure
 ```
 
 **Notes:**
@@ -381,6 +388,13 @@ interface PolicyConfig {
 
   /** Seconds after which an approval expires and the tool must be re-approved. Default: never expires. */
   approvalTtlSeconds?: number;
+
+  /**
+   * 'secure': HTTP DELETE and command tools without `requires_approval` ask before
+   * every call. 'legacy': pre-0.2.0 defaults. InitOptions.governanceMode overrides it.
+   * Default: 'secure'.
+   */
+  governanceMode?: 'secure' | 'legacy';
 }
 ```
 

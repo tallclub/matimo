@@ -58,6 +58,7 @@ from matimo.policy.audit_sink import AuditSink
 from matimo.policy.default_policy import DefaultPolicyEngine, PolicyEngine
 from matimo.policy.risk_classifier import classify_execution_risk
 from matimo.policy.types import (
+    GovernanceMode,
     HITLCallback,
     MatimoEventHandler,
     PolicyConfig,
@@ -109,6 +110,7 @@ class InitOptions:
     audit_sink: AuditSink | None = None
     on_hitl: HITLCallback | None = None
     on_approval: ApprovalCallback | None = None
+    governance_mode: GovernanceMode | None = None
     hitl_timeout_ms: int | None = None
 
     # Logging
@@ -159,6 +161,7 @@ class Matimo:
         approval_handler: ApprovalHandler | None = None,
         on_approval: ApprovalCallback | None = None,
         audit_sink: AuditSink | None = None,
+        governance_mode: GovernanceMode | None = None,
     ) -> None:
         self._registry = registry
         self._policy = policy_engine
@@ -166,6 +169,7 @@ class Matimo:
         self._tool_paths = tool_paths
         self._on_event = on_event
         self._audit_sink = audit_sink
+        self._governance_mode = governance_mode
         self._on_hitl = on_hitl
         self._hitl_timeout_ms = hitl_timeout_ms
         self._logger = matimo_logger
@@ -210,6 +214,7 @@ class Matimo:
         audit_sink: AuditSink | None = None,
         on_hitl: HITLCallback | None = None,
         on_approval: ApprovalCallback | None = None,
+        governance_mode: GovernanceMode | None = None,
         hitl_timeout_ms: int | None = None,
         log_level: str | None = None,
         log_format: str | None = None,
@@ -240,6 +245,11 @@ class Matimo:
                            precedence over the global approval handler's callback,
                            so instances serving different tenants never share a
                            reviewer.
+            governance_mode: Default approval behaviour for tools that don't
+                           declare requires_approval. "secure" (default): HTTP
+                           DELETE and command tools ask before every call.
+                           "legacy": the pre-0.2.0 defaults. Overrides
+                           governance_mode in the policy config or policy file.
             hitl_timeout_ms: Timeout in milliseconds for the HITL callback.
                            If the callback does not resolve within this time the tool
                            is auto-rejected. Defaults to None (waits indefinitely).
@@ -325,6 +335,7 @@ class Matimo:
             audit_sink=audit_sink,
             on_hitl=on_hitl,
             on_approval=on_approval,
+            governance_mode=governance_mode,
             matimo_logger=matimo_logger,
             hitl_timeout_ms=hitl_timeout_ms,
             skill_registry=skill_reg,
@@ -542,6 +553,18 @@ class Matimo:
     ) -> list[ToolDefinition]:
         """Return only the tools this agent context is permitted to use."""
         return self._policy.filter_for_agent(context, self._registry.get_all())
+
+    def get_governance_mode(self) -> GovernanceMode:
+        """
+        The governance mode in force: ``governance_mode`` passed to init(), else
+        the policy config's ``governance_mode`` (followed across reload_policy),
+        else "secure". Mirrors getGovernanceMode() in matimo-instance.ts.
+        """
+        if self._governance_mode is not None:
+            return self._governance_mode
+        if isinstance(self._policy, DefaultPolicyEngine):
+            return self._policy.config.governance_mode or "secure"
+        return "secure"
 
     def set_approval_callback(self, callback: ApprovalCallback | None) -> None:
         """
@@ -963,7 +986,8 @@ class Matimo:
         """
         handler = self._approval_handler
         if not handler.requires_approval(
-            definition_requires_approval(tool), _approval_scan_content(tool, params)
+            definition_requires_approval(tool, self.get_governance_mode()),
+            _approval_scan_content(tool, params),
         ):
             return
         if skip_prompt or handler.is_pre_approved(tool.name):

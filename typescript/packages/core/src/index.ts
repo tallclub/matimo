@@ -121,6 +121,7 @@ export type {
   ValidationContext,
   HITLCallback,
   HITLRequest,
+  GovernanceMode,
 } from './policy/types.js';
 export { DefaultPolicyEngine, getTierForTool } from './policy/default-policy.js';
 export { validateToolContent, isSSRFTarget } from './policy/content-validator.js';

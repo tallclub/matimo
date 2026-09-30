@@ -8,6 +8,7 @@ import re
 from typing import Any
 
 from matimo.core.models import Parameter, ToolDefinition
+from matimo.policy.types import GovernanceMode
 
 # Auth-related parameter name patterns.
 # Parameters matching these are excluded from the MCP input schema
@@ -137,7 +138,10 @@ def humanize_tool_name(name: str) -> str:
 
 
 def tool_to_mcp_registration(
-    tool: ToolDefinition, *, client_approval: bool = False
+    tool: ToolDefinition,
+    *,
+    client_approval: bool = False,
+    governance_mode: GovernanceMode = "secure",
 ) -> dict[str, Any]:
     """
     Build the full MCP tool registration metadata from a ToolDefinition.
@@ -147,13 +151,14 @@ def tool_to_mcp_registration(
     With ``client_approval`` (a server that trusts client-side confirmation,
     ``trust_client_approval``), tools that need approval get an extra
     ``_matimo_approved`` parameter. Off by default so the model is never
-    offered a way to approve itself.
+    offered a way to approve itself. ``governance_mode`` is the serving
+    instance's mode, which decides which tools need approval.
     """
     from matimo.approval.handler import definition_requires_approval
 
     schema = convert_parameters_to_mcp_schema(tool.parameters or {})
 
-    if client_approval and definition_requires_approval(tool):
+    if client_approval and definition_requires_approval(tool, governance_mode):
         schema.setdefault("properties", {})["_matimo_approved"] = {
             "type": "boolean",
             "description": (

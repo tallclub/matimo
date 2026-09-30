@@ -387,7 +387,9 @@ class MCPServer:
         for tool in allowed:
             from matimo.mcp.tool_converter import tool_to_mcp_registration
             registration = tool_to_mcp_registration(
-                tool, client_approval=self._options.trust_client_approval
+                tool,
+                client_approval=self._options.trust_client_approval,
+                governance_mode=self._matimo.get_governance_mode(),
             )
             mcp_tools.append(
                 mcp_types.Tool(

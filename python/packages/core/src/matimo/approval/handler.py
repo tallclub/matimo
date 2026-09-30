@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from matimo.core.models import ToolDefinition
+    from matimo.policy.types import GovernanceMode
 
 logger = logging.getLogger("matimo")
 
@@ -32,16 +33,19 @@ DEFAULT_DESTRUCTIVE_KEYWORDS: list[str] = [
 NEVER_PRE_APPROVED_TOOLS: frozenset[str] = frozenset({"matimo_approve_tool"})
 
 
-def definition_requires_approval(tool: ToolDefinition) -> bool:
+def definition_requires_approval(tool: ToolDefinition, mode: GovernanceMode = "secure") -> bool:
     """
     Whether a tool's definition alone makes every call need approval.
     Mirrors definitionRequiresApproval() in approval-handler.ts: an explicit
     `requires_approval` in the YAML always wins, so a developer can opt a tool
-    out with `requires_approval: false`. When it is absent, HTTP DELETE and
-    `type: command` (shell) tools need approval by default.
+    out with `requires_approval: false`. When it is absent, in "secure" mode
+    HTTP DELETE and `type: command` (shell) tools need approval by default;
+    "legacy" mode has no such default.
     """
     if "requires_approval" in tool.model_fields_set:
         return tool.requires_approval
+    if mode == "legacy":
+        return False
     execution = tool.execution
     if execution.type == "command":
         return True

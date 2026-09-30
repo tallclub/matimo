@@ -23,6 +23,7 @@ jest.mock('../../../src/matimo-instance', () => ({
         listSkills: mockListSkills,
         getSkillContent: mockGetSkillContent,
         reloadTools: mockReloadTools,
+        getGovernanceMode: () => 'secure',
       })
     ),
   },

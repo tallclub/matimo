@@ -95,6 +95,7 @@ _CAMEL_TO_SNAKE: dict[str, str] = {
     "quarantineRiskLevels": "quarantine_risk_levels",
     "hitlMinRiskLevel": "hitl_min_risk_level",
     "approvalTtlSeconds": "approval_ttl_seconds",
+    "governanceMode": "governance_mode",
 }
 
 

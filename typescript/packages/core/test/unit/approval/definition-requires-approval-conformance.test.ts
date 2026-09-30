@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { definitionRequiresApproval } from '../../../src/approval/approval-handler';
 import type { ToolDefinition } from '../../../src/core/schema';
+import type { GovernanceMode } from '../../../src/policy/types';
 
 /**
  * Cross-SDK conformance: the same fixture is asserted by
@@ -10,6 +11,8 @@ import type { ToolDefinition } from '../../../src/core/schema';
  */
 interface ConformanceCase {
   name: string;
+  /** Absent means the default mode. */
+  mode?: GovernanceMode;
   tool: Partial<ToolDefinition> & { execution: Record<string, unknown> };
   expected: boolean;
 }
@@ -42,6 +45,11 @@ function buildTool(testCase: ConformanceCase): ToolDefinition {
 
 describe('definitionRequiresApproval conformance', () => {
   it.each(fixture.cases.map((c) => [c.name, c] as const))('%s', (_name, testCase) => {
-    expect(definitionRequiresApproval(buildTool(testCase))).toBe(testCase.expected);
+    const tool = buildTool(testCase);
+    const actual =
+      testCase.mode === undefined
+        ? definitionRequiresApproval(tool)
+        : definitionRequiresApproval(tool, testCase.mode);
+    expect(actual).toBe(testCase.expected);
   });
 });
