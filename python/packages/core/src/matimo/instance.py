@@ -1103,7 +1103,7 @@ class _MatimoNamespace:
     @staticmethod
     async def init(
         tool_paths: str | list[str] | None = None,
-        **kwargs: object,
+        **kwargs: Any,  # noqa: ANN401 — forwarded unchanged to Matimo.init
     ) -> Matimo:
         return await Matimo.init(tool_paths, **kwargs)
 
