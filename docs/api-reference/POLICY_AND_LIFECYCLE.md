@@ -972,6 +972,11 @@ boolean, which then counts as approval. Without that option the parameter is
 not advertised and is ignored. Pre-approved tools
 (`MATIMO_APPROVED_PATTERNS`) run without asking either way.
 
+MCP calls run with no roles unless the operator grants some with the server's
+`context` option (`MCPServerOptions.context` in both SDKs), e.g.
+`{ agentId: 'claude-desktop', roles: ['admin'] }` for a single-user local
+server. Role-gated tools such as `matimo_approve_tool` need it.
+
 **Beyond policy gating**, each MCP tool registration also carries the protocol's standard `readOnlyHint`/`destructiveHint`/`idempotentHint`/`openWorldHint` annotations, derived directly from `execution.type`/HTTP method rather than from the aggregate risk tier above (the two signals can diverge — a GET and a DELETE tool can share a risk tier while having opposite hints). A denied or failed call returns `isError: true` with a `structuredContent` field (`code`/`statusCode`/`retryable`/`message`) instead of only a text string, and every successful result passes through the response-size guardrail before being returned. See [MCP Server docs — Tool Metadata & Error Responses](../MCP.md#tool-metadata--error-responses).
 
 ### MCP + Tool Lifecycle

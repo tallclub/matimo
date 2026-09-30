@@ -81,6 +81,13 @@ export interface MCPServerOptions {
    * (false) approval is asked of the user via MCP elicitation instead.
    */
   trustClientApproval?: boolean;
+  /**
+   * Policy context applied to every tool call from MCP clients — the identity
+   * and roles the operator grants this server's callers, e.g.
+   * `{ agentId: 'claude-desktop', roles: ['admin'] }` for a single-user local
+   * server so matimo_approve_tool can be used. Default: none (no roles).
+   */
+  context?: import('../policy/types').PolicyContext;
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────
@@ -477,6 +484,7 @@ export class MCPServer {
                 approved: this.options.trustClientApproval === true && _matimo_approved === true,
                 onApproval: createElicitationApprovalCallback(server.server, extra?.requestId),
                 credentials: this.resolvedSecrets,
+                ...(this.options.context ? { context: this.options.context } : {}),
               });
 
               return {

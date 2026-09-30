@@ -91,6 +91,11 @@ class MCPServerOptions:
     # argument is supplied by the client/model, so by default (False) approval
     # is asked of the user via MCP elicitation instead.
     trust_client_approval: bool = False
+    # Policy context applied to every tool call from MCP clients — the identity
+    # and roles the operator grants this server's callers, e.g.
+    # PolicyContext(agent_id="claude-desktop", roles=["admin"]) for a single-user
+    # local server so matimo_approve_tool can be used. Default: none (no roles).
+    context: Any | None = None
 
 
 class MCPServer:
@@ -444,6 +449,7 @@ class MCPServer:
                 credentials=credentials or None,
                 approved=self._options.trust_client_approval and matimo_approved,
                 on_approval=create_elicitation_approval_callback(session, request_id),
+                context=self._options.context,
             )
             output = _json.dumps(result, indent=2, default=str)
             return [mcp_types.TextContent(type="text", text=output)]

@@ -45,6 +45,7 @@ Expose your Matimo tools to AI assistants via the [Model Context Protocol](https
 | HTTP transport (remote / Docker) | ✅ | ✅ |
 | Auth parameter filtering | ✅ | ✅ |
 | Approval via MCP elicitation (`_matimo_approved` only with `trustClientApproval`) | ✅ | ✅ |
+| `context` option — policy context (agent id, roles) for every MCP call | ✅ | ✅ |
 | Pre-resolved secrets (memory storage) | ✅ | ✅ |
 | Skill resources (MCP resources/list) | ✅ | ✅ |
 | Bearer token auth (HTTP) | ✅ | ✅ |

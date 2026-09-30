@@ -528,6 +528,19 @@ describe('MCPServer', () => {
       await server.stop();
     });
 
+    it('applies the configured policy context to every call', async () => {
+      mockListTools.mockReturnValue([createTestTool()]);
+      mockExecute.mockResolvedValue({ ok: true });
+      const context = { agentId: 'claude-desktop', roles: ['admin'] };
+
+      const server = new MCPServer({ transport: 'stdio', autoDiscover: false, context });
+      await server.start();
+      await mockRegisterTool.mock.calls[0][2]({ message: 'hi' });
+
+      expect(mockExecute.mock.calls[0][2].context).toBe(context);
+      await server.stop();
+    });
+
     it('never tells the model how to approve its own call', async () => {
       const tool = createTestTool({ name: 'dangerous_delete', requires_approval: true });
       mockListTools.mockReturnValue([tool]);

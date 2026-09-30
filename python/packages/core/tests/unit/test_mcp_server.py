@@ -1205,3 +1205,28 @@ class TestBearerTokenMatches:
         from matimo.mcp.server import bearer_token_matches
 
         assert bearer_token_matches(header, "s3cret") is False
+
+
+class TestMCPServerPolicyContext:
+    async def test_configured_context_is_applied_to_every_call(self) -> None:
+        from matimo.core.models import PolicyContext
+
+        matimo = _make_matimo_mock()
+        matimo.execute = AsyncMock(return_value={"ok": True})
+        context = PolicyContext(agent_id="claude-desktop", roles=["admin"])
+        server = MCPServer(matimo, MCPServerOptions(context=context))
+
+        with patch.dict("sys.modules", _mcp_modules_patch(MagicMock())):
+            await server._call_tool("test_tool", {})
+
+        assert matimo.execute.await_args.kwargs["context"] is context
+
+    async def test_no_context_by_default(self) -> None:
+        matimo = _make_matimo_mock()
+        matimo.execute = AsyncMock(return_value={"ok": True})
+        server = MCPServer(matimo, MCPServerOptions())
+
+        with patch.dict("sys.modules", _mcp_modules_patch(MagicMock())):
+            await server._call_tool("test_tool", {})
+
+        assert matimo.execute.await_args.kwargs["context"] is None
