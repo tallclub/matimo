@@ -91,11 +91,15 @@ jobs:
         working-directory: python
 
       - name: Type check
-        run: uv run mypy packages/ || true   # non-blocking: union type refinement work in progress
-        working-directory: python
+        run: uv run mypy src/   # strict, same as `make typecheck`
+        working-directory: python/packages/core
 
       - name: Test with coverage
         run: uv run pytest packages/core/tests/ --cov=packages/core/src/matimo --cov-report=xml --cov-fail-under=95 -q --tb=short
+        working-directory: python
+
+      - name: Test provider packages
+        run: uv run pytest packages/ --ignore=packages/core -q --tb=short
         working-directory: python
 
       - name: Upload coverage to Codecov
