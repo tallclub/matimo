@@ -166,11 +166,11 @@ async function decoratorExample() {
   } catch (error: any) {
     console.error('❌ Error:', error.message);
   } finally {
-    // Clean up temp file
-    if (fs.existsSync(tempFile)) {
-      fs.unlinkSync(tempFile);
-      console.info('\n🧹 Cleaned up temporary file');
+    // Clean up the temp file and the <file>.backup the edit tool writes before each edit
+    for (const file of [tempFile, `${tempFile}.backup`]) {
+      if (fs.existsSync(file)) fs.unlinkSync(file);
     }
+    console.info('\n🧹 Cleaned up temporary files');
     console.info('');
   }
 }

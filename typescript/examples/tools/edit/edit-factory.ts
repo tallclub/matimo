@@ -128,9 +128,9 @@ async function editExample() {
   } catch (error: any) {
     console.error('Error editing file:', error.message);
   } finally {
-    // Clean up temp file
-    if (fs.existsSync(tempFile)) {
-      fs.unlinkSync(tempFile);
+    // Clean up the temp file and the <file>.backup the edit tool writes before each edit
+    for (const file of [tempFile, `${tempFile}.backup`]) {
+      if (fs.existsSync(file)) fs.unlinkSync(file);
     }
   }
 }
