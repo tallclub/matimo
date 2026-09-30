@@ -54,7 +54,7 @@ from pathlib import Path
 from crewai import Agent, Crew, Process, Task
 from dotenv import load_dotenv
 
-from matimo import Matimo, SkillDefinition, set_global_matimo_instance
+from matimo import ApprovalRequest, Matimo, SkillDefinition, set_global_matimo_instance
 from matimo.integrations.crewai import (
     build_relevant_skill_prompt,
     convert_tools_to_crewai,
@@ -62,6 +62,19 @@ from matimo.integrations.crewai import (
 )
 
 load_dotenv(Path(__file__).parent.parent.parent / ".env")
+
+
+async def approve(request: ApprovalRequest) -> bool:
+    """Ask in the terminal before any tool call that needs approval."""
+    print(f"\n🔒  Approval required — {request.tool_name}: {request.params}")
+    if not sys.stdin.isatty():
+        print(
+            "    ❌  Rejected: no terminal. Pre-approve with "
+            f'MATIMO_APPROVED_PATTERNS="{request.tool_name}"'
+        )
+        return False
+    return input("    Approve? [y/N] ").strip().lower() in ("y", "yes")
+
 
 DEFAULT_TASK = (
     "I'm about to call a rate-limited API repeatedly. Using matimo_search_skills, find "
@@ -112,7 +125,9 @@ async def run(task: str) -> None:
 
     # ── 1. Initialise Matimo and register skills directly (no filesystem) ────
     print("🚀  Initialising Matimo…")
-    matimo = await Matimo.init(auto_discover=True, log_level="silent")
+    matimo = await Matimo.init(
+        auto_discover=True, log_level="silent", on_approval=approve
+    )
     matimo.register_skills(SEED_SKILLS)
 
     # matimo_search_skills / matimo_get_skill_sections / matimo_get_skill_content
