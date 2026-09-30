@@ -758,9 +758,24 @@ class Matimo:
                     if self._registry.get(name) is not None:
                         self._registry.remove(name)
                         result.removed += 1
+                    self._emit_event({
+                        "type": "tool:rejected",
+                        "tool_name": name,
+                        "violations": [
+                            {"rule": "policy-denied", "severity": "high", "message": decision.reason}
+                        ],
+                        "timestamp": _now(),
+                    })
                     logger.warning("Reload: rejected '%s': %s", name, decision.reason)
                     continue
                 if isinstance(decision, PolicyPendingApproval):
+                    self._emit_event({
+                        "type": "tool:quarantined",
+                        "tool_name": name,
+                        "risk_level": decision.risk_level.value,
+                        "reason": decision.reason,
+                        "timestamp": _now(),
+                    })
                     logger.info(
                         "Reload: quarantined '%s' (risk=%s): %s",
                         name,
@@ -935,6 +950,17 @@ class Matimo:
                 f"Tool '{tool.name}' requires HITL approval but no on_hitl callback is set — denying"
             )
             return False
+
+        event: dict[str, Any] = {
+            "type": "tool:quarantined",
+            "tool_name": tool.name,
+            "risk_level": decision.risk_level.value,
+            "reason": decision.reason,
+            "timestamp": _now(),
+        }
+        if context.environment is not None:
+            event["environment"] = context.environment
+        self._emit_event(event)
 
         request = HITLRequest(
             tool_name=tool.name,
