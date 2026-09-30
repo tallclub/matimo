@@ -203,9 +203,20 @@ class TestToolToMcpRegistration:
         props = reg["inputSchema"].get("properties", {})
         assert "_matimo_approved" not in props
 
-    def test_matimo_approved_added_for_approval_tool(self) -> None:
+    def test_matimo_approved_not_offered_by_default(self) -> None:
+        """The model must never be offered a way to approve itself."""
         tool = _make_tool_def(requires_approval=True)
         reg = tool_to_mcp_registration(tool)
+        assert "_matimo_approved" not in reg["inputSchema"].get("properties", {})
+
+    def test_matimo_approved_not_offered_on_tools_needing_no_approval(self) -> None:
+        tool = _make_tool_def()
+        reg = tool_to_mcp_registration(tool, client_approval=True)
+        assert "_matimo_approved" not in reg["inputSchema"].get("properties", {})
+
+    def test_matimo_approved_added_for_approval_tool(self) -> None:
+        tool = _make_tool_def(requires_approval=True)
+        reg = tool_to_mcp_registration(tool, client_approval=True)
         props = reg["inputSchema"]["properties"]
         assert "_matimo_approved" in props
         assert props["_matimo_approved"]["type"] == "boolean"

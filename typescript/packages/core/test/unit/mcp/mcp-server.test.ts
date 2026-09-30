@@ -34,6 +34,8 @@ const mockConnect = jest.fn().mockResolvedValue(undefined);
 const mockClose = jest.fn().mockResolvedValue(undefined);
 const mockSendToolListChanged = jest.fn();
 const mockSendResourceListChanged = jest.fn();
+const mockGetClientCapabilities = jest.fn().mockReturnValue(undefined);
+const mockElicitInput = jest.fn();
 
 jest.mock(
   '@modelcontextprotocol/sdk/server/mcp',
@@ -45,6 +47,10 @@ jest.mock(
       close: mockClose,
       sendToolListChanged: mockSendToolListChanged,
       sendResourceListChanged: mockSendResourceListChanged,
+      server: {
+        getClientCapabilities: mockGetClientCapabilities,
+        elicitInput: mockElicitInput,
+      },
     })),
   }),
   { virtual: true }
@@ -385,7 +391,7 @@ describe('MCPServer', () => {
       expect(mockExecute).toHaveBeenCalledWith(
         'test_tool',
         { message: 'hi' },
-        { approved: false, credentials: {} }
+        { approved: false, onApproval: expect.any(Function), credentials: {} }
       );
 
       await server.stop();
@@ -493,22 +499,52 @@ describe('MCPServer', () => {
       await server.stop();
     });
 
-    it('should block approval-required tools without _matimo_approved', async () => {
-      const tool = createTestTool({
-        name: 'dangerous_delete',
-        requires_approval: true,
-      });
+    it('asks the MCP user through elicitation when a call needs approval', async () => {
+      const tool = createTestTool({ name: 'dangerous_delete', requires_approval: true });
       mockListTools.mockReturnValue([tool]);
+      mockExecute.mockResolvedValue({ deleted: true });
+      mockGetClientCapabilities.mockReturnValue({ elicitation: {} });
+      mockElicitInput.mockResolvedValue({ action: 'accept', content: { approve: true } });
 
       const server = new MCPServer({ transport: 'stdio', autoDiscover: false });
       await server.start();
 
       const callback = mockRegisterTool.mock.calls[0][2];
-      const result = await callback({ message: 'delete all' });
+      await callback({ message: 'delete all' }, { requestId: 7 });
 
-      expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain('requires approval');
-      expect(mockExecute).not.toHaveBeenCalled();
+      // execute() calls onApproval when the call needs approval; do it here
+      const { onApproval } = mockExecute.mock.calls[0][2];
+      await expect(
+        onApproval({ toolName: 'dangerous_delete', params: { message: 'delete all' } })
+      ).resolves.toBe(true);
+      expect(mockElicitInput).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining('dangerous_delete'),
+          requestedSchema: expect.objectContaining({ required: ['approve'] }),
+        }),
+        { relatedRequestId: 7 }
+      );
+
+      await server.stop();
+    });
+
+    it('never tells the model how to approve its own call', async () => {
+      const tool = createTestTool({ name: 'dangerous_delete', requires_approval: true });
+      mockListTools.mockReturnValue([tool]);
+      mockExecute.mockResolvedValue({ deleted: true });
+      mockGetClientCapabilities.mockReturnValue({}); // client cannot elicit
+
+      const server = new MCPServer({ transport: 'stdio', autoDiscover: false });
+      await server.start();
+
+      const callback = mockRegisterTool.mock.calls[0][2];
+      await callback({ message: 'delete all' });
+      const { onApproval } = mockExecute.mock.calls[0][2];
+
+      const failure = onApproval({ toolName: 'dangerous_delete', params: {} });
+      await expect(failure).rejects.toThrow(/does not support elicitation/);
+      await expect(failure).rejects.not.toThrow(/_matimo_approved/);
+      expect(mockElicitInput).not.toHaveBeenCalled();
 
       await server.stop();
     });
@@ -535,7 +571,7 @@ describe('MCPServer', () => {
         {
           message: 'delete all',
         },
-        { approved: false, credentials: {} }
+        { approved: false, onApproval: expect.any(Function), credentials: {} }
       );
 
       await server.stop();
@@ -567,7 +603,7 @@ describe('MCPServer', () => {
         {
           message: 'delete all',
         },
-        { approved: true, credentials: {} }
+        { approved: true, onApproval: expect.any(Function), credentials: {} }
       );
 
       await server.stop();

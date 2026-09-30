@@ -136,20 +136,24 @@ def humanize_tool_name(name: str) -> str:
     return " ".join(word[0].upper() + word[1:] for word in name.split("_") if word)
 
 
-def tool_to_mcp_registration(tool: ToolDefinition) -> dict[str, Any]:
+def tool_to_mcp_registration(
+    tool: ToolDefinition, *, client_approval: bool = False
+) -> dict[str, Any]:
     """
     Build the full MCP tool registration metadata from a ToolDefinition.
     Mirrors toolToMcpRegistration() in tool-converter.ts.
 
     Returns a dict with title, description, inputSchema, and annotations.
-    Tools with requires_approval get an extra ``_matimo_approved`` parameter
-    so clients can confirm destructive operations.
+    With ``client_approval`` (a server that trusts client-side confirmation,
+    ``trust_client_approval``), tools that need approval get an extra
+    ``_matimo_approved`` parameter. Off by default so the model is never
+    offered a way to approve itself.
     """
+    from matimo.approval.handler import definition_requires_approval
+
     schema = convert_parameters_to_mcp_schema(tool.parameters or {})
 
-    # Tools with requires_approval need the _matimo_approved parameter in
-    # the MCP schema so clients can confirm destructive operations.
-    if tool.requires_approval:
+    if client_approval and definition_requires_approval(tool):
         schema.setdefault("properties", {})["_matimo_approved"] = {
             "type": "boolean",
             "description": (

@@ -405,31 +405,54 @@ class TestMCPServerCallTool:
         _, kwargs = matimo.execute.await_args
         assert kwargs.get("credentials") == {"SLACK_BOT_TOKEN": "xoxb-pre-resolved"}
 
-    async def test_call_tool_approval_required_without_flag(self) -> None:
-        """Tools with requires_approval=True must reject calls without _matimo_approved."""
+    async def test_call_tool_asks_the_session_user_via_elicitation(self) -> None:
+        """execute() gets a per-call on_approval that elicits from this session's user."""
         mock_mcp_types = MagicMock()
-        text_content = MagicMock()
-        mock_mcp_types.TextContent.return_value = text_content
+        mock_mcp_types.TextContent.return_value = MagicMock()
 
         tool = _make_tool("dangerous_tool")
         object.__setattr__(tool, "requires_approval", True)
-
         matimo = _make_matimo_mock()
         matimo.get_tool.return_value = tool
+        matimo.execute = AsyncMock(return_value={"ok": True})
+        server = MCPServer(matimo, MCPServerOptions())
+
+        session = MagicMock()
+        session.check_client_capability.return_value = True
+        session.elicit_form = AsyncMock(
+            return_value=MagicMock(action="accept", content={"approve": True})
+        )
+        with patch.dict("sys.modules", _mcp_modules_patch(mock_mcp_types)):
+            await server._call_tool("dangerous_tool", {}, session=session, request_id=7)
+
+        on_approval = matimo.execute.await_args.kwargs["on_approval"]
+        from matimo.approval.handler import ApprovalRequest
+
+        assert await on_approval(ApprovalRequest("dangerous_tool", None, {})) is True
+        session.elicit_form.assert_awaited_once()
+        assert session.elicit_form.await_args.kwargs["related_request_id"] == 7
+
+    async def test_call_tool_never_tells_the_model_to_approve_itself(self) -> None:
+        """Without elicitation the call fails closed, with no self-approval hint."""
+        mock_mcp_types = MagicMock()
+        mock_mcp_types.TextContent.return_value = MagicMock()
+
+        tool = _make_tool("dangerous_tool")
+        object.__setattr__(tool, "requires_approval", True)
+        matimo = _make_matimo_mock()
+        matimo.get_tool.return_value = tool
+        matimo.execute = AsyncMock(return_value={"ok": True})
         server = MCPServer(matimo, MCPServerOptions())
 
         with patch.dict("sys.modules", _mcp_modules_patch(mock_mcp_types)):
-            result = await server._call_tool("dangerous_tool", {})
+            await server._call_tool("dangerous_tool", {})
 
-        # Rejection is now a structured CallToolResult (isError=True), not a
-        # bare TextContent list — mirrors the TS approval-rejection throw path.
-        mock_mcp_types.CallToolResult.assert_called_once()
-        _, kwargs = mock_mcp_types.CallToolResult.call_args
-        assert kwargs["isError"] is True
-        assert kwargs["structuredContent"]["code"] == ErrorCode.EXECUTION_FAILED.value
-        assert result is mock_mcp_types.CallToolResult.return_value
-        # execute must NOT have been called
-        matimo.execute.assert_not_awaited()
+        on_approval = matimo.execute.await_args.kwargs["on_approval"]
+        from matimo.approval.handler import ApprovalRequest
+
+        with pytest.raises(MatimoError, match="does not support elicitation") as exc:
+            await on_approval(ApprovalRequest("dangerous_tool", None, {}))
+        assert "_matimo_approved" not in str(exc.value)
 
     async def test_call_tool_does_not_trust_approval_flag_by_default(self) -> None:
         """_matimo_approved=True must not bypass server-side approval by default."""
@@ -703,9 +726,11 @@ class TestMCPServerBuildV2:
             return MagicMock()
 
         tool = _make_tool("t")
-        tool.requires_approval = True
         matimo_inst = _make_matimo_mock(tools=[tool])
         matimo_inst.get_tool.return_value = tool
+        matimo_inst.execute = AsyncMock(
+            side_effect=MatimoError("needs approval", ErrorCode.EXECUTION_FAILED)
+        )
         server = MCPServer(matimo_inst, MCPServerOptions(transport="stdio"))
         server._run_stdio = AsyncMock()  # type: ignore[method-assign]
 
@@ -722,7 +747,7 @@ class TestMCPServerBuildV2:
         )
         assert isinstance(call_result, mcp_types.CallToolResult)
         assert call_result.isError is True
-        matimo_inst.execute.assert_not_awaited()
+        matimo_inst.execute.assert_awaited_once()
 
     async def test_start_v2_registers_skill_resource_handlers_when_skills_exist(self) -> None:
         captured: dict[str, Any] = {}

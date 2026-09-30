@@ -1260,7 +1260,7 @@ Agent → weather_lookup (use the new tool)
 }
 ```
 
-For tools with `requires_approval: true`, MCP clients must include `_matimo_approved: true`:
+For tools with `requires_approval: true`, the server asks the client's user through MCP elicitation. Clients that confirm calls with their user themselves can instead send `_matimo_approved: true`, which only counts when the server was started with `trustClientApproval: true`:
 
 ```json
 {

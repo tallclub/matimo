@@ -332,3 +332,15 @@ class TestPerCallApprovalCallback:
         with pytest.raises(MatimoError, match="rejected"):
             await matimo.execute_tool("wipe", {}, on_approval=per_call)
         per_call.assert_awaited_once()
+
+    async def test_a_callback_that_cannot_ask_is_audited_as_a_denial(self) -> None:
+        events: list[dict[str, Any]] = []
+
+        async def cannot_ask(_request: ApprovalRequest) -> bool:
+            raise MatimoError("no one to ask", ErrorCode.EXECUTION_FAILED)
+
+        matimo = _matimo(_http_tool("wipe", requires_approval=True), handler=_handler(), events=events)
+        with pytest.raises(MatimoError, match="no one to ask"):
+            await matimo.execute("wipe", {}, on_approval=cannot_ask)
+        assert [e["type"] for e in events] == ["tool:approval_denied"]
+        assert "no one to ask" in events[0]["reason"]

@@ -243,6 +243,33 @@ describe('toolToMcpRegistration', () => {
   });
 });
 
+describe('toolToMcpRegistration — _matimo_approved', () => {
+  const deleteTool = {
+    name: 'wipe',
+    description: 'Delete',
+    parameters: {},
+    execution: { type: 'http', method: 'DELETE', url: 'https://api.example.com/x' },
+  } as unknown as ToolDefinition;
+  const getTool = {
+    ...deleteTool,
+    execution: { type: 'http', method: 'GET', url: 'https://api.example.com/x' },
+  } as unknown as ToolDefinition;
+
+  it('is never offered by default, so the model cannot approve itself', () => {
+    expect(toolToMcpRegistration(deleteTool).inputSchema).not.toHaveProperty('_matimo_approved');
+  });
+
+  it('is offered on approval-requiring tools when the server trusts client approval', () => {
+    const reg = toolToMcpRegistration(deleteTool, { clientApproval: true });
+    expect(reg.inputSchema).toHaveProperty('_matimo_approved');
+  });
+
+  it('is not offered on tools that need no approval', () => {
+    const reg = toolToMcpRegistration(getTool, { clientApproval: true });
+    expect(reg.inputSchema).not.toHaveProperty('_matimo_approved');
+  });
+});
+
 describe('extractAuthPlaceholders', () => {
   it('should extract auth placeholders from HTTP headers', () => {
     const tool = {

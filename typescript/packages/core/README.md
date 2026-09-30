@@ -331,7 +331,7 @@ process.env.MATIMO_AUTO_APPROVE = 'true';
 process.env.MATIMO_APPROVED_PATTERNS = 'calculator,weather_*';
 ```
 
-**MCP approval:** MCP clients pass `_matimo_approved: true` in arguments for tools that require approval.
+**MCP approval:** the MCP server asks the client's user through MCP elicitation. `_matimo_approved: true` in the arguments only counts when the server runs with `trustClientApproval: true`.
 
 See: [docs/api-reference/APPROVAL-SYSTEM.md](../../../docs/api-reference/APPROVAL-SYSTEM.md)
 

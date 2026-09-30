@@ -9,6 +9,7 @@
 import { z } from 'zod';
 import type { Parameter } from '../core/types.js';
 import type { ToolDefinition } from '../core/schema.js';
+import { definitionRequiresApproval } from '../approval/approval-handler.js';
 
 /**
  * Convert a single Matimo Parameter to a Zod schema.
@@ -238,7 +239,17 @@ export function humanizeToolName(name: string): string {
  *
  * @returns Object ready for server.registerTool(name, metadata, handler)
  */
-export function toolToMcpRegistration(tool: ToolDefinition): {
+export function toolToMcpRegistration(
+  tool: ToolDefinition,
+  options: {
+    /**
+     * Add the `_matimo_approved` parameter to tools that need approval, for a
+     * server that trusts client-side confirmation (`trustClientApproval`).
+     * Off by default so the model is never offered a way to approve itself.
+     */
+    clientApproval?: boolean;
+  } = {}
+): {
   title: string;
   description: string;
   inputSchema: Record<string, z.ZodTypeAny>;
@@ -246,9 +257,7 @@ export function toolToMcpRegistration(tool: ToolDefinition): {
 } {
   const schema = convertParametersToMcpSchema(tool.parameters || {});
 
-  // Tools with requires_approval need the _matimo_approved parameter in
-  // the MCP schema so clients can confirm destructive operations.
-  if (tool.requires_approval) {
+  if (options.clientApproval === true && definitionRequiresApproval(tool)) {
     schema._matimo_approved = z
       .boolean()
       .optional()

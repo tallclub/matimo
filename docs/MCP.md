@@ -44,7 +44,7 @@ Expose your Matimo tools to AI assistants via the [Model Context Protocol](https
 | Stdio transport (Claude Desktop) | ✅ | ✅ |
 | HTTP transport (remote / Docker) | ✅ | ✅ |
 | Auth parameter filtering | ✅ | ✅ |
-| `_matimo_approved` approval gating | ✅ | ✅ |
+| Approval via MCP elicitation (`_matimo_approved` only with `trustClientApproval`) | ✅ | ✅ |
 | Pre-resolved secrets (memory storage) | ✅ | ✅ |
 | Skill resources (MCP resources/list) | ✅ | ✅ |
 | Bearer token auth (HTTP) | ✅ | ✅ |

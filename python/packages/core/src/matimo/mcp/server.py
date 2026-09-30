@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from matimo.errors import ErrorCode, MatimoError
+from matimo.mcp.approval_elicitation import create_elicitation_approval_callback
 
 if TYPE_CHECKING:
     from matimo.instance import Matimo
@@ -85,8 +86,10 @@ class MCPServerOptions:
     approval_secret: str | None = None
     approval_dir: str | None = None
     # Trust _matimo_approved from MCP tool-call arguments as an out-of-band
-    # approval. Defaults to False because MCP arguments are supplied by the
-    # client/model and are not a server-side approval signal by themselves.
+    # approval, and advertise that parameter on tools that need approval. Only
+    # for clients that confirm every call with their user themselves: the
+    # argument is supplied by the client/model, so by default (False) approval
+    # is asked of the user via MCP elicitation instead.
     trust_client_approval: bool = False
 
 
@@ -171,7 +174,10 @@ class MCPServer:
         async def handle_call_tool(
             name: str, arguments: dict[str, Any]
         ) -> list[mcp_types.TextContent] | mcp_types.CallToolResult:
-            return await self._call_tool(name, arguments)
+            ctx = server.request_context
+            return await self._call_tool(
+                name, arguments, session=ctx.session, request_id=ctx.request_id
+            )
 
         # Register skill resources (skills://name) so MCP clients can read them.
         # Mirrors registerSkillResources() in mcp-server.ts.
@@ -193,8 +199,13 @@ class MCPServer:
         async def on_list_tools(ctx: Any, params: Any) -> Any:  # noqa: ANN401, ARG001
             return mcp_types.ListToolsResult(tools=self._get_mcp_tools())
 
-        async def on_call_tool(ctx: Any, params: Any) -> Any:  # noqa: ANN401, ARG001
-            result = await self._call_tool(params.name, dict(params.arguments or {}))
+        async def on_call_tool(ctx: Any, params: Any) -> Any:  # noqa: ANN401
+            result = await self._call_tool(
+                params.name,
+                dict(params.arguments or {}),
+                session=getattr(ctx, "session", None),
+                request_id=getattr(ctx, "request_id", None),
+            )
             if isinstance(result, list):
                 return mcp_types.CallToolResult(content=result)
             return result  # already a CallToolResult (error path)
@@ -370,7 +381,9 @@ class MCPServer:
         mcp_tools = []
         for tool in allowed:
             from matimo.mcp.tool_converter import tool_to_mcp_registration
-            registration = tool_to_mcp_registration(tool)
+            registration = tool_to_mcp_registration(
+                tool, client_approval=self._options.trust_client_approval
+            )
             mcp_tools.append(
                 mcp_types.Tool(
                     name=tool.name,
@@ -384,12 +397,17 @@ class MCPServer:
         return mcp_tools
 
     async def _call_tool(
-        self, name: str, arguments: dict[str, Any]
+        self,
+        name: str,
+        arguments: dict[str, Any],
+        *,
+        session: Any | None = None,  # noqa: ANN401 — mcp ServerSession
+        request_id: str | int | None = None,
     ) -> list[Any] | Any:  # noqa: ANN401 — success path returns list[TextContent], error path a CallToolResult
         """Execute a Matimo tool and return MCP TextContent, or a CallToolResult on error.
 
-        Handles _matimo_approved for approval-required tools, mirrors
-        the TypeScript _callTool() in mcp-server.ts. Error results carry
+        A call that needs approval is put to the human behind ``session`` via
+        MCP elicitation; mirrors the tool-call handler in mcp-server.ts. Error results carry
         structured `code`/`statusCode`/`retryable` data via
         CallToolResult.structuredContent rather than being flattened into
         a plain-text list, matching the TS side's use of `structuredContent`.
@@ -399,24 +417,14 @@ class MCPServer:
         except ImportError:
             return []
 
-        # Extract _matimo_approved before forwarding to execute. By default this
-        # client-supplied flag is only a confirmation prompt signal; it must not
-        # bypass server-side approval checks.
+        # `_matimo_approved` is set by the client/model, so it only counts when
+        # the operator has said the client confirms calls with its user
+        # (trust_client_approval). Otherwise approval is asked via elicitation.
         matimo_approved: bool = arguments.get("_matimo_approved") is True
         clean_args = {k: v for k, v in arguments.items() if k != "_matimo_approved"}
 
-        # Get tool definition once — used for approval check and fallback secrets.
+        # Get tool definition once — used for fallback secrets.
         tool_def = self._matimo.get_tool(name)
-
-        # Approval gate: rejection mirrors TypeScript behaviour (throw before execute).
-        # Uses EXECUTION_FAILED to match the code TS's equivalent throw site uses
-        # for this same rejection (mcp-server.ts), not POLICY_DENIED.
-        if tool_def and getattr(tool_def, "requires_approval", False) and matimo_approved is not True:
-            msg = (
-                f"Tool '{name}' requires approval. This is a destructive operation. "
-                "Re-invoke with parameter _matimo_approved: true to confirm execution."
-            )
-            return self._build_error_result(mcp_types, ErrorCode.EXECUTION_FAILED.value, {}, msg)
 
         # Credentials: prefer pre-resolved secrets from startup (_seed_environment_secrets).
         # Fall back to per-call resolution for backward-compat / direct calls (e.g. tests).
@@ -434,11 +442,8 @@ class MCPServer:
                 name,
                 clean_args,
                 credentials=credentials or None,
-                approved=(
-                    self._options.trust_client_approval
-                    and bool(tool_def and getattr(tool_def, "requires_approval", False))
-                    and matimo_approved
-                ),
+                approved=self._options.trust_client_approval and matimo_approved,
+                on_approval=create_elicitation_approval_callback(session, request_id),
             )
             output = _json.dumps(result, indent=2, default=str)
             return [mcp_types.TextContent(type="text", text=output)]

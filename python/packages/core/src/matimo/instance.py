@@ -909,44 +909,46 @@ class Matimo:
 
         agent_id = context.agent_id if context else None
         callback = on_approval or self._on_approval or handler.get_approval_callback()
-        if callback is None:
-            error = MatimoError(
-                f"Destructive operation requires approval: {tool.name}",
-                ErrorCode.EXECUTION_FAILED,
-                {
-                    "tool_name": tool.name,
-                    "hint": "Pass on_approval to Matimo.init() (or matimo.set_approval_callback()) "
-                    "to have a human decide, or pre-approve trusted tools with "
-                    "MATIMO_APPROVED_PATTERNS",
-                },
+        try:
+            if callback is None:
+                raise MatimoError(
+                    f"Destructive operation requires approval: {tool.name}",
+                    ErrorCode.EXECUTION_FAILED,
+                    {
+                        "tool_name": tool.name,
+                        "hint": "Pass on_approval to Matimo.init() (or "
+                        "matimo.set_approval_callback()) to have a human decide, or "
+                        "pre-approve trusted tools with MATIMO_APPROVED_PATTERNS",
+                    },
+                )
+            request = ApprovalRequest(
+                tool_name=tool.name, description=tool.description, params=params
             )
-        elif not await handler.request_approval(
-            ApprovalRequest(tool_name=tool.name, description=tool.description, params=params),
-            callback,
-        ):
-            error = MatimoError(
-                f"Operation rejected by approval handler: {tool.name}",
-                ErrorCode.EXECUTION_FAILED,
-                {"tool_name": tool.name, "message": "User or policy rejected the operation"},
-            )
-        else:
+            if not await handler.request_approval(request, callback):
+                raise MatimoError(
+                    f"Operation rejected by approval handler: {tool.name}",
+                    ErrorCode.EXECUTION_FAILED,
+                    {"tool_name": tool.name, "message": "User or policy rejected the operation"},
+                )
+        except MatimoError as error:
+            # Includes a callback that cannot ask anyone (e.g. an MCP client
+            # without elicitation) — audited as a denial, as in TS.
             self._emit_event({
-                "type": "tool:approval_granted",
+                "type": "tool:approval_denied",
                 "tool_name": tool.name,
+                "reason": str(error),
                 "agent_id": agent_id,
                 "timestamp": _now(),
             })
-            self._logger.info(f"Destructive operation approved: {tool.name}")
-            return
+            raise
 
         self._emit_event({
-            "type": "tool:approval_denied",
+            "type": "tool:approval_granted",
             "tool_name": tool.name,
-            "reason": str(error),
             "agent_id": agent_id,
             "timestamp": _now(),
         })
-        raise error
+        self._logger.info(f"Destructive operation approved: {tool.name}")
 
     def _emit_event(self, event_dict: dict[str, Any]) -> None:
         """Emit an audit event if a handler is configured."""

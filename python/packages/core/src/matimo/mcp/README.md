@@ -6,7 +6,7 @@ This module mirrors the TypeScript `@matimo/core/mcp` implementation and maintai
 
 - **Auth parameter filtering** - prevents secret tokens from appearing in client schemas
 - **Secret pre-resolution** - resolves all credentials once at startup, stores in memory
-- **Approval gating** - approval-required tools enforce `_matimo_approved` parameter
+- **Approval via elicitation** - calls that need approval ask the MCP client's user
 - **Skill resources** - exposes Matimo skills as MCP resources (`skills://name`)
 - **HTTP transport** - Streamable HTTP with bearer-token auth, CORS, health endpoint
 - **Stdio transport** - stdio server for Claude Desktop integration
@@ -143,44 +143,29 @@ _call_tool() injects as credentials=self._resolved_secrets
 
 **File:** `tool_converter.py`, `server.py`
 
-**Problem:** Destructive tools need client confirmation before execution.
+**Problem:** Destructive tools need a human to confirm them, and over MCP
+there is no terminal to prompt. A flag the model sets itself is no confirmation.
 
-**Solution:** Add `_matimo_approved` boolean parameter to tools with `requires_approval=True`:
-
-```python
-def tool_to_mcp_registration(tool: ToolDefinition) -> dict:
-    schema = convert_parameters_to_mcp_schema(tool.parameters or {})
-    
-    if tool.requires_approval:
-        schema["properties"]["_matimo_approved"] = {
-            "type": "boolean",
-            "description": "Set to true to confirm execution of this approval-required tool"
-        }
-    
-    return {
-        "title": tool.name,
-        "description": tool.description,
-        "inputSchema": schema,
-    }
-```
-
-**Execution gate in `_call_tool()`:**
+**Solution:** `_call_tool()` passes a per-call `on_approval` to
+`matimo.execute()` that asks the human behind the current MCP session with an
+elicitation request (`approval_elicitation.py`, mirroring
+`approval-elicitation.ts`):
 
 ```python
-async def _call_tool(self, name: str, arguments: dict) -> list:
-    matimo_approved = arguments.get("_matimo_approved", False)
-    clean_args = {k: v for k, v in arguments.items() if k != "_matimo_approved"}
-    
-    tool_def = self._matimo.get_tool(name)
-    
-    # Reject if approval required but not granted
-    if tool_def and tool_def.requires_approval and not matimo_approved:
-        return [TextContent(type="text", text="Approval required. Re-invoke with _matimo_approved: true")]
-    
-    # The client-supplied flag is a confirmation signal only by default.
-    result = await self._matimo.execute(name, clean_args, approved=False)
-    return [TextContent(type="text", text=json.dumps(result))]
+result = await self._matimo.execute(
+    name,
+    clean_args,
+    credentials=credentials or None,
+    approved=self._options.trust_client_approval and matimo_approved,
+    on_approval=create_elicitation_approval_callback(session, request_id),
+)
 ```
+
+If the client doesn't support elicitation, the call fails with an error that
+says so and how to configure the server — it never tells the model to re-invoke
+with `_matimo_approved`. That parameter is advertised (and honoured) only when
+the server runs with `trust_client_approval=True`, for clients that confirm
+every call with their user themselves.
 
 Only set `MCPServerOptions(trust_client_approval=True)` when the transport or
 embedding application provides a server-trusted approval signal.
@@ -496,7 +481,7 @@ If a tool name matches both `tools` (allowlist) and `exclude_tools` (denylist), 
 | Feature | TypeScript | Python | Status |
 |---------|-----------|--------|--------|
 | Auth param filtering | ✅ `isAuthParameter()` | ✅ `_is_auth_parameter()` | Parity |
-| `_matimo_approved` | ✅ `toolToMcpRegistration()` | ✅ `tool_to_mcp_registration()` | Parity |
+| Approval via elicitation | ✅ `createElicitationApprovalCallback()` | ✅ `create_elicitation_approval_callback()` | Parity |
 | Pre-resolved secrets | ✅ `seedEnvironmentSecrets()` | ✅ `_seed_environment_secrets()` | Parity |
 | Skill resources | ✅ `registerSkillResources()` | ✅ `_register_skill_resources_v1()` / `_build_skill_resource_handlers_v2()` | Parity |
 | HTTP transport | ✅ `StreamableHTTPServerTransport` + sessions | ✅ `StreamableHTTPSessionManager` + stateless | Parity |
@@ -526,10 +511,10 @@ uv run pytest packages/core/tests/unit/test_mcp_server.py -v
 
 - ✅ Auth parameter detection (camelCase, kebab-case, snake_case)
 - ✅ Auth parameters stripped from MCP schema
-- ✅ `_matimo_approved` added for approval-required tools
+- ✅ `_matimo_approved` offered only with `trust_client_approval`
 - ✅ Pre-resolved secrets used in `_call_tool()`
 - ✅ Secrets fall back to per-call resolution if not pre-resolved
-- ✅ Approval gate rejects unapproved calls
+- ✅ Approval asked via elicitation; clients without it get an actionable error
 - ✅ `_matimo_approved` stripped from tool args
 - ✅ Skill resources registered and readable
 
@@ -542,7 +527,7 @@ uv run pytest packages/core/tests/unit/test_mcp_server.py -v
 3. **Credentials stored in memory only** - never written to process.env or disk
 4. **Secrets per-call injection** - only passed to `matimo.execute()`, not to clients
 5. **Bearer token for HTTP** - required in `Authorization` header for HTTP transport
-6. **Approval gating** - destructive tools require explicit `_matimo_approved=true`, then server-side approval still applies by default
+6. **Approval via elicitation** - destructive calls are confirmed by the MCP client's user, never by a flag the model sets (unless `trust_client_approval=True`)
 
 ---
 
