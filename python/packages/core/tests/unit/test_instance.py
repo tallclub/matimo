@@ -463,32 +463,6 @@ class TestMatimoHitl:
         assert exc.value.code in (ErrorCode.POLICY_DENIED, ErrorCode.EXECUTION_FAILED)
 
     @pytest.mark.asyncio
-    async def test_execute_approved_skip_policy(self) -> None:
-        """approved=True bypasses policy check entirely."""
-        reg = ToolRegistry()
-        deprecated = ToolDefinition(
-            name="old_tool",
-            description="deprecated",
-            deprecated=True,
-            execution=HttpExecution(type="http", method="GET", url="https://x.com"),
-        )
-        reg.register(deprecated)
-        matimo = Matimo(
-            registry=reg,
-            policy_engine=DefaultPolicyEngine(),
-            loader=MagicMock(),
-            tool_paths=[],
-            on_event=None,
-            on_hitl=None,
-            matimo_logger=MagicMock(),
-        )
-        with respx.mock:
-            respx.get("https://x.com").mock(return_value=httpx.Response(200, json={"ok": True}))
-            # approved=True skips policy
-            result = await matimo.execute("old_tool", {}, approved=True)
-        assert result["ok"] is True
-
-    @pytest.mark.asyncio
     async def test_hitl_timeout_auto_rejects(self) -> None:
         """When hitl_timeout_ms is set and callback exceeds it, tool is auto-rejected."""
         import asyncio

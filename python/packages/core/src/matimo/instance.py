@@ -326,7 +326,9 @@ class Matimo:
             credentials: Per-call credential overrides (multi-tenant).
                          SECURITY: never logged.
             context:     Policy context (agent ID, roles, environment).
-            approved:    Skip approval check (use when already confirmed out-of-band).
+            approved:    Skip the per-call approval prompt (use when a human already
+                         confirmed this call out-of-band). Policy denials and HITL
+                         quarantine still apply.
 
         Returns:
             Tool execution result — arbitrary value (JSON, text, etc.).
@@ -341,33 +343,34 @@ class Matimo:
 
         tool = self._registry.get_or_raise(tool_name)
 
-        # Policy check
-        if not approved:
-            ctx = context or PolicyContext()
-            decision = self._policy.can_execute(ctx, tool)
+        # Policy check — always runs. `approved` only skips the per-call
+        # approval prompt below; it can never override a policy denial or
+        # quarantine (same as MatimoInstance.execute()).
+        ctx = context or PolicyContext()
+        decision = self._policy.can_execute(ctx, tool)
 
-            if isinstance(decision, PolicyDenied):
-                self._emit_event({
-                    "type": "tool:execution_denied",
-                    "tool_name": tool_name,
-                    "reason": decision.reason,
-                    "agent_id": ctx.agent_id,
-                    "timestamp": _now(),
-                })
+        if isinstance(decision, PolicyDenied):
+            self._emit_event({
+                "type": "tool:execution_denied",
+                "tool_name": tool_name,
+                "reason": decision.reason,
+                "agent_id": ctx.agent_id,
+                "timestamp": _now(),
+            })
+            raise MatimoError(
+                f"Policy denied execution of '{tool_name}': {decision.reason}",
+                ErrorCode.POLICY_DENIED,
+                {"tool_name": tool_name, "reason": decision.reason},
+            )
+
+        if isinstance(decision, PolicyPendingApproval):
+            hitl_approved = await self._resolve_hitl(decision, tool, ctx)
+            if not hitl_approved:
                 raise MatimoError(
-                    f"Policy denied execution of '{tool_name}': {decision.reason}",
+                    f"Human approval denied for tool '{tool_name}'",
                     ErrorCode.POLICY_DENIED,
-                    {"tool_name": tool_name, "reason": decision.reason},
+                    {"tool_name": tool_name},
                 )
-
-            if isinstance(decision, PolicyPendingApproval):
-                hitl_approved = await self._resolve_hitl(decision, tool, ctx)
-                if not hitl_approved:
-                    raise MatimoError(
-                        f"Human approval denied for tool '{tool_name}'",
-                        ErrorCode.POLICY_DENIED,
-                        {"tool_name": tool_name},
-                    )
 
         await self._require_call_approval(tool, params, context, skip_prompt=approved)
 

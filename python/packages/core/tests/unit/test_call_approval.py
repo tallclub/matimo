@@ -176,3 +176,27 @@ class TestApprovalHandlerParity:
         handler = _handler(True)
         handler.set_approval_callback(None)
         assert handler.get_approval_callback() is None
+
+
+class TestApprovedFlagCannotBypassPolicy:
+    """approved=True answers the per-call prompt; it is not a policy override."""
+
+    async def test_policy_denial_still_applies(self) -> None:
+        tool = _http_tool("old")
+        tool.deprecated = True
+        matimo = _matimo(tool, handler=_handler(True))
+        with pytest.raises(MatimoError) as exc:
+            await matimo.execute("old", {}, approved=True)
+        assert exc.value.code == ErrorCode.POLICY_DENIED
+        matimo._dispatch.assert_not_awaited()  # type: ignore[attr-defined]
+
+    async def test_quarantine_still_applies(self) -> None:
+        matimo = _matimo(
+            _http_tool("wipe", "DELETE"),
+            handler=_handler(True),
+            policy=PolicyConfig(enable_hitl=True),
+        )
+        with pytest.raises(MatimoError) as exc:
+            await matimo.execute("wipe", {}, approved=True)
+        assert exc.value.code == ErrorCode.POLICY_DENIED
+        matimo._dispatch.assert_not_awaited()  # type: ignore[attr-defined]
