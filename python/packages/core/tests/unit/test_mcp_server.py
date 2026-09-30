@@ -1162,3 +1162,21 @@ class TestRegisterSkillResources:
         result = await registered_handlers["read_resource"](uri_mock)
         assert "unavailable" in result
 
+
+
+class TestBearerTokenMatches:
+    """bearer_token_matches — constant-time; mirrors bearerTokenMatches() in TS."""
+
+    def test_accepts_the_exact_bearer_header(self) -> None:
+        from matimo.mcp.server import bearer_token_matches
+
+        assert bearer_token_matches("Bearer s3cret", "s3cret") is True
+
+    @pytest.mark.parametrize(
+        "header",
+        ["", "Bearer s3creT", "Bearer s3cr", "Bearer s3cret2", "s3cret", "Basic s3cret"],
+    )
+    def test_rejects_anything_else(self, header: str) -> None:
+        from matimo.mcp.server import bearer_token_matches
+
+        assert bearer_token_matches(header, "s3cret") is False

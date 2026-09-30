@@ -13,6 +13,7 @@ constructor-callback Server API (see _mcp_major_version() / _build_server_v1()
 from __future__ import annotations
 
 import fnmatch
+import hmac
 import json as _json
 import logging
 from dataclasses import dataclass
@@ -24,6 +25,15 @@ if TYPE_CHECKING:
     from matimo.instance import Matimo
 
 logger = logging.getLogger("matimo")
+
+
+def bearer_token_matches(auth_header: str, token: str) -> bool:
+    """
+    Check an Authorization header against the server's bearer token in
+    constant time, so response timing reveals nothing about how much of a
+    guessed token was right. Mirrors bearerTokenMatches() in mcp-server.ts.
+    """
+    return hmac.compare_digest(auth_header.encode("utf-8"), f"Bearer {token}".encode())
 
 
 def _mcp_major_version() -> int:
@@ -284,7 +294,7 @@ class MCPServer:
                     for k, v in scope.get("headers", [])
                 }
                 auth = headers.get("authorization", "")
-                if auth != f"Bearer {mcp_token}":
+                if not bearer_token_matches(auth, mcp_token):
                     body = _json.dumps({"error": "Unauthorized"}).encode()
                     await send({
                         "type": "http.response.start",

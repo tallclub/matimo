@@ -10,6 +10,7 @@
  *   HTTP mode protected by Bearer token (MATIMO_MCP_TOKEN)
  */
 
+import { createHash, timingSafeEqual } from 'crypto';
 import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -80,6 +81,19 @@ export interface MCPServerOptions {
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────
+
+/**
+ * Check an Authorization header against the server's bearer token in
+ * constant time, so response timing reveals nothing about how much of a
+ * guessed token was right. Both sides are hashed first because
+ * timingSafeEqual requires equal-length inputs.
+ * Mirrors bearer_token_matches() in python/.../mcp/server.py.
+ */
+export function bearerTokenMatches(authHeader: string | undefined, token: string): boolean {
+  if (!authHeader) return false;
+  const digest = (value: string) => createHash('sha256').update(value, 'utf8').digest();
+  return timingSafeEqual(digest(authHeader), digest(`Bearer ${token}`));
+}
 
 function getPackageVersion(): string {
   try {
@@ -624,7 +638,7 @@ export class MCPServer {
 
       // Bearer token auth (always enabled in HTTP mode)
       const authHeader = req.headers.authorization;
-      if (!authHeader || authHeader !== `Bearer ${mcpToken}`) {
+      if (!bearerTokenMatches(authHeader, mcpToken)) {
         res.writeHead(401, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Unauthorized' }));
         return;
