@@ -22,21 +22,34 @@ SETUP:
 
 USAGE:
 ────────────────────────────────────────────────────────────────────────────
-  export MATIMO_AUTO_APPROVE=true
-  uv run python native/web_scraper/web_scraper_decorator.py
+  uv run python native/web_scraper/web_scraper_decorator.py   # asks before each call
+  MATIMO_APPROVED_PATTERNS="web_scraper" uv run python native/web_scraper/web_scraper_decorator.py   # unattended
 
 ============================================================================
 """
 
 import asyncio
+import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
 
-from matimo import Matimo
+from matimo import ApprovalRequest, Matimo
 from matimo.decorators import set_global_matimo_instance, tool
 
 load_dotenv(Path(__file__).parent.parent.parent / ".env")
+
+
+async def approve(request: ApprovalRequest) -> bool:
+    """
+    web_scraper declares requires_approval: true, so every call is shown to a human
+    first. Pre-approve it for scripts and CI with MATIMO_APPROVED_PATTERNS="web_scraper".
+    """
+    print(f"\n🔒 Approval required — {request.tool_name}: {request.params.get('url')}")
+    if not sys.stdin.isatty():
+        print('   ❌ Rejected: no terminal. Pre-approve with MATIMO_APPROVED_PATTERNS="web_scraper"')
+        return False
+    return input("   Approve? (y/n): ").strip().lower() in ("y", "yes")
 
 
 # ───────────────────────────────────────────────────────────────────────────
@@ -73,7 +86,7 @@ async def main() -> None:
     print("╚════════════════════════════════════════════════════════╝\n")
 
     print("🚀  Initializing Matimo…")
-    matimo = await Matimo.init(auto_discover=True)
+    matimo = await Matimo.init(auto_discover=True, on_approval=approve)
     set_global_matimo_instance(matimo)
     print("✅  Matimo initialized\n")
 
