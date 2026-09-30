@@ -353,10 +353,10 @@ npx tsx postgres-with-approval.ts
 # When prompted: "Do you approve? (yes/no): " type "yes"
 ```
 
-For CI/CD with auto-approval:
+For CI/CD, pre-approve the tools you trust by name:
 ```bash
-export MATIMO_SQL_AUTO_APPROVE=true
-pnpm postgres:factory
+export MATIMO_APPROVED_PATTERNS="postgres-execute-sql"
+pnpm postgres:approval
 ```
 
 ### "Module not found" in Examples
@@ -479,8 +479,8 @@ MATIMO_POSTGRES_USER=user
 MATIMO_POSTGRES_PASSWORD=password
 MATIMO_POSTGRES_DB=matimo-test
 
-# Auto-approve all SQL operations (for CI/CD)
-# MATIMO_SQL_AUTO_APPROVE=true
+# Pre-approve the SQL tool by name (for CI/CD)
+# MATIMO_APPROVED_PATTERNS=postgres-execute-sql
 ```
 
 **Postgres (Optional):** 

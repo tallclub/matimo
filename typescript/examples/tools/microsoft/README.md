@@ -161,7 +161,7 @@ tools (`ms_send_email`, `ms_publish_to_sharepoint`) before they ever reach the e
 ```typescript
 const matimo = await MatimoInstance.init({
   autoDiscover: true,
-  onApprovalRequest: createApprovalCallback(), // prompts in the terminal
+  onApproval: createApprovalCallback(), // prompts in the terminal
 });
 
 // Routed through the approval handler BEFORE execution:
@@ -172,19 +172,15 @@ await matimo.execute('ms_send_email', {
 });
 ```
 
-Three ways to resolve approval:
+Two ways to resolve approval:
 - **Interactive** (default): you'll be prompted to approve/reject each high-risk call
   in the terminal - requires a TTY (won't work under `nohup`/non-interactive shells)
-- **Auto-approve everything** (CI / unattended runs):
-  ```bash
-  MATIMO_AUTO_APPROVE=true pnpm microsoft:approval
-  ```
-- **Pre-approve specific tools** by name pattern:
+- **Pre-approve specific tools** by name pattern (CI / unattended runs):
   ```bash
   MATIMO_APPROVED_PATTERNS="ms_send_email,ms_publish_to_sharepoint" pnpm microsoft:approval
   ```
 
-> ⚠️ Without a TTY *and* without `MATIMO_AUTO_APPROVE=true`, approval requests are
+> ⚠️ Without a TTY, calls to tools not matched by `MATIMO_APPROVED_PATTERNS` are
 > auto-**rejected** with `"non-interactive environment (no terminal)"` - a different
 > failure mode than `AUTH_FAILED`. Don't confuse the two when debugging.
 
@@ -225,8 +221,8 @@ Your token is well-formed but lacks the scope the tool needs - recheck the
 
 ### "non-interactive environment (no terminal)"
 You ran `microsoft-with-approval.ts` (or any flow touching `ms_send_email` /
-`ms_publish_to_sharepoint`) without a TTY and without `MATIMO_AUTO_APPROVE=true`.
-Either run interactively or set `MATIMO_AUTO_APPROVE=true`.
+`ms_publish_to_sharepoint`) without a TTY. Either run interactively or pre-approve
+the tools with `MATIMO_APPROVED_PATTERNS="ms_send_email,ms_publish_to_sharepoint"`.
 
 ### "OpenAI API error" (LangChain example)
 ```bash
