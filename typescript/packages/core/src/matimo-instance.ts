@@ -603,7 +603,17 @@ export class MatimoInstance {
           : tool;
 
       const executor = this.getExecutor(effectiveTool);
-      const rawResult = await executor.execute(effectiveTool, finalParams, credentials);
+      // Function tools also get the caller's PolicyContext (e.g. so
+      // matimo_approve_tool can check the approver's role and identity).
+      const rawResult =
+        effectiveTool.execution.type === 'function'
+          ? await this.functionExecutor.execute(
+              effectiveTool,
+              finalParams,
+              credentials,
+              options?.context
+            )
+          : await executor.execute(effectiveTool, finalParams, credentials);
 
       // Cap the result size here — the one place every execution path
       // (direct SDK, LangChain, CrewAI, MCP) funnels through — so an

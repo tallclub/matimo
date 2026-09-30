@@ -130,7 +130,7 @@ from matimo.errors import (  # noqa: E402
 
 # Executors
 from matimo.executors.command_executor import CommandExecutor  # noqa: E402
-from matimo.executors.function_executor import FunctionExecutor  # noqa: E402
+from matimo.executors.function_executor import FunctionExecutor, FunctionToolContext  # noqa: E402
 from matimo.executors.http_executor import HttpExecutor  # noqa: E402
 
 # Main entry point + sync API
@@ -302,7 +302,7 @@ __all__ = [
     "ParsedSkillContent", "SemanticSearchResult",
     "TfIdfEmbeddingProvider", "EmbeddingProvider", "cosine_similarity",
     # Executors
-    "HttpExecutor", "CommandExecutor", "FunctionExecutor",
+    "HttpExecutor", "CommandExecutor", "FunctionExecutor", "FunctionToolContext",
     # Auth
     "inject_auth_parameters", "extract_parameter_placeholders",
     "OAuth2Handler", "OAuth2ProviderLoader",

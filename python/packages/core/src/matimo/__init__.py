@@ -123,7 +123,7 @@ from matimo.errors import (
 
 # Executors
 from matimo.executors.command_executor import CommandExecutor
-from matimo.executors.function_executor import FunctionExecutor
+from matimo.executors.function_executor import FunctionExecutor, FunctionToolContext
 from matimo.executors.http_executor import HttpExecutor
 
 # Main entry point + sync API
@@ -307,7 +307,7 @@ __all__ = [
     "ParsedSkillContent", "SemanticSearchResult",
     "TfIdfEmbeddingProvider", "EmbeddingProvider", "cosine_similarity",
     # Executors
-    "HttpExecutor", "CommandExecutor", "FunctionExecutor",
+    "HttpExecutor", "CommandExecutor", "FunctionExecutor", "FunctionToolContext",
     # Auth
     "inject_auth_parameters", "extract_parameter_placeholders",
     "OAuth2Handler", "OAuth2ProviderLoader",

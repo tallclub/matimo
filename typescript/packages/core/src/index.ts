@@ -47,6 +47,7 @@ export { TfIdfEmbeddingProvider, cosineSimilarity } from './core/tfidf-embedding
 export { CommandExecutor } from './executors/command-executor.js';
 export { HttpExecutor } from './executors/http-executor.js';
 export { FunctionExecutor } from './executors/function-executor.js';
+export type { FunctionToolContext } from './executors/function-executor.js';
 
 // Parameter Encoding
 export { applyParameterEncodings } from './encodings/parameter-encoding.js';

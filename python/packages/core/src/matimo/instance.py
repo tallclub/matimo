@@ -431,7 +431,7 @@ class Matimo:
 
         # Execute
         try:
-            raw_result = await self._dispatch(tool, working_params, credentials)
+            raw_result = await self._dispatch(tool, working_params, credentials, context)
         except MatimoError:
             raise
         except Exception as exc:
@@ -752,6 +752,7 @@ class Matimo:
         tool: ToolDefinition,
         params: dict[str, Any],
         credentials: dict[str, str] | None,
+        context: PolicyContext | None = None,
     ) -> Any:  # noqa: ANN401
         # Returns Any: tool execution results are arbitrary JSON/values dispatched to executors.
         exec_type = tool.execution.type
@@ -760,7 +761,9 @@ class Matimo:
         if exec_type == "command":
             return await self._command_executor.execute(tool, params, credentials)
         if exec_type == "function":
-            return await self._function_executor.execute(tool, params, credentials)
+            # Function tools also get the caller's PolicyContext (e.g. so
+            # matimo_approve_tool can check the approver's role and identity).
+            return await self._function_executor.execute(tool, params, credentials, context)
         raise MatimoError(
             f"Unknown execution type: '{exec_type}'",
             ErrorCode.EXECUTION_FAILED,
