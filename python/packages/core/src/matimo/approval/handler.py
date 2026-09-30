@@ -58,9 +58,33 @@ class ApprovalHandler:
     # Public API
     # ------------------------------------------------------------------
 
-    def set_approval_callback(self, callback: ApprovalCallback) -> None:
-        """Wire an async approval callback (e.g., Slack DM, CLI prompt)."""
+    def set_approval_callback(self, callback: ApprovalCallback | None) -> None:
+        """Wire an async approval callback (e.g., Slack DM, CLI prompt), or clear it."""
         self._callback = callback
+
+    def get_approval_callback(self) -> ApprovalCallback | None:
+        """Return the current approval callback (for save/restore patterns)."""
+        return self._callback
+
+    def requires_approval(
+        self, requires_approval_in_yaml: bool | None, content: str | None = None
+    ) -> bool:
+        """
+        Whether a call needs per-call approval. Mirrors requiresApproval() in
+        approval-handler.ts: an explicit YAML `requires_approval: true` always
+        does; otherwise the supplied content (SQL, shell command, ...) is
+        scanned for destructive keywords.
+        """
+        if requires_approval_in_yaml is True:
+            return True
+        if content:
+            upper = content.upper()
+            return any(kw in upper for kw in self.destructive_keywords)
+        return False
+
+    def is_pre_approved(self, tool_name: str) -> bool:
+        """True when MATIMO_AUTO_APPROVE is on or the tool matches an approved pattern."""
+        return self.auto_approve or self._matches_approved_pattern(tool_name)
 
     async def request_approval(self, request: ApprovalRequest) -> bool:
         """
@@ -125,8 +149,9 @@ class ApprovalHandler:
         return {p.strip() for p in raw.split(",") if p.strip()}
 
     def _matches_approved_pattern(self, tool_name: str) -> bool:
+        # Case-insensitive on every OS, like matchesPattern() in approval-handler.ts
         return any(
-            fnmatch.fnmatch(tool_name, pattern)
+            fnmatch.fnmatchcase(tool_name.lower(), pattern.lower())
             for pattern in self.approved_patterns
         )
 

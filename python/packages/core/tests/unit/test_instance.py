@@ -8,6 +8,7 @@ import httpx
 import pytest
 import respx
 
+from matimo.approval.handler import ApprovalHandler
 from matimo.core.models import (
     HttpExecution,
     Parameter,
@@ -54,6 +55,13 @@ def _make_delete_tool() -> ToolDefinition:
         ),
         requires_approval=True,
     )
+
+
+def _approving_handler() -> ApprovalHandler:
+    """A private ApprovalHandler that approves every per-call request."""
+    handler = ApprovalHandler()
+    handler.set_approval_callback(AsyncMock(return_value=True))
+    return handler
 
 
 class TestMatimoInit:
@@ -201,6 +209,7 @@ class TestMatimoExecute:
             on_event=None,
             on_hitl=approval_callback,
             matimo_logger=MagicMock(),
+            approval_handler=_approving_handler(),
         )
         with respx.mock:
             respx.delete("https://api.example.com/data/99").mock(
@@ -251,6 +260,7 @@ class TestMatimoExecute:
             on_hitl=approval_callback,
             matimo_logger=MagicMock(),
             approval_manifest=ApprovalManifest(str(tmp_path), approval_secret="test-secret"),
+            approval_handler=_approving_handler(),
         )
         with respx.mock:
             respx.delete("https://api.example.com/data/99").mock(
@@ -1141,7 +1151,8 @@ class TestInstanceSkillsAndCoverage:
         instance = await Matimo.init(core_tools_dir)
         reload_result = ReloadResult(loaded=5, removed=1, revalidated=0, rejected=[])
         with patch.object(instance, "reload", new=AsyncMock(return_value=reload_result)):
-            result = await instance.execute("matimo_reload_tools", {})
+            # matimo_reload_tools declares requires_approval; approve out of band
+            result = await instance.execute("matimo_reload_tools", {}, approved=True)
         assert result["success"] is True
         assert result["loaded"] == 5
         assert result["removed"] == 1

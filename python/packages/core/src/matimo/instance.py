@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import os
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -26,6 +27,11 @@ from datetime import UTC
 from pathlib import Path
 from typing import Any
 
+from matimo.approval.handler import (
+    ApprovalHandler,
+    ApprovalRequest,
+    get_global_approval_handler,
+)
 from matimo.auth.injection import inject_auth_parameters
 from matimo.core.loader import ToolLoader
 from matimo.core.models import (
@@ -138,6 +144,7 @@ class Matimo:
         skill_loader: SkillLoader | None = None,
         default_max_response_size: int | None = None,
         default_skill_write_dir: str | None = None,
+        approval_handler: ApprovalHandler | None = None,
     ) -> None:
         self._registry = registry
         self._policy = policy_engine
@@ -158,6 +165,9 @@ class Matimo:
         self._http_executor = HttpExecutor()
         self._command_executor = CommandExecutor()
         self._function_executor = FunctionExecutor()
+        self._approval_handler: ApprovalHandler = (
+            approval_handler or get_global_approval_handler()
+        )
 
     # ------------------------------------------------------------------
     # Factory
@@ -358,6 +368,8 @@ class Matimo:
                         ErrorCode.POLICY_DENIED,
                         {"tool_name": tool_name},
                     )
+
+        await self._require_call_approval(tool, params, context, skip_prompt=approved)
 
         # Built-in interception: matimo_reload_tools must run on the instance
         # itself because reload() clears/rebuilds the in-memory registry.
@@ -830,6 +842,65 @@ class Matimo:
         })
         return approved
 
+    async def _require_call_approval(
+        self,
+        tool: ToolDefinition,
+        params: dict[str, Any],
+        context: PolicyContext | None,
+        *,
+        skip_prompt: bool,
+    ) -> None:
+        """
+        Per-call approval for tools that declare `requires_approval` or whose
+        command/SQL contains a destructive keyword. Mirrors the approval step
+        in MatimoInstance.execute(): pre-approved patterns and an out-of-band
+        `approved=True` skip the prompt; otherwise the approval callback
+        decides, and with no callback the call fails closed.
+        """
+        handler = self._approval_handler
+        if not handler.requires_approval(tool.requires_approval, _approval_scan_content(tool, params)):
+            return
+        if skip_prompt or handler.is_pre_approved(tool.name):
+            return
+
+        agent_id = context.agent_id if context else None
+        if handler.get_approval_callback() is None:
+            error = MatimoError(
+                f"Destructive operation requires approval: {tool.name}",
+                ErrorCode.EXECUTION_FAILED,
+                {
+                    "tool_name": tool.name,
+                    "hint": "Set MATIMO_AUTO_APPROVE=true or MATIMO_APPROVED_PATTERNS "
+                    "or install approval callback",
+                },
+            )
+        elif not await handler.request_approval(
+            ApprovalRequest(tool_name=tool.name, description=tool.description, params=params)
+        ):
+            error = MatimoError(
+                f"Operation rejected by approval handler: {tool.name}",
+                ErrorCode.EXECUTION_FAILED,
+                {"tool_name": tool.name, "message": "User or policy rejected the operation"},
+            )
+        else:
+            self._emit_event({
+                "type": "tool:approval_granted",
+                "tool_name": tool.name,
+                "agent_id": agent_id,
+                "timestamp": _now(),
+            })
+            self._logger.info(f"Destructive operation approved: {tool.name}")
+            return
+
+        self._emit_event({
+            "type": "tool:approval_denied",
+            "tool_name": tool.name,
+            "reason": str(error),
+            "agent_id": agent_id,
+            "timestamp": _now(),
+        })
+        raise error
+
     def _emit_event(self, event_dict: dict[str, Any]) -> None:
         """Emit an audit event if a handler is configured."""
         if self._on_event is None:
@@ -861,6 +932,24 @@ class Matimo:
             trusted_paths=trusted_paths,
             untrusted_paths=untrusted_paths,
         )
+
+
+def _approval_scan_content(tool: ToolDefinition, params: dict[str, Any]) -> str | None:
+    """
+    The text scanned for destructive keywords. Mirrors execute() in
+    matimo-instance.ts: a command tool's `command` param, else a `sql` param,
+    else (only with MATIMO_APPROVAL_SCAN_ALL_PARAMS=true) every string param.
+    """
+    command = params.get("command")
+    if tool.execution.type == "command" and isinstance(command, str):
+        return command
+    sql = params.get("sql")
+    if isinstance(sql, str):
+        return sql
+    if os.environ.get("MATIMO_APPROVAL_SCAN_ALL_PARAMS") == "true":
+        parts = [v for v in params.values() if isinstance(v, str)]
+        return " ".join(parts) if parts else None
+    return None
 
 
 # ---------------------------------------------------------------------------
