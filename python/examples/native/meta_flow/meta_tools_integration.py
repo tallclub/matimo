@@ -49,9 +49,9 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent.parent.parent / ".env")
 
 from matimo import (  # noqa: E402
+    ApprovalRequest,
     Matimo,
     convert_tools_to_langchain,
-    get_global_approval_handler,
     get_skills_metadata,
     set_global_matimo_instance,
 )
@@ -115,9 +115,9 @@ async def _next_stdin_line(prompt: str) -> str:
         return "n"
 
 
-async def interactive_approval(request: dict[str, Any]) -> bool:
-    tool_name = request.get("tool_name", "")
-    description = str(request.get("description", "N/A") or "N/A")
+async def interactive_approval(request: ApprovalRequest) -> bool:
+    tool_name = request.tool_name
+    description = request.description or "N/A"
 
     print("\n    +----------------------------------------------------------+")
     print("    |  HUMAN APPROVAL REQUIRED (via matimo review)             |")
@@ -346,15 +346,13 @@ async def main() -> None:
 
         header("PHASE 1: Setup")
 
-        approval_handler = get_global_approval_handler()
-        approval_handler.set_approval_callback(interactive_approval)
-
         matimo = await Matimo.init(
             auto_discover=True,
             tool_paths=[str(tools_dir)],
             log_level="silent",
             untrusted_paths=[str(tools_dir)],
             policy_config=PolicyConfig(),  # Enable policy engine
+            on_approval=interactive_approval,  # Prompts before calls that need approval
         )
         set_global_matimo_instance(matimo)
 

@@ -50,10 +50,10 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent.parent.parent / ".env")
 
 from matimo import (  # noqa: E402
+    ApprovalRequest,
     Matimo,
     build_relevant_skill_prompt,
     convert_tools_to_langchain,
-    get_global_approval_handler,
     get_skills_metadata,
     set_global_matimo_instance,
     tool,
@@ -118,10 +118,10 @@ async def _next_stdin_line(prompt: str) -> str:
         return "n"
 
 
-async def interactive_approval(request: dict[str, Any]) -> bool:
-    tool_name = request.get("tool_name", "")
-    description = str(request.get("description", "N/A") or "N/A")
-    params = request.get("params", {}) or {}
+async def interactive_approval(request: ApprovalRequest) -> bool:
+    tool_name = request.tool_name
+    description = request.description or "N/A"
+    params = request.params or {}
 
     if tool_name in approved_whitelist:
         print(f"    {PASS}  Auto-approved (whitelisted): {tool_name}")
@@ -307,10 +307,11 @@ async def main() -> None:
 
         header("PHASE 1: Initialize Matimo with Skills Meta-Tools")
 
-        approval_handler = get_global_approval_handler()
-        approval_handler.set_approval_callback(interactive_approval)
-
-        matimo = await Matimo.init(auto_discover=True, log_level="silent")
+        matimo = await Matimo.init(
+            auto_discover=True,
+            log_level="silent",
+            on_approval=interactive_approval,  # Prompts before calls that need approval
+        )
         set_global_matimo_instance(matimo)
 
         tools = matimo.list_tools()
@@ -523,6 +524,7 @@ async def main() -> None:
             auto_discover=True,
             skill_paths=[str(skills_dir)],
             log_level="silent",
+            on_approval=interactive_approval,  # Each instance has its own approval callback
         )
 
         # Level 1 -- metadata only
