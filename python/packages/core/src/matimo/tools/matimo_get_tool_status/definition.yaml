@@ -1,5 +1,6 @@
 name: matimo_get_tool_status
 version: '1.0.0'
+risk: low
 description: Get the current status, risk level, and approval state of a tool. Works for both pending (agent-created) and approved tools.
 requires_approval: true
 tags:

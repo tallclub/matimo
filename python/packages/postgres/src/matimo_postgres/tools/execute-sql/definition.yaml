@@ -1,5 +1,6 @@
 name: postgres-execute-sql
 version: '1.0.0'
+risk: high
 description: Execute arbitrary SQL against a Postgres database. Supports both connection string and explicit env var configuration.
 
 parameters:

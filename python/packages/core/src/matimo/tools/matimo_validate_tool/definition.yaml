@@ -1,5 +1,6 @@
 name: matimo_validate_tool
 version: '1.0.0'
+risk: low
 description: Validate a tool definition YAML string against the Matimo schema and policy rules. Returns schema errors, policy violations, and risk classification.
 requires_approval: false
 tags:

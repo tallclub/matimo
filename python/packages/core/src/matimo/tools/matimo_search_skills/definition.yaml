@@ -1,5 +1,6 @@
 name: matimo_search_skills
 version: '1.0.0'
+risk: low
 description: >-
   Semantic search across all loaded skills by natural language query. Ranks
   skills by meaning (TF-IDF by default, or a custom embedding provider if

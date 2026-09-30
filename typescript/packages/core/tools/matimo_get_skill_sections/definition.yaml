@@ -1,5 +1,6 @@
 name: matimo_get_skill_sections
 version: '1.0.0'
+risk: low
 description: >-
   Inventory a skill's Markdown sections and their approximate token costs,
   without loading the full content. Progressive disclosure Level 2.5 — use

@@ -1,5 +1,6 @@
 name: execute
 version: '1.0.0'
+risk: critical
 description: Execute shell commands and capture output. Supports command execution with arguments and streaming output capture.
 requires_approval: true
 

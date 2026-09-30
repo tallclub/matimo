@@ -1,5 +1,6 @@
 name: web_scraper
 version: '2.0.0'
+risk: medium
 description: >-
   Crawl a website starting from a given URL and extract the main readable content of
   every page discovered within the same domain (child and sibling pages reachable by

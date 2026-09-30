@@ -1,5 +1,6 @@
 name: matimo_get_skill_content
 version: '1.0.0'
+risk: low
 description: >-
   Load only specific sections of a skill instead of the entire SKILL.md —
   token-efficient context loading. Pair with matimo_get_skill_sections to

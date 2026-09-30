@@ -1,5 +1,6 @@
 name: search
 version: '1.0.0'
+risk: low
 description: Search files by name or content using patterns and regex
 requires_approval: true
 

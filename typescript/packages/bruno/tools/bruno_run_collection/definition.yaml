@@ -2,6 +2,7 @@ name: bruno_run_collection
 description: Execute a Bruno API collection with configurable environment, data files, and reporting options. Returns structured JSON results with test assertions, metrics, and failure details.
 version: '1.0.0'
 status: approved
+risk: high
 
 parameters:
   collection_path:

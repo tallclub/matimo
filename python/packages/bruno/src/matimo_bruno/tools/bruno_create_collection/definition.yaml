@@ -2,6 +2,7 @@ name: bruno_create_collection
 description: Create a new empty Bruno collection scaffold with directory structure and configuration. Enables agents to initialize new collections for API testing projects.
 version: '1.0.0'
 status: approved
+risk: medium
 
 parameters:
   collection_path:

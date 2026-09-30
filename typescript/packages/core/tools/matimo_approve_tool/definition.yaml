@@ -1,5 +1,6 @@
 name: matimo_approve_tool
 version: '1.0.0'
+risk: critical
 description: Approve a draft tool for production use. Re-validates the tool, requires admin role, signs with HMAC, and updates the approval manifest.
 requires_approval: true
 tags:
