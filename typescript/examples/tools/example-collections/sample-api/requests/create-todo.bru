@@ -1,0 +1,42 @@
+meta {
+  name: create-todo
+  type: http
+  seq: 1
+}
+
+docs {
+  Create a new todo item
+}
+
+post {
+  url: https://jsonplaceholder.typicode.com/todos
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+  Accept: application/json
+}
+
+body:json {
+  {
+    "title": "Buy groceries",
+    "completed": false,
+    "userId": 1
+  }
+}
+
+tests {
+  test("Status is 201", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+  
+  test("Response has id", function() {
+    expect(res.getBody().id).to.exist;
+  });
+  
+  test("Title matches", function() {
+    expect(res.getBody().title).to.equal('Buy groceries');
+  });
+}

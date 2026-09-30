@@ -1,0 +1,6 @@
+tool: ms_create_calendar_event
+cases:
+    # near-duplicate: composio_outlook_outlook_get_event overlaps heavily on calendar/event vocabulary
+  - prompt: "Create an event on the signed-in user's default calendar (POST /me/events)"
+    top_k: 2
+    expected_required_params: [subject, start, end]

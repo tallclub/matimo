@@ -1,0 +1,4 @@
+tool: matimo_approve_tool
+cases:
+  - prompt: "Approve a draft tool for production use"
+    expected_required_params: [name]

@@ -1,0 +1,3 @@
+tool: hubspot-list-companies
+cases:
+  - prompt: "List all companies from HubSpot CRM with pagination"

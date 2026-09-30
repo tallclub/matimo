@@ -1,0 +1,4 @@
+tool: github-search-users
+cases:
+  - prompt: "Search for GitHub users by name, location, or follower count"
+    expected_required_params: [query]

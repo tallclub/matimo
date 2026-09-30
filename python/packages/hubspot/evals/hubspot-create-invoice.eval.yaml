@@ -1,0 +1,5 @@
+tool: hubspot-create-invoice
+cases:
+    # CRUD cluster: hubspot-{get,delete,update}-invoice share the same object-noun vocabulary as hubspot-create-invoice
+  - prompt: "Create a new invoice in HubSpot CRM"
+    top_k: 2

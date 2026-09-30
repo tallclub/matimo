@@ -1,0 +1,4 @@
+tool: hubspot-create-lead
+cases:
+  - prompt: "Create a new lead in HubSpot CRM"
+    expected_required_params: [email]

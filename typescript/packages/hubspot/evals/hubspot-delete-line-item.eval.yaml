@@ -1,0 +1,4 @@
+tool: hubspot-delete-line-item
+cases:
+  - prompt: "Delete a line item from HubSpot CRM"
+    expected_required_params: [id]

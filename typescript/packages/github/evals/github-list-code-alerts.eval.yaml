@@ -1,0 +1,4 @@
+tool: github-list-code-alerts
+cases:
+  - prompt: "List code scanning security alerts for a repository"
+    expected_required_params: [owner, repo]

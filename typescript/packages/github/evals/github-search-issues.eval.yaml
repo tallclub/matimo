@@ -1,0 +1,4 @@
+tool: github-search-issues
+cases:
+  - prompt: "Search for issues and pull requests across GitHub"
+    expected_required_params: [query]

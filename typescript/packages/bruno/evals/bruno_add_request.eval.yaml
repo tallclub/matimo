@@ -1,0 +1,4 @@
+tool: bruno_add_request
+cases:
+  - prompt: "Add a new HTTP request to a Bruno collection programmatically"
+    expected_required_params: [collection_path, request_name, method, url]

@@ -1,0 +1,6 @@
+tool: slack_get_user_info
+cases:
+    # confirmed duplicate tool: packages/slack/tools/get-user (name: slack-get-user) is a near-identical alias — see this tool’s own description, "(Alias: slack-get-user)"
+  - prompt: "Retrieve detailed information about a Slack user"
+    top_k: 2
+    expected_required_params: [user]

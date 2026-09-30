@@ -1,0 +1,3 @@
+tool: extract_from_file
+cases:
+  - prompt: "Extract text content from a local or remote file"

@@ -1,0 +1,4 @@
+tool: mailchimp-update-list-member
+cases:
+  - prompt: "Update an existing subscriber's information in a Mailchimp audience/list"
+    expected_required_params: [server_prefix, list_id, subscriber_hash]

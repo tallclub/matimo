@@ -1,0 +1,3 @@
+tool: hubspot-list-line-items
+cases:
+  - prompt: "List line items from HubSpot CRM with pagination support"

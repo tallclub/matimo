@@ -1,0 +1,12 @@
+name: demo-get-widget
+description: Retrieve a widget by its ID from the demo inventory system.
+version: '1.0.0'
+parameters:
+  widget_id:
+    type: string
+    description: The unique ID of the widget to retrieve.
+    required: true
+execution:
+  type: http
+  method: GET
+  url: 'https://example.com/api/widgets/{widget_id}'

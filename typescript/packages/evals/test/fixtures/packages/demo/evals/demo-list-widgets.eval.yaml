@@ -1,0 +1,3 @@
+tool: demo-list-widgets
+cases:
+  - prompt: "List every widget in the inventory, no filters needed"

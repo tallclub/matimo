@@ -1,0 +1,4 @@
+tool: github-get-repository
+cases:
+  - prompt: "Get detailed information about a repository"
+    expected_required_params: [owner, repo]

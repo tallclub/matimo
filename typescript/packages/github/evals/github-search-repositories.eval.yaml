@@ -1,0 +1,4 @@
+tool: github-search-repositories
+cases:
+  - prompt: "Search for repositories on GitHub by name, description, topics, or stars"
+    expected_required_params: [query]

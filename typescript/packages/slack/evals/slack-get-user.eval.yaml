@@ -1,0 +1,4 @@
+tool: slack-get-user
+cases:
+  - prompt: "Retrieve detailed information about a Slack user"
+    expected_required_params: [user]

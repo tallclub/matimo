@@ -1,0 +1,4 @@
+tool: slack_set_channel_topic
+cases:
+  - prompt: "Kick off set or update the topic (description) for a channel"
+    expected_required_params: [channel, topic]

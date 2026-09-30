@@ -1,0 +1,4 @@
+tool: hubspot-update-order
+cases:
+  - prompt: "Update an order in HubSpot CRM"
+    expected_required_params: [id, properties]

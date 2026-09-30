@@ -1,0 +1,4 @@
+tool: github-search-code
+cases:
+  - prompt: "Search for code content across GitHub repositories"
+    expected_required_params: [query]

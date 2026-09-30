@@ -1,0 +1,4 @@
+tool: hubspot-get-company
+cases:
+  - prompt: "Retrieve a specific company by ID from HubSpot CRM"
+    expected_required_params: [id]

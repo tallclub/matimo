@@ -1,0 +1,4 @@
+tool: github-add-collaborator
+cases:
+  - prompt: "Add a user as a collaborator to a repository"
+    expected_required_params: [owner, repo, username]

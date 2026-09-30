@@ -1,0 +1,4 @@
+tool: read
+cases:
+  - prompt: "Read file contents with support for line ranges, encoding detection, and large file handling"
+    expected_required_params: [filePath]

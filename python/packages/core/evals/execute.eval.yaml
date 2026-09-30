@@ -1,0 +1,4 @@
+tool: execute
+cases:
+  - prompt: "Execute shell commands and capture output"
+    expected_required_params: [command]

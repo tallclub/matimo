@@ -1,0 +1,6 @@
+tool: matimo_create_skill
+cases:
+    # near-duplicate cluster: matimo_get_skill / matimo_validate_skill / matimo_list_skills share almost identical vocabulary
+  - prompt: "Create a new skill following the Agent Skills specification (https://agentskills.io/specification)"
+    top_k: 2
+    expected_required_params: [name, content]

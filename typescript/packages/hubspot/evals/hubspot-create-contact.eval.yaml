@@ -1,0 +1,4 @@
+tool: hubspot-create-contact
+cases:
+  - prompt: "Create a new contact in HubSpot CRM"
+    expected_required_params: [email]

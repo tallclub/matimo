@@ -1,0 +1,4 @@
+tool: github-list-releases
+cases:
+  - prompt: "List releases for a repository"
+    expected_required_params: [owner, repo]

@@ -1,0 +1,4 @@
+tool: github-update-issue
+cases:
+  - prompt: "Update an issue - title, body, state, assignees, labels"
+    expected_required_params: [owner, repo, issue_number]

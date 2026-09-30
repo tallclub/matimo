@@ -1,0 +1,4 @@
+tool: hubspot-get-product
+cases:
+  - prompt: "Retrieve a specific product by ID from HubSpot CRM"
+    expected_required_params: [id]

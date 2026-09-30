@@ -1,0 +1,3 @@
+tool: slack-list-channels
+cases:
+  - prompt: "List all Slack conversations (channels, direct messages, multi-person DMs)"

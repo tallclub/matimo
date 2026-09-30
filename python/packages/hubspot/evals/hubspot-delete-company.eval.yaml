@@ -1,0 +1,4 @@
+tool: hubspot-delete-company
+cases:
+  - prompt: "Delete a company from HubSpot CRM"
+    expected_required_params: [id]

@@ -1,0 +1,4 @@
+tool: edit
+cases:
+  - prompt: "Edit file contents with precise line-based insertion, replacement, and deletion"
+    expected_required_params: [filePath, operation, startLine]

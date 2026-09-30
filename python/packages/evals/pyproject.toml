@@ -1,0 +1,36 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "matimo-evals"
+version = "0.1.3"
+description = "Evaluation harness for Matimo tool-selection and argument correctness — the model-in-the-loop layer above the deterministic unit test suite."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+keywords = ["ai", "tools", "agents", "matimo", "evals"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+]
+dependencies = [
+    "matimo-core>=0.1.0,<0.2.0",
+    "pyyaml>=6.0",
+]
+
+[project.scripts]
+matimo-eval-tool-selection = "matimo_evals.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/matimo_evals"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--tb=short -q"
+
+[tool.coverage.run]
+source = ["src/matimo_evals"]
+omit = ["tests/*"]

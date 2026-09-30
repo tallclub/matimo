@@ -1,0 +1,4 @@
+tool: gmail-send-email
+cases:
+  - prompt: "Send an email using Gmail API with MIME format encoding"
+    expected_required_params: [to, subject, body]

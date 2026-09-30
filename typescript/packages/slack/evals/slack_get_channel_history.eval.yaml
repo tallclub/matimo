@@ -1,0 +1,4 @@
+tool: slack_get_channel_history
+cases:
+  - prompt: "Retrieve message history from a channel"
+    expected_required_params: [channel]

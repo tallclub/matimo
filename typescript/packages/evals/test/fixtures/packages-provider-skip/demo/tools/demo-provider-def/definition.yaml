@@ -1,0 +1,4 @@
+# Provider-level definition.yaml — describes the provider, not a tool.
+# loadToolCorpus() must skip these (mirrors validate-tool.ts's provider/tool split).
+type: provider
+name: demo-provider

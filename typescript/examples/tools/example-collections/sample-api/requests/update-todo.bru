@@ -1,0 +1,36 @@
+meta {
+  name: update-todo
+  type: http
+  seq: 1
+}
+
+docs {
+  Update an existing todo
+}
+
+put {
+  url: https://jsonplaceholder.typicode.com/todos/1
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "title": "Updated todo",
+    "completed": true
+  }
+}
+
+tests {
+  test("Status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Todo updated", function() {
+    expect(res.getBody().completed).to.equal(true);
+  });
+}

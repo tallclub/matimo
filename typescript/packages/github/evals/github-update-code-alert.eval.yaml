@@ -1,0 +1,4 @@
+tool: github-update-code-alert
+cases:
+  - prompt: "Update the status of a code scanning security alert"
+    expected_required_params: [owner, repo, alert_number, state]

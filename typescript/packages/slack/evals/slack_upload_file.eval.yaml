@@ -1,0 +1,4 @@
+tool: slack_upload_file
+cases:
+  - prompt: "Upload a file to Slack using the modern files API"
+    expected_required_params: [filename, file_size, channel_id]

@@ -1,0 +1,4 @@
+tool: hubspot-update-invoice
+cases:
+  - prompt: "Update an invoice in HubSpot CRM"
+    expected_required_params: [id, properties]

@@ -1,0 +1,4 @@
+tool: slack-send-message
+cases:
+  - prompt: "Post a message to a Slack channel using the Web API (chat.postMessage)"
+    expected_required_params: [channel]

@@ -1,0 +1,4 @@
+tool: hubspot-delete-lead
+cases:
+  - prompt: "Delete a lead from HubSpot CRM"
+    expected_required_params: [id]

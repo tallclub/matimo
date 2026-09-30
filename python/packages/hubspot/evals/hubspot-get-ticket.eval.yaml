@@ -1,0 +1,4 @@
+tool: hubspot-get-ticket
+cases:
+  - prompt: "Retrieve a specific ticket by ID from HubSpot CRM"
+    expected_required_params: [id]

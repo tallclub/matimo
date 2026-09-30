@@ -1,0 +1,4 @@
+tool: hubspot-update-deal
+cases:
+  - prompt: "Update an existing deal in HubSpot CRM"
+    expected_required_params: [id, properties]

@@ -1,0 +1,4 @@
+tool: twilio-get-message
+cases:
+  - prompt: "Fetch a single Message resource from the Twilio Programmable Messaging API"
+    expected_required_params: [account_sid, message_sid]

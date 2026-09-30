@@ -1,0 +1,4 @@
+tool: mailchimp-send-campaign
+cases:
+  - prompt: "Send a Mailchimp campaign"
+    expected_required_params: [server_prefix, campaign_id]

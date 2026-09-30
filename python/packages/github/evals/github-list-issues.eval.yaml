@@ -1,0 +1,4 @@
+tool: github-list-issues
+cases:
+  - prompt: "List issues in a repository with filtering and sorting options"
+    expected_required_params: [owner, repo]

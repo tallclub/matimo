@@ -1,0 +1,3 @@
+tool: matimo_list_skills
+cases:
+  - prompt: "List all skills available to the system"

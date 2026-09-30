@@ -1,0 +1,4 @@
+tool: bruno_run_request
+cases:
+  - prompt: "Execute a single request from a Bruno collection for targeted debugging and validation"
+    expected_required_params: [collection_path, request_name]

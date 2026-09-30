@@ -1,0 +1,4 @@
+tool: bruno_get_collection_info
+cases:
+  - prompt: "I'd like to introspect a Bruno collection to get its structure, requests, environments, and configuration"
+    expected_required_params: [collection_path]

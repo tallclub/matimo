@@ -1,0 +1,4 @@
+tool: bruno_import_openapi
+cases:
+  - prompt: "Can you bootstrap a new Bruno collection from an OpenAPI 3.0 specification (YAML or JSON)"
+    expected_required_params: [spec_source, output_directory]

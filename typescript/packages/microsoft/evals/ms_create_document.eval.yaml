@@ -1,0 +1,4 @@
+tool: ms_create_document
+cases:
+  - prompt: "Create (or overwrite) a small file in OneDrive or a SharePoint document library by uploading content directly (PUT /drives/{drive_id}/items/{parent_item_id}:/{filename}:/content)"
+    expected_required_params: [drive_id, filename, content]

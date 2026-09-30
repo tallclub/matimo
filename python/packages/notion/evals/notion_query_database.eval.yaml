@@ -1,0 +1,4 @@
+tool: notion_query_database
+cases:
+  - prompt: "Query pages from a Notion database to retrieve content"
+    expected_required_params: [database_id]

@@ -1,0 +1,4 @@
+tool: matimo_get_tool
+cases:
+  - prompt: "I'd like to raw YAML content and parsed fields"
+    expected_required_params: [name]

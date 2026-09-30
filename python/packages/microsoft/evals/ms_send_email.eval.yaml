@@ -1,0 +1,4 @@
+tool: ms_send_email
+cases:
+  - prompt: "Send an email as the signed-in user"
+    expected_required_params: [to, subject, body]

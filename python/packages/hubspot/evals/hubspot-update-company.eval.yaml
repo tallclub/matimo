@@ -1,0 +1,4 @@
+tool: hubspot-update-company
+cases:
+  - prompt: "Update an existing company in HubSpot CRM"
+    expected_required_params: [id, properties]

@@ -1,0 +1,6 @@
+tool: hubspot-create-deal
+cases:
+    # CRUD cluster: hubspot-get-deal / hubspot-delete-deal / hubspot-update-deal share the same object-noun vocabulary as hubspot-create-deal
+  - prompt: "Create a new deal in HubSpot CRM"
+    top_k: 4
+    expected_required_params: [dealname, dealstage]

@@ -1,0 +1,8 @@
+tool: github-create-repository
+cases:
+    # near-duplicate: github-get-repository shares the same "repository" vocabulary. "create"
+    # carries little TF-IDF weight since it recurs across the corpus. (Python's smaller,
+    # non-Composio corpus needs a narrower band here than the TS/Composio-inclusive corpus does.)
+  - prompt: "Create a new repository in an organization or user account"
+    top_k: 2
+    expected_required_params: [name]

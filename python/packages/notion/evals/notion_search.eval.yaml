@@ -1,0 +1,3 @@
+tool: notion_search
+cases:
+  - prompt: "Search across all pages and data sources in Notion workspace by title"

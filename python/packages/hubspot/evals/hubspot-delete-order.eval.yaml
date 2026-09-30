@@ -1,0 +1,4 @@
+tool: hubspot-delete-order
+cases:
+  - prompt: "Delete an order from HubSpot CRM"
+    expected_required_params: [id]

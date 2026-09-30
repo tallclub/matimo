@@ -1,0 +1,4 @@
+tool: demo-get-widget
+cases:
+  - prompt: "Look up widget W-123 in the inventory system"
+    expected_required_params: [widget_id, not_a_real_param]

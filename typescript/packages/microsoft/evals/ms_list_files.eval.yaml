@@ -1,0 +1,4 @@
+tool: ms_list_files
+cases:
+  - prompt: "List the children of a folder in OneDrive or a SharePoint document library (GET /drives/{drive_id}/items/{item_id}/children)"
+    expected_required_params: [drive_id]

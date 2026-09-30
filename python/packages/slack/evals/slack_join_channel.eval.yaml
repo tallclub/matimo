@@ -1,0 +1,4 @@
+tool: slack_join_channel
+cases:
+  - prompt: "Add bot to a channel"
+    expected_required_params: [channel]

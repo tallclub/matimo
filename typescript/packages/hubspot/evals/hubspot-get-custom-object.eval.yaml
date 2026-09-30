@@ -1,0 +1,4 @@
+tool: hubspot-get-custom-object
+cases:
+  - prompt: "Retrieve a specific custom object by ID from HubSpot CRM"
+    expected_required_params: [object_type, id]

@@ -1,0 +1,16 @@
+name: demo-send-widget
+description: Send a newly created widget to a recipient inbox for review.
+version: '1.0.0'
+parameters:
+  recipient:
+    type: string
+    description: The recipient inbox address.
+    required: true
+  message:
+    type: string
+    description: An optional note to include with the widget.
+    required: false
+execution:
+  type: http
+  method: POST
+  url: 'https://example.com/api/widgets/send'

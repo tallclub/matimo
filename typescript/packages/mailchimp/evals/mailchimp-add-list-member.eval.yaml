@@ -1,0 +1,4 @@
+tool: mailchimp-add-list-member
+cases:
+  - prompt: "Add a new subscriber to a Mailchimp audience (list)"
+    expected_required_params: [server_prefix, list_id, email_address, status]

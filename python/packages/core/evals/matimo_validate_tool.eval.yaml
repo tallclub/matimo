@@ -1,0 +1,4 @@
+tool: matimo_validate_tool
+cases:
+  - prompt: "Validate a tool definition YAML string against the Matimo schema and policy rules"
+    expected_required_params: [yaml_content]

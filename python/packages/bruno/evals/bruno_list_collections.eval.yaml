@@ -1,0 +1,4 @@
+tool: bruno_list_collections
+cases:
+  - prompt: "I'd like to discover all Bruno API collections in a workspace directory"
+    expected_required_params: [workspace_path]

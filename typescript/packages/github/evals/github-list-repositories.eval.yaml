@@ -1,0 +1,4 @@
+tool: github-list-repositories
+cases:
+  - prompt: "List repositories for an organization or user with filtering and sorting"
+    expected_required_params: [owner]

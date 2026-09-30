@@ -1,0 +1,4 @@
+tool: github-list-commits
+cases:
+  - prompt: "List commits in a repository"
+    expected_required_params: [owner, repo]

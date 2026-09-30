@@ -1,0 +1,4 @@
+tool: hubspot-create-custom-object
+cases:
+  - prompt: "Create a new custom object in HubSpot CRM"
+    expected_required_params: [object_type]

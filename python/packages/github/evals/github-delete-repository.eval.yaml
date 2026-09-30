@@ -1,0 +1,4 @@
+tool: github-delete-repository
+cases:
+  - prompt: "Delete a repository (requires admin access)"
+    expected_required_params: [owner, repo]

@@ -1,0 +1,4 @@
+tool: matimo_search_skills
+cases:
+  - prompt: "Semantic search across all loaded skills by natural language query"
+    expected_required_params: [query]

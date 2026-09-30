@@ -1,0 +1,25 @@
+meta {
+  name: delete-todo
+  type: http
+  seq: 1
+}
+
+docs {
+  Delete a todo item
+}
+
+delete {
+  url: https://jsonplaceholder.typicode.com/todos/1
+  body: none
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+tests {
+  test("Status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

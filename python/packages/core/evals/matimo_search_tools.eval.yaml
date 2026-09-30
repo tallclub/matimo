@@ -1,0 +1,4 @@
+tool: matimo_search_tools
+cases:
+  - prompt: "Search the loaded tool registry by keyword"
+    expected_required_params: [query]

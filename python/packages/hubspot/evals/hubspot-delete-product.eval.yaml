@@ -1,0 +1,4 @@
+tool: hubspot-delete-product
+cases:
+  - prompt: "Delete a product from HubSpot CRM"
+    expected_required_params: [id]

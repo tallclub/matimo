@@ -1,0 +1,4 @@
+tool: demo-send-widget
+cases:
+  - prompt: "Send the new widget to the reviewer's inbox with a short note"
+    expected_required_params: [recipient]

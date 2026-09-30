@@ -1,0 +1,4 @@
+tool: hubspot-update-lead
+cases:
+  - prompt: "Update a lead in HubSpot CRM"
+    expected_required_params: [id, properties]

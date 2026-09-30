@@ -1,0 +1,4 @@
+tool: hubspot-get-line-item
+cases:
+  - prompt: "Retrieve a specific line item by ID from HubSpot CRM"
+    expected_required_params: [id]

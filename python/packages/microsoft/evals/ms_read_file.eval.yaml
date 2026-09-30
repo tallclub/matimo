@@ -1,0 +1,4 @@
+tool: ms_read_file
+cases:
+  - prompt: "Read the contents of a file stored in OneDrive or a SharePoint document library (GET /drives/{drive_id}/items/{item_id}/content)"
+    expected_required_params: [drive_id, item_id]

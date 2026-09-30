@@ -1,0 +1,10 @@
+export { ToolSelectionMatcher } from './tool-selection/tool-selection-matcher.js';
+export type { ToolCorpusEntry, RankedTool } from './tool-selection/tool-selection-matcher.js';
+export { loadToolCorpus, toCorpusEntry } from './tool-selection/tool-corpus.js';
+export type { LoadedTool } from './tool-selection/tool-corpus.js';
+export { loadFixtures } from './tool-selection/fixtures.js';
+export type { EvalCase, EvalFixture, LoadedFixture } from './tool-selection/fixtures.js';
+export { runToolSelectionEval, printReport, hasFailures } from './tool-selection/run-eval.js';
+export type { ToolSelectionEvalResult, RequiredParamMismatch } from './tool-selection/run-eval.js';
+export { scoreCase, aggregateScores } from './scoring/precision-recall.js';
+export type { CaseScore, AggregateScore } from './scoring/precision-recall.js';

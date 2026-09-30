@@ -1,0 +1,4 @@
+tool: convert_to_file
+cases:
+  - prompt: "Convert structured content between JSON, CSV, Markdown, and plain text into a target file format"
+    expected_required_params: [content, source_format, target_format]

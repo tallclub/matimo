@@ -1,0 +1,3 @@
+tool: demo-get-widget
+cases:
+  - prompt: "Look up widget W-123 in the inventory system"

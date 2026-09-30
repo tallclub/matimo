@@ -1,0 +1,6 @@
+tool: mailchimp-create-campaign
+cases:
+    # near-duplicate: mailchimp-send-campaign shares almost all vocabulary (campaign, email, mailchimp)
+  - prompt: "Create a new Mailchimp email campaign"
+    top_k: 2
+    expected_required_params: [server_prefix, type]

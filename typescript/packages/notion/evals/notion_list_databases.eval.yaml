@@ -1,0 +1,4 @@
+tool: notion_list_databases
+cases:
+  - prompt: "List all databases (data sources) available in your Notion workspace"
+    expected_required_params: [page_size]

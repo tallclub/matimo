@@ -1,0 +1,4 @@
+tool: hubspot-delete-ticket
+cases:
+  - prompt: "Delete a ticket from HubSpot CRM"
+    expected_required_params: [id]

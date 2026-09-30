@@ -1,0 +1,4 @@
+tool: slack_create_channel
+cases:
+  - prompt: "Create a new public or private Slack channel"
+    expected_required_params: [name]

@@ -1,0 +1,4 @@
+tool: web_scraper
+cases:
+  - prompt: "Can you crawl a website starting from a given URL and extract the main readable content of every page discovered within the same domain (child and sibling pages reachable by following same-domain links), bounded by maxPages/maxDepth"
+    expected_required_params: [url]

@@ -1,0 +1,4 @@
+tool: hubspot-get-deal
+cases:
+  - prompt: "Retrieve a specific deal by ID from HubSpot CRM"
+    expected_required_params: [id]

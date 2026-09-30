@@ -1,0 +1,4 @@
+tool: hubspot-delete-custom-object
+cases:
+  - prompt: "Delete a custom object from HubSpot CRM"
+    expected_required_params: [object_type, id]

@@ -1,0 +1,6 @@
+tool: github-create-issue
+cases:
+    # near-duplicate: github-get-issue shares almost all vocabulary (issue, repository)
+  - prompt: "Create a new issue in a repository"
+    top_k: 2
+    expected_required_params: [owner, repo, title]

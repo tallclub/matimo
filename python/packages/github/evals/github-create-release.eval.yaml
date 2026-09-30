@@ -1,0 +1,4 @@
+tool: github-create-release
+cases:
+  - prompt: "Create a new release in a repository"
+    expected_required_params: [owner, repo, tag_name]

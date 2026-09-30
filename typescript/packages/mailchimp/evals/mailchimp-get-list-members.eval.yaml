@@ -1,0 +1,4 @@
+tool: mailchimp-get-list-members
+cases:
+  - prompt: "Get all members (subscribers) from a Mailchimp audience/list with optional filtering by subscription status and pagination support"
+    expected_required_params: [server_prefix, list_id]

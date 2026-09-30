@@ -1,0 +1,4 @@
+tool: hubspot-delete-contact
+cases:
+  - prompt: "Delete a contact from HubSpot CRM"
+    expected_required_params: [id]

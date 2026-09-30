@@ -1,0 +1,4 @@
+tool: matimo_get_skill
+cases:
+  - prompt: "Read a skill's SKILL.md content and metadata, or read a specific bundled resource file (scripts, references, assets)"
+    expected_required_params: [name]

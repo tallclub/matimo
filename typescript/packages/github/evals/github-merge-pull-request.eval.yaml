@@ -1,0 +1,4 @@
+tool: github-merge-pull-request
+cases:
+  - prompt: "Merge a pull request into the base branch"
+    expected_required_params: [owner, repo, pull_number]

@@ -1,0 +1,4 @@
+tool: gmail-get-attachment
+cases:
+  - prompt: "Fetch a Gmail message attachment by ID, returning its size and base64url-encoded raw data"
+    expected_required_params: [messageId, attachmentId]

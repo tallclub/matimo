@@ -1,0 +1,4 @@
+tool: matimo_get_tool_status
+cases:
+  - prompt: "Get the current status, risk level, and approval state of a tool"
+    expected_required_params: [name]

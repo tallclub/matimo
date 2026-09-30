@@ -1,0 +1,4 @@
+tool: gmail-delete-message
+cases:
+  - prompt: "Delete permanently delete a message from Gmail (cannot be undone)"
+    expected_required_params: [messageId]

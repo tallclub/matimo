@@ -1,0 +1,4 @@
+tool: mailchimp-get-lists
+cases:
+  - prompt: "Get all Mailchimp audiences (lists) for the authenticated account"
+    expected_required_params: [server_prefix]

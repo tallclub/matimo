@@ -1,0 +1,3 @@
+tool: calculator
+cases:
+  - prompt: "Calculate the result of an arithmetic expression like sqrt(16) + 2^3 using the calculator"

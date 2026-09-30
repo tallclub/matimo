@@ -1,0 +1,3 @@
+tool: hubspot-list-contacts
+cases:
+  - prompt: "List all contacts from HubSpot CRM with pagination"

@@ -1,0 +1,4 @@
+tool: github-create-pull-request
+cases:
+  - prompt: "Create a new pull request"
+    expected_required_params: [owner, repo, title, head, base]

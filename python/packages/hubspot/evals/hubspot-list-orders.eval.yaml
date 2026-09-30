@@ -1,0 +1,3 @@
+tool: hubspot-list-orders
+cases:
+  - prompt: "List orders from HubSpot CRM with pagination support"

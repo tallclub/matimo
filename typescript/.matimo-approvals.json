@@ -1,0 +1,12 @@
+{
+  "version": "1",
+  "approvals": [
+    {
+      "name": "hitl-tool",
+      "hash": "92c7f8a073a4e5b97dd047d0c61a8b7a5ec37624d38542f3893231a5fe628891",
+      "signature": "894ceb51a2cbab59289d45ff9a7aa66a7865e68d32da45ddae1942ddff4adae1",
+      "approvedAt": "2026-09-25T17:39:37.759Z"
+    }
+  ],
+  "pending": []
+}

@@ -1,0 +1,4 @@
+tool: bruno_create_collection
+cases:
+  - prompt: "Create a new empty Bruno collection scaffold with directory structure and configuration"
+    expected_required_params: [collection_path, collection_name]

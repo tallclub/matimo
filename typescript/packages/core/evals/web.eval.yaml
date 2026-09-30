@@ -1,0 +1,4 @@
+tool: web
+cases:
+  - prompt: "Fetch and parse web content from URLs"
+    expected_required_params: [url]

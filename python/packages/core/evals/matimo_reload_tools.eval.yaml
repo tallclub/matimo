@@ -1,0 +1,3 @@
+tool: matimo_reload_tools
+cases:
+  - prompt: "I'd like to hot-reload all tools from configured toolPaths"

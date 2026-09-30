@@ -1,0 +1,4 @@
+tool: slack_send_dm
+cases:
+  - prompt: "Open or resume a direct message (DM) or multi-person direct message (MPIM) conversation"
+    expected_required_params: [user]

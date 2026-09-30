@@ -1,0 +1,4 @@
+tool: hubspot-update-custom-object
+cases:
+  - prompt: "Update a custom object in HubSpot CRM"
+    expected_required_params: [object_type, id, properties]

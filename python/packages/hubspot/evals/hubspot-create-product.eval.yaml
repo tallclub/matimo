@@ -1,0 +1,4 @@
+tool: hubspot-create-product
+cases:
+  - prompt: "Create a new product in HubSpot CRM"
+    expected_required_params: [name]

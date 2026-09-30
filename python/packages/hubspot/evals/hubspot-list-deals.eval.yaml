@@ -1,0 +1,3 @@
+tool: hubspot-list-deals
+cases:
+  - prompt: "List all deals from HubSpot CRM with pagination"

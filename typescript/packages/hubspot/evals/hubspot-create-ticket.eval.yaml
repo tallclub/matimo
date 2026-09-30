@@ -1,0 +1,6 @@
+tool: hubspot-create-ticket
+cases:
+    # CRUD cluster: hubspot-{get,delete,update}-ticket share the same object-noun vocabulary as hubspot-create-ticket
+  - prompt: "Create a new ticket in HubSpot CRM"
+    top_k: 4
+    expected_required_params: [subject]

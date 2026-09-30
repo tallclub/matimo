@@ -1,0 +1,4 @@
+tool: matimo_create_tool
+cases:
+  - prompt: "Create a new tool definition on disk"
+    expected_required_params: [name, yaml_content]

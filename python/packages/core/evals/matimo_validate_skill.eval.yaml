@@ -1,0 +1,4 @@
+tool: matimo_validate_skill
+cases:
+  - prompt: "Validate an existing skill against the Agent Skills specification (https://agentskills.io/specification)"
+    expected_required_params: [name]

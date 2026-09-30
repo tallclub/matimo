@@ -1,0 +1,4 @@
+tool: slack_get_thread_replies
+cases:
+  - prompt: "Retrieve all replies in a message thread"
+    expected_required_params: [channel, ts]

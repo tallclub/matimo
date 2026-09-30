@@ -1,0 +1,4 @@
+tool: notion_update_page
+cases:
+  - prompt: "Update properties, icon, cover, or other attributes of an existing Notion page"
+    expected_required_params: [page_id]

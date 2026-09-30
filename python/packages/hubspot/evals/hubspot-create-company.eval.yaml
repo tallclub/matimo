@@ -1,0 +1,4 @@
+tool: hubspot-create-company
+cases:
+  - prompt: "Create a new company in HubSpot CRM"
+    expected_required_params: [name]

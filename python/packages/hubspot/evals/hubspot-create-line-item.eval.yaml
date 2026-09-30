@@ -1,0 +1,5 @@
+tool: hubspot-create-line-item
+cases:
+    # near-duplicate: hubspot-delete-line-item shares almost all vocabulary
+  - prompt: "Create a new line item in HubSpot CRM"
+    top_k: 2

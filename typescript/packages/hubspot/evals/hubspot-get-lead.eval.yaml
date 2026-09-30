@@ -1,0 +1,6 @@
+tool: hubspot-get-lead
+cases:
+    # near-duplicate: hubspot-delete-lead shares almost all vocabulary
+  - prompt: "Retrieve a specific lead by ID from HubSpot CRM"
+    top_k: 2
+    expected_required_params: [id]

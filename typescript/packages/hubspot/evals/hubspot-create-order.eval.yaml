@@ -1,0 +1,3 @@
+tool: hubspot-create-order
+cases:
+  - prompt: "Create a new order in HubSpot CRM"

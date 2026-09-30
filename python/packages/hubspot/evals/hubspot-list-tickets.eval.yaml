@@ -1,0 +1,3 @@
+tool: hubspot-list-tickets
+cases:
+  - prompt: "List all tickets from HubSpot CRM with pagination"

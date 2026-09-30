@@ -1,0 +1,4 @@
+tool: twilio-list-messages
+cases:
+  - prompt: "Read multiple Message resources from the Twilio Programmable Messaging API"
+    expected_required_params: [account_sid]

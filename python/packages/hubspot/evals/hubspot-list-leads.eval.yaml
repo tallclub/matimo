@@ -1,0 +1,3 @@
+tool: hubspot-list-leads
+cases:
+  - prompt: "List leads from HubSpot CRM with pagination support"

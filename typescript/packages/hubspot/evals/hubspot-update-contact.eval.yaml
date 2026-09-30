@@ -1,0 +1,4 @@
+tool: hubspot-update-contact
+cases:
+  - prompt: "Update an existing contact in HubSpot CRM"
+    expected_required_params: [id, properties]

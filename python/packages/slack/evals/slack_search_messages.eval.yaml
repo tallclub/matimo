@@ -1,0 +1,4 @@
+tool: slack_search_messages
+cases:
+  - prompt: "Search across Slack message history"
+    expected_required_params: [query]

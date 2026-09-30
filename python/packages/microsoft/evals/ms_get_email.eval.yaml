@@ -1,0 +1,3 @@
+tool: ms_get_email
+cases:
+  - prompt: "List messages in the signed-in user's mailbox (GET /me/messages), with optional OData filtering, free-text search, and folder scoping"

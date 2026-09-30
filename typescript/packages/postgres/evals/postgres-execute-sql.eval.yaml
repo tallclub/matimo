@@ -1,0 +1,4 @@
+tool: postgres-execute-sql
+cases:
+  - prompt: "Execute arbitrary SQL against a Postgres database"
+    expected_required_params: [sql]

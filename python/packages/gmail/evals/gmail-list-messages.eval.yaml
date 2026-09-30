@@ -1,0 +1,3 @@
+tool: gmail-list-messages
+cases:
+  - prompt: "List messages from Gmail mailbox with filtering and pagination"

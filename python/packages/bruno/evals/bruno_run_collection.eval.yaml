@@ -1,0 +1,4 @@
+tool: bruno_run_collection
+cases:
+  - prompt: "Execute a Bruno API collection with configurable environment, data files, and reporting options"
+    expected_required_params: [collection_path]

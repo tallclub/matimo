@@ -1,0 +1,4 @@
+tool: hubspot-delete-deal
+cases:
+  - prompt: "Delete a deal from HubSpot CRM"
+    expected_required_params: [id]

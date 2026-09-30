@@ -1,0 +1,4 @@
+tool: hubspot-get-invoice
+cases:
+  - prompt: "Retrieve a specific invoice by ID from HubSpot CRM"
+    expected_required_params: [id]

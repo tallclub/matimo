@@ -1,0 +1,4 @@
+tool: github-get-issue
+cases:
+  - prompt: "Get details of a specific issue"
+    expected_required_params: [owner, repo, issue_number]

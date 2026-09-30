@@ -1,0 +1,4 @@
+tool: twilio-send-mms
+cases:
+  - prompt: "Send an outbound MMS message with one or more media files via the Twilio Programmable Messaging API"
+    expected_required_params: [account_sid, to, from, media_url]

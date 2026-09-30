@@ -1,0 +1,4 @@
+tool: hubspot-list-custom-objects
+cases:
+  - prompt: "List custom objects from HubSpot CRM with pagination support"
+    expected_required_params: [object_type]

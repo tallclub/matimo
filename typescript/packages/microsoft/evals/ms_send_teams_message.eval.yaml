@@ -1,0 +1,4 @@
+tool: ms_send_teams_message
+cases:
+  - prompt: "Post a message to a Microsoft Teams channel (POST /teams/{team_id}/channels/{channel_id}/messages), optionally as a reply to an existing message (POST /teams/{team_id}/channels/{channel_id}/messages/{reply_to_message_id}/replies)"
+    expected_required_params: [team_id, channel_id, text]

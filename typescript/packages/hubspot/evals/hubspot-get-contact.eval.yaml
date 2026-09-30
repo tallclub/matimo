@@ -1,0 +1,6 @@
+tool: hubspot-get-contact
+cases:
+    # near-duplicate: hubspot-delete-contact shares almost all vocabulary
+  - prompt: "Retrieve a specific contact by ID from HubSpot CRM"
+    top_k: 2
+    expected_required_params: [id]

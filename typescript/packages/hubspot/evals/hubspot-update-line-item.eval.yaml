@@ -1,0 +1,4 @@
+tool: hubspot-update-line-item
+cases:
+  - prompt: "Update a line item in HubSpot CRM"
+    expected_required_params: [id, properties]

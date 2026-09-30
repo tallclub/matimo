@@ -1,0 +1,4 @@
+tool: gmail-get-message
+cases:
+  - prompt: "Get full details of a specific Gmail message including headers and body"
+    expected_required_params: [messageId]

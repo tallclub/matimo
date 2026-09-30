@@ -1,0 +1,37 @@
+{
+  "name": "@matimo/evals",
+  "version": "0.1.8",
+  "description": "Evaluation harness for Matimo tool-selection and argument correctness — the model-in-the-loop layer above the deterministic unit test suite.",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "eval:tool-selection": "tsx src/cli.ts",
+    "test": "jest",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint src test --ext .ts",
+    "lint:fix": "eslint src test --ext .ts --fix"
+  },
+  "dependencies": {
+    "@matimo/core": "workspace:*",
+    "glob": "^10.5.0",
+    "js-yaml": "^5.2.1"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^25.1.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}

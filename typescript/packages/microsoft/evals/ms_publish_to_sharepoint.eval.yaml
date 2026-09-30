@@ -1,0 +1,4 @@
+tool: ms_publish_to_sharepoint
+cases:
+  - prompt: "Create a SharePoint site page (POST /sites/{site_id}/pages) with a single text web part containing the supplied content, then optionally publish it (POST /sites/{site_id}/pages/{page_id}/microsoft.graph.sitePage/publish)"
+    expected_required_params: [site_id, title, content]

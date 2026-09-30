@@ -1,0 +1,4 @@
+tool: github-list-collaborators
+cases:
+  - prompt: "List collaborators on a repository"
+    expected_required_params: [owner, repo]

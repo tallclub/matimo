@@ -1,0 +1,4 @@
+tool: hubspot-update-ticket
+cases:
+  - prompt: "Update an existing ticket in HubSpot CRM"
+    expected_required_params: [id, properties]

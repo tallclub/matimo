@@ -1,0 +1,4 @@
+tool: hubspot-delete-invoice
+cases:
+  - prompt: "Delete an invoice from HubSpot CRM"
+    expected_required_params: [id]

@@ -1,0 +1,4 @@
+tool: gmail-create-draft
+cases:
+  - prompt: "Create a draft email in Gmail without sending it"
+    expected_required_params: [to, subject, body]

@@ -1,0 +1,4 @@
+tool: search
+cases:
+  - prompt: "Search files by name or content using patterns and regex"
+    expected_required_params: [query]

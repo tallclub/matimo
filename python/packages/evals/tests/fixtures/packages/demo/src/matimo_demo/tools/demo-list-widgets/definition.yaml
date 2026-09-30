@@ -1,0 +1,7 @@
+name: demo-list-widgets
+description: List every widget currently in the demo inventory system, with no filters.
+version: '1.0.0'
+execution:
+  type: http
+  method: GET
+  url: 'https://example.com/api/widgets'

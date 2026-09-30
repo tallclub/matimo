@@ -1,0 +1,4 @@
+tool: hubspot-get-order
+cases:
+  - prompt: "Retrieve a specific order by ID from HubSpot CRM"
+    expected_required_params: [id]

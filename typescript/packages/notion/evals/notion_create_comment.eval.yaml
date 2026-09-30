@@ -1,0 +1,4 @@
+tool: notion_create_comment
+cases:
+  - prompt: "Add a comment to a Notion page, block, or discussion thread"
+    expected_required_params: [rich_text]

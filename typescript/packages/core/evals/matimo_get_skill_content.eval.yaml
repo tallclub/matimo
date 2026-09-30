@@ -1,0 +1,4 @@
+tool: matimo_get_skill_content
+cases:
+  - prompt: "Load only specific sections of a skill instead of the entire SKILL.md"
+    expected_required_params: [name]

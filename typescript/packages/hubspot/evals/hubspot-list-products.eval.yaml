@@ -1,0 +1,3 @@
+tool: hubspot-list-products
+cases:
+  - prompt: "List products from HubSpot CRM with pagination support"

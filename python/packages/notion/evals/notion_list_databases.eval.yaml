@@ -1,0 +1,8 @@
+tool: notion_list_databases
+cases:
+  # NOTE: page_size is required:true in the TS definition but required:false
+  # in this Python definition — a genuine TS/Python schema drift (the
+  # descriptions even contradict each other). This fixture intentionally
+  # matches Python's current (as-is) schema; flagged separately as a bug to
+  # reconcile, not something to fix silently here.
+  - prompt: "List all databases (data sources) available in your Notion workspace"

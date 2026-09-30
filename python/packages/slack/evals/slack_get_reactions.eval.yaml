@@ -1,0 +1,4 @@
+tool: slack_get_reactions
+cases:
+  - prompt: "Retrieve all emoji reactions on a message or file"
+    expected_required_params: [channel, timestamp]

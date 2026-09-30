@@ -1,0 +1,4 @@
+tool: matimo_get_skill_sections
+cases:
+  - prompt: "Inventory a skill's Markdown sections and their approximate token costs"
+    expected_required_params: [name]

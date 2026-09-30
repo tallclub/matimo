@@ -1,0 +1,4 @@
+tool: mailchimp-remove-list-member
+cases:
+  - prompt: "Archive (unsubscribe and remove) a subscriber from a Mailchimp audience/list"
+    expected_required_params: [server_prefix, list_id, subscriber_hash]

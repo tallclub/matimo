@@ -1,0 +1,4 @@
+tool: slack_reply_to_message
+cases:
+  - prompt: "Post a reply to a message thread"
+    expected_required_params: [channel, thread_ts]

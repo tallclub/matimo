@@ -1,0 +1,4 @@
+tool: twilio-send-sms
+cases:
+  - prompt: "Send an outbound SMS message via the Twilio Programmable Messaging API"
+    expected_required_params: [account_sid, to, from, body]

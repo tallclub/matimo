@@ -1,0 +1,4 @@
+tool: ms_search_knowledge
+cases:
+  - prompt: "Please sharePoint sites, OneDrive/SharePoint document libraries, and list items — using the Microsoft Search API (POST /search/query)"
+    expected_required_params: [query]

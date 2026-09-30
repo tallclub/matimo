@@ -1,0 +1,4 @@
+tool: slack_add_reaction
+cases:
+  - prompt: "Add an emoji reaction to a message or file"
+    expected_required_params: [name, channel, timestamp]
