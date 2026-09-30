@@ -133,6 +133,14 @@ export { ToolIntegrityTracker } from './policy/integrity-tracker.js';
 export { ApprovalManifest } from './policy/approval-manifest.js';
 export { loadPolicyFromFile, parsePolicyFile } from './policy/policy-loader.js';
 export type { MatimoEvent, MatimoEventHandler } from './policy/events.js';
+export {
+  JsonlFileSink,
+  verifyAuditLog,
+  redactSecrets,
+  hashAuditEntry,
+  AUDIT_GENESIS_HASH,
+} from './policy/audit-sink.js';
+export type { AuditSink, AuditLogEntry, AuditLogVerification } from './policy/audit-sink.js';
 
 // Schema validation
 export { ToolDefinitionSchema, validateToolDefinition } from './core/schema.js';

@@ -20,3 +20,11 @@ export type { IntegrityRecord, IntegrityAction } from './integrity-tracker.js';
 export { ApprovalManifest } from './approval-manifest.js';
 export type { ApprovalRecord } from './approval-manifest.js';
 export type { MatimoEvent, MatimoEventHandler } from './events.js';
+export {
+  JsonlFileSink,
+  verifyAuditLog,
+  redactSecrets,
+  hashAuditEntry,
+  AUDIT_GENESIS_HASH,
+} from './audit-sink.js';
+export type { AuditSink, AuditLogEntry, AuditLogVerification } from './audit-sink.js';

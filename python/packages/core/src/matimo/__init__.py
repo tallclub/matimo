@@ -151,6 +151,15 @@ from matimo.mcp.tool_converter import convert_parameters_to_mcp_schema
 
 # Policy
 from matimo.policy.approval_manifest import ApprovalManifest, ApprovalRecord
+from matimo.policy.audit_sink import (
+    AUDIT_GENESIS_HASH,
+    AuditLogVerification,
+    AuditSink,
+    JsonlFileSink,
+    hash_audit_entry,
+    redact_secrets,
+    verify_audit_log,
+)
 from matimo.policy.content_validator import ContentViolation, validate_tool_content
 from matimo.policy.default_policy import DefaultPolicyEngine, PolicyEngine, get_tier_for_tool
 from matimo.policy.integrity_tracker import IntegrityAction, ToolIntegrityTracker
@@ -327,6 +336,8 @@ __all__ = [
     "classify_risk", "classify_execution_risk", "meets_risk_threshold", "get_tier_for_tool",
     "ToolIntegrityTracker", "IntegrityAction",
     "ApprovalManifest", "ApprovalRecord",
+    "AuditSink", "JsonlFileSink", "AuditLogVerification", "verify_audit_log",
+    "redact_secrets", "hash_audit_entry", "AUDIT_GENESIS_HASH",
     "load_policy_from_file",
     # MCP
     "MCPServer", "MCPServerOptions", "create_mcp_server",

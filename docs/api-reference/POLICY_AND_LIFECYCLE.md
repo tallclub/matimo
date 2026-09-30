@@ -10,6 +10,8 @@
 - [Policy Configuration](#policy-configuration)
   - [PolicyConfig Options](#policyconfig-options)
   - [Initialization](#initialization)
+  - [Execution Events](#execution-events)
+  - [Audit Sink](#audit-sink)
   - [Immutability](#immutability)
 - [Content Validator](#content-validator)
   - [9 Security Rules](#9-security-rules)
@@ -421,6 +423,7 @@ const matimo = await MatimoInstance.init({
   onEvent: (event) => {                               // Audit trail handler
     console.log(`[${event.type}]`, event);
   },
+  auditSink: new JsonlFileSink('./logs/matimo-audit.jsonl'), // Hash-chained audit log
 
   // HITL Quarantine
   onHITL: async (request) => {                         // Human-in-the-loop callback
@@ -474,6 +477,53 @@ one of two events. A call a gate refuses gets that gate's event instead
 - The Python SDK emits the same events as dicts with snake_case keys
   (`tool_name`, `trace_id`, `duration_ms`, ...). Both SDKs are tested against
   [`conformance/events/execution-events.json`](../../conformance/events/execution-events.json).
+
+### Audit Sink
+
+`onEvent` hands events to your code. To keep a durable record of the same
+events, pass an `AuditSink`. It runs alongside `onEvent`, and a sink that
+throws is logged but never fails the tool call.
+
+```typescript
+import { MatimoInstance, JsonlFileSink, verifyAuditLog } from '@matimo/core';
+
+const matimo = await MatimoInstance.init({
+  autoDiscover: true,
+  auditSink: new JsonlFileSink('./logs/matimo-audit.jsonl'),
+});
+
+verifyAuditLog('./logs/matimo-audit.jsonl'); // { valid: true, entries: 42 }
+```
+
+```python
+from matimo import Matimo, JsonlFileSink, verify_audit_log
+
+matimo = await Matimo.init(auto_discover=True, audit_sink=JsonlFileSink("./logs/matimo-audit.jsonl"))
+verify_audit_log("./logs/matimo-audit.jsonl")  # AuditLogVerification(valid=True, entries=42)
+```
+
+`JsonlFileSink` writes one line per event:
+
+```json
+{"event":{...},"hash":"<sha256>","prevHash":"<previous line's hash>","seq":7}
+```
+
+- `hash` is `sha256(prevHash + canonicalJson({seq, event}))`. Canonical JSON sorts
+  keys at every level and has no whitespace. The first line's `prevHash` is 64 zeros.
+- Editing, deleting or reordering a line makes `verifyAuditLog` / `verify_audit_log`
+  report the first bad line. Anyone who can write the file can also rewrite the
+  whole chain, so ship the file (or its latest hash) somewhere append-only if you
+  need tamper evidence against the host itself.
+- Opening an existing log continues its chain from the last line.
+- Values under secret-named keys (`password`, `token`, `apiKey`, `authorization`,
+  `client_secret`, `cookie`, ...) are written as `[REDACTED]`.
+- A log written by either SDK verifies in the other. Both are tested against
+  [`conformance/audit/hash-chain.json`](../../conformance/audit/hash-chain.json).
+- One `JsonlFileSink` per file per process. Two processes appending to the same
+  file will fork the chain.
+
+For another destination (a database, a SIEM, a queue), implement
+`write(event)`. It may return a promise in TypeScript.
 
 ### Immutability
 

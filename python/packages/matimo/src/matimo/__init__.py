@@ -158,6 +158,15 @@ from matimo.mcp.tool_converter import convert_parameters_to_mcp_schema  # noqa: 
 
 # Policy
 from matimo.policy.approval_manifest import ApprovalManifest, ApprovalRecord  # noqa: E402
+from matimo.policy.audit_sink import (  # noqa: E402
+    AUDIT_GENESIS_HASH,
+    AuditLogVerification,
+    AuditSink,
+    JsonlFileSink,
+    hash_audit_entry,
+    redact_secrets,
+    verify_audit_log,
+)
 from matimo.policy.content_validator import ContentViolation, validate_tool_content  # noqa: E402
 from matimo.policy.default_policy import DefaultPolicyEngine, PolicyEngine, get_tier_for_tool  # noqa: E402
 from matimo.policy.integrity_tracker import IntegrityAction, ToolIntegrityTracker  # noqa: E402
@@ -320,6 +329,8 @@ __all__ = [
     "HITLCallback", "HITLRequest", "ContentViolation", "validate_tool_content",
     "classify_risk", "get_tier_for_tool", "ToolIntegrityTracker", "IntegrityAction",
     "ApprovalManifest", "ApprovalRecord", "load_policy_from_file",
+    "AuditSink", "JsonlFileSink", "AuditLogVerification", "verify_audit_log",
+    "redact_secrets", "hash_audit_entry", "AUDIT_GENESIS_HASH",
     # MCP
     "MCPServer", "MCPServerOptions", "create_mcp_server",
     "convert_parameters_to_mcp_schema",

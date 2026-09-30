@@ -54,6 +54,7 @@ from matimo.executors.http_executor import HttpExecutor
 from matimo.integrations.langchain import build_relevant_skill_prompt
 from matimo.logging import MatimoLogger, setup_logger
 from matimo.policy.approval_manifest import ApprovalManifest
+from matimo.policy.audit_sink import AuditSink
 from matimo.policy.default_policy import DefaultPolicyEngine, PolicyEngine
 from matimo.policy.risk_classifier import classify_execution_risk
 from matimo.policy.types import (
@@ -105,6 +106,7 @@ class InitOptions:
 
     # Events / HITL
     on_event: MatimoEventHandler | None = None
+    audit_sink: AuditSink | None = None
     on_hitl: HITLCallback | None = None
     on_approval: ApprovalCallback | None = None
     hitl_timeout_ms: int | None = None
@@ -156,12 +158,14 @@ class Matimo:
         default_skill_write_dir: str | None = None,
         approval_handler: ApprovalHandler | None = None,
         on_approval: ApprovalCallback | None = None,
+        audit_sink: AuditSink | None = None,
     ) -> None:
         self._registry = registry
         self._policy = policy_engine
         self._loader = loader
         self._tool_paths = tool_paths
         self._on_event = on_event
+        self._audit_sink = audit_sink
         self._on_hitl = on_hitl
         self._hitl_timeout_ms = hitl_timeout_ms
         self._logger = matimo_logger
@@ -203,6 +207,7 @@ class Matimo:
         approval_dir: str | None = None,
         approval_ttl_seconds: int | None = None,
         on_event: MatimoEventHandler | None = None,
+        audit_sink: AuditSink | None = None,
         on_hitl: HITLCallback | None = None,
         on_approval: ApprovalCallback | None = None,
         hitl_timeout_ms: int | None = None,
@@ -224,6 +229,10 @@ class Matimo:
             trusted_paths: Paths considered developer-authored (skip content validation).
             untrusted_paths: Paths considered agent-created (undergo content validation).
             on_event:      Audit event handler.
+            audit_sink:    Durable destination for the same audit events, e.g.
+                           JsonlFileSink("./matimo-audit.jsonl"). Runs alongside
+                           on_event; a failing sink is logged and never fails the
+                           tool call.
             on_hitl:       Human-in-the-loop callback for quarantined tools.
             on_approval:   Per-call approval callback for this instance: decides
                            calls to tools that declare requires_approval or whose
@@ -313,6 +322,7 @@ class Matimo:
             loader=loader,
             tool_paths=paths,
             on_event=on_event,
+            audit_sink=audit_sink,
             on_hitl=on_hitl,
             on_approval=on_approval,
             matimo_logger=matimo_logger,
@@ -1003,13 +1013,19 @@ class Matimo:
         self._logger.info(f"Destructive operation approved: {tool.name}")
 
     def _emit_event(self, event_dict: dict[str, Any]) -> None:
-        """Emit an audit event if a handler is configured."""
-        if self._on_event is None:
-            return
-        try:
-            self._on_event(event_dict)  # type: ignore[arg-type]
-        except Exception as exc:
-            logger.debug("Event handler raised: %s", exc)
+        """Emit an audit event to the handler and audit sink, if configured."""
+        if self._on_event is not None:
+            try:
+                self._on_event(event_dict)  # type: ignore[arg-type]
+            except Exception as exc:
+                logger.debug("Event handler raised: %s", exc)
+        if self._audit_sink is not None:
+            try:
+                self._audit_sink.write(event_dict)
+            except Exception as exc:
+                self._logger.warn(
+                    f"Audit sink failed to record {event_dict.get('type')}: {exc}"
+                )
 
     @staticmethod
     def _build_policy_engine(

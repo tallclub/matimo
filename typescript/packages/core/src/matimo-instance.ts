@@ -39,6 +39,7 @@ import { loadPolicyFromFile } from './policy/policy-loader.js';
 import { ToolIntegrityTracker } from './policy/integrity-tracker.js';
 import { ApprovalManifest } from './policy/approval-manifest.js';
 import type { MatimoEvent, MatimoEventHandler } from './policy/events.js';
+import type { AuditSink } from './policy/audit-sink.js';
 import { applyResponseSizeGuardrail } from './core/response-size-guardrail.js';
 import { buildRelevantSkillPrompt } from './integrations/langchain.js';
 
@@ -108,6 +109,12 @@ export interface InitOptions extends LoggerConfig {
   /** Event handler for audit events (tool creation, approval, execution, etc.) */
   onEvent?: MatimoEventHandler;
   /**
+   * Durable destination for the same audit events, e.g.
+   * `new JsonlFileSink('./matimo-audit.jsonl')`. Runs alongside `onEvent`;
+   * a failing sink is logged and never fails the tool call.
+   */
+  auditSink?: AuditSink;
+  /**
    * Human-in-the-loop callback for quarantined tools.
    * Called when a tool enters `pending_approval` state (medium-risk in prod with enableHITL).
    * Return `true` to approve, `false` to reject.
@@ -171,6 +178,7 @@ export class MatimoInstance {
   #integrityTracker: ToolIntegrityTracker;
   #approvalManifest: ApprovalManifest | null;
   #onEvent: MatimoEventHandler | null;
+  #auditSink: AuditSink | null;
   #hitlCallback: HITLCallback | null;
   #hitlTimeoutMs: number | null;
   #approvalCallback: ApprovalCallback | null;
@@ -190,6 +198,7 @@ export class MatimoInstance {
       approvalDir?: string;
       approvalTtlSeconds?: number;
       onEvent?: MatimoEventHandler;
+      auditSink?: AuditSink;
       onHITL?: HITLCallback;
       onApproval?: ApprovalCallback;
       hitlTimeoutMs?: number;
@@ -224,6 +233,7 @@ export class MatimoInstance {
     this.#untrustedPaths = policyOptions.untrustedPaths ?? [];
     this.#integrityTracker = new ToolIntegrityTracker();
     this.#onEvent = policyOptions.onEvent ?? null;
+    this.#auditSink = policyOptions.auditSink ?? null;
     this.#hitlCallback = policyOptions.onHITL ?? null;
     this.#hitlTimeoutMs = policyOptions.hitlTimeoutMs ?? null;
     this.#approvalCallback = policyOptions.onApproval ?? null;
@@ -367,6 +377,7 @@ export class MatimoInstance {
       approvalSecret: finalOptions.approvalSecret,
       approvalDir: finalOptions.approvalDir,
       onEvent: finalOptions.onEvent,
+      auditSink: finalOptions.auditSink,
       onHITL: finalOptions.onHITL,
       onApproval: finalOptions.onApproval,
       hitlTimeoutMs: finalOptions.hitlTimeoutMs,
@@ -1287,6 +1298,17 @@ export class MatimoInstance {
         this.#onEvent(event);
       } catch {
         // Never let event handler errors break SDK execution
+      }
+    }
+    if (this.#auditSink) {
+      const reportSinkError = (error: unknown) =>
+        this.logger.warn(
+          `Audit sink failed to record ${event.type}: ${error instanceof Error ? error.message : String(error)}`
+        );
+      try {
+        Promise.resolve(this.#auditSink.write(event)).catch(reportSinkError);
+      } catch (error) {
+        reportSinkError(error);
       }
     }
   }
