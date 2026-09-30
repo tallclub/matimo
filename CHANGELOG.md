@@ -6,6 +6,70 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
+## [typescript/v0.2.0] - 2026-09-30
+
+Governance is now true by default: every tool call is governed the same way in both SDKs. Read
+[Upgrading to 0.2.0](docs/api-reference/POLICY_AND_LIFECYCLE.md#upgrading-to-020) before upgrading.
+
+### ⚠️ Behaviour changes
+- HTTP `DELETE` and `type: command` tools without an explicit `requires_approval` now ask for per-call approval. To restore the old default, set `governanceMode: 'legacy'` in `InitOptions` or `policy.yaml`, or set `requires_approval: false` on the tool
+- `pnpm validate-tools` rejects a DELETE tool without `requires_approval` and a function tool without `risk`
+
+### 🛡️ Governance
+- HITL quarantine at execution now applies to every tool whose risk is at or above `hitlMinRiskLevel`. It used to apply only when the risk was listed in `quarantineRiskLevels`, so a DELETE or function tool skipped quarantine while a POST did not
+- Function tools are classified by their declared `risk:`. Every built-in function tool now declares one
+- HITL approvals of tools loaded at `init()` are read back from the approval manifest instead of being asked again on every call
+- Per-call approval callbacks: `InitOptions.onApproval`, `setApprovalCallback()`, and `execute(..., { onApproval })`. The global handler remains a fallback, and with no callback the call fails closed
+- MCP asks the human through elicitation. `_matimo_approved` is no longer offered to the model unless the server sets `trustClientApproval`. The HTTP bearer token is compared in constant time
+- `matimo_approve_tool` refuses to approve a tool created by the calling agent, requires `admin` when a policy context is supplied, and can never be pre-approved by `MATIMO_AUTO_APPROVE` or patterns
+- The approval hint no longer recommends `MATIMO_AUTO_APPROVE`, and a warning is logged while it is on
+
+### ✨ Features
+- `tool:executed` is now emitted, together with the new `tool:execution_failed`. Both have fields identical to Python's (`conformance/events/execution-events.json`)
+- `auditSink` with `JsonlFileSink`: a hash-chained JSONL audit log with secret redaction and `verifyAuditLog()`. The log format is shared with Python
+- `governanceMode` and `getGovernanceMode()`, plus `hitlMinRiskLevel` in `PolicyConfig` and `policy.yaml`
+- Function tools receive `{ credentials, policyContext }`. The MCP server's `context` option sets the policy context for MCP calls
+- Skills: pluggable skill paths, meta-tools for skill search, sections and content, per-section budgets, and prompt-context helpers
+- MCP standard tool annotations and humanized titles; structured error codes across the MCP boundary; a response-size guardrail with configurable ceilings
+
+### 🐛 Bug Fixes
+- Array parameter item types resolve correctly for OpenAI function-calling schemas
+- Example env vars and tool names match the current definitions
+
+### 🔧 Chores
+- `.matimo-approvals.json` is no longer tracked. A committed manifest pre-approved two Composio Jira tools
+- Dependabot config; CVE patches for `@modelcontextprotocol/sdk`, `@usebruno/cli`, undici, nanoid, faker, minimatch, brace-expansion and browserslist
+
+### 📦 Version Bumps
+- All `typescript/` packages: `0.1.8` → `0.2.0`
+
+---
+## [python/v0.2.0] - 2026-09-30
+
+Parity release with typescript/v0.2.0. Every governance change above applies to the Python SDK too, with snake_case names (`on_approval`, `governance_mode`, `audit_sink`, `hitl_min_risk_level`, `verify_audit_log`).
+
+### ⚠️ Behaviour changes
+- The DELETE/command approval default and the new validator rules, as in TypeScript. `governance_mode="legacy"` restores the old default
+- `requires_approval` is now enforced on every call. It used to be ignored
+- `execute(..., approved=True)` skips only the approval prompt. Policy denials still apply
+- Execution events: `duration` (seconds) is now `duration_ms` (milliseconds), and `trace_id` is a full UUID. `tool:execution_failed` is new
+
+### ✨ Features
+- Agno framework integration
+- `run(params, context)` function tools receive a `FunctionToolContext(credentials, policy_context)`
+
+### 🐛 Bug Fixes
+- MCP server works with both `mcp` 1.x and `mcp>=2.0`
+- OAuth2 endpoints are built with the pydantic alias field names
+
+### 🔧 Chores
+- `make typecheck` (strict mypy on `matimo-core`) passes and now blocks CI. CI also runs the tests of every provider package
+- Dependency bumps: `cryptography`, `pypdf`, `anyio`, `soupsieve`, `crewai`
+
+### 📦 Version Bumps
+- All 13 `python/` packages: `0.1.3` → `0.2.0`. Provider packages now require `matimo-core>=0.2.0,<0.3.0`
+
+---
 ## [typescript/v0.1.8] - 2026-08-30
 
 ### 🛡️ Governance
