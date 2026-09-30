@@ -8,7 +8,7 @@ import {
   getTierForTool,
   getGlobalMatimoLogger,
 } from '@matimo/core';
-import type { Violation } from '@matimo/core';
+import type { Violation, FunctionToolContext } from '@matimo/core';
 
 interface CreateParams {
   name: string;
@@ -38,6 +38,7 @@ const UNSAFE_NAME_PATTERN = /[/\\]|\.\.|[\x00-\x1f]/;
 
 export default async function matimoCreateTool(
   params: CreateParams,
+  context?: FunctionToolContext,
 ): Promise<CreateResult> {
   const logger = getGlobalMatimoLogger();
   const targetDir = params.target_dir || './matimo-tools';
@@ -68,6 +69,13 @@ export default async function matimoCreateTool(
   parsed.name = params.name;
   parsed.requires_approval = true;
   parsed.status = 'draft';
+  // Record the creating agent (from the host-supplied policy context) so
+  // matimo_approve_tool can refuse to let it approve its own tool. Never
+  // taken from the YAML: an agent could otherwise name someone else.
+  delete parsed.created_by;
+  if (context?.policyContext?.agentId) {
+    parsed.created_by = context.policyContext.agentId;
+  }
 
   // Step 4: Validate against schema
   const yamlStr = yaml.dump(parsed);

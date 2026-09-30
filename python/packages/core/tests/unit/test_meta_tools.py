@@ -76,6 +76,17 @@ _VALID_SKILL_CONTENT = textwrap.dedent("""\
 """)
 
 
+def _admin_context() -> object:
+    from matimo.core.models import PolicyContext
+    from matimo.executors.function_executor import FunctionToolContext
+
+    return FunctionToolContext(policy_context=PolicyContext(roles=["admin"]))
+
+
+# matimo_approve_tool requires the caller to hold the admin role.
+_ADMIN = _admin_context()
+
+
 def _write_tool(tool_dir: Path, name: str, yaml_content: str = _VALID_HTTP_TOOL_YAML) -> Path:
     """Write a tool definition.yaml to a temp directory."""
     path = tool_dir / name
@@ -434,7 +445,7 @@ class TestMatimoApproveTool:
 
         _write_tool(tmp_path, "city_lookup", _VALID_DRAFT_TOOL_YAML)
 
-        result = await run({"name": "city_lookup", "tool_dir": str(tmp_path)})
+        result = await run({"name": "city_lookup", "tool_dir": str(tmp_path)}, _ADMIN)
 
         assert result["success"] is True
         assert result["name"] == "city_lookup"
@@ -449,7 +460,7 @@ class TestMatimoApproveTool:
 
         _write_tool(tmp_path, "my_tool", _VALID_DRAFT_TOOL_YAML)
 
-        await run({"name": "my_tool", "tool_dir": str(tmp_path)})
+        await run({"name": "my_tool", "tool_dir": str(tmp_path)}, _ADMIN)
 
         written = yaml.safe_load((tmp_path / "my_tool" / "definition.yaml").read_text())
         assert written["status"] == "approved"
@@ -458,7 +469,7 @@ class TestMatimoApproveTool:
     async def test_fails_for_nonexistent_tool(self, tmp_path: Path) -> None:
         from matimo.tools.matimo_approve_tool.matimo_approve_tool import run
 
-        result = await run({"name": "nonexistent", "tool_dir": str(tmp_path)})
+        result = await run({"name": "nonexistent", "tool_dir": str(tmp_path)}, _ADMIN)
 
         assert result["success"] is False
         assert "not found" in result["message"].lower()
@@ -471,7 +482,7 @@ class TestMatimoApproveTool:
         bad_dir.mkdir()
         (bad_dir / "definition.yaml").write_text(_INVALID_YAML)
 
-        result = await run({"name": "bad_tool", "tool_dir": str(tmp_path)})
+        result = await run({"name": "bad_tool", "tool_dir": str(tmp_path)}, _ADMIN)
 
         assert result["success"] is False
         assert "Validation failed" in result["message"]
@@ -484,24 +495,24 @@ class TestMatimoApproveTool:
         monkeypatch.chdir(tmp_path)
         _write_tool(tmp_path / "matimo-tools", "demo_tool", _VALID_DRAFT_TOOL_YAML)
 
-        result = await run({"name": "demo_tool"})
+        result = await run({"name": "demo_tool"}, _ADMIN)
         assert result["success"] is True
 
     @pytest.mark.asyncio
     async def test_rejects_path_traversal_and_never_reaches_manifest(self, tmp_path: Path) -> None:
         from matimo.tools.matimo_approve_tool.matimo_approve_tool import run
 
-        result = await run({"name": "../../../etc/passwd", "tool_dir": str(tmp_path)})
+        result = await run({"name": "../../../etc/passwd", "tool_dir": str(tmp_path)}, _ADMIN)
         assert result["success"] is False
         assert "invalid characters" in result["message"]
         # No manifest write should have happened — approve() was never reached.
         assert not (tmp_path / ".matimo-approvals.json").exists()
 
-        backslash_result = await run({"name": "..\\..\\secrets", "tool_dir": str(tmp_path)})
+        backslash_result = await run({"name": "..\\..\\secrets", "tool_dir": str(tmp_path)}, _ADMIN)
         assert backslash_result["success"] is False
         assert "invalid characters" in backslash_result["message"]
 
-        control_char_result = await run({"name": "tool\x00name", "tool_dir": str(tmp_path)})
+        control_char_result = await run({"name": "tool\x00name", "tool_dir": str(tmp_path)}, _ADMIN)
         assert control_char_result["success"] is False
         assert "invalid characters" in control_char_result["message"]
 
@@ -651,7 +662,7 @@ class TestMatimoGetToolStatus:
         from matimo.tools.matimo_get_tool_status.matimo_get_tool_status import run as status_run
 
         _write_tool(tmp_path, "approved_tool", _VALID_DRAFT_TOOL_YAML)
-        await approve_run({"name": "approved_tool", "tool_dir": str(tmp_path)})
+        await approve_run({"name": "approved_tool", "tool_dir": str(tmp_path)}, _ADMIN)
 
         result = await status_run({"name": "approved_tool", "tool_dir": str(tmp_path)})
 
@@ -1693,7 +1704,7 @@ class TestMatimoApproveToolBranchCoverage:
             "matimo.policy.content_validator.validate_tool_content",
             return_value=[mock_violation],
         ):
-            result = await run({"name": "my_api_tool", "tool_dir": str(tmp_path)})
+            result = await run({"name": "my_api_tool", "tool_dir": str(tmp_path)}, _ADMIN)
 
         assert result["success"] is False
         assert "policy violations" in result["message"]
@@ -2130,3 +2141,103 @@ class TestMatimoGetSkillContent:
         assert result["success"] is True
         assert result["content"] == ""
         assert result["tokensUsed"] == 0
+
+
+# ===========================================================================
+# Who may approve — mirrors "who may approve" in matimo-approve-tool.test.ts
+# ===========================================================================
+
+
+class TestWhoMayApprove:
+    @staticmethod
+    def _context(**kwargs: object) -> object:
+        from matimo.core.models import PolicyContext
+        from matimo.executors.function_executor import FunctionToolContext
+
+        return FunctionToolContext(policy_context=PolicyContext(**kwargs))  # type: ignore[arg-type]
+
+    @pytest.mark.asyncio
+    @pytest.mark.asyncio
+    async def test_no_identity_leaves_the_decision_to_the_confirming_human(
+        self, tmp_path: Path
+    ) -> None:
+        from matimo.tools.matimo_approve_tool.matimo_approve_tool import run
+
+        _write_tool(tmp_path, "my_tool", _VALID_DRAFT_TOOL_YAML + "created_by: agent-a\n")
+        result = await run({"name": "my_tool", "tool_dir": str(tmp_path)})
+        assert result["success"] is True
+
+    @pytest.mark.parametrize("roles", [[], ["operator"]], ids=["no-roles", "non-admin"])
+    async def test_refuses_non_admins_and_leaves_the_tool_untouched(
+        self, tmp_path: Path, roles: list[str]
+    ) -> None:
+        from matimo.tools.matimo_approve_tool.matimo_approve_tool import run
+
+        _write_tool(tmp_path, "my_tool", _VALID_DRAFT_TOOL_YAML)
+        result = await run(
+            {"name": "my_tool", "tool_dir": str(tmp_path)},
+            self._context(roles=roles),  # type: ignore[arg-type]
+        )
+
+        assert result["success"] is False
+        assert "requires the admin role" in result["message"]
+        assert "status: draft" in (tmp_path / "my_tool" / "definition.yaml").read_text()
+        assert not (tmp_path / ".matimo-approvals.json").exists()
+
+    @pytest.mark.asyncio
+    async def test_refuses_to_let_the_creator_approve_its_own_tool(self, tmp_path: Path) -> None:
+        from matimo.tools.matimo_approve_tool.matimo_approve_tool import run
+
+        _write_tool(tmp_path, "my_tool", _VALID_DRAFT_TOOL_YAML + "created_by: agent-a\n")
+        result = await run(
+            {"name": "my_tool", "tool_dir": str(tmp_path)},
+            self._context(agent_id="agent-a", roles=["admin"]),  # type: ignore[arg-type]
+        )
+        assert result["success"] is False
+        assert "someone other than its creator" in result["message"]
+
+    @pytest.mark.asyncio
+    async def test_lets_a_different_admin_approve_it(self, tmp_path: Path) -> None:
+        from matimo.tools.matimo_approve_tool.matimo_approve_tool import run
+
+        _write_tool(tmp_path, "my_tool", _VALID_DRAFT_TOOL_YAML + "created_by: agent-a\n")
+        result = await run(
+            {"name": "my_tool", "tool_dir": str(tmp_path)},
+            self._context(agent_id="reviewer", roles=["admin"]),  # type: ignore[arg-type]
+        )
+        assert result["success"] is True
+
+
+class TestCreateToolRecordsCreator:
+    _YAML = (
+        "version: '1.0.0'\ndescription: d\n{extra}"
+        "execution:\n  type: http\n  method: GET\n  url: https://api.example.com/x\n"
+    )
+
+    @pytest.mark.asyncio
+    async def test_records_the_creating_agent(self, tmp_path: Path) -> None:
+        from matimo.core.models import PolicyContext
+        from matimo.executors.function_executor import FunctionToolContext
+        from matimo.tools.matimo_create_tool.matimo_create_tool import run
+
+        result = await run(
+            {"name": "t", "yaml_content": self._YAML.format(extra=""), "target_dir": str(tmp_path)},
+            FunctionToolContext(policy_context=PolicyContext(agent_id="agent-a")),
+        )
+        assert "created_by: agent-a" in Path(result["path"]).read_text()
+
+    @pytest.mark.asyncio
+    async def test_ignores_a_created_by_written_into_the_yaml(self, tmp_path: Path) -> None:
+        from matimo.core.models import PolicyContext
+        from matimo.executors.function_executor import FunctionToolContext
+        from matimo.tools.matimo_create_tool.matimo_create_tool import run
+
+        forged = self._YAML.format(extra="created_by: someone-else\n")
+        with_agent = await run(
+            {"name": "a", "yaml_content": forged, "target_dir": str(tmp_path)},
+            FunctionToolContext(policy_context=PolicyContext(agent_id="agent-a")),
+        )
+        assert "created_by: agent-a" in Path(with_agent["path"]).read_text()
+
+        without_agent = await run({"name": "b", "yaml_content": forged, "target_dir": str(tmp_path)})
+        assert "created_by" not in Path(without_agent["path"]).read_text()

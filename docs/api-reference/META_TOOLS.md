@@ -341,6 +341,20 @@ Approve a draft tool for production use. Re-validates the tool, signs with HMAC,
 
 **Requires approval** — human must confirm before tool is promoted.
 
+**Who may approve** — two checks on the caller's policy context, which the host
+supplies (`execute(..., { context })`, or the MCP server's `context` option)
+and the agent cannot set:
+
+- When the host supplies a policy context, it must include the `admin` role;
+  otherwise the tool is left untouched and the result says `Approving a tool
+  requires the admin role`. With no policy context at all (e.g. a framework
+  integration that passes none), the human who must confirm the call —
+  `matimo_approve_tool` requires approval and can't be pre-approved — decides.
+- An agent cannot approve a tool it created: `matimo_create_tool` records the
+  creating agent's `agentId` as `created_by` in the YAML (overwriting any
+  `created_by` the agent wrote itself), and approval by that same `agentId` is
+  refused.
+
 ### Parameters
 
 | Parameter | Type | Required | Default | Description |
@@ -383,10 +397,11 @@ an arbitrary file:
 ### Example
 
 ```typescript
-const result = await matimo.execute('matimo_approve_tool', {
-  name: 'city_lookup',
-  tool_dir: './agent-tools',
-});
+const result = await matimo.execute(
+  'matimo_approve_tool',
+  { name: 'city_lookup', tool_dir: './agent-tools' },
+  { context: { agentId: 'reviewer', roles: ['admin'] } }
+);
 ```
 
 ### Internal Flow
@@ -1223,7 +1238,8 @@ print(result['valid'], result['riskLevel'])
 # Full lifecycle from Python
 validate  = await matimo.execute('matimo_validate_tool',  {'yaml_content': yaml_str})
 create    = await matimo.execute('matimo_create_tool',    {'name': 'my_tool', 'yaml_content': yaml_str, 'target_dir': './agent-tools'})
-approve   = await matimo.execute('matimo_approve_tool',   {'name': 'my_tool', 'tool_dir': './agent-tools'})
+approve   = await matimo.execute('matimo_approve_tool',   {'name': 'my_tool', 'tool_dir': './agent-tools'},
+                                 context=PolicyContext(agent_id='reviewer', roles=['admin']))
 reload    = await matimo.execute('matimo_reload_tools',   {})
 status    = await matimo.execute('matimo_get_tool_status',{'name': 'my_tool', 'tool_dir': './agent-tools'})
 ```

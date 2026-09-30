@@ -293,10 +293,11 @@ execution:
 });
 
 // 2. Approve - re-validates, signs HMAC, updates status to approved
-await matimo.execute('matimo_approve_tool', {
-  name: 'city_lookup',
-  tool_dir: './agent-tools',
-});
+await matimo.execute(
+  'matimo_approve_tool',
+  { name: 'city_lookup', tool_dir: './agent-tools' },
+  { context: { agentId: 'reviewer', roles: ['admin'] } } // approving needs the admin role
+);
 
 // 3. Reload - clears registry, re-reads YAML, re-validates untrusted tools
 await matimo.execute('matimo_reload_tools', {});

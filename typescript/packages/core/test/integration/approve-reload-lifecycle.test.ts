@@ -74,7 +74,7 @@ execution:
     // hash must be computed from the file's final, post-mutation on-disk content).
     const approval = await matimoApproveTool(
       { name: 'my-tool', tool_dir: untrustedDir },
-      { credentials: { MATIMO_APPROVAL_SECRET: SECRET } }
+      { credentials: { MATIMO_APPROVAL_SECRET: SECRET }, policyContext: { roles: ['admin'] } }
     );
     expect(approval.success).toBe(true);
 

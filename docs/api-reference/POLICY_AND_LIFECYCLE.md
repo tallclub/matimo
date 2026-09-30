@@ -685,10 +685,11 @@ await matimo.execute('matimo_create_tool', {
 Use `matimo_approve_tool` to promote a draft tool to approved status.
 
 ```typescript
-const result = await matimo.execute('matimo_approve_tool', {
-  name: 'city_lookup',
-  tool_dir: './agent-tools',
-});
+const result = await matimo.execute(
+  'matimo_approve_tool',
+  { name: 'city_lookup', tool_dir: './agent-tools' },
+  { context: { agentId: 'reviewer', roles: ['admin'] } } // approving needs the admin role
+);
 
 console.log(result);
 // {
@@ -830,10 +831,11 @@ execution:
 });
 
 // 4. Approve
-await matimo.execute('matimo_approve_tool', {
-  name: 'city_lookup',
-  tool_dir: './agent-tools',
-});
+await matimo.execute(
+  'matimo_approve_tool',
+  { name: 'city_lookup', tool_dir: './agent-tools' },
+  { context: { agentId: 'reviewer', roles: ['admin'] } } // approving needs the admin role
+);
 
 // 5. Reload
 await matimo.execute('matimo_reload_tools', {});
@@ -975,7 +977,8 @@ not advertised and is ignored. Pre-approved tools
 MCP calls run with no roles unless the operator grants some with the server's
 `context` option (`MCPServerOptions.context` in both SDKs), e.g.
 `{ agentId: 'claude-desktop', roles: ['admin'] }` for a single-user local
-server. Role-gated tools such as `matimo_approve_tool` need it.
+server. Role-gated tools refuse a context without their role — e.g.
+`matimo_approve_tool` requires `admin` whenever a context is supplied.
 
 **Beyond policy gating**, each MCP tool registration also carries the protocol's standard `readOnlyHint`/`destructiveHint`/`idempotentHint`/`openWorldHint` annotations, derived directly from `execution.type`/HTTP method rather than from the aggregate risk tier above (the two signals can diverge — a GET and a DELETE tool can share a risk tier while having opposite hints). A denied or failed call returns `isError: true` with a `structuredContent` field (`code`/`statusCode`/`retryable`/`message`) instead of only a text string, and every successful result passes through the response-size guardrail before being returned. See [MCP Server docs — Tool Metadata & Error Responses](../MCP.md#tool-metadata--error-responses).
 
@@ -1099,10 +1102,11 @@ const createResult = await matimo.execute('matimo_create_tool', {
 });
 
 // 2. Agent calls matimo_approve_tool
-await matimo.execute('matimo_approve_tool', {
-  name: 'city_lookup',
-  tool_dir: './agent-tools',
-});
+await matimo.execute(
+  'matimo_approve_tool',
+  { name: 'city_lookup', tool_dir: './agent-tools' },
+  { context: { agentId: 'reviewer', roles: ['admin'] } } // approving needs the admin role
+);
 
 // 3. Agent calls matimo_reload_tools
 await matimo.execute('matimo_reload_tools', {});
@@ -1348,7 +1352,8 @@ result = await matimo.execute('matimo_create_tool', {
 })
 
 # 3. Approve
-result = await matimo.execute('matimo_approve_tool', {'name': 'my_tool', 'tool_dir': './agent-tools'})
+result = await matimo.execute('matimo_approve_tool', {'name': 'my_tool', 'tool_dir': './agent-tools'},
+                              context=PolicyContext(agent_id='reviewer', roles=['admin']))
 
 # 4. Reload
 result = await matimo.execute('matimo_reload_tools', {})

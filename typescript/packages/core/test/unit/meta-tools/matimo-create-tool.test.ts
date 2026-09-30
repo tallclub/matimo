@@ -42,6 +42,41 @@ execution:
     expect(content).toContain('name: test_tool');
   });
 
+  describe('created_by', () => {
+    const yamlWith = (extra = '') => `
+version: '1.0.0'
+description: 'A test tool'
+${extra}execution:
+  type: http
+  method: GET
+  url: 'https://api.example.com/data'
+`;
+
+    it('records the creating agent from the policy context', async () => {
+      const result = await matimoCreateTool(
+        { name: 'test_tool', yaml_content: yamlWith(), target_dir: tmpDir },
+        { policyContext: { agentId: 'agent-a' } }
+      );
+      expect(fs.readFileSync(result.path!, 'utf-8')).toContain('created_by: agent-a');
+    });
+
+    it('ignores a created_by the agent wrote into the YAML', async () => {
+      const forged = yamlWith('created_by: someone-else\n');
+      const withAgent = await matimoCreateTool(
+        { name: 'forged_a', yaml_content: forged, target_dir: tmpDir },
+        { policyContext: { agentId: 'agent-a' } }
+      );
+      expect(fs.readFileSync(withAgent.path!, 'utf-8')).toContain('created_by: agent-a');
+
+      const withoutAgent = await matimoCreateTool({
+        name: 'forged_b',
+        yaml_content: forged,
+        target_dir: tmpDir,
+      });
+      expect(fs.readFileSync(withoutAgent.path!, 'utf-8')).not.toContain('created_by');
+    });
+  });
+
   it('should reject names with path traversal', async () => {
     const result = await matimoCreateTool({
       name: '../escape',

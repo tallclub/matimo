@@ -122,7 +122,13 @@ class TestApproveReloadLifecycle:
 
         # Approve via the real meta-tool (exercises the hash-timing fix: the approval
         # hash must be computed from the file's final, post-mutation on-disk content).
-        approval = await approve_run({"name": "my_tool", "tool_dir": str(untrusted_dir)})
+        from matimo.core.models import PolicyContext
+        from matimo.executors.function_executor import FunctionToolContext
+
+        approval = await approve_run(
+            {"name": "my_tool", "tool_dir": str(untrusted_dir)},
+            FunctionToolContext(policy_context=PolicyContext(roles=["admin"])),
+        )
         assert approval["success"] is True
 
         on_disk_yaml = (tool_dir / "definition.yaml").read_text()
