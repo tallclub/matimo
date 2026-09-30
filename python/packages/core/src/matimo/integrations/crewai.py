@@ -72,6 +72,7 @@ def _make_crewai_tool(
     from crewai.tools import BaseTool
 
     from matimo.integrations._pydantic_utils import (
+        drop_unset_arguments,
         is_secret_parameter,
         parameter_to_pydantic_field,
         sanitize_model_name,
@@ -113,12 +114,12 @@ def _make_crewai_tool(
                 executor = _get_executor()
                 future = executor.submit(
                     asyncio.run,
-                    matimo.execute(tool_def.name, dict(kwargs), **call_kwargs),
+                    matimo.execute(tool_def.name, drop_unset_arguments(dict(kwargs)), **call_kwargs),
                 )
                 return future.result()
             else:
                 return loop.run_until_complete(
-                    matimo.execute(tool_def.name, dict(kwargs), **call_kwargs)
+                    matimo.execute(tool_def.name, drop_unset_arguments(dict(kwargs)), **call_kwargs)
                 )
 
         async def _arun(self, **kwargs: object) -> Any:  # noqa: ANN401
@@ -127,7 +128,7 @@ def _make_crewai_tool(
             if credentials is not None:
                 call_kwargs["credentials"] = credentials
             return await matimo.execute(
-                tool_def.name, dict(kwargs), **call_kwargs
+                tool_def.name, drop_unset_arguments(dict(kwargs)), **call_kwargs
             )
 
     # Give the dynamically-created class a unique name so CrewAI introspection works

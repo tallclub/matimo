@@ -350,3 +350,46 @@ class TestBuildRelevantSkillPrompt:
 
         result = await build_relevant_skill_prompt(matimo_mock, "query")
         assert result == ""
+
+
+class TestLangChainUnsetArguments:
+    """Optional parameters the model leaves out must not reach execute() as None."""
+
+    @pytest.mark.asyncio
+    async def test_unset_optional_param_is_not_forwarded(self) -> None:
+        pytest.importorskip("langchain_core")
+        from matimo.integrations.langchain import convert_tools_to_langchain
+
+        matimo_mock = MagicMock()
+        matimo_mock.execute = AsyncMock(return_value={})
+        tool = _make_tool(
+            params={
+                "message": Parameter(type=ParameterType.STRING, description="msg", required=True),
+                "limit": Parameter(type=ParameterType.NUMBER, description="opt", required=False),
+            }
+        )
+        lc_tool = convert_tools_to_langchain([tool], matimo_mock)[0]
+        await lc_tool.ainvoke({"message": "hi"})
+        matimo_mock.execute.assert_awaited_once_with(
+            "echo_tool", {"message": "hi"}, credentials=None
+        )
+
+    @pytest.mark.asyncio
+    async def test_set_optional_param_and_falsy_values_are_forwarded(self) -> None:
+        pytest.importorskip("langchain_core")
+        from matimo.integrations.langchain import convert_tools_to_langchain
+
+        matimo_mock = MagicMock()
+        matimo_mock.execute = AsyncMock(return_value={})
+        tool = _make_tool(
+            params={
+                "message": Parameter(type=ParameterType.STRING, description="msg", required=True),
+                "limit": Parameter(type=ParameterType.NUMBER, description="opt", required=False),
+                "dry": Parameter(type=ParameterType.BOOLEAN, description="opt", required=False),
+            }
+        )
+        lc_tool = convert_tools_to_langchain([tool], matimo_mock)[0]
+        await lc_tool.ainvoke({"message": "", "limit": 0, "dry": False})
+        matimo_mock.execute.assert_awaited_once_with(
+            "echo_tool", {"message": "", "limit": 0, "dry": False}, credentials=None
+        )

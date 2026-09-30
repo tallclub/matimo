@@ -9,7 +9,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from matimo.integrations._pydantic_utils import is_secret_parameter, parameter_to_pydantic_field, sanitize_model_name
+from matimo.integrations._pydantic_utils import (
+    drop_unset_arguments,
+    is_secret_parameter,
+    parameter_to_pydantic_field,
+    sanitize_model_name,
+)
 
 if TYPE_CHECKING:
     from matimo.core.models import ToolDefinition
@@ -84,7 +89,9 @@ def _make_langchain_tool(
 
     async def _invoke(**kwargs: object) -> Any:  # noqa: ANN401
         # Returns Any: tool execution results are arbitrary JSON/values.
-        return await matimo.execute(tool.name, dict(kwargs), credentials=credentials)
+        return await matimo.execute(
+            tool.name, drop_unset_arguments(dict(kwargs)), credentials=credentials
+        )
 
     return StructuredTool(
         name=tool.name,

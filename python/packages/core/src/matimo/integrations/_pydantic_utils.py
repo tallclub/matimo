@@ -94,3 +94,16 @@ def parameter_to_pydantic_field(
         py_type = py_type | None
 
     return py_type, field_def
+
+
+def drop_unset_arguments(kwargs: dict[str, Any]) -> dict[str, Any]:
+    """
+    Drop arguments whose value is None before they reach Matimo.execute().
+
+    The args schemas built by parameter_to_pydantic_field default every
+    optional parameter to None, and LangChain and CrewAI pass every schema
+    field to the tool, so a parameter the model left out arrives as None.
+    Matimo treats a missing parameter as "use the tool's default"; a None
+    would reach the executor instead (int(None) for a timeout, for example).
+    """
+    return {key: value for key, value in kwargs.items() if value is not None}

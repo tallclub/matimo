@@ -414,3 +414,35 @@ class TestBuildRelevantSkillPrompt:
 
         result = await build_relevant_skill_prompt(matimo_mock, "query")
         assert result == ""
+
+
+class TestCrewAIUnsetArguments:
+    """Optional parameters the model leaves out must not reach execute() as None."""
+
+    def _tool(self) -> ToolDefinition:
+        return _make_tool(
+            params={
+                "query": Parameter(type=ParameterType.STRING, description="q", required=True),
+                "limit": Parameter(type=ParameterType.NUMBER, description="opt", required=False),
+            }
+        )
+
+    def test_run_drops_unset_optional_param(self) -> None:
+        pytest.importorskip("crewai")
+        from matimo.integrations.crewai import convert_tools_to_crewai
+
+        matimo_mock = MagicMock()
+        matimo_mock.execute = AsyncMock(return_value={})
+        convert_tools_to_crewai([self._tool()], matimo_mock)[0].run(query="x")
+        matimo_mock.execute.assert_awaited_once_with("search_tool", {"query": "x"})
+
+    @pytest.mark.asyncio
+    async def test_arun_drops_none_but_keeps_falsy_values(self) -> None:
+        pytest.importorskip("crewai")
+        from matimo.integrations.crewai import convert_tools_to_crewai
+
+        matimo_mock = MagicMock()
+        matimo_mock.execute = AsyncMock(return_value={})
+        tool = convert_tools_to_crewai([self._tool()], matimo_mock)[0]
+        await tool._arun(query="", limit=0, extra=None)
+        matimo_mock.execute.assert_awaited_once_with("search_tool", {"query": "", "limit": 0})
