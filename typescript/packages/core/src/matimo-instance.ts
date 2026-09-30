@@ -1501,10 +1501,14 @@ export class MatimoInstance {
     },
     context: PolicyContext
   ): Promise<boolean> {
-    // 1. Check approval manifest — previously approved tools pass through
+    // 1. Check approval manifest — previously approved tools pass through.
+    // Tools loaded at init() have no integrity-tracker entry until the first
+    // reload, so fall back to the same definition hash the approval below records.
     if (this.#approvalManifest) {
-      const yamlHash = this.#integrityTracker.getHash(tool.name);
-      if (yamlHash && this.#approvalManifest.isApproved(tool.name, yamlHash)) {
+      const yamlHash =
+        this.#integrityTracker.getHash(tool.name) ??
+        this.#approvalManifest.computeHash(JSON.stringify(tool));
+      if (this.#approvalManifest.isApproved(tool.name, yamlHash)) {
         return true;
       }
     }

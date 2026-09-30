@@ -231,6 +231,35 @@ class TestMatimoExecute:
             await matimo.execute("delete_data", {"resource_id": "99"})
         assert exc.value.code in (ErrorCode.POLICY_DENIED, ErrorCode.EXECUTION_FAILED)
 
+    @pytest.mark.asyncio
+    async def test_hitl_approval_is_recorded_and_not_asked_again(self, tmp_path: Path) -> None:
+        """Mirrors #resolveHITL: an approved quarantined tool is recorded in the
+        manifest, so the reviewer is asked once per tool definition, not per call."""
+        from matimo.policy.approval_manifest import ApprovalManifest
+
+        reg = ToolRegistry()
+        reg.register(_make_delete_tool())
+        approval_callback = AsyncMock(return_value=True)
+        matimo = Matimo(
+            registry=reg,
+            policy_engine=DefaultPolicyEngine(
+                PolicyConfig(enable_hitl=True, quarantine_risk_levels=[RiskLevel.HIGH])
+            ),
+            loader=MagicMock(),
+            tool_paths=[],
+            on_event=None,
+            on_hitl=approval_callback,
+            matimo_logger=MagicMock(),
+            approval_manifest=ApprovalManifest(str(tmp_path), approval_secret="test-secret"),
+        )
+        with respx.mock:
+            respx.delete("https://api.example.com/data/99").mock(
+                return_value=httpx.Response(200, json={"deleted": True})
+            )
+            await matimo.execute("delete_data", {"resource_id": "99"})
+            await matimo.execute("delete_data", {"resource_id": "99"})
+        assert approval_callback.await_count == 1
+
 
 class TestMatimoToolQuery:
     def test_list_tools(self) -> None:

@@ -741,6 +741,21 @@ class Matimo:
         content_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
         return self._approval_manifest.is_approved(tool.name, content_hash)
 
+    @staticmethod
+    def _definition_hash(tool: ToolDefinition) -> str:
+        """
+        Hash identifying the exact tool definition a HITL approval covers: the
+        on-disk YAML when available (the same hash matimo_approve_tool signs),
+        otherwise the serialized definition.
+        """
+        if tool.definition_path:
+            try:
+                content = Path(tool.definition_path).read_text(encoding="utf-8")
+                return hashlib.sha256(content.encode("utf-8")).hexdigest()
+            except OSError:
+                pass
+        return hashlib.sha256(tool.model_dump_json().encode("utf-8")).hexdigest()
+
     def _evaluate_untrusted_reload(self, tool: ToolDefinition) -> PolicyDecision:
         """
         Decide policy for an untrusted tool during reload(): use the looser
@@ -761,10 +776,21 @@ class Matimo:
         tool: ToolDefinition,
         context: PolicyContext,
     ) -> bool:
-        """Invoke the HITL callback or deny if no callback is configured."""
+        """
+        Resolve a quarantined tool. Mirrors #resolveHITL in matimo-instance.ts:
+        1. A matching signed approval in the manifest lets the tool through.
+        2. Otherwise ask the HITL callback; an approval is recorded in the manifest.
+        3. No callback — fail closed.
+        """
         import asyncio
 
         from matimo.policy.types import HITLRequest
+
+        approval_hash = self._definition_hash(tool)
+        if self._approval_manifest is not None and self._approval_manifest.is_approved(
+            tool.name, approval_hash
+        ):
+            return True
 
         if self._on_hitl is None:
             self._logger.warn(
@@ -793,6 +819,9 @@ class Matimo:
                 approved = False
         else:
             approved = await self._on_hitl(request)
+
+        if approved and self._approval_manifest is not None:
+            self._approval_manifest.approve(tool.name, approval_hash)
 
         self._emit_event({
             "type": "tool:quarantine_approved" if approved else "tool:quarantine_rejected",
