@@ -1,6 +1,6 @@
 {
   "name": "@matimo/bruno",
-  "version": "0.1.8",
+  "version": "0.2.0",
   "description": "Bruno CLI tools for Matimo — API collection execution, import, and validation",
   "license": "MIT",
   "files": [

@@ -185,7 +185,7 @@ from matimo.policy.types import (
 )
 from matimo.sync import MatimoSync
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 
 def get_core_tools_path() -> str:
