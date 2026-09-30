@@ -13,8 +13,8 @@ a final answer with no more tool calls.
 Use this pattern when:
   ✅ You want the LLM to decide how/when to edit files
   ✅ Autonomous code generation and file updates
-  ✅ Natural-language requests → automated file creation
-  ⚠️  SECURITY WARNING: Can create/modify arbitrary files!
+  ✅ Natural-language requests → automated file edits
+  ⚠️  SECURITY WARNING: Can modify any file the process can write!
   ⚠️  ONLY use with trusted LLM inputs and restricted directories!
 
 SETUP:
@@ -24,7 +24,6 @@ SETUP:
 
 USAGE:
 ────────────────────────────────────────────────────────────────────────────
-  export MATIMO_AUTO_APPROVE=true
   uv run python edit/edit_langchain.py
 
 ============================================================================
@@ -32,28 +31,52 @@ USAGE:
 
 import asyncio
 import os
+import shutil
 import sys
+import tempfile
 from pathlib import Path
 
 from dotenv import load_dotenv
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langchain_openai import ChatOpenAI
 
-from matimo import Matimo
+from matimo import ApprovalRequest, Matimo
 from matimo.integrations.langchain import convert_tools_to_langchain
 
 load_dotenv(Path(__file__).parent.parent.parent / ".env")
 
+
+async def approve(request: ApprovalRequest) -> bool:
+    """Ask in the terminal before any tool call that needs approval."""
+    print(f"\n🔒  Approval required — {request.tool_name}: {request.params}")
+    if not sys.stdin.isatty():
+        print(
+            "    ❌  Rejected: no terminal. Pre-approve with "
+            f'MATIMO_APPROVED_PATTERNS="{request.tool_name}"'
+        )
+        return False
+    return input("    Approve? [y/N] ").strip().lower() in ("y", "yes")
+
+
+SAMPLE_TODOS = (
+    "# Project TODOs\n"
+    "TODO: Add authentication to the login page\n"
+    "TODO: Write unit tests for the auth module\n"
+    "TODO: Update the README\n"
+)
+
+# {file} is replaced with the path of a temporary copy of SAMPLE_TODOS.
 DEFAULT_TASK = (
-    "Create a Python script file that contains a function to calculate "
-    "the factorial of a number. Include docstrings and error handling."
+    "In the file {file}, mark the authentication TODO as DONE, then add a new "
+    'line "TODO: Set up error logging" at the end of the file. '
+    "Tell me what you changed."
 )
 
 
 async def main(task: str) -> None:
     print("\n╔════════════════════════════════════════════════════════╗")
     print("║     Edit Tool — LangChain ReAct Agent                 ║")
-    print("║     ⚠️  WARNING: Can modify/create files!            ║")
+    print("║     ⚠️  WARNING: Can modify files!                    ║")
     print("╚════════════════════════════════════════════════════════╝\n")
 
     # Check for API key
@@ -64,7 +87,7 @@ async def main(task: str) -> None:
 
     # ── 1. Initialize Matimo ──────────────────────────────────────────────────
     print("🚀  Initializing Matimo…")
-    matimo = await Matimo.init(auto_discover=True)
+    matimo = await Matimo.init(auto_discover=True, on_approval=approve)
     
     # Find edit tool
     edit_tool = None
@@ -88,14 +111,19 @@ async def main(task: str) -> None:
     llm_with_tools = llm.bind_tools(lc_tools)
     tool_map = {t.name: t for t in lc_tools}
 
-    # ── 4. ReAct loop ─────────────────────────────────────────────────────────
+    # ── 4. A temporary file for the agent to edit ──────────────────────────────
+    work_dir = Path(tempfile.mkdtemp(prefix="matimo-edit-"))
+    todo_file = work_dir / "todos.md"
+    todo_file.write_text(SAMPLE_TODOS)
+    task = task.replace("{file}", str(todo_file))
+
+    # ── 5. ReAct loop ─────────────────────────────────────────────────────────
     messages = [HumanMessage(content=task)]
     print(f"🎯  Task: {task}\n")
     print("─" * 60)
 
     iteration = 0
     max_iterations = 10
-    created_files = []
 
     while iteration < max_iterations:
         iteration += 1
@@ -120,9 +148,6 @@ async def main(task: str) -> None:
             else:
                 try:
                     result = await lc_tool.ainvoke(call["args"])
-                    # Track created files
-                    if "filePath" in call["args"]:
-                        created_files.append(call["args"]["filePath"])
                 except Exception as exc:
                     result = f"Error: {exc}"
             
@@ -136,15 +161,10 @@ async def main(task: str) -> None:
     if iteration >= max_iterations:
         print(f"\n⚠️  Reached max iterations ({max_iterations})")
 
-    # Clean up
-    if created_files:
-        print("\n📁  Cleaning up created files…")
-        for f in created_files:
-            try:
-                Path(f).unlink()
-                print(f"   Removed: {Path(f).name}")
-            except Exception as e:
-                print(f"   Could not remove {Path(f).name}: {e}")
+    print(f"📄  File after the agent's edits:\n{todo_file.read_text()}")
+
+    # Clean up: only the temporary directory this example created
+    shutil.rmtree(work_dir, ignore_errors=True)
 
 
 def main_sync() -> None:

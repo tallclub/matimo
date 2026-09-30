@@ -36,14 +36,26 @@ from pathlib import Path
 from crewai import Agent, Crew, Process, Task
 from dotenv import load_dotenv
 
-from matimo import Matimo
+from matimo import ApprovalRequest, Matimo
 from matimo.integrations.crewai import convert_tools_to_crewai
 
 load_dotenv(Path(__file__).parent.parent.parent / ".env")
 
+
+async def approve(request: ApprovalRequest) -> bool:
+    """Ask in the terminal before any tool call that needs approval."""
+    print(f"\n🔒  Approval required — {request.tool_name}: {request.params}")
+    if not sys.stdin.isatty():
+        print(
+            "    ❌  Rejected: no terminal. Pre-approve with "
+            f'MATIMO_APPROVED_PATTERNS="{request.tool_name}"'
+        )
+        return False
+    return input("    Approve? [y/N] ").strip().lower() in ("y", "yes")
+
+
 DEFAULT_TASK = (
-    "Extract the contents of the CSV file created alongside this script "
-    "(sample-report.csv, in the same directory) and summarize the revenue "
+    "Extract the contents of the CSV file {file} and summarize the revenue "
     "trend across quarters."
 )
 
@@ -59,7 +71,7 @@ async def run(task: str) -> None:
 
     # ── 1. Initialise Matimo (auto-discovers built-in core tools) ────────────
     print("🚀  Initialising Matimo…")
-    matimo = await Matimo.init(auto_discover=True)
+    matimo = await Matimo.init(auto_discover=True, on_approval=approve)
     extract_tools = [t for t in matimo.list_tools() if t.name == "extract_from_file"]
     print(f"✅  Loaded {len(extract_tools)} extract_from_file tool(s)\n")
 
@@ -70,6 +82,7 @@ async def run(task: str) -> None:
     # ── 2. Create a sample CSV for the crew to extract from ──────────────────
     sample_file = Path(__file__).parent / "sample-report.csv"
     sample_file.write_text("quarter,revenue,region\nQ1,120000,EMEA\nQ2,138000,EMEA\nQ3,151000,APAC\n")
+    task = task.replace("{file}", str(sample_file))
 
     try:
         # ── 3. Convert to CrewAI BaseTools ───────────────────────────────────────
