@@ -10,8 +10,9 @@ Auto-discovers every installed Matimo provider, wraps the tools in a single
 Agno Toolkit via MatimoTools, and lets the model choose what to call.
 
 Agno decides which tool to call. Matimo decides whether it may run: every
-call goes through the policy engine, and any tool classified high or critical
-risk reaches Agno with requires_confirmation already set.
+call goes through the policy engine, and any tool that needs approval on each
+call, or whose execution risk is high or critical, reaches Agno with
+requires_confirmation already set.
 
 Use this pattern when:
   Yes: you want an Agno agent over many providers at once
@@ -87,7 +88,7 @@ async def run_agent(mission: str) -> None:
     toolkit = MatimoTools(matimo, filtered_tools)
     confirm_count = sum(1 for f in toolkit.functions.values() if f.requires_confirmation)
     print(f"{len(toolkit.functions)} Agno tools ready")
-    print(f"{confirm_count} of them are high or critical risk and will pause for confirmation\n")
+    print(f"{confirm_count} of them need approval and will pause for confirmation\n")
 
     # -- 3. Build the agent ---------------------------------------------------
     agent = Agent(

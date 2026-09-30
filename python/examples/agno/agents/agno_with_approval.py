@@ -6,18 +6,20 @@ AGNO AGENT WITH HUMAN-IN-THE-LOOP CONFIRMATION
 
 PATTERN: Risk-driven confirmation, no policy code in the agent
 ----------------------------------------------------------------------------
-Matimo classifies every tool from its YAML definition. The Agno connector
-maps high and critical risk onto Agno's requires_confirmation flag, so the
-run pauses before a destructive call and waits for a human decision.
+Matimo decides from each tool's YAML definition whether a call needs a
+human. The Agno connector sets Agno's requires_confirmation flag on every
+tool whose definition needs approval on each call, and on every tool whose
+execution risk is high or critical, so the run pauses before a destructive
+call and waits for a human decision. The human's answer is the approval:
+a confirmed call is not asked about again by Matimo.
 
-Nothing in this file marks a tool as sensitive. The classification comes from
-the tool definitions:
+Nothing in this file marks a tool as sensitive. It all comes from the tool
+definitions:
 
+  requires_approval: true         -> pauses   (every GitHub write tool)
+  HTTP DELETE, type: command      -> pauses   (approval by default, high risk)
   HTTP GET                        -> low      runs freely
   HTTP POST / PUT / PATCH         -> medium   runs freely by default
-  HTTP DELETE, requires_approval  -> high     pauses
-  type: command                   -> high     pauses
-  type: function                  -> critical pauses
 
 Use this pattern when:
   Yes: an agent can take actions you want to sign off on
@@ -51,9 +53,8 @@ from agno.models.openai import OpenAIChat
 from dotenv import load_dotenv
 from matimo_github import get_tools_path
 
-from matimo import Matimo
+from matimo import Matimo, classify_execution_risk, definition_requires_approval
 from matimo.integrations.agno import MatimoTools
-from matimo.policy.risk_classifier import classify_risk
 
 # Load .env from examples directory (where this project lives)
 load_dotenv(Path(__file__).parent.parent.parent / ".env", override=True)
@@ -80,7 +81,7 @@ def _resolve_requirements(result: object, auto_approve: bool) -> None:
             continue
 
         try:
-            answer = input("    This tool is high risk. Approve? [y/N] ").strip().lower()
+            answer = input("    This tool needs approval. Approve? [y/N] ").strip().lower()
         except EOFError:
             answer = "n"
 
@@ -108,14 +109,19 @@ async def run(task: str, auto_approve: bool) -> None:
     github_tools = [t for t in matimo.list_tools() if t.name.startswith("github")]
     print(f"Loaded {len(github_tools)} GitHub tools\n")
 
-    # -- 2. Convert, letting risk drive the confirmation flag -----------------
+    # -- 2. Convert, letting Matimo's rules drive the confirmation flag -------
     toolkit = MatimoTools(matimo, github_tools, name="github_tools")
 
-    print("Risk classification mapped onto Agno's confirmation flag:")
+    print("Matimo's approval rules mapped onto Agno's confirmation flag:")
     for name in sorted(toolkit.functions):
-        risk = classify_risk(matimo.get_tool(name)).value
+        tool = matimo.get_tool(name)
+        risk = classify_execution_risk(tool).value
+        needs_approval = definition_requires_approval(tool)
         pauses = toolkit.functions[name].requires_confirmation
-        print(f"  {name:<34} risk={risk:<9} pauses={pauses}")
+        print(
+            f"  {name:<34} risk={risk:<7} requires_approval={needs_approval!s:<5} "
+            f"pauses={pauses}"
+        )
     print()
 
     # -- 3. Build the agent ---------------------------------------------------
