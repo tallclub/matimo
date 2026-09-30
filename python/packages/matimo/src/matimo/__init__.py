@@ -171,7 +171,11 @@ from matimo.policy.content_validator import ContentViolation, validate_tool_cont
 from matimo.policy.default_policy import DefaultPolicyEngine, PolicyEngine, get_tier_for_tool  # noqa: E402
 from matimo.policy.integrity_tracker import IntegrityAction, ToolIntegrityTracker  # noqa: E402
 from matimo.policy.policy_loader import load_policy_from_file  # noqa: E402
-from matimo.policy.risk_classifier import classify_risk  # noqa: E402
+from matimo.policy.risk_classifier import (  # noqa: E402
+    classify_execution_risk,
+    classify_risk,
+    meets_risk_threshold,
+)
 from matimo.policy.types import (  # noqa: E402
     GovernanceMode,
     HITLCallback,
@@ -328,7 +332,8 @@ __all__ = [
     "PolicyDecision", "PolicyAllowed", "PolicyDenied", "PolicyPendingApproval",
     "RiskLevel", "PolicyTier", "MatimoEvent", "MatimoEventHandler", "GovernanceMode",
     "HITLCallback", "HITLRequest", "ContentViolation", "validate_tool_content",
-    "classify_risk", "get_tier_for_tool", "ToolIntegrityTracker", "IntegrityAction",
+    "classify_risk", "classify_execution_risk", "meets_risk_threshold",
+    "get_tier_for_tool", "ToolIntegrityTracker", "IntegrityAction",
     "ApprovalManifest", "ApprovalRecord", "load_policy_from_file",
     "AuditSink", "JsonlFileSink", "AuditLogVerification", "verify_audit_log",
     "redact_secrets", "hash_audit_entry", "AUDIT_GENESIS_HASH",
