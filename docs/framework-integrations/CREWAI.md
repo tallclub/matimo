@@ -17,7 +17,7 @@ Matimo integrates seamlessly with **CrewAI** for multi-agent orchestration. Conv
 
 - Python 3.11+
 - CrewAI >= 0.80
-- Matimo >= 0.1.0
+- Matimo >= 0.2.0 (the approval callbacks shown here are new in 0.2.0)
 
 ### Install
 

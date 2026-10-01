@@ -89,7 +89,7 @@ pip install --upgrade pip
 pip install matimo
 
 # For specific version:
-pip install matimo==0.1.0a14
+pip install matimo==0.2.0
 ```
 
 #### Q: LangChain or CrewAI imports fail
