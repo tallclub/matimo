@@ -54,11 +54,11 @@ uv add matimo-slack matimo-github matimo-gmail
 git clone https://github.com/tallclub/matimo.git
 cd matimo/python
 
-# Install all workspace packages with dev dependencies
-uv sync --dev
+# Install all workspace packages with extras and dev dependencies
+make install            # uv sync --all-extras --dev
 
 # Run tests to verify installation
-uv run -w . pytest packages/core/tests/ -v
+make test
 ```
 
 ### Verify Installation
@@ -69,7 +69,7 @@ import asyncio
 from matimo import Matimo
 
 async def main():
-    matimo = await Matimo.init('./tools')
+    matimo = await Matimo.init(auto_discover=True)
     print(f"✅ Matimo installed successfully")
     print(f"📦 Loaded {len(matimo.list_tools())} tools")
 
@@ -125,7 +125,7 @@ pnpm add @matimo/cli     # CLI tool management
 ```bash
 # Clone the repository
 git clone https://github.com/tallclub/matimo.git
-cd matimo
+cd matimo/typescript      # the pnpm workspace lives here, not at the repo root
 
 # Install dependencies
 pnpm install
@@ -145,7 +145,7 @@ import { MatimoInstance } from 'matimo'; // From root package
 // OR
 import { MatimoInstance } from '@matimo/core'; // From core package directly
 
-const matimo = await MatimoInstance.init('./tools');
+const matimo = await MatimoInstance.init({ autoDiscover: true });
 console.log(`✅ Matimo installed successfully`);
 console.log(`📦 Loaded ${matimo.listTools().length} tools`);
 ```
@@ -216,7 +216,8 @@ pnpm --version  # Should be 8.15.0 or higher
 ### Build Errors
 
 ```bash
-# Clear and rebuild
+# Clear and rebuild (from typescript/)
+cd typescript
 pnpm clean
 pnpm install
 pnpm build
