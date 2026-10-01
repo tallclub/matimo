@@ -30,7 +30,7 @@ const matimo = await MatimoInstance.init({
 
 ### Environment Variable Configuration
 
-Set logging options via environment variables (take precedence over code config):
+Set logging options via environment variables. In TypeScript they take precedence over `logLevel` / `logFormat` passed to `init()`; in Python the values passed to `init()` win and the variables are the fallback. Without either, TypeScript logs JSON when `NODE_ENV=production` and simple text otherwise.
 
 ```bash
 # Set log level
@@ -40,7 +40,7 @@ export MATIMO_LOG_LEVEL=debug    # silent, error, warn, info, debug
 export MATIMO_LOG_FORMAT=json    # json, simple
 
 # Then initialize (no need to pass config)
-const matimo = await MatimoInstance.init('./tools');
+const matimo = await MatimoInstance.init({ autoDiscover: true });
 ```
 
 ### Accessing the Logger
@@ -142,13 +142,10 @@ const matimo = await MatimoInstance.init({
 import { MatimoInstance } from '@matimo/core';
 
 const matimo = await MatimoInstance.init({
-  toolPaths: [
-    './tools',
-    require.resolve('@matimo/slack/tools'),
-    require.resolve('@matimo/github/tools'),
-  ],
-  logLevel: process.env.LOG_LEVEL || 'info',
-  logFormat: 'json',  // Always JSON in production
+  autoDiscover: true,     // built-in tools plus installed @matimo/* packages
+  toolPaths: ['./tools'], // your own tools
+  logLevel: 'info',       // MATIMO_LOG_LEVEL overrides this if set
+  logFormat: 'json',      // also the default when NODE_ENV=production
 });
 
 // Logs to console in structured JSON format
@@ -303,9 +300,9 @@ from matimo import Matimo
 from matimo.logging import setup_logger, get_global_matimo_logger
 
 # Configure and initialize
-matimo = await Matimo.init('./tools', log_level='info', log_format='json')
+matimo = await Matimo.init(auto_discover=True, log_level='info', log_format='json')
 
-# Access the logger
+# Access the logger; metadata goes in keyword arguments
 logger = get_global_matimo_logger()
 logger.info('Processing request', user='u123')
 logger.debug('Cache hit', key='tools_list')
@@ -315,7 +312,7 @@ logger.error('Tool failed', tool='slack_send')
 
 ### Environment Variables
 
-The same env vars control the Python SDK:
+The same env vars control the Python SDK, as a fallback when `init()` / `setup_logger()` get no value:
 
 ```bash
 export MATIMO_LOG_LEVEL=debug   # silent | error | warn | info | debug
@@ -327,27 +324,21 @@ export MATIMO_LOG_FORMAT=json   # json | simple
 ```python
 from matimo.logging import setup_logger
 
-logger = setup_logger(log_level='info', log_format='json')
+logger = setup_logger(level='info', log_format='json')
 ```
 
 ### Custom Logger
 
+Python logs through the standard-library logger named `matimo` (with `propagate = False`). To send Matimo's logs somewhere else, add a handler to it after `init()`:
+
 ```python
-from matimo import Matimo
-from matimo.logging import MatimoLogger
+import logging
 
-class MyLogger(MatimoLogger):
-    def info(self, message: str, meta: dict | None = None) -> None:
-        your_logger.info(message, extra=meta or {})
-    def warn(self, message: str, meta: dict | None = None) -> None:
-        your_logger.warning(message, extra=meta or {})
-    def error(self, message: str, meta: dict | None = None) -> None:
-        your_logger.error(message, extra=meta or {})
-    def debug(self, message: str, meta: dict | None = None) -> None:
-        your_logger.debug(message, extra=meta or {})
-
-matimo = await Matimo.init('./tools', logger=MyLogger())
+matimo = await Matimo.init(auto_discover=True)
+logging.getLogger("matimo").addHandler(my_handler)
 ```
+
+`Matimo.init()` has no `logger=` argument; each `init()` or `setup_logger()` call re-applies the level and formatter to the handlers on `matimo`.
 
 ### Global Logger Access
 
@@ -363,20 +354,22 @@ set_global_matimo_logger(my_custom_logger)
 ### Silent Mode (Testing)
 
 ```python
-matimo = await Matimo.init('./tools', log_level='silent')
+matimo = await Matimo.init(auto_discover=True, log_level='silent')
 # or use MATIMO_LOG_LEVEL=silent pytest ...
 ```
 
 ### MatimoLogger Interface (Python)
 
-```python
-from matimo.logging import MatimoLogger  # ABC
+`MatimoLogger` is a thin wrapper around a stdlib `logging.Logger`; metadata is passed as keyword arguments:
 
+```python
 class MatimoLogger:
-    def info(self, message: str, meta: dict | None = None) -> None: ...
-    def warn(self, message: str, meta: dict | None = None) -> None: ...
-    def error(self, message: str, meta: dict | None = None) -> None: ...
-    def debug(self, message: str, meta: dict | None = None) -> None: ...
+    def __init__(self, logger: logging.Logger) -> None: ...
+    def info(self, message: str, **meta: object) -> None: ...
+    def warn(self, message: str, **meta: object) -> None: ...
+    def error(self, message: str, **meta: object) -> None: ...
+    def debug(self, message: str, **meta: object) -> None: ...
+    def is_silent(self) -> bool: ...
 ```
 
 ### Log Output Formats
