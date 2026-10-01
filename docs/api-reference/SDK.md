@@ -48,13 +48,29 @@ static async init(options?: InitOptions | string): Promise<MatimoInstance>
 
 **Parameters:**
 
-- `options` (InitOptions | string, optional) - Initialization configuration
-  - `InitOptions` object:
-    - `autoDiscover` (boolean, optional) - Automatically discover tools from `node_modules/@matimo/*` packages
-    - `toolPaths` (string[], optional) - Array of explicit tool directory paths
-    - `includeCore` (boolean, optional) - Include core built-in tools (default: true when using InitOptions)
-    - `defaultMaxResponseSize` (number, optional) - Instance-wide response-size cap in bytes, applied to every tool call via `execute()` unless that tool's own `output_schema.max_response_size` overrides it (default: 262144 / 256 KB — see [Response Size Guardrail](../architecture/OVERVIEW.md#tool-execution-flow))
-  - String: Backward-compatible single directory path (e.g., `'./tools'`)
+- `options` (InitOptions | string, optional) — a single directory path, or:
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `toolPaths` | `string[]` | Tool directories to load |
+| `autoDiscover` | `boolean` | Also load tools (and their skills) from installed `@matimo/*` packages |
+| `skillPaths` | `string[]` | Directories of `SKILL.md` skills. Matimo's core skills are always added |
+| `policy` | `PolicyEngine` | Custom policy engine; overrides `policyConfig` and `policyFile` |
+| `policyConfig` | `PolicyConfig` | Options for the built-in `DefaultPolicyEngine` |
+| `policyFile` | `string` | Path to a `policy.yaml` |
+| `trustedPaths` / `untrustedPaths` | `string[]` | Which directories hold developer tools and agent-written tools; untrusted tools must pass the content rules |
+| `governanceMode` | `'secure' \| 'legacy'` | `'secure'` (default): HTTP DELETE and command tools ask on every call. `'legacy'`: pre-0.2.0 defaults |
+| `onApproval` | `ApprovalCallback` | This instance's reviewer for calls that need approval ([Approval System](APPROVAL-SYSTEM.md)) |
+| `onHITL` | `HITLCallback` | Decides calls quarantined by `policyConfig.enableHITL` |
+| `hitlTimeoutMs` | `number` | Reject a quarantined call when `onHITL` takes longer |
+| `onEvent` | `MatimoEventHandler` | Receives every governance and execution event ([Types](TYPES.md)) |
+| `auditSink` | `AuditSink` | Durable destination for the same events, e.g. `new JsonlFileSink(path)` |
+| `approvalSecret` / `approvalDir` / `approvalTtlSeconds` | | Signing secret (else `MATIMO_APPROVAL_SECRET`, else ephemeral), location (default: cwd) and expiry of `matimo_approve_tool` approvals |
+| `defaultMaxResponseSize` | `number` | Response-size cap in bytes for tools that don't set `output_schema.max_response_size` (built-in default 262144 / 256 KB — see [Response Size Guardrail](../architecture/OVERVIEW.md#tool-execution-flow)) |
+| `defaultSkillWriteDir` | `string` | Where `matimo_create_skill` writes when the caller gives no `target_dir` |
+| `logLevel` / `logFormat` | | Logger settings |
+
+`includeCore` is accepted but has no effect.
 
 **Returns:** `Promise<MatimoInstance>` - Initialized instance ready to execute tools
 
@@ -107,6 +123,12 @@ interface ExecuteOptions {
    * Values are never logged and are held in memory only for the duration of the call.
    */
   credentials?: Record<string, string>;
+  /** Who is calling: checked by the policy engine (environment, roles, agentId). */
+  context?: PolicyContext;
+  /** Skip the approval prompt for this call only; policy denials and HITL still apply. */
+  approved?: boolean;
+  /** Reviewer for this call only; takes precedence over the instance's onApproval. */
+  onApproval?: ApprovalCallback;
 }
 ```
 
@@ -116,6 +138,9 @@ interface ExecuteOptions {
 - `params` (object, required) - Tool parameters (must match tool's parameter schema)
 - `options.timeout` (number, optional) - Execution timeout in milliseconds
 - `options.credentials` (object, optional) - Per-call credential overrides (see Multi-tenant Usage below)
+- `options.context` (PolicyContext, optional) - The caller's identity, environment and roles, e.g. `{ agentId: 'agent-7', environment: 'production', roles: ['operator'] }`. Function tools receive it as `context.policyContext`
+- `options.approved` (boolean, optional) - The host already confirmed this call; skips only the approval prompt
+- `options.onApproval` (ApprovalCallback, optional) - Reviewer for this one call
 
 **Returns:** `Promise<unknown>` - Tool result (validated against output schema). If the raw result exceeds the effective response-size cap (`output_schema.max_response_size`, else `defaultMaxResponseSize`, else a built-in 256 KB), it is truncated rather than rejected — see [Response Size Guardrail](../architecture/OVERVIEW.md#tool-execution-flow).
 
@@ -378,6 +403,29 @@ emailTools.forEach((tool) => console.log(`  - ${tool.name}`));
 ## Decorators
 
 Use decorators for clean, declarative tool execution in class-based code.
+
+### Governance and skills methods
+
+| TypeScript | Python | Description |
+|------------|--------|-------------|
+| `setApprovalCallback(cb)` | `set_approval_callback(cb)` | Set or clear the instance's approval callback (`null`/`None` falls back to the process-wide handler) |
+| `getGovernanceMode()` | `get_governance_mode()` | `'secure'` or `'legacy'` |
+| `getApprovalManifest()` | `get_approval_manifest()` | The manifest `matimo_approve_tool` records approvals in |
+| `reloadTools()` | `reload()` | Re-read tool directories; returns `{ loaded, removed, revalidated, rejected }` |
+| `setHITLCallback(cb)` | — | Set or clear the HITL callback (Python: pass `on_hitl` to `init()`) |
+| `reloadPolicy(configOrFile?)` | — | Swap the policy engine and re-check tools |
+| `getToolsByTag(tag)` | — | Tools carrying a tag |
+| `registerSkill(skill)` / `registerSkills([...])` | `register_skill(skill)` / `register_skills([...])` | Add skills from your own storage (dropped by the next `reloadSkills()`) |
+| `addSkillPath(dir)` + `reloadSkills()` | `add_skill_path(dir)` + `reload_skills()` | Mount another skills directory at runtime; returns `{ loaded, removed }` |
+| `getSkillSections(name)` | `get_skill_sections(name)` | Section headings and token estimates |
+| `getSkillContent(name, { sections, maxTokens, includePreamble, maxDepth })` | `get_skill_content(name, SkillContentOptions(...))` | Load part of a skill |
+| `buildSkillPromptContext(query, { topK })` | `build_skill_prompt_context(query, top_k=...)` | Relevant skills (TF-IDF), formatted for a system prompt |
+| `getDefaultSkillWriteDir()` | `get_default_skill_write_dir()` | Where `matimo_create_skill` writes by default |
+| `getSkillResource(name, path)` | — | Read a file bundled with a skill |
+
+Runnable demos of these, needing no API keys: `typescript/examples/tools/policy/approval-modes-demo.ts`, `skills/skills-registry-demo.ts`, and the Python twins under `python/examples/native/`.
+
+---
 
 ### `@tool(toolName)`
 
@@ -759,11 +807,15 @@ async def init(
     approval_dir: str | None = None,
     approval_ttl_seconds: int | None = None,
     on_event: MatimoEventHandler | None = None,
+    audit_sink: AuditSink | None = None,
     on_hitl: HITLCallback | None = None,
+    on_approval: ApprovalCallback | None = None,
+    governance_mode: GovernanceMode | None = None,
     hitl_timeout_ms: int | None = None,
     log_level: str | None = None,
     log_format: str | None = None,
     default_max_response_size: int | None = None,
+    default_skill_write_dir: str | None = None,
 ) -> 'Matimo'
 ```
 
@@ -784,11 +836,15 @@ Every option is a direct keyword-only argument on `init()` itself — there is n
 | `approval_secret` | `str` | `None` | HMAC secret for the approval manifest. Overrides `MATIMO_APPROVAL_SECRET` env |
 | `approval_dir` | `str` | `None` | Directory for `.matimo-approvals.json`. Defaults to the current working directory |
 | `approval_ttl_seconds` | `int` | `None` | Approval expiry in seconds. `None` means approvals never expire |
-| `on_event` | `Callable` | `None` | Event callback for audit/lifecycle events |
-| `on_hitl` | `async Callable` | `None` | Human-in-the-loop callback for quarantined tools |
+| `on_event` | `Callable` | `None` | Event callback for audit/lifecycle events (dicts with snake_case keys) |
+| `audit_sink` | `AuditSink` | `None` | Durable destination for the same events, e.g. `JsonlFileSink(path)` |
+| `on_hitl` | `async Callable[[HITLRequest], bool]` | `None` | Decides calls quarantined by `policy_config.enable_hitl` |
+| `on_approval` | `async Callable[[ApprovalRequest], bool]` | `None` | This instance's reviewer for calls that need approval |
+| `governance_mode` | `'secure' \| 'legacy'` | `None` (secure) | `'legacy'` restores the pre-0.2.0 approval defaults |
 | `hitl_timeout_ms` | `int` | `None` | Timeout for the HITL callback; `None` waits indefinitely |
 | `log_level` | `str` | `None` | `'debug' \| 'info' \| 'warn' \| 'error' \| 'silent'` (resolved from env/defaults when unset) |
 | `log_format` | `str` | `None` | `'simple' \| 'json'` (resolved from env/defaults when unset) |
+| `default_skill_write_dir` | `str` | `None` | Where `matimo_create_skill` writes when the caller gives no `target_dir` |
 | `default_max_response_size` | `int` | `None` | Instance-wide response-size cap in bytes, applied to every tool call via `execute()` unless that tool's own `output_schema.max_response_size` overrides it (falls back to a built-in 262144 / 256 KB when unset — see [Response Size Guardrail](../architecture/OVERVIEW.md#tool-execution-flow)) |
 
 If no `policy`/`policy_config`/`policy_file` is given, `init()` always constructs a `DefaultPolicyEngine()` — a zero-config Python instance is never left ungated (this always was Python's behavior; the equivalent TypeScript `MatimoInstance.init()` was fixed to match it).
@@ -797,8 +853,7 @@ If no `policy`/`policy_config`/`policy_file` is given, `init()` always construct
 
 ```python
 import asyncio
-from matimo import Matimo
-from matimo.policy.types import PolicyConfig
+from matimo import ApprovalRequest, Matimo, PolicyConfig
 
 # Simplest — load from a directory
 matimo = await Matimo.init('./tools')
@@ -818,17 +873,15 @@ matimo = await Matimo.init(
     log_level='debug',
 )
 
-# With HITL callback + skills
-async def my_approval_callback(request):
-    print(f"Approve {request.tool_name}? (y/n): ", end='', flush=True)
-    answer = input()
-    return {'approved': answer.lower() == 'y', 'reason': 'manual review'}
+# With an approval callback + skills
+async def my_approval_callback(request: ApprovalRequest) -> bool:
+    return input(f"Approve {request.tool_name}? (y/n): ").lower() == 'y'
 
 matimo = await Matimo.init(
     './tools',
     auto_discover=True,
     skill_paths=['./skills'],
-    on_hitl=my_approval_callback,
+    on_approval=my_approval_callback,
 )
 ```
 
@@ -841,9 +894,15 @@ async def execute(
     self,
     tool_name: str,
     params: dict[str, object],
+    *,
     credentials: dict[str, str] | None = None,
+    context: PolicyContext | None = None,
+    approved: bool = False,
+    on_approval: ApprovalCallback | None = None,
 ) -> object
 ```
+
+`context`, `approved` and `on_approval` behave as in TypeScript: the caller's identity and roles, skip-the-prompt for a call the host already confirmed, and a reviewer for this call only.
 
 Execute a tool by name. Raises `MatimoError` on failure. If the raw result exceeds the effective response-size cap (`output_schema.max_response_size`, else `default_max_response_size`, else a built-in 256 KB), it's truncated rather than rejected — see [Response Size Guardrail](../architecture/OVERVIEW.md#tool-execution-flow).
 
