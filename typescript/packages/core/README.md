@@ -312,25 +312,25 @@ See the full reference: [docs/api-reference/META_TOOLS.md](../../../docs/api-ref
 
 ## ✅ Approval System
 
-Tools with `requires_approval: true` require human confirmation before execution:
+Some calls wait for a person: tools with `requires_approval: true`, HTTP `DELETE` and `type: command` tools (the 0.2.0 secure default, unless the YAML says `requires_approval: false`), and calls whose `sql`/`command` argument contains a destructive keyword. Each instance has its own reviewer; with none, those calls are refused:
 
 ```typescript
-import { getGlobalApprovalHandler } from 'matimo';
+import { MatimoInstance } from 'matimo';
 
-// Interactive terminal approval
-getGlobalApprovalHandler().setApprovalCallback(async (request) => {
-  console.log(`Tool: ${request.toolName}`);
-  console.log(`Params: ${JSON.stringify(request.params)}`);
-  // return true to approve, false to reject
-  return await promptUser('Approve? (y/n)');
+const matimo = await MatimoInstance.init({
+  autoDiscover: true,
+  onApproval: async (request) => {
+    console.log(`Tool: ${request.toolName}`);
+    console.log(`Params: ${JSON.stringify(request.params)}`);
+    return await promptUser('Approve? (y/n)'); // true to approve, false to reject
+  },
 });
 
-// Auto-approve (CI/CD only)
-process.env.MATIMO_AUTO_APPROVE = 'true';
-
-// Pre-approved patterns
-process.env.MATIMO_APPROVED_PATTERNS = 'calculator,weather_*';
+// Or for a single call
+await matimo.execute('delete_post', { id: 1 }, { onApproval: async () => userConfirmed });
 ```
+
+Tools that are always safe in your setting can skip the question: `MATIMO_APPROVED_PATTERNS="calculator,weather_*"`. `governanceMode: 'legacy'` restores the pre-0.2.0 defaults while you migrate.
 
 **MCP approval:** the MCP server asks the client's user through MCP elicitation. `_matimo_approved: true` in the arguments only counts when the server runs with `trustClientApproval: true`.
 

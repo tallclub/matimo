@@ -176,13 +176,22 @@ execution:
 ## Policy Engine
 
 ```python
-from matimo import InitOptions, JsonlFileSink, Matimo
+from matimo import ApprovalRequest, JsonlFileSink, Matimo
 
-matimo = await Matimo.init('./tools', InitOptions(
+
+async def ask_operator(request: ApprovalRequest) -> bool:
+    return input(f"Approve {request.tool_name} {request.params}? (y/n) ") == "y"
+
+
+matimo = await Matimo.init(
+    './tools',
     policy_file='./policy.yaml',
-    on_hitl=lambda req: {'approved': True, 'reason': 'auto'},
-))
+    on_approval=ask_operator,                       # calls that need approval ask here
+    audit_sink=JsonlFileSink('./matimo-audit.jsonl'),  # hash-chained audit log
+)
 ```
+
+Calls that need approval: tools with `requires_approval: true`, HTTP `DELETE` and command tools (the 0.2.0 secure default), and calls whose `sql`/`command` argument contains a destructive keyword. With no `on_approval` they are refused.
 
 `policy.yaml`:
 ```yaml

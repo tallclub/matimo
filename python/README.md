@@ -366,8 +366,9 @@ This runs `scripts/validate_tools.py` which walks all `packages/*/tools/*/defini
 |----------------------|---------|-------------|
 | `MATIMO_LOG_LEVEL` | `info` | `silent`, `error`, `warn`, `info`, `debug` |
 | `MATIMO_LOG_FORMAT` | `simple` | `json` or `simple` |
-| `MATIMO_AUTO_APPROVE` | `false` | Skip HITL approval in CI |
-| `MATIMO_APPROVED_PATTERNS` | - | Comma-separated glob patterns (e.g. `get_*,list_*`) |
+| `MATIMO_APPROVED_PATTERNS` | - | Comma-separated glob patterns of tools that never ask for approval (e.g. `get_*,list_*`) |
+| `MATIMO_APPROVAL_SECRET` | ephemeral | HMAC key for `matimo_approve_tool` approvals; set it so they survive restarts |
+| `MATIMO_AUTO_APPROVE` | `false` | `true` approves every call unseen (except `matimo_approve_tool`) and logs a warning — test environments only; prefer `on_approval` |
 
 ---
 

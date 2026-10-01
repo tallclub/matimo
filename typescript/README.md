@@ -21,7 +21,7 @@
 
 ## The TypeScript AI SDK with Meta-Tools, Policy Engine, Governance and Human-in-the-Loop Control
 
-Give your agents **137+ production-ready tools** to start. Then activate **10 meta-tools** that let them create, validate, and approve new capabilities at runtime - governed by your **policy engine** with **human approval workflows** for critical actions.
+Give your agents **139+ production-ready tools** to start. Then activate **15 meta-tools** that let them create, validate, and approve new capabilities at runtime - governed by your **policy engine** with **human approval workflows** for critical actions.
 
 **Why this matters:**
 
@@ -40,27 +40,36 @@ Give your agents **137+ production-ready tools** to start. Then activate **10 me
 ### See It In Action
 
 ```typescript
-// Agent encounters a new API mid-task
-const result = await matimo.execute('matimo_create_tool', {
+const matimo = await MatimoInstance.init({
+  autoDiscover: true,
+  toolPaths: ['./agent-tools'],
+  untrustedPaths: ['./agent-tools'], // agent-written tools must pass the content rules
+  onApproval: askReviewer,           // a human answers every call that needs approval
+});
+setGlobalMatimoInstance(matimo);
+
+// The agent meets a new API mid-task and writes a tool for it (a draft)
+await matimo.execute('matimo_create_tool', {
   name: 'stripe_create_payment',
-  definition: yamlContent, // Agent generates this
+  yaml_content: yamlContent, // agent-generated YAML
+  target_dir: './agent-tools',
 });
 
-// Policy engine classifies risk → requires approval
-// HITL callback triggers → human reviews and approves
+// A human reviews the draft and approves it
+await matimo.execute(
+  'matimo_approve_tool',
+  { name: 'stripe_create_payment', tool_dir: './agent-tools' },
+  { context: { agentId: 'reviewer', roles: ['admin'] } }
+);
+await matimo.execute('matimo_reload_tools', {});
 
-await matimo.execute('matimo_reload_tools');
-
-// Tool is now live and production-ready
-const payment = await matimo.execute('stripe_create_payment', {
-  amount: 5000,
-  currency: 'usd',
-});
+// Live - and every call still asks the reviewer
+const payment = await matimo.execute('stripe_create_payment', { amount: 5000, currency: 'usd' });
 ```
 
 **Other SDKs give agents a toolbox. Matimo gives them a workshop - with safety guardrails.**
 
-🎯 **v0.1.0 Stable** (May 1, 2026) - 2,996 tests · 95%+ coverage · Production-ready
+🎯 **0.2.0** - secure by default: DELETE and command tools ask a human, per-instance approval callbacks, MCP elicitation, hash-chained audit log. Upgrading from 0.1.x? Read the [migration guide](https://github.com/tallclub/matimo/blob/main/docs/api-reference/POLICY_AND_LIFECYCLE.md#upgrading-to-020).
 
 [📖 Documentation](https://github.com/tallclub/matimo/tree/main/docs) · [🚀 Quick Start](https://github.com/tallclub/matimo/blob/main/docs/getting-started/QUICK_START.md) · [📚 API Reference](https://github.com/tallclub/matimo/blob/main/docs/api-reference/SDK.md) · [🛠️ Add Tools](https://github.com/tallclub/matimo/blob/main/docs/tool-development/ADDING_TOOLS.md)
 
@@ -110,7 +119,7 @@ const result = await matimo.execute('slack_send_channel_message', {
 - **OAuth2 Support**: Provider-agnostic authorization for Slack, Gmail, GitHub, etc.
 - **Framework Support**: Factory pattern, Decorator pattern, LangChain
 - **Agent Skills System**: [SKILL.md](https://agentskills.io) knowledge files with semantic search, content chunking, and progressive disclosure
-- **Policy Engine**: 9 security rules, HITL quarantine, hot-reload, SHA-256 integrity tracking, HMAC approvals, audit events
+- **Policy Engine**: 9 content rules for agent-written tools, per-call approval (`onApproval`), risk-based HITL quarantine, hot-reload, HMAC approvals, events and a hash-chained JSONL audit log
 
 ---
 
@@ -134,7 +143,7 @@ async sendMessage(channel: string, text: string) { /* Auto-executed */ }
 
 ```typescript
 import { convertToolsToLangChain } from 'matimo';
-const tools = convertToolsToLangChain(matimo.listTools(), matimo);
+const tools = await convertToolsToLangChain(matimo.listTools(), matimo);
 ```
 
 ### 4️⃣ MCP Server (Claude Desktop, Cursor, Windsurf, any MCP client)

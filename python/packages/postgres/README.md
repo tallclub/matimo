@@ -49,22 +49,26 @@ asyncio.run(main())
 
 ### With Interactive Approval (Recommended for Writes)
 
-If you've configured a policy that quarantines this tool for HITL review, provide an
-`on_hitl` callback:
+A query whose `sql` contains a destructive keyword (`DELETE`, `DROP`, `UPDATE`, `INSERT`, `ALTER`, `CREATE`, ...) needs approval. Provide an `on_approval` callback; without one the query is refused:
 
 ```python
-async def ask_user(request) -> dict:
+from matimo import ApprovalRequest
+
+
+async def ask_user(request: ApprovalRequest) -> bool:
     print(f"\nSQL requires approval:\n{request.params.get('sql')}")
-    answer = input("Run this query? [y/n]: ").strip()
-    return {'approved': answer == 'y', 'reason': 'user reviewed'}
+    return input("Run this query? [y/n]: ").strip() == "y"
 
-matimo = await Matimo.init(get_tools_path(), on_hitl=ask_user)
 
-# This will prompt before executing, if quarantined by your policy
+matimo = await Matimo.init(get_tools_path(), on_approval=ask_user)
+
+# Prompts before executing
 await matimo.execute('postgres-execute-sql', {
     'sql': 'DELETE FROM sessions WHERE expired_at < NOW()',
 })
 ```
+
+The keyword match is a substring of the upper-cased query, so a `SELECT created_at ...` also asks (it contains `CREATE`).
 
 ---
 

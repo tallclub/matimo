@@ -85,7 +85,7 @@ The CLI reads configuration entirely from environment variables - there is no
 ```bash
 export MATIMO_LOG_LEVEL=info        # silent | error | warn | info | debug
 export MATIMO_LOG_FORMAT=json       # json | simple
-export MATIMO_AUTO_APPROVE=true     # auto-approve tool approval prompts (CI/CD)
+export MATIMO_APPROVED_PATTERNS="get_*,list_*"  # tools that never ask for approval
 ```
 
 ---
