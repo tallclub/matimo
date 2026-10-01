@@ -220,7 +220,7 @@ export SLACK_BOT_TOKEN=xoxb-your-token-here
 ### Send Message (Factory Pattern)
 
 ```typescript
-const matimo = await MatimoInstance.init('./tools');
+const matimo = await MatimoInstance.init({ autoDiscover: true });
 
 const result = await matimo.execute('slack-send-message', {
   channel: 'C024BE91L',

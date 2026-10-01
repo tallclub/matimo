@@ -92,7 +92,7 @@ const matimo = await MatimoInstance.init({
   toolPaths: ['./tools'],
 });
 
-// Backward compatibility - single directory
+// Backward compatibility - single directory (loads only ./tools, no built-in tools)
 const matimo = await MatimoInstance.init('./tools');
 
 console.log(`Loaded ${matimo.listTools().length} tools`);
@@ -457,7 +457,7 @@ function tool(toolName: string): MethodDecorator;
 ```typescript
 import { tool, setGlobalMatimoInstance, MatimoInstance } from 'matimo';
 
-const matimo = await MatimoInstance.init('./tools');
+const matimo = await MatimoInstance.init({ autoDiscover: true });
 setGlobalMatimoInstance(matimo);
 
 class Calculator {

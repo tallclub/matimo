@@ -121,7 +121,7 @@ console.log('Created:', newPage.data.url);
 ```typescript
 import { MatimoInstance, setGlobalMatimoInstance, tool } from '@matimo/core';
 
-const matimo = await MatimoInstance.init('./tools');
+const matimo = await MatimoInstance.init({ autoDiscover: true });
 setGlobalMatimoInstance(matimo);
 
 class NotionManager {
@@ -154,7 +154,7 @@ const results = await manager.queryDatabase('db-id');
 ```typescript
 import { MatimoInstance } from '@matimo/core';
 
-const matimo = await MatimoInstance.init('./tools');
+const matimo = await MatimoInstance.init({ autoDiscover: true });
 
 // Get tool schemas for LangChain
 const notionTools = matimo.listTools()

@@ -193,7 +193,7 @@ output_schema:
 ### JavaScript Usage (Factory Pattern)
 
 ```typescript
-const matimo = await MatimoInstance.init('./tools');
+const matimo = await MatimoInstance.init({ autoDiscover: true });
 
 const result = await matimo.execute('notion_create_page', {
   parent: { database_id: 'a1d8501e-1ac1-43e9-a6bd-ea9fe6c8822b' },
@@ -223,7 +223,7 @@ console.log('Created page:', result.data.id);
 ```typescript
 import { MatimoInstance, setGlobalMatimoInstance, tool } from '@matimo/core';
 
-const matimo = await MatimoInstance.init('./tools');
+const matimo = await MatimoInstance.init({ autoDiscover: true });
 setGlobalMatimoInstance(matimo);
 
 class NotionManager {
