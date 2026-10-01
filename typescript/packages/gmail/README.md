@@ -1217,7 +1217,7 @@ GMAIL_ACCESS_TOKEN: {
 - Use `.env` files locally (not in git)
 - Rotate tokens regularly
 - Use minimum required scopes
-- Implement server-side token refresh (Phase 3)
+- Refresh tokens server-side (`OAuth2Handler.refreshTokenIfNeeded`)
 - Log token refresh events
 - Monitor token usage for suspicious activity
 

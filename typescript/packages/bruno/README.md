@@ -15,7 +15,7 @@ npm install @matimo/bruno
 ```typescript
 import { MatimoInstance } from '@matimo/core';
 
-const matimo = await MatimoInstance.init('./packages/bruno/tools');
+const matimo = await MatimoInstance.init({ autoDiscover: true }); // loads @matimo/bruno from node_modules
 
 // List all collections in workspace
 const collections = await matimo.execute('bruno_list_collections', {
