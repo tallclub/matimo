@@ -6,7 +6,7 @@ license: "MIT"
 metadata:
   category: "Meta"
   difficulty: "beginner"
-  apply-to: "matimo_list_skills matimo_get_skill"
+  apply-to: "matimo_list_skills matimo_get_skill matimo_search_skills matimo_get_skill_sections matimo_get_skill_content"
 ---
 
 # Skills Catalog
@@ -44,18 +44,20 @@ Shipped with the Matimo SDK. Always available. Teach agents about Matimo itself.
 
 ### 2. Provider Skills
 
-Bundled with provider packages. Teach agents how to use specific providers effectively.
+Each provider package ships one skill, named after the provider, covering all of its tools. It is available when the package is installed and loaded.
 
-| Provider | Skills | Focus |
-|----------|--------|-------|
-| **Slack** | `slack-channel-messaging`, `slack-channel-management`, `slack-user-interaction` | Messaging, channels, users |
-| **GitHub** | `github-pr-workflow`, `github-issue-management`, `github-repository-management`, `github-code-search` | PRs, issues, repos, search |
-| **Notion** | `notion-database-operations`, `notion-content-management` | Databases, pages |
-| **HubSpot** | `hubspot-contact-management`, `hubspot-deal-pipeline`, `hubspot-crm-entities` | CRM contacts, deals, entities |
-| **Gmail** | `gmail-email-sending`, `gmail-inbox-management` | Send/draft, search/read |
-| **Twilio** | `twilio-sms-messaging` | SMS, MMS, delivery tracking |
-| **Postgres** | `postgres-query-operations` | SQL queries, schema discovery |
-| **Mailchimp** | `mailchimp-campaign-management`, `mailchimp-audience-management` | Campaigns, subscribers |
+| Skill | Package | Focus |
+|-------|---------|-------|
+| `slack` | `@matimo/slack` | Messages, channels, threads, reactions, files, users |
+| `gmail` | `@matimo/gmail` | Send, draft, list, read and delete email |
+| `github` | `@matimo/github` | Repositories, issues, pull requests, releases, code search |
+| `notion` | `@matimo/notion` | Search, query databases, create and update pages |
+| `hubspot` | `@matimo/hubspot` | CRM contacts, companies, deals, tickets and more |
+| `mailchimp` | `@matimo/mailchimp` | Audiences, subscribers, campaigns |
+| `twilio` | `@matimo/twilio` | SMS, MMS, message history |
+| `postgres` | `@matimo/postgres` | SQL queries, schema discovery, safe writes |
+| `microsoft` | `@matimo/microsoft` | Mail, OneDrive/SharePoint, Teams, calendar |
+| `composio` | `@matimo/composio` | The governed Composio catalog |
 
 ### 3. User-Created Skills
 
@@ -67,12 +69,11 @@ Created at runtime by agents or users. Stored in `./matimo-tools/skills/` by def
 
 ### List All Available Skills
 
-Use `matimo_list_skills` to get Level 1 metadata for all skills in a directory:
+Use `matimo_list_skills` to get Level 1 metadata for every loaded skill (core, installed providers, and any skill paths the app configured). Pass `skills_dir` to list a specific directory instead:
 
 ```
-matimo_list_skills({
-  skills_dir: "./matimo-tools/skills"
-})
+matimo_list_skills({})
+matimo_list_skills({ skills_dir: "./matimo-tools/skills" })
 ```
 
 Returns each skill's name, description, and optional metadata (license, category, difficulty).
@@ -82,10 +83,7 @@ Returns each skill's name, description, and optional metadata (license, category
 Use `matimo_get_skill` for Level 2 activation — the full SKILL.md content:
 
 ```
-matimo_get_skill({
-  name: "slack-channel-messaging",
-  skills_dir: "./matimo-tools/skills"
-})
+matimo_get_skill({ name: "slack" })
 ```
 
 Returns the complete skill instructions plus a listing of any bundled resources.
@@ -109,26 +107,29 @@ matimo_get_skill({
 
 | Task | Skill to Use |
 |------|-------------|
-| Send a Slack message | `slack-channel-messaging` |
-| Create a GitHub PR | `github-pr-workflow` |
-| Query a database | `postgres-query-operations` |
-| Send an email | `gmail-email-sending` |
-| Send an SMS | `twilio-sms-messaging` |
-| Create a marketing campaign | `mailchimp-campaign-management` |
-| Manage CRM contacts | `hubspot-contact-management` |
-| Create a Notion page | `notion-content-management` |
+| Send a Slack message | `slack` |
+| Create a GitHub PR | `github` |
+| Query a database | `postgres` |
+| Send an email | `gmail` (or `microsoft` for Outlook) |
+| Send an SMS | `twilio` |
+| Create a marketing campaign | `mailchimp` |
+| Manage CRM contacts | `hubspot` |
+| Create a Notion page | `notion` |
 | Create a new skill | `skill-creator` |
 | Find available tools | `tool-discovery` |
 | Create a new tool | `tool-creation` |
+
+Not sure which skill fits? `matimo_search_skills({ query: "send an SMS" })` ranks skills by relevance, and `matimo_get_skill_content({ name, sections: [...] })` loads only the sections you need.
 
 ### By Category
 
 | Category | Skills |
 |----------|--------|
-| Communication | `slack-*`, `gmail-*`, `twilio-*` |
-| Developer Tools | `github-*`, `postgres-*` |
-| CRM & Marketing | `hubspot-*`, `mailchimp-*` |
-| Productivity | `notion-*` |
+| Communication | `slack`, `gmail`, `twilio`, `microsoft` |
+| Developer Tools | `github`, `postgres` |
+| CRM & Marketing | `hubspot`, `mailchimp` |
+| Productivity | `notion`, `microsoft` |
+| Third-party catalog | `composio` |
 | Meta (Matimo) | `skill-creator`, `skills-catalog`, `tool-*`, `policy-*` |
 
 ---

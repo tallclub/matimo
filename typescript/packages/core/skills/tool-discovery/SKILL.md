@@ -36,7 +36,7 @@ matimo_search_tools(query: "slack message", limit: 5)
 
 → {
     "results": [
-      { "name": "slack_send_message", "description": "...", "version": "1.0.0", "tags": ["slack", "messaging"], "riskLevel": "medium" }
+      { "name": "slack_send_channel_message", "description": "...", "version": "1.0.0", "tags": ["slack", "messaging"], "riskLevel": "medium" }
     ],
     "total": 1,
     "query": "slack message"
