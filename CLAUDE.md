@@ -167,7 +167,8 @@ name: provider_tool_name       # snake_case; must match directory name
 description: |
   Clear description of what the tool does.
 version: '1.0.0'
-status: stable                 # stable | approved | draft
+# status: draft | approved | deprecated — leave unset for provider tools (unset = approved).
+# Any other value (e.g. "stable") makes the TypeScript loader skip the tool.
 
 parameters:
   param_name:

@@ -623,7 +623,7 @@ User request → Agent loads Skill (patterns) → calls MCP meta-tools
 name: slack_send_channel_message
 description: Post a message to a Slack channel.
 version: '1.0.0'
-status: stable           # draft | stable | deprecated
+# status: draft | approved | deprecated — leave unset (= approved); any other value makes TypeScript skip the tool
 
 parameters:
   channel:
