@@ -146,8 +146,9 @@ def validate_tool_content(
                 message=f"Tool targets domain '{host}' which is not in allowed_domains",
             ))
 
-    # 9. Forced draft status
-    if "forced-draft-status" not in skip and tool.status not in ("draft", None):
+    # 9. Forced draft status. A YAML without `status` loads as "stable", the
+    # Python stand-in for TypeScript's undefined, so it counts as unset here.
+    if "forced-draft-status" not in skip and tool.status not in ("draft", "stable", None):
         violations.append(ContentViolation(
             rule="forced-draft-status",
             severity=RiskLevel.MEDIUM,

@@ -114,6 +114,20 @@ class TestContentValidator:
         violations = validate_tool_content(tool, engine.config)
         assert violations == []
 
+    def test_unset_status_passes_forced_draft_status(self) -> None:
+        # A definition without `status` loads as STABLE; TypeScript leaves it
+        # undefined and accepts it, so Python must too.
+        engine = DefaultPolicyEngine()
+        tool = _make_http_tool(requires_approval=True)
+        violations = validate_tool_content(tool, engine.config)
+        assert not any(v.rule == "forced-draft-status" for v in violations)
+
+    def test_declared_non_draft_status_fails_forced_draft_status(self) -> None:
+        engine = DefaultPolicyEngine()
+        tool = _make_http_tool(requires_approval=True, status=ToolStatus.APPROVED)
+        violations = validate_tool_content(tool, engine.config)
+        assert any(v.rule == "forced-draft-status" for v in violations)
+
     def test_function_execution_blocked_for_untrusted(self) -> None:
         engine = DefaultPolicyEngine()
         tool = ToolDefinition(
@@ -365,7 +379,7 @@ class TestDefaultPolicyEngine:
             name="forged_tool",
             description="forged",
             requires_approval=True,
-            status=ToolStatus.STABLE,  # not 'draft' — self-declared, never legitimately approved
+            status=ToolStatus.APPROVED,  # not 'draft' — self-declared, never legitimately approved
             execution=HttpExecution(type="http", method="GET", url="https://api.example.com/data"),
         )
         with tempfile.TemporaryDirectory() as tmpdir:
