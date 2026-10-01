@@ -27,6 +27,14 @@ The HTTP executor looks at the **parameter's type in your YAML definition** to d
 - **API compatibility** — APIs receive data in the correct format
 - **Write once, run anywhere** — Same YAML definition works across all frameworks (factory pattern, decorator pattern, LangChain, etc.)
 
+### Only whole-value placeholders keep their type
+
+Type-aware embedding applies when the placeholder is the entire value, as in `count: '{count}'`. A placeholder inside a longer string (`label: 'item-{count}'`) is always text. In `body` and `headers`, a key whose placeholder was not supplied is left out of the request; a missing placeholder in the `url` is an error (`INVALID_SCHEMA`).
+
+### The two SDKs
+
+Both embed `number` and `boolean` parameters with their YAML type. For objects and arrays, TypeScript goes by the YAML type (`object` / `array`), while Python embeds any dict or list value as JSON whatever the YAML says. Declare the right type and both behave the same.
+
 ## How It Works
 
 ### Step 1: Define Parameters in YAML
@@ -110,7 +118,7 @@ parameters:
     description: Parent database
 ```
 
-**Why:** The executor will treat it as a string and won't preserve JSON structure. You'll get `"[object Object]"` instead of proper JSON.
+**Why:** TypeScript treats it as a string and sends `"[object Object]"` instead of JSON (Python happens to embed it, so the bug shows up in one SDK only).
 
 ### Anti-pattern 3: Passing JSON strings from decorators
 
