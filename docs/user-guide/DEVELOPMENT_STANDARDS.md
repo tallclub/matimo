@@ -270,7 +270,7 @@ make test           # Tests
 - [ ] All tests passing (`make test`)
 - [ ] No mypy errors (`make typecheck`)
 - [ ] Ruff clean (`make lint && make format-check`)
-- [ ] Coverage ≥ 95% (`make test-coverage`)
+- [ ] New code well covered (`make test-coverage`; Python has no enforced floor, aim for full coverage of new tools)
 - [ ] Pydantic models validate all external inputs
 - [ ] No hardcoded secrets
 - [ ] `from __future__ import annotations` in every file
@@ -319,7 +319,7 @@ interface ToolDefinition {
 type ExecutionType = 'http' | 'function' | 'command';
 
 // Use const assertions for immutable data
-const EXECUTION_TYPES = ['command', 'http', 'script'] as const;
+const EXECUTION_TYPES = ['http', 'function', 'command'] as const;
 ```
 
 **DON'T:**
@@ -409,7 +409,7 @@ let executionCount = 0;
 // UPPER_SNAKE_CASE for constants
 const MAX_RETRIES = 3;
 const DEFAULT_TIMEOUT = 5000;
-const SUPPORTED_TYPES = ['command', 'http', 'script'];
+const SUPPORTED_TYPES = ['http', 'function', 'command'];
 
 // Constants should be immutable
 const readonly EXECUTION_TYPES = ['command', 'http'] as const;
