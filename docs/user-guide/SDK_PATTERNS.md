@@ -280,7 +280,7 @@ results.forEach((t) => console.log(`Found: ${t.name}`));
 
 ### Handle Errors
 
-A call can fail in two ways: Matimo **throws** a `MatimoError` (unknown tool, policy denial, refused approval, HTTP error), or the tool **returns** `{ success: false, error, code }` (built-in tools report bad input this way).
+A call can fail in two ways: Matimo **throws** a `MatimoError` (unknown tool, policy denial, refused approval, HTTP error), or the tool **returns** `{ success: false, error, code }` (TypeScript's built-in tools report bad input this way; Python's raise `EXECUTION_FAILED` instead).
 
 ```typescript
 import { MatimoError } from '@matimo/core';

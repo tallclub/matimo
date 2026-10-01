@@ -404,7 +404,7 @@ const params: Record<string, unknown> = {
 // Execute with types
 try {
   const result = await matimo.execute('calculator', params);
-  console.log(result); // { result: 8 }, or { success: false, error, code } for bad input
+  console.log(result); // { result: 8 }, or { success: false, error, code } for bad input (TypeScript)
 } catch (error) {
   const matimoError = error as MatimoError;
   if (matimoError.code === 'POLICY_DENIED') {

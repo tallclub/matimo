@@ -176,6 +176,7 @@ if (error.code === 'EXECUTION_FAILED') {
 
 - Tool returned an error response other than 401/403/429 (e.g., 400, 404, 500)
 - Command execution failed
+- A function tool raised (Python wraps it as `Function tool '<tool>' raised an exception: …`; Python's built-in tools raise on bad input, where TypeScript's return `{ success: false, error, code }`)
 - A human (or the approval callback) refused the call: `Operation rejected by approval handler: <tool>`
 - Nobody could be asked: `Destructive operation requires approval: <tool>` — pass `onApproval` to `init()`
 

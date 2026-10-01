@@ -204,7 +204,7 @@ async def test_delete_asks_and_sends_nothing_when_refused() -> None:
 Decide which kind of failure you are testing:
 
 - **Thrown** — Matimo raises a `MatimoError`: unknown tool, policy denial, refused approval, a missing URL parameter, or an HTTP error (401/403 → `AUTH_FAILED`, 429 → `RATE_LIMIT_EXCEEDED`, other non-2xx → `EXECUTION_FAILED`).
-- **Returned** — a function tool reports bad input in its result. The built-in calculator returns `{ success: false, error: 'Division by zero', code: 'EXECUTION_FAILED' }` rather than throwing.
+- **Returned** — a function tool reports bad input in its result. In TypeScript the built-in calculator returns `{ success: false, error: 'Division by zero', code: 'EXECUTION_FAILED' }` rather than throwing. Python's built-in tools raise instead: the same call raises `MatimoError` with `EXECUTION_FAILED` and `Division by zero` in the message.
 
 ```typescript
 it('reports bad input in its result', async () => {
