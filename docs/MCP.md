@@ -592,25 +592,24 @@ if __name__ == "__main__":
     asyncio.run(main())
 ```
 
-#### Feature Parity Verification (v0.1.0-alpha.14)
+#### Tools discovered per package
 
-| Aspect | TypeScript | Python | Test Result |
-|--------|-----------|--------|------------|
-| Entry points discovery | ✅ | ✅ | ✅ IDENTICAL |
-| Filesystem scan | ✅ | ✅ | ✅ IDENTICAL |
-| Slack tools discovered | 16 | 16 | ✅ IDENTICAL |
-| GitHub tools discovered | 22 | 22 | ✅ IDENTICAL |
-| Gmail tools discovered | 5 | 5 | ✅ IDENTICAL |
-| Notion tools discovered | 7 | 7 | ✅ IDENTICAL |
-| Postgres tools discovered | 1 | 1 | ✅ IDENTICAL |
-| Twilio tools discovered | 4 | 4 | ✅ IDENTICAL |
-| HubSpot tools discovered | 50 | 50 | ✅ IDENTICAL |
-| Mailchimp tools discovered | 7 | 7 | ✅ IDENTICAL |
-| Core tools built-in | 136 | 136 | ✅ IDENTICAL |
-| Custom tools (example: PostgreSQL DBA) | 7 | 7 | ✅ IDENTICAL |
-| **Total tools on discovery** | **248** | **248** | **✅ 100% PARITY** |
+Both SDKs discover the same tool definitions from each installed package (counted from the YAML definitions shipped in 0.2.0):
 
-**Tested configuration:** Both `python/examples/mcp/` and `typescript/examples/mcp/` with all `@matimo/*`/`matimo-*` packages installed + TypeScript example tools.
+| Package | TypeScript | Python |
+|---------|-----------:|-------:|
+| core (built-in tools and meta-tools) | 24 | 24 |
+| slack | 16 | 16 |
+| github | 22 | 22 |
+| gmail | 6 | 6 |
+| notion | 7 | 7 |
+| postgres | 1 | 1 |
+| twilio | 4 | 4 |
+| hubspot | 50 | 50 |
+| mailchimp | 7 | 7 |
+| microsoft | 9 | 9 |
+
+The server lists only the packages installed in its environment, plus any `toolPaths` you pass.
 
 ---
 
