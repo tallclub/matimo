@@ -585,53 +585,54 @@ setGlobalMatimoInstance(matimo);
 
 Convert Matimo tools to LangChain tool format for AI agents.
 
-### `convertToolsToLangChain(tools, matimo, secrets)`
+### `convertToolsToLangChain(tools, matimo, secrets?, secretParamNames?)`
 
-Convert Matimo tools to LangChain tool schema with integrated execution.
+Convert Matimo tools to LangChain tools whose calls go through `matimo.execute()`, with the same policy and approval checks as a direct call.
 
 **Signature:**
 
 ```typescript
-function convertToolsToLangChain(
+async function convertToolsToLangChain(
   tools: ToolDefinition[],
   matimo: MatimoInstance,
-  secrets?: Record<string, string>
-): LanguageModelToolUse[];
+  secrets?: Record<string, string>,
+  secretParamNames?: Set<string>
+): Promise<LangChainTool[]>;
 ```
 
 **Parameters:**
 
-- `tools` (ToolDefinition[], required) - Tools from `matimo.listTools()`
-- `matimo` (MatimoInstance, required) - Initialized Matimo instance
-- `secrets` (object, optional) - Environment variables for authentication
-  - Automatically detects params ending in TOKEN, KEY, SECRET, PASSWORD
-  - Injects from env vars: `process.env.MATIMO_{TOOL_NAME}_{PARAM_NAME}`
+- `tools` (ToolDefinition[], required) - The tools to expose; keep the list small (OpenAI accepts at most 128)
+- `matimo` (MatimoInstance, required) - Initialized Matimo instance; its `onApproval` answers approval requests
+- `secrets` (object, optional) - Values for secret parameters, keyed by parameter name
+- `secretParamNames` (Set, optional) - Parameter names to treat as secrets, in place of the keys of `secrets`
 
-**Returns:** `LanguageModelToolUse[]` - LangChain-compatible tool definitions
+Parameters whose names contain `TOKEN`, `KEY`, `SECRET` or `PASSWORD` are treated as secrets too: they are left out of the schema the model sees, and filled from `secrets`. Credentials in `{PLACEHOLDERS}` that no parameter declares are filled by `execute()` from `MATIMO_<NAME>` or `<NAME>` in the environment.
+
+**Returns:** `Promise<LangChainTool[]>`
 
 **Example:**
 
 ```typescript
-import { MatimoInstance, convertToolsToLangChain } from 'matimo';
+import { MatimoInstance, convertToolsToLangChain } from '@matimo/core';
 import { ChatOpenAI } from '@langchain/openai';
-import { createAgent } from './agent-utils';
+import { createAgent } from 'langchain';
 
-const matimo = await MatimoInstance.init({ autoDiscover: true });
-
-const tools = matimo.listTools();
-const langchainTools = convertToolsToLangChain(tools, matimo);
-
-// Use with LangChain agent
-const model = new ChatOpenAI({ modelName: 'gpt-4o-mini' });
-const agent = await createAgent({
-  model,
-  tools: langchainTools,
-  instructions: 'You are a helpful Slack assistant',
+const matimo = await MatimoInstance.init({
+  autoDiscover: true,
+  onApproval: async (request) => askUser(request), // asked before writes that need approval
 });
 
-// Agent automatically selects and executes tools
+const tools = matimo.listTools().filter((t) => t.name.startsWith('slack_'));
+const langchainTools = await convertToolsToLangChain(tools, matimo);
+
+const agent = createAgent({
+  model: new ChatOpenAI({ model: 'gpt-4o-mini' }),
+  tools: langchainTools,
+});
+
 const response = await agent.invoke({
-  input: 'Send a message to #general saying hello',
+  messages: [{ role: 'user', content: 'Send a message to #general saying hello' }],
 });
 ```
 
@@ -655,13 +656,19 @@ All SDK errors are instances of `MatimoError` with structured error codes.
 
 ```typescript
 enum ErrorCode {
-  INVALID_SCHEMA = 'INVALID_SCHEMA', // Tool definition invalid
+  INVALID_SCHEMA = 'INVALID_SCHEMA', // Tool definition invalid, or a URL parameter is missing
+  INVALID_PARAMETER = 'INVALID_PARAMETER', // A parameter value cannot be encoded
+  VALIDATION_FAILED = 'VALIDATION_FAILED',
   TOOL_NOT_FOUND = 'TOOL_NOT_FOUND', // Tool name not found
-  PARAMETER_VALIDATION = 'PARAMETER_VALIDATION', // Params don't match schema
-  EXECUTION_FAILED = 'EXECUTION_FAILED', // Tool execution error
-  AUTH_FAILED = 'AUTH_FAILED', // Authentication error
-  TIMEOUT = 'TIMEOUT', // Execution timeout
   FILE_NOT_FOUND = 'FILE_NOT_FOUND', // Tool file not found
+  EXECUTION_FAILED = 'EXECUTION_FAILED', // Tool error, a non-2xx HTTP response, or approval refused
+  AUTH_FAILED = 'AUTH_FAILED', // Missing credentials, or HTTP 401/403
+  RATE_LIMIT_EXCEEDED = 'RATE_LIMIT_EXCEEDED', // HTTP 429
+  TIMEOUT = 'TIMEOUT', // Execution timeout
+  NETWORK_ERROR = 'NETWORK_ERROR', // DNS failure, connection refused
+  POLICY_DENIED = 'POLICY_DENIED', // Denied by policy, or quarantined and not approved
+  POLICY_TIER_BLOCKED = 'POLICY_TIER_BLOCKED',
+  UNKNOWN_ERROR = 'UNKNOWN_ERROR',
 }
 ```
 
