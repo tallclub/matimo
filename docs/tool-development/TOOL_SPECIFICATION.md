@@ -8,7 +8,7 @@ Every Matimo tool is defined in a YAML file with a standardized schema. Tools de
 
 - **Metadata** — Name, version, description
 - **Parameters** — What inputs the tool accepts
-- **Execution** — How the tool runs (command, HTTP, script)
+- **Execution** — How the tool runs (HTTP, command, function)
 - **Output** — What the tool returns
 - **Authentication** — How to authenticate (if needed)
 - **Error Handling** — Retry and recovery logic
@@ -34,8 +34,11 @@ output_schema:
 authentication: # Optional
   # Define authentication if needed
 
+requires_approval: true # Optional — see Governance Fields
+risk: medium            # Optional (required for function tools)
+
 error_handling: # Optional
-  # Define retry and error recovery logic
+  # Retry settings (accepted, not yet applied)
 ```
 
 ---
@@ -315,19 +318,6 @@ When executed with `{ owner: 'tallclub', repo: 'matimo' }`:
 https://api.github.com/repos/tallclub/matimo/issues
 ```
 
-### Type: Script
-
-Execute inline JavaScript/TypeScript.
-
-```yaml
-execution:
-  type: script
-  language: javascript|typescript
-  code: |
-    return params.a + params.b;
-  timeout_ms: 5000
-```
-
 ### Type: Function
 
 Execute a JavaScript/TypeScript module exported as the tool's default function. The `code` field is a path (relative to the tool's YAML file) to the implementation module.
@@ -339,28 +329,72 @@ execution:
   timeout: 30000
 ```
 
-The implementation module must export a default async function:
+The implementation module must export a default async function. Its optional second argument carries the call's per-call credentials and the caller's policy context, both supplied by the host (`execute(..., { credentials, context })`) — never by the agent:
 
 ```typescript
 // my_tool.ts
-export default async function myTool(params: Record<string, unknown>): Promise<unknown> {
-  // params contains the tool's input parameters
+import type { FunctionToolContext } from '@matimo/core';
+
+export default async function myTool(
+  params: Record<string, unknown>,
+  context?: FunctionToolContext // { credentials?, policyContext?: { agentId, roles, environment } }
+): Promise<unknown> {
+  if (!context?.policyContext?.roles?.includes('admin')) {
+    return { success: false, error: 'admin only' };
+  }
   return { result: params.value };
 }
 ```
 
+The Python SDK runs `my_tool.py` next to the YAML (same name, `.py` suffix). Its `run()` may be sync or async, and receives a `FunctionToolContext` when it accepts a second argument:
+
+```python
+# my_tool.py
+from matimo import FunctionToolContext
+
+
+def run(params: dict, context: FunctionToolContext | None = None) -> dict:
+    caller = context.policy_context if context else None
+    return {"result": params.get("value"), "agent": caller.agent_id if caller else None}
+```
+
 **Fields:**
 
-- `code` (string, required) — Relative path to the implementation module (`.ts` or `.js`)
+- `code` (string, required) — Relative path to the implementation module (`.ts` or `.js`; Python uses the sibling `.py`)
 - `timeout` (number, optional) — Execution timeout in milliseconds
+
+Every function tool must declare `risk:` — it is the risk the policy engine uses when the tool runs, since its code can do anything. `pnpm validate-tools` and `make validate-tools` reject a function tool without one. See [Governance Fields](#governance-fields).
 
 **Trust model — IMPORTANT:**
 
 `execution.type: function` is **blocked for agent-created tools** (`untrusted` source). Agents cannot propose tools with this execution type because it allows arbitrary code execution. Only developer-authored tools in `trustedPaths` (installed `@matimo/*` packages or explicit file paths) may use `type: function`.
 
-This is a hard block enforced at the policy tier level — `getTierForTool()` returns `'blocked'` for any `untrusted` tool with `execution.type: function`, regardless of policy configuration.
+In TypeScript this is a hard block — the policy engine rejects any `untrusted` tool with `execution.type: function` regardless of policy configuration. The Python SDK rejects it unless the policy sets `allow_function_tools`.
 
 If you are building meta-tools (like the built-in `matimo_approve_tool`), use `type: function` freely — they live in trusted paths.
+
+---
+
+## Governance Fields
+
+These fields decide how the policy engine treats a tool. All are optional except `risk` on function tools.
+
+```yaml
+requires_approval: true   # ask a human before every call
+risk: high                # low | medium | high | critical
+status: approved          # draft | approved | deprecated
+deprecated: false
+deprecation_message: 'Use slack_send_message instead'
+```
+
+| Field | Effect |
+|-------|--------|
+| `requires_approval` | `true`: every call waits for an approval callback ([Approval System](../api-reference/APPROVAL-SYSTEM.md)). Unset: HTTP `DELETE` and `type: command` tools still ask (the 0.2.0 secure default); everything else doesn't. `false`: opts a DELETE or command tool out of that default — the destructive-keyword scan of `sql`/`command` arguments still applies. HTTP DELETE tools in this repo must say `requires_approval: true`; the validator enforces it |
+| `risk` | Raises the automatically computed risk (GET low; POST/PUT/PATCH medium; DELETE, command, or `requires_approval` high) — never lowers it. For function tools it **is** the risk, and is required |
+| `status` | `draft` tools never run in production and run elsewhere only for an `admin` caller; `deprecated` tools never run. Agent-created tools start as `draft` |
+| `deprecated` / `deprecation_message` | Same as `status: deprecated`; the message is returned to the caller |
+
+Risk feeds HITL quarantine (`enableHITL` + `hitlMinRiskLevel`) and appears on every `tool:executed` event. See [Policy and Lifecycle](../api-reference/POLICY_AND_LIFECYCLE.md).
 
 ---
 
@@ -564,7 +598,9 @@ authentication:
 
 ## Error Handling
 
-Define retry and recovery logic (optional).
+> **Not applied yet.** `error_handling` is validated and kept on the tool definition, but neither SDK's executors read it today: a failed call is not retried. Retries with these settings are planned. Errors carry `details.retryable` (set for timeouts, 429 and 5xx responses) so a caller can retry itself.
+
+Retry settings (optional).
 
 ```yaml
 error_handling:

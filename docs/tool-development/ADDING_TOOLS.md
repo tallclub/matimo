@@ -163,10 +163,10 @@ authentication:
 
 ## Step 4: Test & Validate
 
-From the root `matimo/` directory:
+From `typescript/` (the pnpm workspace; Python: `make validate-tools` from `python/`):
 
 ```bash
-# Validate all tool definitions (YAML syntax + schema)
+# Validate all tool definitions (YAML syntax + schema + governance rules)
 pnpm validate-tools
 
 # Run tests
@@ -179,10 +179,13 @@ pnpm build
 ### Validation Checks:
 
 - ✅ YAML syntax is valid
-- ✅ All required fields present
+- ✅ All required fields present (`name`, `description`, `version`, `execution`)
 - ✅ Parameter types are valid (string, number, boolean, etc.)
 - ✅ Execution config is complete
-- ✅ Output schema matches response structure
+- ✅ HTTP `DELETE` tools declare `requires_approval: true`
+- ✅ Function tools declare `risk: low | medium | high | critical`
+
+The validator does not call the API, so it cannot tell whether `output_schema` matches real responses — cover that in tests.
 
 ## Step 5: Publish to npm
 
@@ -375,16 +378,20 @@ execution:
   timeout: 10000
 ```
 
-The referenced file should export a default async function:
+The referenced file should export a default async function. Its optional second argument holds the call's credentials and the caller's policy context (`{ credentials?, policyContext? }`), set by the host, never by the agent:
 
 ```typescript
 // handler.ts
-export default async function handler(params: Record<string, unknown>) {
+import type { FunctionToolContext } from '@matimo/core';
+
+export default async function handler(params: Record<string, unknown>, context?: FunctionToolContext) {
   const { query } = params;
-  // Your logic here
+  // context?.policyContext?.agentId, roles, environment
   return { result: 'success' };
 }
 ```
+
+Declare `risk:` on every function tool — the validator rejects one without it. The Python SDK runs `handler.py` next to the YAML: `def run(params, context=None)` (sync or async). See [Tool Specification](TOOL_SPECIFICATION.md#type-function).
 
 **Security**: ✅ Recommended. Code is version-controlled, reviewable, and cannot be injected via YAML.
 
