@@ -280,20 +280,31 @@ results.forEach((t) => console.log(`Found: ${t.name}`));
 
 ### Handle Errors
 
+A call can fail in two ways: Matimo **throws** a `MatimoError` (unknown tool, policy denial, refused approval, HTTP error), or the tool **returns** `{ success: false, error, code }` (built-in tools report bad input this way).
+
 ```typescript
+import { MatimoError } from '@matimo/core';
+
 try {
-  const result = await matimo.execute('calculator', {
+  const result = (await matimo.execute('calculator', {
     operation: 'divide',
     a: 10,
-    b: 0, // ⚠️ Will fail
-  });
+    b: 0,
+  })) as { success?: boolean; error?: string; code?: string };
+
+  if (result.success === false) {
+    // → { success: false, error: 'Division by zero', code: 'EXECUTION_FAILED', ... }
+    console.error(`Tool reported ${result.code}: ${result.error}`);
+  }
 } catch (error) {
-  if (error.code === 'TOOL_NOT_FOUND') {
-    console.error('Tool not available:', error.message);
-  } else if (error.code === 'INVALID_PARAMETERS') {
-    console.error('Bad parameters:', error.details);
-  } else if (error.code === 'EXECUTION_FAILED') {
-    console.error('Tool error:', error.details);
+  if (error instanceof MatimoError) {
+    if (error.code === 'TOOL_NOT_FOUND') {
+      console.error('Tool not available:', error.message);
+    } else if (error.code === 'POLICY_DENIED') {
+      console.error('Blocked by policy:', error.details?.reason);
+    } else {
+      console.error(`${error.code}:`, error.message);
+    }
   }
 }
 ```

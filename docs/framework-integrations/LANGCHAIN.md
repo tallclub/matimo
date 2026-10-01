@@ -571,23 +571,21 @@ const result = await matimoInstance.execute('gmail-send-email', {
 
 ## Error Handling
 
+Inside an agent, a tool failure does not throw out of `agent.invoke()`. The tools made by `convertToolsToLangChain` catch every `MatimoError` (policy denial, refused approval, HTTP error) and return it to the model as text, `"Error: <message>"`, so the model can explain it or try something else. A tool that reports bad input returns `{ success: false, error, code }`, which the model also sees.
+
+What can still throw from `invoke()` is the model call itself (network, rate limits, an invalid API key):
+
 ```typescript
 try {
-  const result = await agentExecutor.invoke({
-    input: 'Send an email',
+  const result = await agent.invoke({
+    messages: [{ role: 'user', content: 'Send an email' }],
   });
 } catch (error) {
-  if (error.code === 'TOOL_NOT_FOUND') {
-    console.error('Tool not available:', error.message);
-  } else if (error.code === 'INVALID_PARAMETERS') {
-    console.error('Invalid parameters:', error.details);
-  } else if (error.code === 'EXECUTION_FAILED') {
-    console.error('Tool execution failed:', error.details);
-  } else {
-    console.error('Unexpected error:', error);
-  }
+  console.error('Agent run failed:', error);
 }
 ```
+
+To act on tool errors in your own code (metrics, alerts), use `onEvent`: every failed run emits `tool:execution_failed`, and refusals emit `tool:execution_denied` or `tool:approval_denied`.
 
 ## Approvals
 

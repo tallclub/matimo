@@ -404,11 +404,11 @@ const params: Record<string, unknown> = {
 // Execute with types
 try {
   const result = await matimo.execute('calculator', params);
-  console.log(result);
+  console.log(result); // { result: 8 }, or { success: false, error, code } for bad input
 } catch (error) {
   const matimoError = error as MatimoError;
-  if (matimoError.code === 'INVALID_PARAMETERS') {
-    console.error('Bad params:', matimoError.details);
+  if (matimoError.code === 'POLICY_DENIED') {
+    console.error('Blocked:', matimoError.details);
   }
 }
 ```

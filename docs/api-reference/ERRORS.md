@@ -31,23 +31,27 @@ class MatimoError extends Error {
 
 ### Error Codes Enum
 
-All 11 error codes are defined in the `ErrorCode` enum:
+The `ErrorCode` enum has 13 codes, identical in both SDKs:
 
 ```typescript
 export enum ErrorCode {
-  INVALID_SCHEMA = 'INVALID_SCHEMA', // Tool definition validation failed
-  EXECUTION_FAILED = 'EXECUTION_FAILED', // Tool execution error
-  AUTH_FAILED = 'AUTH_FAILED', // Authentication/token error
+  INVALID_SCHEMA = 'INVALID_SCHEMA', // Bad tool/skill/policy definition, or a missing URL parameter
+  EXECUTION_FAILED = 'EXECUTION_FAILED', // Tool error, non-2xx HTTP response, or approval refused
+  AUTH_FAILED = 'AUTH_FAILED', // Missing credentials, or HTTP 401/403
   TOOL_NOT_FOUND = 'TOOL_NOT_FOUND', // Tool not in registry
-  FILE_NOT_FOUND = 'FILE_NOT_FOUND', // File/directory missing
-  VALIDATION_FAILED = 'VALIDATION_FAILED', // Parameter validation error
-  RATE_LIMIT_EXCEEDED = 'RATE_LIMIT_EXCEEDED', // API rate limit hit
-  TIMEOUT = 'TIMEOUT', // Operation timeout
-  NETWORK_ERROR = 'NETWORK_ERROR', // Network/connection error
-  INVALID_PARAMETER = 'INVALID_PARAMETER', // Invalid parameter value
-  UNKNOWN_ERROR = 'UNKNOWN_ERROR', // Unknown error
+  FILE_NOT_FOUND = 'FILE_NOT_FOUND', // Tool file or directory missing
+  VALIDATION_FAILED = 'VALIDATION_FAILED', // Raised by a tool's own input checks
+  RATE_LIMIT_EXCEEDED = 'RATE_LIMIT_EXCEEDED', // HTTP 429
+  TIMEOUT = 'TIMEOUT', // Request timed out
+  NETWORK_ERROR = 'NETWORK_ERROR', // No HTTP response (DNS, connection refused)
+  INVALID_PARAMETER = 'INVALID_PARAMETER', // A parameter could not be encoded
+  UNKNOWN_ERROR = 'UNKNOWN_ERROR', // Anything else
+  POLICY_DENIED = 'POLICY_DENIED', // Denied by policy, or quarantined and not approved
+  POLICY_TIER_BLOCKED = 'POLICY_TIER_BLOCKED', // Reserved; not raised by the SDK today
 }
 ```
+
+Matimo does not check call parameters against the tool's `parameters:` block before running it. A wrong or missing value reaches the API (or the tool's own code), which reports it.
 
 ### Creating Errors
 
@@ -95,8 +99,8 @@ try {
 } catch (error) {
   if (error instanceof MatimoError) {
     console.log(error.code); // ErrorCode.TOOL_NOT_FOUND
-    console.log(error.message); // 'Tool "unknown-tool" not found'
-    console.log(error.details); // { toolName: 'unknown-tool' }
+    console.log(error.message); // "Tool 'unknown-tool' not found in registry"
+    console.log(error.details); // { toolName: 'unknown-tool', availableTools: [...] }
     console.log(error.toJSON()); // Full error object for logging
   }
 }
@@ -137,43 +141,19 @@ const result = await m.execute('calculator', params);
 
 ---
 
-### INVALID_PARAMETERS
+### INVALID_PARAMETER
 
-Required parameters missing or wrong type.
+A parameter value could not be encoded as the tool's `parameter_encoding` asks (for example, a MIME email body built from parts that are missing or malformed).
 
 ```typescript
-if (error.code === 'INVALID_PARAMETERS') {
-  console.log('Missing or invalid:', error.details.invalidFields);
-  // e.g., { invalidFields: ['operation', 'a'] }
+if (error.code === 'INVALID_PARAMETER') {
+  console.log('Could not encode parameters:', error.message);
 }
 ```
 
-**Common causes:**
+**Resolution:** pass the parameters the encoding names in its `source` list, with the expected types.
 
-- Missing required parameter
-- Wrong parameter type (string vs number)
-- Parameter value outside allowed range
-
-**Resolution:**
-
-```typescript
-// Get tool definition
-const tool = m.getTool('calculator');
-
-// Check required parameters
-Object.entries(tool.parameters).forEach(([name, param]) => {
-  if (param.required) {
-    console.log(`Required: ${name}`);
-  }
-});
-
-// Execute with all required params
-const result = await m.execute('calculator', {
-  operation: 'add', // required
-  a: 5, // required
-  b: 3, // required
-});
-```
+A missing **URL** placeholder is reported as `INVALID_SCHEMA` (`Required URL parameter 'x' is missing`). Other missing or wrong parameters are not caught by Matimo: the API answers with an error, usually `EXECUTION_FAILED` with a 400.
 
 ---
 
@@ -196,6 +176,8 @@ if (error.code === 'EXECUTION_FAILED') {
 
 - Tool returned an error response other than 401/403/429 (e.g., 400, 404, 500)
 - Command execution failed
+- A human (or the approval callback) refused the call: `Operation rejected by approval handler: <tool>`
+- Nobody could be asked: `Destructive operation requires approval: <tool>` — pass `onApproval` to `init()`
 
 **Resolution:**
 
@@ -238,6 +220,7 @@ if (error.code === 'INVALID_SCHEMA') {
 - Required field missing in tool YAML
 - Wrong parameter type in YAML
 - Invalid execution configuration
+- A `{placeholder}` in the tool's URL was not passed
 
 **Resolution:**
 
@@ -254,38 +237,15 @@ See [Tool Specification](../tool-development/YAML_TOOLS.md) for correct YAML for
 
 ### VALIDATION_FAILED
 
-Parameter validation failed (e.g., not in enum, wrong regex pattern).
+Raised by a tool's own code when it rejects its input (for example, the Microsoft tools check required fields before calling Graph). Matimo itself does not raise it; `createValidationError()` builds one.
 
 ```typescript
 if (error.code === 'VALIDATION_FAILED') {
-  console.log('Validation errors:', error.details.errors);
+  console.log('The tool rejected its input:', error.message, error.details);
 }
 ```
 
-**Common causes:**
-
-- Parameter value not in enum list
-- String doesn't match regex pattern
-- Number outside min/max range
-
-**Resolution:**
-
-```typescript
-// Get tool definition
-const tool = m.getTool('calculator');
-
-// Check parameter constraints
-const operation = tool.parameters.operation;
-console.log('Allowed operations:', operation.enum);
-// ['add', 'subtract', 'multiply', 'divide']
-
-// Use allowed value
-const result = await m.execute('calculator', {
-  operation: 'add', // Must be in enum
-  a: 5,
-  b: 3,
-});
-```
+**Resolution:** read the tool's parameter descriptions (`matimo.getTool(name).parameters`) and pass the values it asks for.
 
 ---
 
@@ -298,8 +258,9 @@ call, or a live API responding with HTTP 401/403 (auto-mapped by
 ```typescript
 if (error.code === 'AUTH_FAILED') {
   console.log('Auth error:', error.message);
-  // e.g., "Missing GMAIL_ACCESS_TOKEN environment variable"
-  // or:   "HTTP error executing tool 'slack_send_message'" with details.statusCode === 401
+  // e.g., 'Authentication credentials are missing for tool "gmail-send-email".
+  //         • GMAIL_ACCESS_TOKEN  →  MATIMO_GMAIL_ACCESS_TOKEN (or pass via credentials option)'
+  // or an HTTP 401/403 with details.statusCode set
 }
 ```
 
@@ -319,8 +280,6 @@ echo $GMAIL_ACCESS_TOKEN
 # If empty, set it
 export GMAIL_ACCESS_TOKEN="ya29.a0AfH6SMBx..."
 
-# Test execution
-npx tsx -e "import { MatimoInstance } from 'matimo'; const matimo = await MatimoInstance.init('./tools'); console.log(await matimo.execute('gmail-send-email', {to: 'test@example.com', subject: 'Test', body: 'Test'}));"
 ```
 
 See [Authentication Guide](../user-guide/AUTHENTICATION.md) for token setup.
@@ -386,11 +345,11 @@ try {
 
 ### TIMEOUT
 
-The request exceeded the tool's `execution.timeout` (or the default) before a response arrived. Distinct from a real HTTP error — no status code is available. TypeScript maps `ECONNABORTED`/`ETIMEDOUT`; Python maps `httpx.TimeoutException`. `details.retryable` is `true`.
+The request exceeded the tool's `execution.timeout` before a response arrived (Python's default is 30 s; TypeScript has no default for HTTP tools). Distinct from a real HTTP error — no status code is available. TypeScript maps `ECONNABORTED`/`ETIMEDOUT`; Python maps `httpx.TimeoutException`. `details.retryable` is `true`.
 
 ```typescript
 if (error.code === 'TIMEOUT') {
-  console.log('Timed out after:', error.details.timeoutMs);
+  console.log('Timed out:', error.details.originalError);
 }
 ```
 
@@ -420,6 +379,21 @@ if (error.code === 'NETWORK_ERROR') {
 
 ---
 
+### POLICY_DENIED
+
+The policy engine refused the call before it ran. The message says why:
+
+| Message | Cause |
+|---------|-------|
+| `Policy denied execution of '<tool>': Draft tool "<tool>" requires admin role` | A draft outside production, and the caller's context has no `admin` role |
+| `Policy denied execution of '<tool>': ... not available in production` | A draft in production |
+| `Policy denied execution of '<tool>': ...` | A deprecated tool, or a `requires_approval` tool in production without `admin`/`operator` |
+| `Tool '<tool>' is quarantined and was not approved: ...` | HITL quarantine (`enableHITL`) and the `onHITL` callback said no, or there is none |
+
+`details` has `toolName`, `reason` and `riskLevel`. Do not retry a denied call unchanged. See [Policy and Lifecycle](POLICY_AND_LIFECYCLE.md).
+
+---
+
 ## Handling Errors
 
 ### Pattern 1: Type Check and Handle Specific Codes
@@ -435,8 +409,8 @@ try {
       case ErrorCode.TOOL_NOT_FOUND:
         console.error('Tool not available');
         break;
-      case ErrorCode.VALIDATION_FAILED:
-        console.error('Bad parameters:', error.details);
+      case ErrorCode.POLICY_DENIED:
+        console.error('Blocked by policy:', error.details?.reason);
         break;
       case ErrorCode.EXECUTION_FAILED:
         console.error('Tool execution failed:', error.details);
@@ -519,15 +493,17 @@ Non-`MatimoError` exceptions (including ones from a tool's own code) are caught 
 | Code                  | ErrorCode Enum                   | Cause                                    | Retryable | Resolution                              |
 | --------------------- | --------------------------------- | ----------------------------------------- | --------- | ---------------------------------------- |
 | `TOOL_NOT_FOUND`      | `ErrorCode.TOOL_NOT_FOUND`       | Tool doesn't exist                       | No        | Check tool name, use `listTools()`      |
-| `INVALID_PARAMETER`   | `ErrorCode.INVALID_PARAMETER`    | Missing/wrong params                     | No        | Check tool definition                   |
-| `EXECUTION_FAILED`    | `ErrorCode.EXECUTION_FAILED`     | HTTP error other than 401/403/429        | 5xx only  | Check tool error details                |
-| `INVALID_SCHEMA`      | `ErrorCode.INVALID_SCHEMA`       | Bad tool definition                      | No        | Fix tool YAML, run `validate-tools`     |
-| `VALIDATION_FAILED`   | `ErrorCode.VALIDATION_FAILED`    | Param validation failed                  | No        | Check constraints (enum, regex, range)  |
-| `AUTH_FAILED`         | `ErrorCode.AUTH_FAILED`          | Missing/invalid token, or HTTP 401/403   | No        | Set OAuth2 env var                      |
+| `INVALID_PARAMETER`   | `ErrorCode.INVALID_PARAMETER`    | A parameter could not be encoded         | No        | Pass the parameters the encoding needs  |
+| `EXECUTION_FAILED`    | `ErrorCode.EXECUTION_FAILED`     | HTTP error other than 401/403/429, tool error, approval refused | 5xx only | Check tool error details |
+| `INVALID_SCHEMA`      | `ErrorCode.INVALID_SCHEMA`       | Bad tool definition, missing URL parameter | No      | Fix tool YAML, run `validate-tools`     |
+| `VALIDATION_FAILED`   | `ErrorCode.VALIDATION_FAILED`    | A tool's own input check failed          | No        | Pass the values the tool asks for       |
+| `AUTH_FAILED`         | `ErrorCode.AUTH_FAILED`          | Missing credentials, or HTTP 401/403     | No        | Set `MATIMO_<NAME>` / `<NAME>`          |
 | `FILE_NOT_FOUND`      | `ErrorCode.FILE_NOT_FOUND`       | File/dir missing                         | No        | Verify paths exist                      |
 | `RATE_LIMIT_EXCEEDED` | `ErrorCode.RATE_LIMIT_EXCEEDED`  | HTTP 429                                 | Yes       | Wait and retry                          |
 | `TIMEOUT`             | `ErrorCode.TIMEOUT`              | Request exceeded `execution.timeout`     | Yes       | Increase timeout or check network       |
 | `NETWORK_ERROR`       | `ErrorCode.NETWORK_ERROR`        | No HTTP response (DNS, connection)       | Yes       | Check connectivity                      |
+| `POLICY_DENIED`       | `ErrorCode.POLICY_DENIED`        | Policy denial or quarantine not approved | No        | See the reason; don't retry unchanged   |
+| `POLICY_TIER_BLOCKED` | `ErrorCode.POLICY_TIER_BLOCKED`  | Reserved                                 | No        | —                                       |
 | `UNKNOWN_ERROR`       | `ErrorCode.UNKNOWN_ERROR`        | Unrecognized error shape                 | No        | Check error details                     |
 
 `retryable` lives on `error.details.retryable` and is only populated for HTTP-sourced errors (via `fromHttpError()`/`from_http_error()`) — `true` for 429, 5xx, timeouts, and network-level failures.
