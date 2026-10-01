@@ -24,7 +24,7 @@ Meta-tools are built-in tools that live in `packages/core/tools/` and provide to
 | [`matimo_get_skill_sections`](#matimo_get_skill_sections) | List a skill's section inventory with token estimates | No |
 | [`matimo_get_skill_content`](#matimo_get_skill_content) | Load a skill's content, optionally scoped to specific sections | No |
 
-> **Note on `matimo_doctor`:** Examples, prompts, and older docs may refer to `matimo_doctor`. This is an informal human-readable alias for `matimo_validate_tool` — it is **not a separate tool**. The actual registered tool name you must use in `matimo.execute()` is `matimo_validate_tool`.
+> **No `matimo_doctor` or `matimo_review` meta-tool exists.** Older prompts and docs used those names. Agents validate with `matimo_validate_tool` and request approval with `matimo_approve_tool`. `matimo doctor` (diagnose a setup) and `matimo review` (list, approve or reject agent-created tools) are **CLI commands** for people, not tools an agent can call.
 
 > 💡 **New to meta-tools?** See [When to Use Which Meta-Tool](#when-to-use-which-meta-tool) for decision guides and typical agent workflows before diving into individual tool references.
 
@@ -67,7 +67,7 @@ I want to...
 |-----------|-------------|-----------------------------|
 | `matimo_validate_tool` | Before `matimo_create_tool` — catch errors early without writing to disk | Tool creation may fail mid-write with a less clear error |
 | `matimo_create_tool` | Agent proposes a new capability (weather lookup, data fetch) | Tool never exists; agent can't use the new capability |
-| `matimo_approve_tool` | After creation — promote draft to usable state | Tool stays in `draft` status; `matimo_reload_tools` won't load it |
+| `matimo_approve_tool` | After creation — a human promotes the draft to `approved` | Tool stays a draft: it loads, but every call fails with `Draft tool ... requires admin role` |
 | `matimo_reload_tools` | After create+approve — make new tools available without restart | Agent can't call the new tool until the process is restarted |
 | `matimo_list_user_tools` | Agent wants to audit what it has created this session | Agent re-creates duplicates, wastes tool slots |
 | `matimo_get_tool_status` | Before using a tool the agent created — verify it's approved | Agent calls a draft tool and hits an approval gate error |
@@ -85,12 +85,13 @@ I want to...
 
 **Workflow A — Agent creates and uses a new tool (full lifecycle)**
 ```
-1. matimo_validate_tool   → Check YAML is safe (no approval needed)
-2. matimo_create_tool     → Write draft to disk (needs human ✅)
-3. matimo_approve_tool    → Promote to approved (needs human ✅)
-4. matimo_reload_tools    → Load into live registry (needs human ✅)
-5. matimo.execute(name)   → Use the tool
+1. matimo_validate_tool   → Check the YAML would be accepted (no approval needed)
+2. matimo_create_tool     → Write the draft to disk (needs human ✅)
+3. matimo_approve_tool    → A human promotes it to approved (always asks ✅)
+4. matimo_reload_tools    → Load it into the live registry (needs human ✅)
+5. matimo.execute(name)   → Use the tool (requires_approval: true, so each call asks ✅)
 ```
+Calling the tool between steps 2 and 3 (after a reload) fails: a draft runs only for an `admin` caller outside production.
 
 **Workflow B — Agent discovers and applies skills**
 ```
@@ -124,9 +125,7 @@ I want to...
 
 ## matimo_validate_tool
 
-> **Alias:** Also informally called `matimo_doctor` in examples and prompts. The registered tool name is always `matimo_validate_tool`.
-
-Validate a tool definition YAML string against the Matimo schema and policy rules. Returns schema errors, policy violations, and risk classification.
+Validate a tool definition YAML string against the Matimo schema and policy rules. Returns schema errors, policy violations, and risk classification. `valid` is `true` exactly when `matimo_create_tool` would accept the definition: the check applies the fields creation forces (`requires_approval: true`, `status: draft`), so leave those out of the YAML.
 
 **Does not require approval** — safe for agents to call freely.
 
@@ -140,14 +139,18 @@ Validate a tool definition YAML string against the Matimo schema and policy rule
 
 ```typescript
 {
-  valid: boolean;           // true if tool passes all checks
-  schemaErrors: string[];   // Zod schema validation errors
+  valid: boolean;           // true when matimo_create_tool would accept it
+  schemaErrors: Array<{
+    field: string;          // e.g. 'execution.method'
+    message: string;
+    validOptions?: string[]; // for enum fields
+  }>;
   policyViolations: Array<{
     rule: string;           // e.g., 'no-command-execution'
     severity: string;       // 'critical' | 'high' | 'medium' | 'low'
     message: string;        // Human-readable explanation
   }>;
-  riskLevel: string;        // 'low' | 'medium' | 'high' | 'critical'
+  riskLevel: string;        // risk of the definition as written: 'low' | 'medium' | 'high' | 'critical'
 }
 ```
 
@@ -173,7 +176,7 @@ execution:
 // {
 //   valid: true,
 //   schemaErrors: [],
-//   policyViolations: [],  // medium: force-approval, force-draft-status (non-blocking)
+//   policyViolations: [],
 //   riskLevel: 'low'
 // }
 ```
@@ -182,15 +185,15 @@ execution:
 
 1. **YAML syntax** — can the content be parsed?
 2. **Schema validation** — does it match the `ToolDefinition` Zod schema? (name, version, description, execution, parameters)
-3. **Content rules** — runs all 9 content validator rules (see [POLICY_AND_LIFECYCLE.md](POLICY_AND_LIFECYCLE.md#9-security-rules))
-4. **Risk classification** — assigns risk level based on execution type and HTTP method
+3. **Content rules** — runs the 9 content validator rules with the **default** policy (see [POLICY_AND_LIFECYCLE.md](POLICY_AND_LIFECYCLE.md#9-security-rules)). Only critical and high violations make it invalid. The running instance's `allowedDomains`, `allowedHttpMethods` and `allowedCredentials` apply when the tool loads, so check `rejected` from `matimo_reload_tools` too.
+4. **Risk classification** — assigns a risk level from the execution type and HTTP method
 
 ### Error Cases
 
 | Scenario | `valid` | Response |
 |----------|:-------:|----------|
-| Invalid YAML syntax | `false` | `schemaErrors: ["YAML parse error: ..."]` |
-| Missing required fields | `false` | `schemaErrors: ["Schema validation failed: ..."]` |
+| Invalid YAML syntax | `false` | `schemaErrors: [{ field: "root", message: "YAML parse error: ..." }]` |
+| Missing required fields | `false` | `schemaErrors: [{ field: "version", message: "..." }]` |
 | Command tool (blocked by policy) | `false` | `policyViolations: [{ rule: "no-command-execution", severity: "critical" }]` |
 | SSRF attempt | `false` | `policyViolations: [{ rule: "no-ssrf", severity: "critical" }]` |
 | Valid HTTP GET tool | `true` | `riskLevel: "low"` |
@@ -220,9 +223,10 @@ Create a new tool definition on disk. Validates the YAML, forces draft status an
 {
   success: true,
   path: './agent-tools/weather/definition.yaml',
-  riskLevel: 'low',
+  riskLevel: 'high',          // requires_approval: true raises an HTTP tool to high
   status: 'draft',
-  message: 'Tool created as draft. Use matimo_approve_tool to promote.'
+  approvalState: 'pending',   // always, for a new tool
+  message: 'Tool created as a draft (low risk, read-only). It runs after a reviewer approves it with matimo_approve_tool and the tools reload.'
 }
 
 // Failure
@@ -268,16 +272,14 @@ The following fields are **always forced** regardless of what the YAML contains:
 | `requires_approval` | `true` | Agent-created tools must be approved |
 | `status` | `'draft'` | Agent-created tools start as draft |
 
-### Auto-Approval for Low-Risk GET Tools
+### Approval State After Creation
 
-`matimo_create_tool` classifies risk at creation time. **HTTP GET tools targeting approved domains** are classified as `low` risk and receive `approvalState: 'auto-approved'` immediately — they still start as `status: 'draft'` and must go through `matimo_approve_tool`, but the human approval step produces an immediate approval rather than a pending review. All other tools start as `approvalState: 'pending'`.
+Every created tool is a draft, so `approvalState` is always `'pending'`: the tool runs only after a human approves it with `matimo_approve_tool` and the tools reload. The message says whether the definition is low-risk and read-only (an HTTP GET without credentials), which helps the reviewer, but it does not skip the review.
 
-| Execution Type | Method | `riskLevel` | `approvalState` after create |
-|---------------|--------|-------------|-------------------------------|
-| `http` | GET | `low` | `auto-approved` |
-| `http` | POST/PUT/DELETE | `medium` | `pending` |
-| `http` with auth headers | any | `high` | `pending` |
-| `command` / `function` | — | blocked by policy | — |
+| Execution Type | Method | `riskLevel` after create | `approvalState` after create |
+|---------------|--------|--------------------------|------------------------------|
+| `http` | any | `high` (`requires_approval: true` is forced) | `pending` |
+| `command` / `function` | — | refused by policy | — |
 
 ### Name Validation
 
@@ -382,7 +384,7 @@ an arbitrary file:
 {
   success: true,
   name: 'city_lookup',
-  hash: 'sha256:a1b2c3d4e5f6...',
+  hash: 'a1b2c3d4e5f6...',     // SHA-256 of the file's final content, hex
   approvedAt: '2026-03-14T09:30:00.000Z',
   message: 'Tool approved. Effective after reload or immediately if auto-reload is active.'
 }
@@ -416,18 +418,17 @@ const result = await matimo.execute(
    pre-mutation content. Hashing before the `status` mutation would make the stored approval unable
    to ever validate against the tool's own post-approval file, since `isApproved()` checks the hash
    against what's currently on disk.
-8. Create HMAC signature using `MATIMO_APPROVAL_SECRET` (or an ephemeral secret, with a warning, if unset)
-9. Store the approval (name, hash, signature, timestamp) in `.matimo-approvals.json`
+8. Record the approval (name, hash, HMAC signature, timestamp) in the approval manifest of the instance that owns the call — the instance passed to `setGlobalMatimoInstance()` — so its next reload sees it. That manifest lives in the instance's `approvalDir` and signs with `MATIMO_APPROVAL_SECRET`, or an ephemeral secret (with a warning) when unset. With no global instance, the tool writes its own manifest in `tool_dir`.
 
 ### Approval Manifest File
 
-Created at `{tool_dir}/.matimo-approvals.json`:
+`.matimo-approvals.json` in the instance's `approvalDir` (or `tool_dir` when no instance is registered):
 
 ```json
 {
   "city_lookup": {
-    "hash": "sha256:a1b2c3d4e5f6...",
-    "signature": "hmac-sha256:...",
+    "hash": "a1b2c3d4e5f6...",
+    "signature": "...",
     "approvedAt": "2026-03-14T09:30:00.000Z",
     "approvedBy": "system"
   }
@@ -438,9 +439,11 @@ Created at `{tool_dir}/.matimo-approvals.json`:
 
 If the YAML is modified after approval:
 
-1. On next `matimo_approve_tool` or `reloadTools()`, the hash is recomputed
-2. New hash ≠ stored hash → approval is invalid
-3. Tool must be re-approved
+1. On the next `reloadTools()` the hash is recomputed
+2. New hash ≠ stored hash → the approval no longer counts, and the tool is checked as a new proposal (a file still saying `status: approved` is then rejected)
+3. The tool must be re-approved
+
+Without `MATIMO_APPROVAL_SECRET`, approvals last only for the current process. Set it to keep them across restarts, or to approve from another process with the `matimo review approve <name>` CLI (it must use the same secret and approval directory as the running instance).
 
 ---
 
@@ -459,8 +462,8 @@ No parameters required. The tool uses the `toolPaths` and `untrustedPaths` confi
 ```typescript
 {
   success: true,
-  loaded: 13,        // Total tools now in registry
-  removed: 0,        // Tools that were in registry but no longer on disk
+  loaded: 13,        // Tools registered by this reload (trusted and untrusted)
+  removed: 0,        // Tools that were in the registry but are no longer loaded
   revalidated: 1,    // Untrusted tools that were re-checked against policy
   rejected: [],      // Tool names that failed policy and were not loaded
   message: 'Reload complete. 13 tools loaded, 0 removed, 0 rejected.'
@@ -582,12 +585,12 @@ The `name` parameter is sanitized to prevent path traversal outside `tool_dir`:
 {
   found: true,
   name: 'weather_fetch',
-  status: 'approved',          // 'draft' | 'approved'
-  riskLevel: 'low',            // 'low' | 'medium' | 'high' | 'critical'
-  approvalState: 'approved',   // 'pending' | 'auto-approved' | 'approved'
+  status: 'approved',          // the YAML's status
+  riskLevel: 'high',           // 'low' | 'medium' | 'high' | 'critical'
+  approvalState: 'approved',   // see the table below
   approvedAt: '2026-03-14T09:30:00.000Z',
-  approvedBy: 'system',
-  message: 'Tool "weather_fetch" is approved and ready for use.'
+  approvedBy: undefined,
+  message: 'Tool "weather_fetch" is approved (high risk)'
 }
 
 // Tool not found
@@ -597,6 +600,13 @@ The `name` parameter is sanitized to prevent path traversal outside `tool_dir`:
   message: 'Tool "nonexistent" not found at ./matimo-tools/nonexistent/definition.yaml'
 }
 ```
+
+| `approvalState` | Meaning |
+|-----------------|---------|
+| `pending` | A draft not yet approved, or a tool that needs approval and has none |
+| `approved` | A valid approval record matches the file's current content |
+| `auto-approved` | A low-risk, read-only tool that is not a draft |
+| `rejected` | The tool is deprecated |
 
 ### Example
 
@@ -808,17 +818,19 @@ const approvedOnly = await matimo.execute('matimo_list_user_tools', {
 
 ## matimo_create_skill
 
-Create a new skill definition (SKILL.md) on disk. Validates YAML frontmatter and writes the file to the target directory.
+Create a new skill definition (SKILL.md) on disk. Validates the YAML frontmatter against the Agent Skills spec, writes the file, and emits a `skill:created` event on the owning instance.
 
 **Requires approval** — human must confirm before skill is written.
+
+The skill is not in the registry until the instance reloads its skills (`reloadSkills()`, or `addSkillPath()` + `reloadSkills()` for a new directory).
 
 ### Parameters
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|:--------:|---------|-------------|
-| `name` | string | Yes | — | Name for the new skill (alphanumeric, hyphens, underscores) |
+| `name` | string | Yes | — | Skill directory name: lowercase letters, digits and single hyphens, at most 64 characters, matching the frontmatter `name` |
 | `content` | string | Yes | — | Markdown content with YAML frontmatter |
-| `target_dir` | string | No | `./matimo-tools/skills` | Directory to create the skill in |
+| `target_dir` | string | No | the instance's `defaultSkillWriteDir`, else `./matimo-tools/skills` | Directory to create the skill in |
 
 ### Response
 
@@ -827,7 +839,7 @@ Create a new skill definition (SKILL.md) on disk. Validates YAML frontmatter and
 {
   success: true,
   path: './matimo-tools/skills/my-skill/SKILL.md',
-  message: 'Skill created successfully.'
+  message: 'Skill "my-skill" created successfully.'
 }
 
 // Failure
@@ -866,16 +878,14 @@ The content must start with YAML frontmatter (`---`) containing at least:
 
 | Field | Required | Description |
 |-------|:--------:|-------------|
-| `name` | Yes | Skill name (must be in frontmatter) |
+| `name` | Yes | Skill name, the same as the `name` parameter |
 | `description` | Yes | What the skill does |
+
+Optional fields from the spec: `license`, `compatibility`, `metadata`, `allowed-tools`.
 
 ### Name Validation
 
-Same as `matimo_create_tool`:
-- No path traversal (`../`)
-- No backslashes
-- No control characters
-- No empty/whitespace-only names
+Lowercase letters, digits and hyphens only; no leading, trailing or consecutive hyphens; at most 64 characters. This also rules out path traversal, backslashes and control characters.
 
 ### Output on Disk
 
@@ -898,7 +908,9 @@ List all skills (SKILL.md files) in a directory. Returns each skill's name, desc
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|:--------:|---------|-------------|
-| `skills_dir` | string | No | `./matimo-tools/skills` | Directory to scan for skills |
+| `skills_dir` | string | No | — | Extra directory to scan; its skills are added to the ones below |
+
+Which skills are listed: the global instance's skills (everything it loaded, plus any registered with `registerSkill()`); with no instance, the skills shipped in installed `@matimo/*` packages. Skills in `skills_dir` are always added.
 
 ### Response
 
@@ -908,15 +920,13 @@ List all skills (SKILL.md files) in a directory. Returns each skill's name, desc
     {
       name: 'code-review',
       description: 'Code review checklist and best practices',
-      path: './matimo-tools/skills/code-review/SKILL.md'
-    },
-    {
-      name: 'security-checklist',
-      description: 'Security vulnerability detection checklist',
-      path: './matimo-tools/skills/security-checklist/SKILL.md'
+      version: '1.0.0',          // optional frontmatter fields when present
+      license: 'MIT',
+      metadata: { category: 'Quality' },
+      source: 'user'             // 'builtin' | 'user' | 'catalog'
     }
   ],
-  total: 2
+  total: 1
 }
 ```
 
@@ -926,18 +936,11 @@ List all skills (SKILL.md files) in a directory. Returns each skill's name, desc
 const result = await matimo.execute('matimo_list_skills', {
   skills_dir: './my-skills',
 });
-// result.skills → array of { name, description, path }
+// result.skills → array of { name, description, source, ...optional frontmatter }
 // result.total → number of skills found
 ```
 
-### Behavior
-
-1. Check if `skills_dir` exists (return empty if not)
-2. Scan directory entries
-3. For each subdirectory, look for `SKILL.md`
-4. Parse YAML frontmatter for `name` and `description`
-5. Skip skills with missing frontmatter fields (warning logged)
-6. Return skill summaries
+Skills with missing or invalid frontmatter are skipped.
 
 ---
 
@@ -964,6 +967,7 @@ Read the full content of a skill (SKILL.md) by name. Returns the skill's frontma
   description: 'Code review checklist and best practices',
   content: '---\nname: code-review\ndescription: ...\n---\n\n# Code Review Checklist\n...',
   path: './matimo-tools/skills/code-review/SKILL.md',
+  resources: { scripts: [], references: [], assets: [], other: [] },  // bundled files
   message: 'Skill retrieved successfully.'
 }
 
@@ -1032,11 +1036,14 @@ Validate an existing skill against the [Agent Skills specification](https://agen
   valid: false,
   name: 'Bad_Name',
   issues: [
-    { level: 'error', message: 'Name contains invalid characters...' },
-    { level: 'error', message: 'Skill name "Bad_Name" does not match directory name...' }
+    {
+      field: 'name',
+      severity: 'error',
+      message: 'Skill name must contain only lowercase letters, numbers, and hyphens, and must not start or end with a hyphen'
+    }
   ],
   structure: { has_skill_md: true, resources: { ... } },
-  message: 'Skill "Bad_Name" has 2 issue(s).'
+  message: 'Skill "Bad_Name" has 1 error(s).'
 }
 ```
 
@@ -1125,12 +1132,13 @@ Inventory a skill's Markdown sections and their approximate token costs, without
   success: true,
   name: 'slack',
   sections: [
-    { path: 'Messaging', level: 2, tokenEstimate: 340 },
-    { path: 'Messaging > Threads', level: 3, tokenEstimate: 120 },
-    { path: 'Error Handling', level: 2, tokenEstimate: 210 },
+    { path: 'Slack', level: 1, tokenEstimate: 40 },
+    { path: 'Slack.Messaging', level: 2, tokenEstimate: 340 },
+    { path: 'Slack.Messaging.Threads', level: 3, tokenEstimate: 120 },
+    { path: 'Slack.Error Handling', level: 2, tokenEstimate: 210 },
   ],
-  total: 3,
-  message: 'Found 3 section(s) for skill "slack".'
+  total: 4,
+  message: 'Found 4 section(s) for skill "slack".'
 }
 
 // Skill not found
@@ -1227,9 +1235,11 @@ const result = await matimo.execute('matimo_validate_tool', { yaml_content: '...
 ### Python SDK
 
 ```python
-from matimo import Matimo
+from matimo import Matimo, PolicyContext, set_global_matimo_instance
 
-matimo = await Matimo.init('./tools')
+# matimo_create_tool, matimo_approve_tool and matimo_reload_tools need approval.
+matimo = await Matimo.init('./tools', auto_discover=True, on_approval=ask_reviewer)
+set_global_matimo_instance(matimo)  # meta-tools act on this instance
 
 # Validate a tool definition
 result = await matimo.execute('matimo_validate_tool', {'yaml_content': '...'})
@@ -1240,11 +1250,11 @@ validate  = await matimo.execute('matimo_validate_tool',  {'yaml_content': yaml_
 create    = await matimo.execute('matimo_create_tool',    {'name': 'my_tool', 'yaml_content': yaml_str, 'target_dir': './agent-tools'})
 approve   = await matimo.execute('matimo_approve_tool',   {'name': 'my_tool', 'tool_dir': './agent-tools'},
                                  context=PolicyContext(agent_id='reviewer', roles=['admin']))
-reload    = await matimo.execute('matimo_reload_tools',   {})
+reload    = await matimo.execute('matimo_reload_tools',   {})  # './agent-tools' must be in the tool paths
 status    = await matimo.execute('matimo_get_tool_status',{'name': 'my_tool', 'tool_dir': './agent-tools'})
 ```
 
-> See [`python/examples/native/meta_flow/meta_tools_integration.py`](../../python/examples/native/meta_flow/meta_tools_integration.py) for an end-to-end Python demo of the tool-creation lifecycle (`matimo_validate_tool`/`matimo_doctor` → `matimo_create_tool` → `matimo_reload_tools` → `matimo_list_user_tools`).
+> See [`python/examples/native/meta_flow/meta_tools_integration.py`](../../python/examples/native/meta_flow/meta_tools_integration.py) for an end-to-end Python demo of the tool-creation lifecycle (`matimo_validate_tool` → `matimo_create_tool` → `matimo_reload_tools` → `matimo_approve_tool` → `matimo_reload_tools` → `matimo_list_user_tools`).
 > Run it with: `cd python && make meta-flow`
 
 ### LangChain
@@ -1254,10 +1264,10 @@ The LLM decides which meta-tool to call based on the conversation:
 ```
 User: "Create a weather lookup tool"
 Agent → matimo_validate_tool (check YAML)
-Agent → matimo_create_tool (write to disk)
-Agent → matimo_approve_tool (promote status)
-Agent → matimo_reload_tools (load into registry)
-Agent → weather_lookup (use the new tool)
+Agent → matimo_create_tool (write the draft; on_approval asks)
+Agent → matimo_approve_tool (a human decides; on_approval asks)
+Agent → matimo_reload_tools (load into registry; on_approval asks)
+Agent → weather_lookup (use the new tool; on_approval asks each call)
 ```
 
 ### MCP
