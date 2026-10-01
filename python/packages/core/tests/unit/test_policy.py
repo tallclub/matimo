@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from matimo.core.models import (
     CommandExecution,
     FunctionExecution,
@@ -145,6 +147,22 @@ class TestContentValidator:
         )
         violations = validate_tool_content(tool, engine.config)
         assert any(v.rule == "no-command-execution" for v in violations)
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "http://db.internal/admin",
+            "http://printer.local/status",
+            "http://app.localhost/",
+            "http://0.0.0.0:8080/",
+            "http://0/",
+        ],
+    )
+    def test_ssrf_internal_names_blocked_like_typescript(self, url: str) -> None:
+        engine = DefaultPolicyEngine()
+        tool = _make_http_tool(url=url)
+        violations = validate_tool_content(tool, engine.config)
+        assert any(v.rule == "no-ssrf" for v in violations)
 
     def test_ssrf_localhost_blocked(self) -> None:
         engine = DefaultPolicyEngine()

@@ -186,13 +186,17 @@ def _check_ssrf(url: str) -> str | None:
     # Strip placeholders before resolving
     host_clean = re.sub(r"\{[^}]+\}", "", host).strip(".")
 
-    if host_clean in _SSRF_BLOCKED:
+    if host_clean in _SSRF_BLOCKED or host_clean == "0":
+        return host_clean
+
+    # Internal and local name suffixes, as in TypeScript isSSRFTarget()
+    if host_clean.endswith((".internal", ".local", ".localhost")):
         return host_clean
 
     # Block private IP ranges
     try:
         addr = ipaddress.ip_address(host_clean)
-        if addr.is_private or addr.is_loopback or addr.is_link_local:
+        if addr.is_private or addr.is_loopback or addr.is_link_local or addr.is_unspecified:
             return host_clean
     except ValueError:
         pass
