@@ -1,523 +1,194 @@
-# Matimo Examples
+# Matimo TypeScript Examples
 
 <p align="center">
   <a href="https://discord.gg/3JPt4mxWDV"><img src="https://img.shields.io/badge/Discord-Join%20Chat-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord"></a>
 </p>
 
-Production-ready examples showcasing **three core integration patterns**:
+Runnable examples for `@matimo/core` 0.2.0 and the provider packages. Every tool is defined once in YAML and called three ways: directly (factory), through a `@tool` method (decorator), or by an LLM (LangChain). Write tools also have a `-with-approval` example.
 
-> **"Define tools ONCE in YAML, use them EVERYWHERE"**
+| Directory | What's in it |
+|-----------|--------------|
+| [`tools/`](./tools/) | Per-provider and per-tool examples, plus the policy, skills and meta-tool demos |
+| [`mcp/`](./mcp/) | Running Matimo as an MCP server ([README](./mcp/README.md)) |
+
+Python equivalents are in [`python/examples/`](../../python/examples/).
 
 ---
 
 ## Quick Start
 
 ```bash
-cd matimo
-pnpm install && pnpm build    # Build all packages
+cd matimo/typescript
+pnpm install && pnpm build      # build the workspace packages
 cd examples/tools
-pnpm install                   # Install example dependencies
+cp .env.example .env            # then fill in the keys you need
 
-# Run any example
-pnpm slack:factory             # 1️⃣ Factory pattern
-pnpm slack:decorator           # 2️⃣ Decorator pattern  
-pnpm slack:langchain           # 3️⃣ LangChain integration
-
-# Policy/Skills/Meta-Tools validation (advanced)
-pnpm meta:flow                 # Complete tool lifecycle
-printf "y\ny\ny\n" | npx tsx policy/policy-demo.ts   # Policy validation
-printf "y\ny\n" | npx tsx skills/skills-demo.ts      # Skills system
+pnpm slack:factory              # factory pattern
+pnpm slack:decorator            # decorator pattern
+pnpm slack:langchain            # LangChain agent (needs OPENAI_API_KEY)
 ```
 
-**Required Environment:**
-- Node.js 18+
-- `.env` file with API tokens (see `.env.example`)
+Requirements: Node.js 18+, and the provider credentials for the examples you run (`.env.example` lists them). LangChain examples also need `OPENAI_API_KEY`.
 
 ---
 
-## 1️⃣ Factory Pattern - Direct SDK Usage
+## The Three Patterns
 
-**Best for:** Scripts, APIs, backends, microservices | **Simplicity:** ⭐⭐⭐⭐⭐
-
-Load tools once, execute by name.
+### Factory — call a tool by name
 
 ```typescript
-import { MatimoInstance } from 'matimo';
+import { MatimoInstance } from '@matimo/core';
 
-const matimo = await MatimoInstance.init('./tools');
+const matimo = await MatimoInstance.init({ autoDiscover: true });
 const result = await matimo.execute('slack-send-message', {
-  channel: '#general',
+  channel: 'C0123456789',
   text: 'Hello from Matimo!',
 });
 ```
 
-**Files:**
-- [Factory Pattern - Full Example](./tools/factory-pattern-agent.ts)
-- [Slack Factory](./tools/slack/slack-factory.ts)
-- [Gmail Factory](./tools/gmail/gmail-factory.ts)
-- [Postgres Factory](./tools/postgres/postgres-factory.ts)
-
-**Real-World Use Cases:** Express.js endpoints | AWS Lambda | Cron jobs | Webhooks | CLI tools
-
----
-
-## 2️⃣ Decorator Pattern - Class-Based
-
-**Best for:** Object-oriented apps, clean architecture | **Simplicity:** ⭐⭐⭐⭐
-
-Use `@tool` decorators as class methods.
+### Decorator — `@tool` methods
 
 ```typescript
-import { MatimoInstance, setGlobalMatimoInstance, tool } from 'matimo';
-const matimo = await MatimoInstance.init('./tools');
+import { MatimoInstance, setGlobalMatimoInstance, tool } from '@matimo/core';
+
+const matimo = await MatimoInstance.init({ autoDiscover: true });
 setGlobalMatimoInstance(matimo);
 
 class SlackBot {
   @tool('slack-send-message')
-  async sendMessage(channel: string, text: string) {}
-  
+  async sendMessage(channel: string, text: string) {} // arguments map to the YAML parameters in order
+
   @tool('slack-list-channels')
   async listChannels() {}
 }
 
-const bot = new SlackBot();
-await bot.sendMessage('#general', 'Hello!');
+await new SlackBot().sendMessage('C0123456789', 'Hello!');
 ```
 
-**Files:**
-- [Decorator Pattern - Full Example](./tools/agents/decorator-pattern-agent.ts)
-- [Slack Decorator](./tools/agents/slack-decorator.ts)
-- [Gmail Decorator](./tools/agents/gmail-decorator.ts)
-- [Postgres Decorator](./tools/agents/postgres-decorator.ts)
+The method body never runs; the call goes through `matimo.execute()` with the same policy and approval checks. See the [Decorator Guide](../../docs/tool-development/DECORATOR_GUIDE.md).
 
-**Real-World Use Cases:** Class-based agents | NestJS services | Dependency injection | Microservices
-
----
-
-## 3️⃣ LangChain Integration - AI Agents
-
-**Best for:** AI automation, natural language | **Simplicity:** ⭐⭐⭐
-
-Let LLMs decide which tools to use.
+### LangChain — let the model choose
 
 ```typescript
-import { MatimoInstance, convertToolsToLangChain } from 'matimo';
+import { MatimoInstance, convertToolsToLangChain } from '@matimo/core';
 import { ChatOpenAI } from '@langchain/openai';
 
-// 1. Initialize Matimo
-const matimo = await MatimoInstance.init('./tools');
+const matimo = await MatimoInstance.init({ autoDiscover: true });
+const slackTools = matimo.listTools().filter((t) => t.name.startsWith('slack'));
+const tools = await convertToolsToLangChain(slackTools, matimo);
 
-// 2. Convert to LangChain format
-const langchainTools = await convertToolsToLangChain(
-  matimo.listTools(),
-  matimo
-);
-
-// 3. Create LLM with tools bound
-const llm = new ChatOpenAI({ model: 'gpt-4o-mini', temperature: 0 });
-const llmWithTools = llm.bindTools(langchainTools);
-
-// 4. Run agent with natural language goal
-const messages = [
-  { role: 'user', content: 'Send a message to #general saying hello' },
-];
-const result = await llmWithTools.invoke(messages);
+const llm = new ChatOpenAI({ model: 'gpt-4o-mini', temperature: 0 }).bindTools(tools);
+const reply = await llm.invoke([{ role: 'user', content: 'List my Slack channels' }]);
 ```
 
-**Files:**
-- [LangChain Integration - Full Example](./tools/agents/langchain-agent.ts)
-- [Slack LangChain](./tools/slack/slack-langchain.ts)
-- [Gmail LangChain](./tools/gmail/gmail-langchain.ts)
-- [Postgres LangChain](./tools/postgres/postgres-langchain.ts)
-
-**Real-World Use Cases:** AI chatbots | Autonomous agents | Natural language interfaces | Multi-step workflows
+Pass a short, relevant tool list: OpenAI rejects more than 128 tools. See [LangChain integration](../../docs/framework-integrations/LANGCHAIN.md).
 
 ---
 
-## Pattern Comparison
+## Scripts (run from `examples/tools/`)
 
-| Feature | Factory | Decorator | LangChain |
-|---------|---------|-----------|-----------|
-| **Simplicity** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐ |
-| **Best For** | Scripts, APIs | Classes | AI agents |
-| **Learning Curve** | 5 min | 10 min | 15 min |
-| **Type Safety** | Good | Excellent | Excellent |
-| **Framework Required** | None | None | LangChain |
+| Area | Scripts | Credentials |
+|------|---------|-------------|
+| Pattern overviews | `agent:factory`, `agent:decorator`, `agent:langchain`, `agent:skills-policy` | `OPENAI_API_KEY` |
+| Core tools | `<tool>:factory`, `:decorator`, `:langchain` for `read`, `edit`, `search`, `execute`, `web`, `web-scraper`, `extract-from-file`, `convert-to-file` | none for factory/decorator; `OPENAI_API_KEY` for langchain |
+| Slack | `slack:factory`, `slack:decorator`, `slack:langchain` | `SLACK_BOT_TOKEN` |
+| Gmail | `gmail:factory`, `gmail:decorator`, `gmail:langchain` | `GMAIL_ACCESS_TOKEN` |
+| GitHub | `github:factory`, `github:decorator`, `github:langchain`, `github:approval` | `GITHUB_TOKEN` |
+| HubSpot | `hubspot:factory`, `hubspot:decorator`, `hubspot:langchain` | `MATIMO_HUBSPOT_API_KEY` |
+| Notion | `notion:factory`, `notion:decorator`, `notion:langchain` | `NOTION_API_KEY` |
+| Microsoft | `microsoft:factory`, `microsoft:decorator`, `microsoft:langchain`, `microsoft:approval` | `MICROSOFT_GRAPH_ACCESS_TOKEN` |
+| Mailchimp | `mailchimp:factory`, `mailchimp:decorator`, `mailchimp:langchain` | `MAILCHIMP_API_KEY` |
+| Twilio | `twilio:factory`, `twilio:decorator`, `twilio:langchain` | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` |
+| Postgres | `postgres:factory`, `postgres:decorator`, `postgres:langchain`, `postgres:approval` | `MATIMO_POSTGRES_URL` or `MATIMO_POSTGRES_HOST`/`_PORT`/`_USER`/`_PASSWORD`/`_DB` |
+| Composio | `composio:factory`, `composio:decorator`, `composio:langchain`, `composio:approval` | `COMPOSIO_API_KEY`, connected account IDs |
+| Bruno | `bruno:complete`, `bruno:langchain` | Bruno CLI |
+| Credentials | `credentials:example` | per-call `credentials` |
+| Policy | `policy:demo`, `policy:audit`, `policy:approval-modes`, `policy:response-size` | `OPENAI_API_KEY` for `policy:demo` |
+| Skills | `skills:demo`, `skills:registry` | `OPENAI_API_KEY` for `skills:demo` |
+| Meta-tools | `meta:flow` | `OPENAI_API_KEY` |
+| Self-check | `validate:all`, `validate:policy`, `validate:skills`, `validate:meta` | none |
 
-Choose **Factory** if you just want to execute tools. Choose **Decorator** if building class-based apps. Choose **LangChain** if you want AI-powered automation.
-
----
-
-## Available Tools by Service
-
-### Slack Tools
-- `slack-send-message` - Send messages to channels
-- `slack-list-channels` - List all channels
-- `slack_get_channel_history` - Get message history
-- `slack_add_reaction` - Add emoji reactions
-- `slack_get_user_info` - Get user profiles
-- `slack_send_dm` - Send direct messages
-
-### Gmail Tools
-- `gmail-send-email` - Send emails
-- `gmail-list-messages` - List messages
-- `gmail-get-message` - Get message details
-- `gmail-create-draft` - Create drafts
-
-### Postgres Tools
-- `postgres-execute-sql` - Execute SQL queries with safety approval
-  - ✅ `SELECT` / `INSERT` - Auto-allowed
-  - 🔒 `UPDATE` / `DELETE` / `CREATE` - Requires approval
-  - Use `pnpm postgres:approval` to see interactive approval flow
-
-### Utility Tools
-- `calculator` - Math operations
-- `echo-tool` - Echo for testing
+The exact file behind each script is in [`tools/package.json`](./tools/package.json). Each provider directory has a README with setup details.
 
 ---
 
-## Advanced Examples: Policy & Skills
+## Approval in the Examples
 
-### Policy Engine Validation
+0.2.0 asks a human before these calls run:
 
-The policy system prevents dangerous tools from being created or executed.
+| Calls | Why |
+|-------|-----|
+| HTTP `DELETE` tools and `type: command` tools | Secure-mode default |
+| Tools with `requires_approval: true` in the YAML (e.g. `github-create-issue`, `edit`, `execute`) | Declared by the tool |
+| `postgres-execute-sql` when the `sql` contains a destructive keyword (`INSERT`, `UPDATE`, `DELETE`, `CREATE`, `DROP`, `ALTER`, …) | Keyword scan of `params.sql` |
 
-```bash
-# See agent learn policy boundaries
-printf "y\ny\ny\ny\ny\n" | npx tsx policy/policy-demo.ts
+`SELECT` queries run without a prompt. The GitHub, Microsoft and Postgres `-with-approval` examples install an approval callback that prompts in the terminal; type `y` to approve. `composio:approval` uses policy HITL instead (`onHITL` with `enableHITL`), because Composio tools are POST calls with no `requires_approval`.
 
-# What it validates:
-✅ Safe HTTP tools pass
-❌ Shell commands blocked
-❌ SSRF attacks blocked
-❌ Namespace hijacking blocked
-✅ Human approves risky tools
-```
+For unattended runs, pre-approve the tools you trust by name instead of disabling approval:
 
-**File:** [Policy Demo](./tools/policy/policy-demo.ts)
-
-**What it teaches:**
-- Policy blocks dangerous patterns in real-time
-- Agent learns from rejections and retries safely
-- Human-in-the-loop approval for risky operations
-- Complete audit trail of all decisions
-
----
-
-### Skills System Validation
-
-The skills system lets agents discover and apply instructional guides (SKILL.md files).
-
-```bash
-# See agent create and use skills
-printf "y\ny\ny\n" | npx tsx skills/skills-demo.ts
-
-# What it shows:
-✓ Create skills with YAML frontmatter
-✓ Discover available skills
-✓ Read and apply skill guidelines
-✓ Validate against spec
-✓ Use multiple skills together
-```
-
-**File:** [Skills Demo](./tools/skills/skills-demo.ts)
-
-**What it teaches:**
-- Progressive disclosure: list → read → apply
-- Skill creation with proper YAML structure
-- Spec validation and compliance
-- Multi-skill agent reasoning
-
----
-
-### Meta-Tools & Complete Lifecycle
-
-The most comprehensive example showing tool creation → validation → approval → execution.
-
-```bash
-# Complete workflow with human approval
-printf "y\ny\ny\ny\ny\ny\n" | npx tsx meta-flow/meta-tools-integration.ts
-
-# What it demonstrates:
-Step 1: Create HTTP tool (passes validation)
-Step 2: Attempt shell command (policy blocks)
-Step 3: Attempt SSRF attack (blocked)
-Step 4: Human approves safe tool
-Step 5: Registry reloads with new tool
-Step 6: Execute newly approved tool
-```
-
-**File:** [Meta-Tools Integration](./tools/meta-flow/meta-tools-integration.ts)
-
-**What it teaches:**
-- Real agent autonomy (discovers tools by description)
-- Policy enforcement in real-time
-- Human approval workflow (interactive prompts)
-- Complete tool lifecycle
-- Agent learning from policy rejections
-
----
-
-## Advanced: Postgres Approval Flow
-
-Postgres examples enforce safety by requiring approval for destructive operations.
-
-```bash
-# Interactive approval demo
-pnpm postgres:approval
-```
-
-**Workflow:**
-```
-Step 1: Discover tables (SELECT - auto-allowed)
-Step 2: Analyze structure (SELECT - auto-allowed)
-Step 3: Execute DELETE/UPDATE/CREATE (requires approval)
-  → Terminal prompt: "Do you approve? (yes/no): "
-  → When approved, tool executes
-```
-
-**Approval Rules:**
-| Operation | Status | Requires Approval? |
-|-----------|--------|-------------------|
-| SELECT | ✅ Safe | No |
-| INSERT | ⚠️ Modifies | No |
-| UPDATE / DELETE | 🔴 Dangerous | **Yes** |
-| CREATE / DROP / ALTER | 🔴 Dangerous | **Yes** |
-
-**Files:**
-- Factory: [postgres-factory.ts](./tools/agents/postgres-factory.ts)
-- Decorator: [postgres-decorator.ts](./tools/agents/postgres-decorator.ts)
-- LangChain: [postgres-langchain.ts](./tools/agents/postgres-langchain.ts)
-- Interactive Approval: [postgres-with-approval.ts](./tools/agents/postgres-with-approval.ts)
-
----
-
-## All Available Commands
-
-### Integration Patterns
-```bash
-pnpm slack:factory
-pnpm slack:decorator
-pnpm slack:langchain
-pnpm gmail:factory
-pnpm gmail:decorator
-pnpm gmail:langchain
-pnpm postgres:factory
-pnpm postgres:decorator
-pnpm postgres:langchain
-pnpm postgres:approval      # Interactive approval demo
-pnpm agent:factory
-pnpm agent:decorator
-pnpm agent:langchain
-```
-
-### Validation & Advanced
-```bash
-pnpm meta:flow              # Tool lifecycle validation
-npx tsx policy/policy-demo.ts       # Policy engine
-npx tsx skills/skills-demo.ts       # Skills system
-npx tsx validate-implementation.ts  # Run all validations
-```
-
-### CLI Commands
-```bash
-pnpm cli -- doctor <tool-dir>           # Validate tools + show policy
-pnpm cli -- review list                 # Show pending approvals
-pnpm cli -- review approve <name>       # Approve tool
-pnpm cli -- search <keyword>            # Search tools
-pnpm cli -- list                        # List all tools
-```
-
----
-
-## Tips & Troubleshooting
-
-### "Tool not found" Error
-Ensure tools are in the right directory structure:
-```
-tools/
-├── slack/
-│   └── tools/
-│       └── {tool-name}/
-│           └── definition.yaml
-├── gmail/
-│   └── tools/
-│       └── {tool-name}/
-│           └── definition.yaml
-```
-
-### "Permission denied" on Approval
-When running interactive examples, you need to **type** the approval:
-```bash
-npx tsx postgres-with-approval.ts
-# When prompted: "Do you approve? (yes/no): " type "yes"
-```
-
-For CI/CD, pre-approve the tools you trust by name:
 ```bash
 export MATIMO_APPROVED_PATTERNS="postgres-execute-sql"
 pnpm postgres:approval
 ```
 
-### "Module not found" in Examples
-Make sure to:
-1. Build main project: `pnpm build` (from matimo/ root)
-2. Install examples: `pnpm install` (from examples/tools/)
-3. Set environment: Create `.env` with your API tokens
-
-### Running Specific Examples
-```bash
-# Just the factory pattern
-npx tsx agents/factory-pattern-agent.ts
-
-# Just Slack decorator
-npx tsx agents/slack-decorator.ts
-
-# Interactive policy demo with auto-approval (5 approvals)
-printf "y\ny\ny\ny\ny\n" | npx tsx policy/policy-demo.ts
-```
-
-### Adding Your Own Tools
-1. Create tool YAML in `packages/{provider}/tools/{name}/definition.yaml`
-2. Load via: `await matimo.execute('your-tool-name', {...})`
-3. See main README for complete tool creation guide
+See [APPROVAL-SYSTEM.md](../../docs/api-reference/APPROVAL-SYSTEM.md) and [POLICY_AND_LIFECYCLE.md](../../docs/api-reference/POLICY_AND_LIFECYCLE.md).
 
 ---
 
-## Architecture Overview
+## Policy, Skills and Meta-Tool Demos
 
-All patterns use the same underlying layers:
+| Demo | Shows | Docs |
+|------|-------|------|
+| [`policy/policy-demo.ts`](./tools/policy/policy-demo.ts) | An agent creates tools; the content rules reject shell, SSRF and reserved-namespace attempts; a human approves the rest | [policy/README.md](./tools/policy/README.md) |
+| [`policy/audit-log-demo.ts`](./tools/policy/audit-log-demo.ts) | `JsonlFileSink` hash-chained audit log and `verifyAuditLog` | |
+| [`policy/approval-modes-demo.ts`](./tools/policy/approval-modes-demo.ts) | `onApproval`, pre-approved patterns, and `governanceMode` | |
+| [`skills/skills-demo.ts`](./tools/skills/skills-demo.ts) | Creating, listing, validating and loading SKILL.md files | [skills/README.md](./tools/skills/README.md) |
+| [`meta-flow/meta-tools-integration.ts`](./tools/meta-flow/meta-tools-integration.ts) | validate → create (draft) → approve → reload → execute | [META_TOOLS.md](../../docs/api-reference/META_TOOLS.md) |
+| [`agents/langchain-skills-policy-agent.ts`](./tools/agents/langchain-skills-policy-agent.ts) | A LangChain agent using skills and the policy engine together | |
 
-```
-Application Layer (Your code)
-    ↓ uses matimo.execute() or @tool decorators
-Matimo SDK Layer (MatimoInstance, ToolRegistry)
-    ↓ routes to correct executor
-Executor Layer (CommandExecutor, HttpExecutor, FunctionExecutor)
-    ↓ validates input with Zod
-Tool Definition Layer (YAML files)
-```
-
-All three patterns are equivalent at the execution layer - just different interfaces for different use cases.
+The interactive demos read answers from the terminal. To script them, pipe answers in, e.g. `printf "y\ny\n" | pnpm skills:demo`.
 
 ---
 
-## Next Steps
+## Environment
 
-1. **Try the patterns:** Run `pnpm slack:factory`, `pnpm slack:decorator`, `pnpm slack:langchain`
-2. **See validation:** Run `npx tsx policy/policy-demo.ts`
-3. **Add your own:** Follow [Tool Creation Guide](../tool-development/)
-4. **Integrate:** Use with LangChain, Decorator, or Factory in your app
-
-For more details, see the main [Matimo README](../../README.md).
-
-
-### LangChain Integration
+`tools/.env.example` lists every variable the examples read. The common ones:
 
 ```bash
-# Slack AI agent - Let GPT decide which Slack tool to use
-pnpm slack:langchain
-
-# Gmail AI agent - Let GPT handle Gmail
-pnpm gmail:langchain
-
-# Postgres AI agent - Let GPT execute SQL queries
-pnpm postgres:langchain
-
-# General AI agent - Full tool access via natural language
-pnpm agent:langchain
-```
-
-### Postgres with Approval Flow (Interactive)
-
-```bash
-# Run interactive Postgres example with approval flow
-# Demonstrates destructive SQL detection and approval workflow
-pnpm postgres:approval
-```
-
-This example requires a running Postgres instance. See [packages/postgres/README.md](../packages/postgres/README.md) for setup instructions.
-
----
-
-## Environment Setup
-
-Create `.env` file in `examples/tools/` with your API tokens:
-
-```bash
-# Slack (get from https://api.slack.com/apps)
-SLACK_BOT_TOKEN=xoxb-your-token-here
-
-# Gmail (see docs for OAuth2 setup)
-GMAIL_ACCESS_TOKEN=ya29.your-token-here
-
-# OpenAI (for LangChain examples, from platform.openai.com)
----
-
-## Environment Setup
-
-Create `.env` with your API keys:
-
-```bash
-# Slack
-SLACK_BOT_TOKEN=xoxb-your-token
-SLACK_APP_TOKEN=xapp-your-token
-
-# Gmail  
-GMAIL_ACCESS_TOKEN=ya29-your-token
-GMAIL_REFRESH_TOKEN=1//refresh-token
-
-# OpenAI (for LangChain examples)
-OPENAI_API_KEY=sk-your-key
-
-# Postgres (optional)
+OPENAI_API_KEY=sk-...                 # LangChain examples
+SLACK_BOT_TOKEN=xoxb-...
+GMAIL_ACCESS_TOKEN=ya29....
+GITHUB_TOKEN=ghp_...
 MATIMO_POSTGRES_URL=postgresql://user:password@localhost:5432/dbname
-# OR individual params:
-MATIMO_POSTGRES_HOST=localhost
-MATIMO_POSTGRES_PORT=5432
-MATIMO_POSTGRES_USER=user
-MATIMO_POSTGRES_PASSWORD=password
-MATIMO_POSTGRES_DB=matimo-test
-
-# Pre-approve the SQL tool by name (for CI/CD)
-# MATIMO_APPROVED_PATTERNS=postgres-execute-sql
 ```
 
-**Postgres (Optional):** 
-- Use Docker: `docker run -d -e POSTGRES_USER=user -e POSTGRES_PASSWORD=pass -e POSTGRES_DB=matimo-test -p 5432:5432 pgvector/pgvector:pg15`
-- Or use existing instance: update `.env` with connection details
+Any credential can also be set as `MATIMO_<NAME>`, or passed per call with `{ credentials: { NAME: value } }`. See [AUTHENTICATION.md](../../docs/user-guide/AUTHENTICATION.md).
 
----
+A local Postgres for the SQL examples:
 
-## File Structure
-
-```
-examples/tools/
-├── agents/                          # Integration pattern examples
-│   ├── factory-pattern-agent.ts
-│   ├── decorator-pattern-agent.ts
-│   └── langchain-agent.ts
-├── slack/ gmail/ postgres/          # Service-specific examples
-│   ├── {service}-factory.ts
-│   ├── {service}-decorator.ts
-│   └── {service}-langchain.ts
-├── policy/                          # Policy validation demo
-│   └── policy-demo.ts
-├── skills/                          # Skills system demo
-│   └── skills-demo.ts
-├── meta-flow/                       # Complete lifecycle demo
-│   └── meta-tools-integration.ts
-├── .env.example
-├── package.json
-└── README.md (this file)
+```bash
+docker run -d -e POSTGRES_USER=user -e POSTGRES_PASSWORD=pass -e POSTGRES_DB=matimo-test -p 5432:5432 postgres:16
 ```
 
 ---
 
-## Support
+## Troubleshooting
 
-- 📖 Main [README](../../README.md) and [Docs](../../docs)
-- 💬 [GitHub Discussions](https://github.com/tallclub/matimo/discussions)
-- 🐛 [Report Issues](https://github.com/tallclub/matimo/issues)
-- ⭐ [GitHub Repo](https://github.com/tallclub/matimo)
+| Symptom | Fix |
+|---------|-----|
+| `Cannot find module '@matimo/core'` | Run `pnpm install && pnpm build` in `typescript/`, then `pnpm install` in `examples/tools/` |
+| `TOOL_NOT_FOUND` | The tool's package isn't loaded: init with `autoDiscover: true` and check the name with `matimo.listTools()` |
+| `Authentication credentials are missing` | Set the variable named in the message (see `.env.example`) |
+| A call waits or is rejected for approval | Answer the prompt, or pre-approve with `MATIMO_APPROVED_PATTERNS` |
 
+---
+
+## Adding Your Own Tool
+
+Follow the [Tool Workflow](../../docs/tool-development/TOOL_WORKFLOW.md): YAML in `typescript/packages/<provider>/tools/<tool-name>/definition.yaml` (and the Python copy), tests in both SDKs, then factory, decorator, LangChain and (for writes) with-approval examples here.
+
+## See Also
+
+- [Main README](../../README.md) and [documentation index](../../docs/index.md)
+- [SDK Patterns](../../docs/user-guide/SDK_PATTERNS.md)
+- [GitHub Discussions](https://github.com/tallclub/matimo/discussions)

@@ -162,7 +162,7 @@ const matimo = await MatimoInstance.init({
 - ✅ Version-controlled security decisions
 - ✅ Easy for teams to understand what's allowed
 
-For more details, see [Policy Configuration Guide](../../../docs/tool-development/POLICY_AND_LIFECYCLE.md#policy-configuration).
+For more details, see [Policy Configuration Guide](../../../../docs/api-reference/POLICY_AND_LIFECYCLE.md#policy-configuration).
 
 ## Running the Demo
 

@@ -111,7 +111,7 @@ pnpm mailchimp:decorator
 
 **Key Code:**
 ```typescript
-import { setGlobalMatimoInstance, tool } from 'matimo';
+import { setGlobalMatimoInstance, tool } from '@matimo/core';
 
 const matimo = await MatimoInstance.init({ autoDiscover: true });
 setGlobalMatimoInstance(matimo);
@@ -176,7 +176,7 @@ pnpm mailchimp:langchain
 
 **Key Code:**
 ```typescript
-import { MatimoInstance, convertToolsToLangChain } from 'matimo';
+import { MatimoInstance, convertToolsToLangChain } from '@matimo/core';
 import { ChatOpenAI } from '@langchain/openai';
 
 const matimo = await MatimoInstance.init({ autoDiscover: true });
@@ -232,7 +232,7 @@ All examples work with these Mailchimp operations:
 | **Campaigns** | `mailchimp-create-campaign` | Create a draft email campaign |
 | **Campaigns** | `mailchimp-send-campaign` | Send a campaign ⚠️ Requires Approval |
 
-See [packages/mailchimp/README.md](../../packages/mailchimp/README.md) for complete parameter documentation.
+See [packages/mailchimp/README.md](../../../packages/mailchimp/README.md) for complete parameter documentation.
 
 ---
 
@@ -293,9 +293,9 @@ pnpm install
 
 ## 📖 Full Documentation
 
-- **Package Docs:** [packages/mailchimp/README.md](../../packages/mailchimp/README.md)
+- **Package Docs:** [packages/mailchimp/README.md](../../../packages/mailchimp/README.md)
 - **Mailchimp API Reference:** https://mailchimp.com/developer/marketing/api/
-- **Matimo Documentation:** [docs/getting-started/](../../docs/getting-started/)
+- **Matimo Documentation:** [docs/getting-started/](../../../../docs/getting-started/QUICK_START.md)
 
 ---
 
@@ -318,4 +318,4 @@ pnpm install
 
 ---
 
-**Questions?** See [CONTRIBUTING.md](../../CONTRIBUTING.md) or review the Matimo core documentation.
+**Questions?** See [CONTRIBUTING.md](../../../../CONTRIBUTING.md) or review the Matimo core documentation.

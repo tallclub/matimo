@@ -68,7 +68,6 @@
     "composio:approval": "tsx composio/composio-with-approval.ts",
     "bruno:complete": "tsx ./bruno/bruno-complete-workflow.ts",
     "bruno:langchain": "tsx ./bruno/bruno-langchain-agent.ts",
-    "debug:discovery": "tsx ./debug-discovery.ts",
     "credentials:example": "tsx credentials/credentials-example.ts",
     "policy:demo": "tsx policy/policy-demo.ts",
     "policy:audit": "tsx policy/audit-log-demo.ts",

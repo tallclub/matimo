@@ -365,7 +365,7 @@ examples/tools/
 ├── QUICK_COMMANDS.md                   # Complete reference (50+ examples)
 └── README.md                           # This file
 
-**Key:** All examples load tools from: `../../tools/` (parent project's tool definitions)
+**Key:** The examples load tools with `autoDiscover: true`: the core tools plus the `@matimo/*` packages in `package.json`.
 **Pattern:** Each category (provider, feature) has 3 file variants:
 - `*-factory.ts` - Use MatimoInstance.execute()
 - `*-decorator.ts` - Use @tool() decorators
@@ -376,89 +376,48 @@ examples/tools/
 
 ## 🛠️ Converting Matimo Tools to LangChain
 
-### Approach 1: Official LangChain API (⭐ Recommended)
-
-Use LangChain's native `tool()` function with Zod schemas:
+### Approach 1: `convertToolsToLangChain` (⭐ Recommended)
 
 ```typescript
-import { tool } from 'langchain';
-import { z } from 'zod';
-import { MatimoInstance } from 'matimo';
+import { createAgent } from 'langchain';
+import { ChatOpenAI } from '@langchain/openai';
+import { MatimoInstance, convertToolsToLangChain } from '@matimo/core';
 
-// 1. Load Matimo tools
-const matimo = await MatimoInstance.init('./tools');
+// 1. Load Matimo tools (built-ins + installed @matimo/* packages)
+const matimo = await MatimoInstance.init({ autoDiscover: true });
 
-// 2. Convert each Matimo tool to LangChain tool
-function convertMatimoTool(matimo: MatimoInstance, toolName: string) {
-  const matimoTool = matimo.getTool(toolName);
+// 2. Convert the tools the agent needs; each call still goes through matimo.execute()
+const tools = await convertToolsToLangChain([matimo.getTool('calculator')!], matimo);
 
-  // Build Zod schema from Matimo parameters
-  const schemaShape = {};
-  Object.entries(matimoTool.parameters).forEach(([paramName, param]) => {
-    let fieldSchema = z.string(); // Map Matimo types to Zod
-    if (!param.required) fieldSchema = fieldSchema.optional();
-    schemaShape[paramName] = fieldSchema;
-  });
+// 3. Create the agent
+const agent = createAgent({ model: new ChatOpenAI({ model: 'gpt-4o-mini' }), tools });
 
-  // Create LangChain tool
-  return tool(
-    async (input) => {
-      // Execute via Matimo (the real tool execution)
-      const result = await matimo.execute(toolName, input);
-      return JSON.stringify(result);
-    },
-    {
-      name: matimoTool.name,
-      description: matimoTool.description,
-      schema: z.object(schemaShape),
-    }
-  );
-}
+// 4. Invoke it
+await agent.invoke({ messages: [{ role: 'user', content: 'What is 42 plus 8?' }] });
+```
 
-// 3. Create agent with tools
-const agent = await createAgent({
-  model: 'gpt-4o-mini',
-  tools: matimoTools.map(t => convertMatimoTool(matimo, t.name)),
-});
-
-// 4. Invoke agent
-await agent.invoke({
-  messages: [{ role: 'user', content: 'What is 42 plus 8?' }],
-});
-````
-
-**Why this works:**
-
-- ✅ LangChain handles all schema management
-- ✅ Automatic parameter validation
-- ✅ Native function calling with OpenAI
-- ✅ Zero manual schema binding
-- ✅ ~10 lines of tool conversion code
-- ✅ All Matimo features preserved
+The helper builds each tool's Zod schema from its YAML parameters, hides secret-looking parameters from the model (pass their values as the third argument), and returns `"Error: …"` text to the model when a call fails.
 
 ### Approach 2: Decorator Pattern
 
 Use Matimo's `@tool()` decorator for method-based calling:
 
 ```typescript
-import { tool, setGlobalMatimoInstance, MatimoInstance } from 'matimo';
+import { tool, setGlobalMatimoInstance, MatimoInstance } from '@matimo/core';
 
-// 1. Load tools from YAML
-const matimo = await MatimoInstance.init('./tools');
+// 1. Load tools
+const matimo = await MatimoInstance.init({ autoDiscover: true });
 setGlobalMatimoInstance(matimo);
 
-// 2. Define agent class with decorated methods
+// 2. Define a class with decorated methods
 class MyAgent {
-  // @tool decorator intercepts call and executes via Matimo
+  // Arguments map to the YAML parameters in order; the body never runs
   @tool('calculator')
-  async calculator(operation: string, a: number, b: number) {
-    throw new Error('Decorator handles execution');
-  }
+  async calculator(operation: string, a: number, b: number) {}
 }
 
-// 3. Call decorated method
-const agent = new MyAgent();
-const result = await agent.calculator('add', 5, 3); // Decorator intercepts → Matimo executes
+// 3. Call the decorated method
+const result = await new MyAgent().calculator('add', 5, 3); // → matimo.execute('calculator', …)
 ```
 
 ### Approach 3: Factory Pattern
@@ -466,20 +425,16 @@ const result = await agent.calculator('add', 5, 3); // Decorator intercepts → 
 Use `MatimoInstance.init()` then direct `execute()` calls:
 
 ```typescript
-import { MatimoInstance } from 'matimo';
+import { MatimoInstance } from '@matimo/core';
 
-// 1. Initialize Matimo with tools directory
-const matimo = await MatimoInstance.init('./tools');
+// 1. Initialize Matimo
+const matimo = await MatimoInstance.init({ autoDiscover: true });
 
 // 2. List all available tools
 const tools = matimo.listTools();
 
 // 3. Execute tools directly
-const result = await matimo.execute('calculator', {
-  operation: 'add',
-  a: 5,
-  b: 3,
-});
+const result = await matimo.execute('calculator', { operation: 'add', a: 5, b: 3 });
 ```
 
 ## 🔄 How It Works: Matimo + LangChain Integration
@@ -504,10 +459,10 @@ The beauty of Matimo is that it stays **completely independent**:
 │  │    { operation: 'add', a: 42, b: 8 }             │   │
 │  │  );                                              │   │
 │  │      ↓                                           │   │
-│  │  Matimo loads: tools/calculator.yaml             │   │
-│  │  Validates params against schema                 │   │
-│  │  Executes: node calculator.js --op add 42 8      │   │
-│  │  Parses output                                   │   │
+│  │  Policy check + approval (if the tool needs it)  │   │
+│  │  Executes the calculator function tool           │   │
+│  │  Emits tool:executed for the audit log           │   │
+│  │                                                  │   │
 │  │      ↓                                           │   │
 │  │  Returns: { result: 50 }                         │   │
 │  └──────────────────────────────────────────────────┘   │
@@ -522,7 +477,7 @@ The beauty of Matimo is that it stays **completely independent**:
 
 - ✅ Matimo tools work the same in any framework
 - ✅ No framework-specific tool reimplementation
-- ✅ Add tool to `tools/*.yaml`, it appears everywhere
+- ✅ Add a tool's `definition.yaml`, it appears everywhere
 - ✅ Changes to tool YAML automatically reflect in all frameworks
 
 ## ✅ Verification: Matimo Executes, Not LangChain
@@ -544,7 +499,7 @@ This proves:
 
 1. ✅ LangChain selected the `calculator` tool
 2. ✅ LangChain called the tool wrapper
-3. ✅ **Matimo executed the actual tool** (via CommandExecutor)
+3. ✅ **Matimo executed the actual tool** (via FunctionExecutor)
 4. ✅ Result flowed back through both frameworks
 
 Not a LangChain tool - a **Matimo tool executed through LangChain's orchestration**.
@@ -553,34 +508,16 @@ Not a LangChain tool - a **Matimo tool executed through LangChain's orchestratio
 
 ### "Define Tools ONCE, Use EVERYWHERE" - The Matimo Philosophy
 
-Tools are defined in `../../tools/*.yaml` **ONCE**:
-
-```yaml
-# tools/calculator.yaml
-name: calculator
-description: Perform math operations
-parameters:
-  operation:
-    type: string
-    enum: [add, subtract, multiply, divide]
-  a:
-    type: number
-  b:
-    type: number
-execution:
-  type: command
-  command: node calculator.js
-  args: ['--op', '{operation}', '{a}', '{b}']
-```
+Each tool is one `definition.yaml`, e.g. `typescript/packages/core/tools/calculator/definition.yaml` (a `type: function` tool with `calculator.ts` beside it) or `typescript/packages/github/tools/get-repository/definition.yaml` (a `type: http` tool).
 
 These same tools are used in:
 
 - ✅ This example: **LangChain agents** (via both patterns)
 - ✅ **Matimo SDK direct**: `await matimo.execute('calculator', params)`
 - ✅ **MCP Server**: Claude can call them natively
-- ✅ **REST API**: HTTP endpoints (Phase 2)
+- ✅ **MCP over HTTP**: `createMCPServer({ transport: 'http' })`
 - ✅ **CLI**: Command-line tool runner
-- ✅ **CrewAI, LlamaIndex, etc.**: Framework integration
+- ✅ **Python**: the same YAML in `matimo` (LangChain, CrewAI, Agno)
 
 **No duplication. No reimplementation. Pure reusability.**
 
@@ -588,17 +525,7 @@ Both this example's agents use the exact same YAML tools - just different callin
 
 ## 🚀 Available Tools
 
-These examples work with whatever tools are in `../../tools/`:
-
-| Tool         | Type    | Purpose                                           |
-| ------------ | ------- | ------------------------------------------------- |
-| `calculator` | Command | Math operations (add, subtract, multiply, divide) |
-| `echo`       | Command | Echo messages back                                |
-| `http`       | HTTP    | Make HTTP requests (GET, POST, etc.)              |
-
-**Framework Independence:** Add any tool to `../../tools/` and it automatically appears in all three agents. No code changes needed.
-
-(See parent project's `tools/` directory for all available tools)
+With `autoDiscover: true` the examples see the core tools (`calculator`, `read`, `edit`, `search`, `execute`, `web`, `web_scraper`, `extract_from_file`, `convert_to_file`, and the `matimo_*` meta-tools) plus every `@matimo/*` package in `package.json`. List them with `matimo.listTools()`.
 
 ## 🧪 Testing
 
@@ -658,19 +585,19 @@ npm run agent:langchain   # or agent:decorator, agent:factory
 
 ### Intermediate
 4. **Modify example prompts** - edit `agents/*.ts` or provider files to change queries
-5. **Add custom tools** - create `../../tools/custom-tool/definition.yaml`, they auto-appear in all examples
+5. **Add custom tools** - put `my-tool/definition.yaml` in a directory and pass it in `toolPaths`
 6. **Extend agents** - add memory, streaming, custom system prompts, better error handling
 
 ### Advanced
 7. **Use advanced features** - try `npm run meta:flow` (meta-tools), `pnpm policy:demo` (validation), `pnpm skills:demo` (reusable skills)
 8. **Implement approvals** - try PostgreSQL/GitHub approval workflows: `npm run postgres:approval`, `npm run github:approval`
-9. **Deploy to production** - use Matimo REST API (Phase 2) or MCP server for Claude integration
+9. **Deploy** - serve the tools over MCP (`npx matimo mcp`, see [MCP.md](../../../docs/MCP.md)) or call them from your own service
 
 ## 🔗 Related Documentation
 
-- [Matimo API Reference](../../docs/api-reference/SDK.md)
-- [Tool Specification](../../docs/tool-development/TOOL_SPECIFICATION.md)
-- [Decorator Guide](../../docs/tool-development/DECORATOR_GUIDE.md)
+- [Matimo API Reference](../../../docs/api-reference/SDK.md)
+- [Tool Specification](../../../docs/tool-development/TOOL_SPECIFICATION.md)
+- [Decorator Guide](../../../docs/tool-development/DECORATOR_GUIDE.md)
 - [LangChain Documentation](https://docs.langchain.com/)
 - [OpenAI API](https://platform.openai.com/docs/)
 
@@ -684,7 +611,7 @@ These examples prove Matimo's core value proposition:
 **Use them with FIVE core features** (Execute, Read, Edit, Search, Web) ↓  
 **Use them for API testing** (Bruno CLI - create, run, import, inspect collections) ↓  
 **Use them with advanced capabilities** (Meta-tools, Policy, Skills, Approvals) ↓  
-**Use them EVERYWHERE**: LangChain, SDK, CrewAI, MCP, REST API, CLI ↓  
+**Use them EVERYWHERE**: LangChain, SDK, CrewAI, Agno, MCP, CLI ↓  
 
 **Zero duplication. Pure productivity.**
 
