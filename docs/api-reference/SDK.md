@@ -147,7 +147,9 @@ interface ExecuteOptions {
 **Throws:**
 
 - `MatimoError(TOOL_NOT_FOUND)` - If tool name doesn't exist
-- `MatimoError(PARAMETER_VALIDATION)` - If params don't match tool schema
+- `MatimoError(INVALID_PARAMETER)` - If params don't match tool schema
+- `MatimoError(POLICY_DENIED)` - If the policy engine, a draft/production gate or a HITL reviewer refuses the call
+- `MatimoError(EXECUTION_FAILED)` - If the call needs approval and is declined or nobody can answer
 - `MatimoError(EXECUTION_FAILED)` - If tool execution fails
 - `MatimoError(AUTH_FAILED)` - If authentication fails
 - `MatimoError(TIMEOUT)` - If execution exceeds timeout
