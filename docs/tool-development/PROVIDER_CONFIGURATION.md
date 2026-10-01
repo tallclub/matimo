@@ -116,19 +116,17 @@ const handler = new OAuth2Handler({
   // No endpoints provided, env var checked
 });
 
-// Else use tools/google/definition.yaml (Priority 3)
-const handler = new OAuth2Handler({
-  provider: 'google',
-  clientId: '...',
-  // No endpoints or env vars, loads from YAML
-});
+// Else use the provider's definition.yaml (Priority 3) — needs a loaded loader
+const loader = new OAuth2ProviderLoader('./node_modules/@matimo');
+await loader.loadProviders();
+const handler = new OAuth2Handler({ provider: 'google', clientId: '...', clientSecret: '...', redirectUri: '...' }, loader);
 ```
 
 ## Adding a New Provider
 
 ### Step 1: Create Provider Definition File
 
-Create `tools/[provider-name]/definition.yaml`:
+Create `typescript/packages/<provider>/definition.yaml` (and the Python copy in `python/packages/<provider>/src/matimo_<provider>/definition.yaml`):
 
 ```yaml
 name: microsoft-provider
@@ -154,17 +152,23 @@ provider:
 
 ### Step 2: Use in Code
 
-The provider loader automatically discovers the provider:
+Load the provider definitions, then pass the loader to the handler:
 
 ```typescript
-import { OAuth2Handler } from '@matimo/oauth2';
+import { OAuth2Handler, OAuth2ProviderLoader } from '@matimo/core';
 
-const oauth2 = new OAuth2Handler({
-  provider: 'microsoft', // Provider name from definition.yaml
-  clientId: process.env.MICROSOFT_CLIENT_ID,
-  clientSecret: process.env.MICROSOFT_CLIENT_SECRET,
-  redirectUri: 'http://localhost:3000/callback',
-});
+const loader = new OAuth2ProviderLoader('./node_modules/@matimo'); // directory holding the provider packages
+await loader.loadProviders();
+
+const oauth2 = new OAuth2Handler(
+  {
+    provider: 'microsoft', // provider.name from definition.yaml
+    clientId: process.env.MICROSOFT_CLIENT_ID!,
+    clientSecret: process.env.MICROSOFT_CLIENT_SECRET!,
+    redirectUri: 'http://localhost:3000/callback',
+  },
+  loader
+);
 
 // Get authorization URL
 const authUrl = oauth2.getAuthorizationUrl({
@@ -187,7 +191,7 @@ export OAUTH_MICROSOFT_REVOKE_URL=https://custom-idp.company.com/revoke
 
 ### Google (Gmail)
 
-**File:** `tools/gmail/definition.yaml`
+**File:** `typescript/packages/gmail/definition.yaml`
 
 ```yaml
 name: google-provider
@@ -213,7 +217,7 @@ provider:
 
 ### GitHub
 
-**File:** `tools/github/definition.yaml`
+**File:** `typescript/packages/github/definition.yaml`
 
 ```yaml
 name: github-provider
@@ -238,7 +242,7 @@ provider:
 
 ### Slack
 
-**File:** `tools/slack/definition.yaml`
+**File:** `typescript/packages/slack/definition.yaml`
 
 ```yaml
 name: slack-provider
@@ -266,15 +270,18 @@ provider:
 Matimo handles OAuth2 flows but **does NOT store tokens**. Token storage is your responsibility:
 
 ```typescript
-import { OAuth2Handler } from '@matimo/oauth2';
+import { OAuth2Handler } from '@matimo/core';
 
-// 1. Initialize handler
-const oauth2 = new OAuth2Handler({
-  provider: 'google',
-  clientId: '...',
-  clientSecret: '...',
-  redirectUri: 'http://localhost:3000/callback',
-});
+// 1. Initialize handler (loader as in "Adding a New Provider")
+const oauth2 = new OAuth2Handler(
+  {
+    provider: 'google',
+    clientId: '...',
+    clientSecret: '...',
+    redirectUri: 'http://localhost:3000/callback',
+  },
+  loader
+);
 
 // 2. Generate auth URL
 const authUrl = oauth2.getAuthorizationUrl({
@@ -284,18 +291,19 @@ const authUrl = oauth2.getAuthorizationUrl({
 // → Redirect user to authUrl
 
 // 3. Exchange code for token
-const token = await oauth2.exchangeCodeForToken('user-123', authCode);
+const token = await oauth2.exchangeCodeForToken(authCode, 'user-123');
 // Result: { accessToken, refreshToken, expiresAt, ... }
 
 // 4. YOU store the token (database, Redis, file, etc.)
 await database.saveToken('user-123', token);
 
 // 5. Later, retrieve and use the token with Matimo tools
-const stored = await database.getToken('user-123');
-await matimo.execute('gmail-send-email', {
-  to: 'recipient@example.com',
-  GMAIL_ACCESS_TOKEN: stored.accessToken, // ← Pass token here
-});
+const stored = await oauth2.refreshTokenIfNeeded('user-123', await database.getToken('user-123'));
+await matimo.execute(
+  'gmail-send-email',
+  { to: 'recipient@example.com', subject: 'Hi', body: 'Hello' },
+  { credentials: { GMAIL_ACCESS_TOKEN: stored.accessToken } } // ← per-call, never shown to the model
+);
 ```
 
 ## Dynamic Provider Discovery
@@ -303,14 +311,14 @@ await matimo.execute('gmail-send-email', {
 The provider loader automatically discovers all providers from YAML files:
 
 ```typescript
-import { OAuth2ProviderLoader } from '@matimo/auth';
+import { OAuth2ProviderLoader } from '@matimo/core';
 
-const loader = new OAuth2ProviderLoader('./tools');
-const providers = await loader.loadProviders();
+const loader = new OAuth2ProviderLoader('./node_modules/@matimo');
+const providers = await loader.loadProviders(); // Map<name, endpoints>
 
 // List all discovered providers
-const providerNames = providers.keys();
-// Output: ['google', 'github', 'slack', 'microsoft', ...]
+loader.listProviders();
+// Output: ['github', 'google', 'hubspot', 'microsoft', 'notion', 'slack']
 
 // Get endpoints for specific provider
 const googleEndpoints = providers.get('google');
@@ -438,12 +446,12 @@ MatimoError: Unsupported OAuth2 provider: custom. Provide endpoints via:
   3. tools/custom/definition.yaml (YAML configuration)
 ```
 
-**Solution:** Create `tools/custom/definition.yaml` with provider definition
+**Solution:** Pass `endpoints`, set both `OAUTH_<PROVIDER>_*_URL` variables, or create the provider's `definition.yaml` and pass a loader on which you called `loadProviders()`. A handler built without a loader looks in `./tools` and never loads it, so only the first two options work there.
 
 ### Invalid Provider Definition
 
 ```
-MatimoError: Invalid provider definition: Missing required field 'endpoints'
+MatimoError: Provider validation failed: …
 ```
 
 **Solution:** Ensure YAML has required fields:
