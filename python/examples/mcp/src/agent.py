@@ -101,7 +101,7 @@ def parse_args() -> Config:
     args = sys.argv[1:]
 
     transport = os.getenv("MCP_TRANSPORT", "stdio")
-    http_url = os.getenv("MCP_SERVER_URL", "http://localhost:3555/mcp")
+    http_url = os.getenv("MCP_SERVER_URL", "http://localhost:3101/mcp")
     bearer_token = os.getenv("MCP_BEARER_TOKEN") or os.getenv("MATIMO_MCP_TOKEN")
     model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
@@ -154,7 +154,7 @@ TRANSPORT OPTIONS:
   --multi          Both stdio + HTTP simultaneously (tools merged)
 
 HTTP OPTIONS:
-  --url URL        MCP server URL (default: http://localhost:3555/mcp)
+  --url URL        MCP server URL (default: http://localhost:3101/mcp)
   --token TOKEN    Bearer token for authentication
 
 GENERAL OPTIONS:
@@ -168,7 +168,7 @@ EXAMPLES:
 
 ENVIRONMENT VARIABLES:
   MCP_TRANSPORT       Transport type (stdio|http|multi)
-  MCP_SERVER_URL      HTTP server URL (default: http://localhost:3555/mcp)
+  MCP_SERVER_URL      HTTP server URL (default: http://localhost:3101/mcp)
   MCP_BEARER_TOKEN    Bearer token for authentication
   MATIMO_MCP_TOKEN    Alternative bearer token env var
   OPENAI_MODEL        OpenAI model (default: gpt-4o-mini)
@@ -241,46 +241,46 @@ async def main() -> None:
 
     # ── Initialize MCP client ──────────────────────────────────────────────────
     print("🚀 Initialising Matimo MCP...")
-    async with MultiServerMCPClient(mcp_servers) as client:
-        tools = client.get_tools()
-        print(f"📦 Loaded {len(tools)} tools from Matimo MCP:\n")
+    client = MultiServerMCPClient(mcp_servers)
+    tools = await client.get_tools()
+    print(f"📦 Loaded {len(tools)} tools from Matimo MCP:\n")
 
-        # Group and display tools
-        tool_groups: dict[str, list[str]] = {}
-        for t in tools:
-            prefix = t.name.split("_")[0] if "_" in t.name else "other"
-            if prefix not in tool_groups:
-                tool_groups[prefix] = []
-            tool_groups[prefix].append(t.name)
+    # Group and display tools
+    tool_groups: dict[str, list[str]] = {}
+    for t in tools:
+        prefix = t.name.split("_")[0] if "_" in t.name else "other"
+        if prefix not in tool_groups:
+            tool_groups[prefix] = []
+        tool_groups[prefix].append(t.name)
 
-        for prefix in sorted(tool_groups.keys()):
-            names = tool_groups[prefix]
-            print(f"  📌 {prefix} ({len(names)} tools)")
-            for name in names[:3]:  # Show first 3
-                print(f"     • {name}")
-            if len(names) > 3:
-                print(f"     • ... and {len(names) - 3} more")
+    for prefix in sorted(tool_groups.keys()):
+        names = tool_groups[prefix]
+        print(f"  📌 {prefix} ({len(names)} tools)")
+        for name in names[:3]:  # Show first 3
+            print(f"     • {name}")
+        if len(names) > 3:
+            print(f"     • ... and {len(names) - 3} more")
 
-        print()
+    print()
 
-        if not tools:
-            print("❌ No tools loaded. Check your configuration and server status.")
-            sys.exit(1)
+    if not tools:
+        print("❌ No tools loaded. Check your configuration and server status.")
+        sys.exit(1)
 
-        bound_tools = _cap_tools(tools)
-        if len(bound_tools) < len(tools):
-            print(
-                f"⚠️  Capped to {len(bound_tools)} tools for the LLM (OpenAI's 128-tool "
-                "limit; prioritized slack/gmail/github/postgres for this demo's task)\n"
-            )
+    bound_tools = _cap_tools(tools)
+    if len(bound_tools) < len(tools):
+        print(
+            f"⚠️  Capped to {len(bound_tools)} tools for the LLM (OpenAI's 128-tool "
+            "limit; prioritized slack/gmail/github/postgres for this demo's task)\n"
+        )
 
-        # ── Build agent ───────────────────────────────────────────────────────
-        print("🤖 Initialising OpenAI LLM...")
-        llm = ChatOpenAI(model=config["model"], temperature=0)
-        agent = create_react_agent(llm, bound_tools)
+    # ── Build agent ───────────────────────────────────────────────────────
+    print("🤖 Initialising OpenAI LLM...")
+    llm = ChatOpenAI(model=config["model"], temperature=0)
+    agent = create_react_agent(llm, bound_tools)
 
-        # ── Task prompt ───────────────────────────────────────────────────────
-        task = f"""
+    # ── Task prompt ───────────────────────────────────────────────────────
+    task = f"""
 You have access to various tools for interacting with multiple services.
 Please perform these tasks:
 
@@ -306,15 +306,15 @@ For each service, attempt the operation and report:
 
 Summarize at the end which services are working and which are missing.
 """
-        print("🧠 Running agent tasks...\n")
-        print("─" * 60)
+    print("🧠 Running agent tasks...\n")
+    print("─" * 60)
 
-        response = await agent.ainvoke({"messages": [HumanMessage(content=task)]})
-        final = response["messages"][-1].content
+    response = await agent.ainvoke({"messages": [HumanMessage(content=task)]})
+    final = response["messages"][-1].content
 
-        print("\n" + "─" * 60)
-        print("\n✅ Agent complete. Summary:\n")
-        print(final)
+    print("\n" + "─" * 60)
+    print("\n✅ Agent complete. Summary:\n")
+    print(final)
 
     print("\n" + "=" * 60)
     print("Agent session finished.\n")
