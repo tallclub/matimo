@@ -64,7 +64,7 @@ MCP Options:
 Examples:
   # Install new tools
   $ matimo install slack
-  $ matimo install gmail stripe
+  $ matimo install gmail github
   
   # List all installed tools
   $ matimo list

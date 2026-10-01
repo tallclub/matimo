@@ -2,13 +2,13 @@ import { execFileSync } from 'child_process';
 
 /**
  * Install command - Install a specific tool package
- * matimo install slack gmail stripe
+ * matimo install slack gmail github
  */
 export async function installCommand(toolNames: string[]): Promise<void> {
   if (!toolNames || toolNames.length === 0) {
     console.error('❌ Error: Please specify at least one tool to install');
     console.info('\nUsage: matimo install [tool1] [tool2] [tool3]...');
-    console.info('Example: matimo install slack gmail stripe');
+    console.info('Example: matimo install slack gmail github');
     process.exit(1);
   }
 
