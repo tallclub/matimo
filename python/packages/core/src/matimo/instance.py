@@ -602,6 +602,10 @@ class Matimo:
         """List a skill's sections and their token costs (Level 2.5 progressive disclosure)."""
         return self._skill_registry.get_skill_sections(name)
 
+    def get_approval_manifest(self) -> ApprovalManifest | None:
+        """The manifest that records approvals made with matimo_approve_tool."""
+        return self._approval_manifest
+
     def get_skill_paths(self) -> list[str]:
         """Return the configured skill directories."""
         return list(self._skill_paths)

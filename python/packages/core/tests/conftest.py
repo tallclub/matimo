@@ -3,6 +3,7 @@ Shared pytest fixtures for the Matimo Python SDK test suite.
 """
 from __future__ import annotations
 
+from collections.abc import Iterator
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -185,3 +186,18 @@ async def matimo_instance(http_tool: ToolDefinition) -> Matimo:
         on_hitl=None,
         matimo_logger=setup_logger("silent"),
     )
+
+
+# ---------------------------------------------------------------------------
+# Process-wide state
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def _reset_global_matimo_instance() -> Iterator[None]:
+    """Meta-tools resolve their instance through a process global; never leak one between tests."""
+    from matimo.decorators import set_global_matimo_instance
+
+    set_global_matimo_instance(None)
+    yield
+    set_global_matimo_instance(None)

@@ -11,6 +11,7 @@ import yaml
 
 if TYPE_CHECKING:
     from matimo.executors.function_executor import FunctionToolContext
+    from matimo.policy.approval_manifest import ApprovalManifest
 
 logger = logging.getLogger("matimo")
 
@@ -104,7 +105,7 @@ async def run(params: dict, context: FunctionToolContext | None = None) -> dict:
 
     final_content = def_path.read_text(encoding="utf-8")
     content_hash = hashlib.sha256(final_content.encode("utf-8")).hexdigest()
-    manifest = ApprovalManifest(str(Path(tool_dir).resolve()))
+    manifest = _owner_approval_manifest() or ApprovalManifest(str(Path(tool_dir).resolve()))
     record = manifest.approve(name, content_hash)
 
     logger.info("matimo_approve_tool: approved name=%s", name)
@@ -115,3 +116,16 @@ async def run(params: dict, context: FunctionToolContext | None = None) -> dict:
         "approvedAt": record.approved_at,
         "message": "Tool approved. Effective after reload or immediately if auto-reload is active.",
     }
+
+
+def _owner_approval_manifest() -> ApprovalManifest | None:
+    """
+    The approval manifest of the instance that owns this call. Recording the
+    approval there means the instance's next reload sees it, signed with the
+    same secret and stored where that instance looks; a manifest of our own
+    would sign with a different ephemeral secret when none is configured.
+    """
+    from matimo.decorators import get_global_matimo_instance
+
+    owner = get_global_matimo_instance()
+    return owner.get_approval_manifest() if owner is not None else None

@@ -6,6 +6,7 @@ import {
   validateToolContent,
   ApprovalManifest,
   getGlobalMatimoLogger,
+  getGlobalMatimoInstance,
 } from '@matimo/core';
 import type { Violation, FunctionToolContext } from '@matimo/core';
 
@@ -111,8 +112,9 @@ export default async function matimoApproveTool(
   // ever match the tool's own post-approval file — approvals would silently
   // never validate.
   const finalContent = fs.readFileSync(defPath, 'utf-8');
-  const approvalDir = path.resolve(toolDir);
-  const manifest = new ApprovalManifest(approvalDir, context?.credentials?.MATIMO_APPROVAL_SECRET);
+  const manifest =
+    ownerApprovalManifest() ??
+    new ApprovalManifest(path.resolve(toolDir), context?.credentials?.MATIMO_APPROVAL_SECRET);
 
   const hash = manifest.computeHash(finalContent);
   manifest.approve(params.name, hash);
@@ -130,4 +132,18 @@ export default async function matimoApproveTool(
     approvedAt: approval?.approvedAt,
     message: 'Tool approved. Effective after reload or immediately if auto-reload is active.',
   };
+}
+
+/**
+ * The approval manifest of the instance that owns this call. Recording the
+ * approval there means the instance's next reload sees it, signed with the
+ * same secret and stored where that instance looks; a manifest of our own
+ * would sign with a different ephemeral secret when none is configured.
+ */
+function ownerApprovalManifest(): ApprovalManifest | null {
+  try {
+    return getGlobalMatimoInstance().getApprovalManifest();
+  } catch {
+    return null;
+  }
 }

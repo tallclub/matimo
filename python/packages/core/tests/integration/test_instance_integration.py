@@ -149,6 +149,59 @@ class TestApproveReloadLifecycle:
         assert result is not None
 
     @pytest.mark.asyncio
+    async def test_keeps_an_approval_made_without_a_configured_secret(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """
+        The default setup: no MATIMO_APPROVAL_SECRET (each manifest would sign
+        with its own ephemeral key) and an approval directory that is not the
+        tool's. matimo_approve_tool records the approval in the owning instance.
+        """
+        from matimo.core.models import PolicyContext
+        from matimo.decorators import set_global_matimo_instance
+        from matimo.executors.function_executor import FunctionToolContext
+        from matimo.tools.matimo_approve_tool.matimo_approve_tool import run as approve_run
+
+        monkeypatch.delenv("MATIMO_APPROVAL_SECRET", raising=False)
+        untrusted_dir = tmp_path / "untrusted"
+        approval_dir = tmp_path / "approvals"
+        untrusted_dir.mkdir()
+        approval_dir.mkdir()
+
+        matimo = await Matimo.init(
+            str(untrusted_dir),
+            untrusted_paths=[str(untrusted_dir)],
+            approval_dir=str(approval_dir),
+        )
+        set_global_matimo_instance(matimo)
+        tool_dir = untrusted_dir / "my_tool"
+        tool_dir.mkdir()
+        (tool_dir / "definition.yaml").write_text(
+            "name: my_tool\n"
+            "version: '1.0.0'\n"
+            "description: A benign agent-created tool\n"
+            "status: draft\n"
+            "requires_approval: true\n"
+            "execution:\n"
+            "  type: http\n"
+            "  method: GET\n"
+            "  url: 'https://api.example.com/data'\n"
+        )
+        await matimo.reload()
+
+        approval = await approve_run(
+            {"name": "my_tool", "tool_dir": str(untrusted_dir)},
+            FunctionToolContext(policy_context=PolicyContext(agent_id="reviewer", roles=["admin"])),
+        )
+        assert approval["success"] is True
+
+        reload = await matimo.reload()
+        assert "my_tool" not in reload.rejected
+        tool = matimo.get_tool("my_tool")
+        assert tool is not None
+        assert tool.status == "approved"
+
+    @pytest.mark.asyncio
     async def test_still_rejects_a_tool_hand_edited_to_approved_status(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
