@@ -655,7 +655,7 @@ const first = items[0];
 
 ### README Structure
 
-```markdown
+````markdown
 # Tool Name
 
 Brief description (1 sentence)
@@ -664,9 +664,6 @@ Brief description (1 sentence)
 
 - Feature 1
 - Feature 2
-
-## Installation
-```
 
 ## Installation
 
@@ -683,7 +680,6 @@ Methods and options
 ## Troubleshooting
 
 Common issues and solutions
-
 ````
 
 ---
@@ -951,8 +947,7 @@ const validated = schema.parse(userInput);
 
 ## See Also
 
-- [CONTRIBUTING.md](../CONTRIBUTING.md) — Contribution guide
+- [CONTRIBUTING.md](../../CONTRIBUTING.md) — Contribution guide
 - [COMMIT_GUIDELINES.md](../community/COMMIT_GUIDELINES.md) — Commit standards
 - [QUICK_START.md](../getting-started/QUICK_START.md) — Get started
 - [API_REFERENCE.md](../api-reference/SDK.md) — SDK documentation
-````
