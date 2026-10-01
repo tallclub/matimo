@@ -175,19 +175,22 @@ import { MatimoInstance, tool, setGlobalMatimoInstance } from '@matimo/core';
 import { getGlobalMatimoLogger } from '@matimo/core';
 
 const matimo = await MatimoInstance.init({
-  toolPaths: ['./tools'],
+  autoDiscover: true,
   logLevel: 'debug',
 });
 
 setGlobalMatimoInstance(matimo);
 
 class MyAgent {
-  @tool('slack_send_message')
-  async sendSlackMessage(channel: string, text: string) {
-    // Access logger
-    const logger = getGlobalMatimoLogger();
-    logger.debug('Sending Slack message', { channel, textLength: text.length });
-    // Decorator handles execution
+  @tool('slack_send_channel_message')
+  async postToSlack(channel: string, text: string): Promise<unknown> {
+    return undefined; // never runs: the decorator calls matimo.execute() instead
+  }
+
+  async announce(channel: string, text: string) {
+    // Log in an ordinary method; a @tool method's body is ignored
+    getGlobalMatimoLogger().debug('Sending Slack message', { channel, textLength: text.length });
+    return this.postToSlack(channel, text);
   }
 }
 ```

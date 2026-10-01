@@ -559,7 +559,7 @@ Uses Matimo's `@tool()` decorators for class-based agents:
 │  @tool('calculator')             │
 │  async calculate(...) { }        │
 │                                  │
-│  @tool('email-sender')           │
+│  @tool('gmail-send-email')       │
 │  async sendEmail(...) { }        │
 └────────────┬─────────────────────┘
              │
@@ -598,7 +598,7 @@ Direct `matimo.execute()` calls in agent logic:
 │    m.execute('calculator', ...)  │
 │                                  │
 │  if (prompt.includes('email'))   │
-│    m.execute('gmail-send', ...)  │
+│  m.execute('gmail-send-email')   │
 └────────────┬─────────────────────┘
              │
              ▼

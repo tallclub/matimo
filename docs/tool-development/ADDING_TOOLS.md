@@ -232,7 +232,7 @@ import { MatimoInstance } from 'matimo';
 const matimo = await MatimoInstance.init({ autoDiscover: true });
 
 // github-create-issue is now available!
-const result = await matimo.execute('github_create_issue', {
+const result = await matimo.execute('github-create-issue', {
   owner: 'tallclub',
   repo: 'matimo',
   title: 'Amazing new feature',

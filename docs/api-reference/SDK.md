@@ -487,8 +487,8 @@ class SlackAgent {
     // Decorator handles execution
   }
 
-  @tool('slack-get-channel')
-  async getChannel(name: string) {
+  @tool('slack_get_channel_history')
+  async getHistory(channel: string, limit: number) {
     // Also handled by decorator
   }
 }
