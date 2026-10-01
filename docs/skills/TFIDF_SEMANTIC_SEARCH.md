@@ -198,7 +198,7 @@ results = scored
 ### Flow: From YAML to Search Results
 
 ```
-1. MatimoInstance.init(skillsPath)
+1. MatimoInstance.init({ autoDiscover: true } or { skillPaths: [...] })
    ↓
 2. SkillLoader loads all SKILL.md files from disk
    ↓
@@ -206,8 +206,8 @@ results = scored
    ↓
 4. SkillRegistry stores SKILL.md metadata + full text
    ↓
-5. TfIdfEmbeddingProvider.fit([all skill texts])
-   ↓ (Vocabulary + IDF pre-computed once)
+5. On the first search: TfIdfEmbeddingProvider.fit([all skill texts])
+   ↓ (Vocabulary + IDF computed once, again only after skills change)
    ↓
 6. matimo.semanticSearchSkills(query) called by agent
    ↓
@@ -218,54 +218,49 @@ results = scored
 
 ### SDK APIs
 
-#### `semanticSearchSkills(query: string, topK?: number): Promise<SkillSearchResult[]>`
+#### `semanticSearchSkills(query, options?): Promise<SemanticSearchResult[]>`
+
+`options` is `{ limit?: number; minScore?: number }` (defaults: `limit: 10`, `minScore: 0.1`).
 
 ```typescript
-const results = await matimo.semanticSearchSkills(
-  'how to create a tool',
-  5 // top 5 results
-);
+const results = await matimo.semanticSearchSkills('how to create a tool', { limit: 3 });
 
-// Returns:
+// Returns (scores from the 0.2.0 built-in skills):
 [
-  {
-    skillName: 'tool-creation',
-    score: 0.87,        // cosine similarity [0, 1]
-    description: 'Create new tools...',
-    sections: ['Tool Definition Structure', 'Execution Flow', ...]
-  },
-  {
-    skillName: 'meta-tools-lifecycle',
-    score: 0.72,
-    description: 'Full lifecycle management...',
-    sections: [...]
-  },
-  ...
+  { skill: { name: 'meta-tools-lifecycle', description: '...', metadata: {...}, source: 'builtin' }, score: 0.36 },
+  { skill: { name: 'tool-creation', ... }, score: 0.36 },
+  { skill: { name: 'policy-validation', ... }, score: 0.26 },
 ]
 ```
 
-**Scoring:** Ranked by descending similarity; threshold ~0.5 (results below 0.5 are typically noise)
+`score` is the cosine similarity (0–1). With TF-IDF over short skill texts, a good match usually scores 0.2–0.4, so rank by score rather than expecting values near 1.
 
-#### `getSkillSections(skillName: string): { sections: string[], totalTokens: number }`
+#### `getSkillSections(name): Array<{ path, level, tokenEstimate }> | null`
 
 ```typescript
 const sections = matimo.getSkillSections('tool-creation');
-// Returns:
-{
-  sections: ['Tool Definition Structure', 'Execution Flow', 'Authentication', ...],
-  totalTokens: 2847  // Estimated full SKILL.md
-}
+// [
+//   { path: 'Tool Creation for Matimo SDK', level: 1, tokenEstimate: 189 },
+//   { path: 'Tool Creation for Matimo SDK.Matimo Architecture Overview', level: 2, tokenEstimate: 4 },
+//   { path: 'Tool Creation for Matimo SDK.Matimo Architecture Overview.Tool Execution Flow', level: 3, tokenEstimate: 55 },
+//   ...
+// ]
 ```
 
-#### `getSkillContent(skillName: string, options?: { sections?: string[] }): Promise<string>`
+`null` means no skill has that name.
+
+#### `getSkillContent(name, options?): string | null`
+
+Synchronous. `options` is `SkillContentOptions`: `sections` (headings, case-insensitive partial match), `maxTokens`, `includePreamble` (default `true`) and `maxDepth`.
 
 ```typescript
-// Load full skill
-const full = await matimo.getSkillContent('tool-creation');
+// Load the full skill
+const full = matimo.getSkillContent('tool-creation');
 
-// Load selective sections (token-efficient)
-const partial = await matimo.getSkillContent('tool-creation', {
-  sections: ['Tool Definition Structure', 'Execution Flow']
+// Load selected sections only (token-efficient)
+const partial = matimo.getSkillContent('tool-creation', {
+  sections: ['Tool Execution Flow'],
+  maxTokens: 500,
 });
 ```
 
@@ -278,91 +273,55 @@ const partial = await matimo.getSkillContent('tool-creation', {
 **Agent Query:** "I need to understand how to approve tools in the system"
 
 ```typescript
-const matimo = await MatimoInstance.init('./skills');
+const matimo = await MatimoInstance.init({ autoDiscover: true });
 
-const results = await matimo.semanticSearchSkills('approve tools policy', 3);
+const results = await matimo.semanticSearchSkills('approve tools policy', { limit: 3 });
+// → meta-tools-lifecycle (0.32), policy-validation (0.22)
 
-console.log(results);
-// Output:
-// [
-//   {
-//     skillName: 'policy-validation',
-//     score: 0.89,
-//     description: 'Risk classification, approval tiers, policy configuration',
-//     sections: ['Approval Workflow', 'Policy Tiers', ...]
-//   },
-//   {
-//     skillName: 'meta-tools-lifecycle',
-//     score: 0.76,
-//     description: 'Full lifecycle management (create, validate, approve, ...)',
-//     sections: ['Tool Approval', 'Approval Chain', ...]
-//   },
-//   {
-//     skillName: 'tool-creation',
-//     score: 0.68,
-//     description: 'Create new tools...',
-//     sections: ['Validation', 'Error Handling', ...]
-//   }
-// ]
-
-// Agent loads top result, extracts specific section
-const approvalContent = await matimo.getSkillContent('policy-validation', {
-  sections: ['Approval Workflow']
+// Load only the section the agent needs from the top match
+const approval = matimo.getSkillContent('policy-validation', {
+  sections: ['Human approval'],
 });
-
-console.log(approvalContent);
-// → Just the approval section, minimal tokens
+// → "### Human approval\n\nA call asks a human first when its tool has `requires_approval: true`, ..."
 ```
 
-### Example 2: LangChain Agent Using `matimo_search_skills` Meta-Tool
+### Example 2: Agents Use the `matimo_search_skills` Meta-Tool
+
+An agent does not call the SDK; it calls the meta-tools, which wrap these methods. Give a LangChain agent the skill meta-tools and it can search, inspect and load skills itself:
 
 ```typescript
-import { MatimoInstance } from '@matimo/core';
-import { initializeAgentExecutorWithTools } from 'langchain/agents';
-import { ChatOpenAI } from 'langchain/chat_models/openai';
+import { MatimoInstance, convertToolsToLangChain } from '@matimo/core';
 
-const matimo = await MatimoInstance.init('./skills');
-const tools = matimo.listTools(); // All tools + meta-tools
+const matimo = await MatimoInstance.init({ autoDiscover: true });
+const skillTools = [
+  'matimo_search_skills',
+  'matimo_get_skill_sections',
+  'matimo_get_skill_content',
+].map((name) => matimo.getTool(name)!);
 
-const llm = new ChatOpenAI({ modelName: 'gpt-4' });
-const executor = await initializeAgentExecutorWithTools({
-  tools,
-  llm,
-  agentType: 'openai-functions',
-  verbose: true
-});
-
-// Agent autonomously calls matimo_search_skills when needed
-const result = await executor.run('I want to learn about tool creation');
-
-// Agent automatically:
-// 1. Calls matimo_search_skills('tool creation')
-// 2. Gets ranked results
-// 3. Calls matimo_get_skill_content() on best match
-// 4. Parses sections and responds
+const tools = await convertToolsToLangChain(skillTools, matimo);
+// Bind `tools` to your model. A typical run:
+// 1. matimo_search_skills(query: "tool creation")
+// 2. matimo_get_skill_sections(name: "tool-creation")
+// 3. matimo_get_skill_content(name: "tool-creation", sections: [...])
 ```
 
-### Example 3: Multi-Tenant Skill Search (Different Queries)
+See [LangChain integration](../framework-integrations/LANGCHAIN.md) for a complete agent loop.
+
+### Example 3: Several Queries at Once
 
 ```typescript
-const queries = [
-  'how do I validate a YAML tool?',
-  'what is OAuth2 authentication?',
-  'how to write a skill.md file?',
-  'CLI commands for tool management',
-  'how to test my tools?'
-];
+const queries = ['how do I validate a YAML tool?', 'how to write a skill.md file?'];
 
 const allResults = await Promise.all(
-  queries.map(q => matimo.semanticSearchSkills(q, 1))
+  queries.map((q) => matimo.semanticSearchSkills(q, { limit: 1 }))
 );
 
-// Each query gets independently ranked against all skills
-// Results show which skill best answers each question
-allResults.forEach((results, idx) => {
-  console.log(`Query: ${queries[idx]}`);
-  console.log(`→ Best match: ${results[0].skillName} (${results[0].score})`);
+allResults.forEach(([best], idx) => {
+  console.log(`${queries[idx]} → ${best?.skill.name} (${best?.score.toFixed(2)})`);
 });
+// how do I validate a YAML tool? → tool-creation (0.33)
+// how to write a skill.md file? → skill-creator (0.36)
 ```
 
 ### Example 4: Programming: Direct TF-IDF Vectors
@@ -399,6 +358,8 @@ console.log(ranked.slice(0, 3));
 
 ### Startup Cost
 
+Rough estimates for planning, not measured benchmarks:
+
 ```
 Skill Count | Fit Time  | Memory     | Query Time*
 10          | 5ms       | 50KB       | 0.5ms
@@ -410,7 +371,7 @@ Skill Count | Fit Time  | Memory     | Query Time*
 ```
 
 **Notes:**
-- Fit is one-time at `MatimoInstance.init()`
+- Fit runs on the first search, and again only after skills are added or reloaded
 - Query time linear in vocabulary size, not skill count
 - Query time is synchronous (no I/O or external API)
 - Memory grows with vocabulary (not #skills directly)
@@ -432,54 +393,43 @@ Skill Count | Fit Time  | Memory     | Query Time*
 
 ```typescript
 export interface EmbeddingProvider {
-  dimensions: number;
-  fit(documents: string[]): void | Promise<void>;
   embed(text: string): Promise<number[]>;
   embedBatch(texts: string[]): Promise<number[][]>;
+  /** Embedding dimensionality */
+  dimensions: number;
 }
 ```
+
+There is no `fit()` in the interface: only the built-in TF-IDF provider needs one, and Matimo calls it itself.
 
 ### Example: Using OpenAI Embeddings
 
 ```typescript
-import { EmbeddingProvider } from '@matimo/core';
-import { OpenAIApi } from 'openai';
+import OpenAI from 'openai';
+import { MatimoInstance, type EmbeddingProvider } from '@matimo/core';
 
 export class OpenAIEmbeddingProvider implements EmbeddingProvider {
-  private client: OpenAIApi;
+  private client = new OpenAI(); // reads OPENAI_API_KEY
   readonly dimensions = 1536; // text-embedding-3-small
 
-  constructor(apiKey: string) {
-    this.client = new OpenAIApi({ apiKey });
-  }
-
-  async fit(documents: string[]): Promise<void> {
-    // Pre-warm cache or validate corpus
-    // Optional: you could cache embeddings to file
-  }
-
   async embed(text: string): Promise<number[]> {
-    const response = await this.client.createEmbedding({
-      model: 'text-embedding-3-small',
-      input: text
-    });
-    return response.data[0].embedding;
+    const [vector] = await this.embedBatch([text]);
+    return vector;
   }
 
   async embedBatch(texts: string[]): Promise<number[][]> {
-    const response = await this.client.createEmbedding({
+    const response = await this.client.embeddings.create({
       model: 'text-embedding-3-small',
-      input: texts
+      input: texts,
     });
-    return response.data.map(d => d.embedding);
+    return response.data.map((d) => d.embedding);
   }
 }
 
-// Set custom provider on MatimoInstance
-const matimo = await MatimoInstance.init('./skills');
-matimo.setSkillEmbeddingProvider(new OpenAIEmbeddingProvider(process.env.OPENAI_API_KEY));
+const matimo = await MatimoInstance.init({ autoDiscover: true });
+matimo.setSkillEmbeddingProvider(new OpenAIEmbeddingProvider());
 
-// Now all searches use OpenAI embeddings
+// semanticSearchSkills() and the matimo_search_skills meta-tool now use OpenAI embeddings
 const results = await matimo.semanticSearchSkills('policy approval');
 ```
 

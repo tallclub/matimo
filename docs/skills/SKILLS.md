@@ -264,7 +264,7 @@ Matimo ships six SDK-level skills in `packages/core/skills/`. These are designed
 
 - **Never use placeholder API keys** (`YOUR_API_KEY`, `replace_me`) — use `{VAR_NAME}` templating
 - **`command` and `function` types are blocked by default** (`allowCommandTools: false`, `allowFunctionTools: false`) — always use `type: http` unless policy explicitly allows otherwise
-- **Always include `requires_approval: true`** in agent-generated YAML
+- **Agent-created tools always get `requires_approval: true` and `status: draft`** — `matimo_create_tool` sets both, whatever the YAML says
 - **Query-param API keys** need `query_params: { key: '{VAR_NAME}' }` + `authentication: { type: api_key, location: query }`
 
 ---
