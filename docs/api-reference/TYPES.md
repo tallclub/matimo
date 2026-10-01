@@ -18,11 +18,18 @@ interface ToolDefinition {
   execution: ExecutionConfig;
   output_schema?: OutputSchema;
   authentication?: AuthConfig;
+  rate_limiting?: RateLimitConfig;
   error_handling?: ErrorHandling;
+  examples?: ToolExample[];
+
+  // Governance
+  requires_approval?: boolean;                        // ask a human before every call
+  risk?: 'low' | 'medium' | 'high' | 'critical';      // can raise, never lower, the computed risk
+  status?: 'draft' | 'approved' | 'deprecated';
+  deprecated?: boolean;
+  deprecation_message?: string;
 
   tags?: string[];
-  author?: string;
-  license?: string;
 }
 ```
 
@@ -278,21 +285,53 @@ Main SDK class for tool execution.
 
 ```typescript
 class MatimoInstance {
-  // List all tools
-  listTools(): ToolDefinition[];
+  static init(options?: InitOptions | string): Promise<MatimoInstance>;
 
-  // Get specific tool
-  getTool(name: string): ToolDefinition | null;
-
-  // Find tools by tag
+  listTools(context?: PolicyContext): ToolDefinition[];
+  getTool(name: string): ToolDefinition | undefined;
   getToolsByTag(tag: string): ToolDefinition[];
-
-  // Search tools
   searchTools(query: string): ToolDefinition[];
 
-  // Execute tool
-  execute(toolName: string, params: Record<string, unknown>): Promise<unknown>;
+  execute(toolName: string, params: Record<string, unknown>, options?: ExecuteOptions): Promise<unknown>;
 }
+```
+
+See the [SDK reference](SDK.md) for every option and method.
+
+---
+
+### MatimoEvent
+
+Every governance decision and tool run is emitted to `onEvent` (and to `auditSink`, if set). Python emits the same events as dicts with snake_case keys (`tool_name`, `duration_ms`, `risk_level`, ...).
+
+| `type` | Extra fields | When |
+|--------|--------------|------|
+| `tool:executed` | `toolName`, `traceId`, `durationMs`, `success`, `riskLevel`, `agentId?` | A tool ran to completion. `success` is `false` when it returned `{ success: false }` |
+| `tool:execution_failed` | `toolName`, `traceId`, `durationMs`, `riskLevel`, `errorCode`, `error`, `agentId?` | A tool that passed every gate threw (for example an HTTP 4xx/5xx) |
+| `tool:execution_denied` | `toolName`, `reason`, `agentId?` | The policy engine refused the call |
+| `tool:quarantined` | `toolName`, `riskLevel`, `reason`, `environment?` | A call is waiting for `onHITL`, or a reload quarantined an untrusted tool |
+| `tool:quarantine_approved` | `toolName` | A quarantined call was let through (by `onHITL` or a stored approval) |
+| `tool:quarantine_rejected` | `toolName` | A quarantined call was refused (including when there is no `onHITL`) |
+| `tool:approval_granted` | `toolName`, `agentId?` | A call that needed approval was approved |
+| `tool:approval_denied` | `toolName`, `reason`, `agentId?` | A call that needed approval was refused, or nobody could answer |
+| `tool:rejected` | `toolName`, `violations` | A reload refused an untrusted tool |
+| `tools:reloaded` | `loaded`, `removed`, `rejected` | Tools were reloaded |
+| `skills:reloaded` | `loaded`, `removed` | Skills were reloaded |
+| `skill:created` | `skillName`, `source` | `matimo_create_skill` wrote a skill |
+| `policy:reloaded` | — | `reloadPolicy()` swapped the policy engine (TypeScript only) |
+
+Every event also has an ISO-8601 `timestamp`. `tool:created`, `tool:approved` and `tool:revoked` are declared in the type but not emitted yet.
+
+```typescript
+const matimo = await MatimoInstance.init({
+  autoDiscover: true,
+  onEvent: (event) => {
+    if (event.type === 'tool:execution_failed') {
+      console.error(`${event.toolName} failed [${event.errorCode}] after ${event.durationMs}ms`);
+    }
+  },
+  auditSink: new JsonlFileSink('./matimo-audit.jsonl'), // hash-chained; check with verifyAuditLog()
+});
 ```
 
 ---
