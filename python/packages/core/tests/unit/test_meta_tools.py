@@ -350,7 +350,8 @@ class TestMatimoCreateTool:
         assert result["riskLevel"] in ("low", "medium", "high", "critical")
 
     @pytest.mark.asyncio
-    async def test_auto_approved_for_low_risk_get_tool(self, tmp_path: Path) -> None:
+    async def test_low_risk_get_tool_still_awaits_approval(self, tmp_path: Path) -> None:
+        """A new tool is a draft, and a draft runs only after matimo_approve_tool."""
         from matimo.tools.matimo_create_tool.matimo_create_tool import run
 
         result = await run({
@@ -360,8 +361,9 @@ class TestMatimoCreateTool:
         })
 
         assert result["success"] is True
-        assert result["approvalState"] == "auto-approved"
-        assert "Ready for use" in result["message"]
+        assert result["approvalState"] == "pending"
+        assert "low risk" in result["message"]
+        assert "matimo_approve_tool" in result["message"]
 
     @pytest.mark.asyncio
     async def test_pending_for_post_tool(self, tmp_path: Path) -> None:
@@ -386,7 +388,7 @@ class TestMatimoCreateTool:
 
         assert result["success"] is True
         assert result["approvalState"] == "pending"
-        assert "approval" in result["message"].lower()
+        assert "matimo_approve_tool" in result["message"]
 
     @pytest.mark.asyncio
     async def test_proposed_by_and_justification_written_as_header(self, tmp_path: Path) -> None:

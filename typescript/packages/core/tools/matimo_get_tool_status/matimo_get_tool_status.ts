@@ -84,6 +84,9 @@ export default async function matimoGetToolStatus(
     approvalState = 'rejected';
   } else if (isApproved) {
     approvalState = 'approved';
+  } else if (tool.status === 'draft') {
+    // A draft runs only after matimo_approve_tool, whatever its risk.
+    approvalState = 'pending';
   } else if (tier === 'auto') {
     approvalState = 'auto-approved';
   } else if (pendingTools.includes(params.name)) {

@@ -63,6 +63,9 @@ async def run(params: dict) -> dict:  # type: ignore[type-arg]
         approval_state = "rejected"
     elif is_approved:
         approval_state = "approved"
+    elif status == ToolStatus.DRAFT:
+        # A draft runs only after matimo_approve_tool, whatever its risk.
+        approval_state = "pending"
     elif get_tier_for_tool(tool_def) == PolicyTier.AUTO:
         approval_state = "auto-approved"
     else:

@@ -32,6 +32,10 @@ execution:
 
     expect(result.success).toBe(true);
     expect(result.status).toBe('draft');
+    // A low-risk GET is still a draft, and a draft runs only once approved.
+    expect(result.approvalState).toBe('pending');
+    expect(result.message).toContain('low risk');
+    expect(result.message).toContain('matimo_approve_tool');
     expect(result.path).toBeDefined();
     expect(fs.existsSync(result.path!)).toBe(true);
 

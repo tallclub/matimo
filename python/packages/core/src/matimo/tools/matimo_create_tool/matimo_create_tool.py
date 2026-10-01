@@ -76,7 +76,8 @@ async def run(params: dict, context: FunctionToolContext | None = None) -> dict:
 
     risk_level = classify_risk(tool_def)
     tier = get_tier_for_tool(tool_def)
-    approval_state = "auto-approved" if tier == PolicyTier.AUTO else "pending"
+    # Every created tool is a draft, and a draft runs only once it is approved.
+    approval_state = "pending"
 
     # Build optional comment header (proposed_by / justification)
     header = ""
@@ -96,9 +97,11 @@ async def run(params: dict, context: FunctionToolContext | None = None) -> dict:
     )
 
     message = (
-        "Tool created and auto-approved (low-risk read-only). Ready for use."
-        if approval_state == "auto-approved"
-        else "Tool created as draft. Requires approval before execution. Use matimo_approve_tool to promote."
+        "Tool created as a draft (low risk, read-only). It runs after a reviewer "
+        "approves it with matimo_approve_tool and the tools reload."
+        if tier == PolicyTier.AUTO
+        else "Tool created as a draft. It runs after a reviewer approves it with "
+        "matimo_approve_tool and the tools reload."
     )
 
     return {
