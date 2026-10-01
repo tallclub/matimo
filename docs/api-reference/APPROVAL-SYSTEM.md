@@ -1,665 +1,193 @@
-# Unified Approval System
+# Approval System
 
-**Status**: ✅ Simplified & Consolidated (v0.1.0-alpha.6+)
+Some tool calls should not run until a person says yes: deleting data, running a shell command, approving a tool an agent wrote. Matimo's approval system decides **which calls need a human**, and **who answers**. It works the same way in the TypeScript and Python SDKs and for every provider.
 
-> 💡 **Choosing an approval mode?** Jump to [When to Use the Approval System](#when-to-use-the-approval-system) for a decision guide and use cases.
+> **Approval vs. HITL quarantine.** This page covers per-call approval (`onApproval`). The policy engine's separate, risk-based checkpoint — `enableHITL` + `hitlMinRiskLevel` + `onHITL` — is described in [Policy and Lifecycle](POLICY_AND_LIFECYCLE.md). When both apply, the HITL check runs first, then approval.
 
-Matimo has a **single, unified approval system** that works across all providers (GitHub, Slack, Postgres, and custom tools). Simple design: tools declare approval requirements in YAML, system auto-detects destructive keywords, single callback handles all approval requests.
+## When a call needs approval
 
-## When to Use the Approval System
+A call needs approval when any of these is true:
 
-### Decision Guide
+| Trigger | Example |
+|---------|---------|
+| The tool's YAML says `requires_approval: true` | `github-delete-repository`, `matimo_create_tool` |
+| The YAML doesn't set `requires_approval`, and the tool is an HTTP `DELETE` or a `type: command` tool (secure mode, the 0.2.0 default) | `delete_post`, `execute` |
+| A destructive keyword appears in the call's `sql` argument, or in `command` for a command tool | `{ sql: 'DROP TABLE users' }` |
 
-| Situation | Recommended Mode |
-|-----------|------------------|
-| Production agent — user must confirm destructive ops | Per-instance callback — `init({ onApproval })` (TS) / `init(on_approval=...)` (Python) |
-| CI/CD pipeline — automated testing, no human available | `MATIMO_AUTO_APPROVE=true` |
-| Staging — some tools auto-approved, some need review | `MATIMO_APPROVED_PATTERNS="safe-*,read-*"` |
-| Agent creates new tools at runtime | Always require approval — `matimo_create_tool` has `requires_approval: true` built-in |
-| Tool is read-only and safe | Set `requires_approval: false` in YAML to skip auto-detection |
-| Tool performs irreversible action (delete, drop, send) | Set `requires_approval: true` in YAML explicitly |
+`requires_approval: false` opts a tool out of the first two triggers. It does **not** turn off the keyword scan: a call whose `sql` contains `DELETE` still asks.
 
-### Use Cases by Approval Mode
-
-**Mode 1 — Interactive terminal (default for demos and production)**
-```
-Use when: Human operator is at the terminal monitoring the agent
-Benefit: Full human oversight — every destructive operation shown with tool name, description, and params
-Example: pnpm agent:skills → agent tries to create a tool → you see the YAML and approve/reject
-```
-
-**Mode 2 — Auto-approve (`MATIMO_AUTO_APPROVE=true`)**
-```
-Use when: CI/CD test runs, integration tests, automated pipelines
-Benefit: Zero interruption — tests run end-to-end without human prompts
-Risk: Every destructive op proceeds without review — never use in production
-Exception: matimo_approve_tool always asks a human, whatever this or
-MATIMO_APPROVED_PATTERNS says — approving a tool lets agent-written code run
-Example: GitHub Actions test suite, pnpm test runs
-```
-
-**Mode 3 — Pattern pre-approval (`MATIMO_APPROVED_PATTERNS`)**
-```
-Use when: Some tools are known-safe (read ops), others need review (write ops)
-Benefit: Balance between automation and control
-Example:
-  MATIMO_APPROVED_PATTERNS="*-read-*,*-list-*,*-get-*"
-  → sql-read-users: auto-approved (matches pattern)
-  → sql-delete-user: needs callback (no match)
-```
-
-### Use Cases by Trigger Type
-
-**Trigger 1 — Explicit `requires_approval: true` in YAML**
-```yaml
-# When to use: Tool is always destructive regardless of params
-# Examples: github-delete-repository, sql-drop-table, slack-delete-channel
-name: github-delete-repository
-requires_approval: true
-```
-
-**Default — HTTP DELETE and command tools**
-```
-When a tool's YAML does not set requires_approval at all, two kinds of tool
-need approval on every call anyway:
-  execution.type: http with method: DELETE   → can't be undone
-  execution.type: command                    → runs a shell command
-Set requires_approval: false to opt a tool out deliberately; the destructive
-keyword scan below still applies to it. Tools shipped in this repo must spell
-out requires_approval: true on DELETE — `pnpm validate-tools` /
-`make validate-tools` reject a DELETE tool that doesn't.
-```
-
-**Trigger 2 — Keyword auto-detection**
-```
-When to use: Tool might be destructive depending on SQL content or command params
-Examples:
-  matimo.execute('sql-query', { sql: 'DELETE FROM users WHERE id=1' })  → approval triggered
-  matimo.execute('sql-query', { sql: 'SELECT * FROM users' })           → no approval needed
-Benefit: One tool handles both safe and destructive operations — approval only when needed
-```
-
-**Trigger 3 — Agent-created tools (meta-tools)**
-```
-All meta-tools that write to disk have requires_approval: true
-matimo_create_tool   → human confirms before tool is written
-matimo_approve_tool  → human confirms before tool is promoted
-matimo_reload_tools  → human confirms before registry is rebuilt
-Benefit: Agent can NEVER modify the live tool registry without human sign-off
-```
-
-### Benefits: Approval vs No Approval
-
-| Action | Without Approval | With Approval |
-|--------|:----------------:|:-------------:|
-| Agent runs `DELETE FROM users` | Silent execution ✗ | Human sees query, decides |
-| Agent creates a shell command tool | Tool written to disk ✗ | Human reviews YAML |
-| Agent reloads registry with malicious tool | Tool goes live ✗ | Human confirms reload |
-| CI test deletes test data | Needs manual reset ✗ | `AUTO_APPROVE=true` handles it cleanly |
-| Read-only SQL query | Blocked waiting for approval ✗ | `requires_approval: false` skips check |
-
----
-
-## Overview
-
-The approval system prevents accidental execution of destructive operations by:
-1. **Checking YAML flag**: Tool defines `requires_approval: true`, is an HTTP DELETE or command tool that doesn't set it, or its SQL/command contains a destructive keyword
-2. **Checking pre-approvals**: Environment variables or pre-approved patterns
-3. **Requesting approval**: Single generic callback (interactive or automatic)
-4. **Executing**: If approved, proceeds; if rejected, throws MatimoError
-
-## Quick Start
-
-### 1. Auto-Approve (CI/CD)
-
-```bash
-export MATIMO_AUTO_APPROVE=true
-pnpm my-script
-```
-
-All tools requiring approval are auto-approved.
-
-### 2. Interactive Approval (Terminal)
-
-Give each instance its own reviewer with `onApproval`:
+Check a definition without running it:
 
 ```typescript
-import { MatimoInstance } from '@matimo/core';
-
-const matimo = await MatimoInstance.init({
-  autoDiscover: true,
-  onApproval: async (request) => {
-    // User sees: tool name, description, parameters
-    // User decides: approve or reject
-    console.info(`\nApprove ${request.toolName}?`);
-    return true; // or false
-  },
-});
-
-await matimo.execute('sql-delete-user', { id: 'user123' });
+import { definitionRequiresApproval } from '@matimo/core';
+definitionRequiresApproval(tool, 'secure'); // true for DELETE/command tools without requires_approval
+definitionRequiresApproval(tool, 'legacy'); // only true when the YAML says requires_approval: true
 ```
 
 ```python
-from matimo import Matimo
+from matimo import definition_requires_approval
+definition_requires_approval(tool, "secure")
+```
 
-async def on_approval(request) -> bool:
-    print(f"Approve {request.tool_name}?")
-    return True  # or False
+`governanceMode: 'legacy'` (`governance_mode="legacy"`, or `governanceMode: legacy` in `policy.yaml`) restores the pre-0.2.0 default, where DELETE and command tools ask only if their YAML says so. See the [migration guide](POLICY_AND_LIFECYCLE.md).
+
+## Who answers
+
+When a call needs approval, Matimo checks these in order and uses the first that applies:
+
+1. **Pre-approval** — the tool's name matches a pattern in `MATIMO_APPROVED_PATTERNS` (or `MATIMO_AUTO_APPROVE=true`). The call runs without asking.
+2. **`onApproval` passed to `execute()`** for this one call.
+3. **`onApproval` passed to `MatimoInstance.init()`** (or set later with `setApprovalCallback`).
+4. **The process-wide handler's callback** — `getGlobalApprovalHandler().setApprovalCallback()`, kept for older code.
+5. **Nobody** — the call is rejected.
+
+`matimo_approve_tool` is never pre-approved, whatever the patterns or `MATIMO_AUTO_APPROVE` say: approving a tool lets agent-written YAML run, so a person always sees it.
+
+### Per-instance callback (recommended)
+
+```typescript
+import { MatimoInstance, type ApprovalRequest } from '@matimo/core';
+
+const matimo = await MatimoInstance.init({
+  autoDiscover: true,
+  onApproval: async (request: ApprovalRequest) => {
+    // request.toolName, request.description, request.params
+    return await askReviewer(request); // true = run it, false = refuse
+  },
+});
+```
+
+```python
+from matimo import ApprovalRequest, Matimo
+
+async def on_approval(request: ApprovalRequest) -> bool:
+    # request.tool_name, request.description, request.params
+    return await ask_reviewer(request)
 
 matimo = await Matimo.init(auto_discover=True, on_approval=on_approval)
 ```
 
-The callback can be swapped later with `matimo.setApprovalCallback(cb)` /
-`matimo.set_approval_callback(cb)`; passing `null`/`None` falls back to the
-process-wide `getGlobalApprovalHandler().setApprovalCallback()`, which older
-code uses. Prefer `onApproval`: the global callback is shared by every
-instance in the process, so two tenants' instances would share a reviewer.
+Each instance has its own reviewer, so two tenants in one process never share one. The callback can return `false`/`False` or throw to refuse.
 
-### 3. Pre-Approve Patterns  
-
-```bash
-export MATIMO_APPROVED_PATTERNS="sql*,github-create-*"
-```
-
-Only tools matching patterns skip approval. Others are rejected if not auto-approved.
-
-## Architecture
-
-```
-MatimoInstance.execute(toolName, params)
-          ↓
-   ToolDefinition loaded
-          ↓
-   Destructive Keywords loaded from destructive-keywords.yaml
-          ↓
-   ApprovalHandler.requiresApproval(tool.requires_approval, params.sql)
-          ↓
-  ┌─ Check YAML flag? Yes → Needs approval
-  │
-  ├─ Check destructive keywords from YAML config? Yes → Needs approval
-  │        (Keywords loaded from destructive-keywords.yaml)
-  │        Examples: CREATE, DELETE, DROP, ALTER, TRUNCATE, etc.
-  │
-  └─ No → Proceed without approval
-          ↓
-  ApprovalHandler.isPreApproved(toolName)
-          ↓
-  ┌─ MATIMO_AUTO_APPROVE=true? → Approved
-  │
-  ├─ Matches MATIMO_APPROVED_PATTERNS? → Approved
-  │
-  └─ Neither → Request approval via callback
-          ↓
-  callback(ApprovalRequest) → true OR false
-          ↓
-  If approved: Execute tool
-  If rejected: Throw MatimoError(APPROVAL_REJECTED)
-```
-
-## Configuration
-
-### Loading Destructive Keywords
-
-The approval system loads destructive keywords from `destructive-keywords.yaml`. The system searches for this file in the following order:
-
-1. **Development/Workspace**: `packages/core/destructive-keywords.yaml`
-2. **Installed Package**: `node_modules/@matimo/core/destructive-keywords.yaml`
-3. **Current Directory**: `./destructive-keywords.yaml`
-4. **Fallback**: Built-in default keywords if file not found
-
-**Customizing Keywords**:
-To add or modify destructive keywords, edit `packages/core/destructive-keywords.yaml` with categories:
-```yaml
-sql:
-  - CREATE
-  - DELETE
-  # Add more SQL keywords...
-
-file:
-  - EDIT
-  # Add more file operation keywords...
-
-system:
-  - SHUTDOWN
-  # Add more system operation keywords...
-```
-
-### Approval Detection
-
-Detection works in two ways:
-
-**Method 1: YAML Declaration** (Explicit):
-```yaml
-name: sql-delete-user
-requires_approval: true  # Explicit flag
-# When true, requires approval before execution regardless of keywords
-```
-
-**Auto-Detection**:
-If `requires_approval` not set, system auto-detects destructive keywords from `destructive-keywords.yaml` configuration:
-```yaml
-# packages/core/destructive-keywords.yaml
-sql:
-  - CREATE
-  - DELETE
-  - DROP
-  - ALTER
-  - TRUNCATE
-  - UPDATE
-  - GRANT
-  - REVOKE
-
-file:
-  - EDIT
-  - WRITE
-  - REMOVE
-  - RENAME
-
-system:
-  - SHUTDOWN
-  - EXECUTE
-  - EXEC
-  - bash
-  - powershell
-  - "rm -rf"
-  - "del /f"
-```
-
-When a tool executes with content matching any of these keywords, approval is automatically required:
-```typescript
-await matimo.execute('execute', { command: 'rm -rf /' }); // Detected via 'rm -rf' keyword
-await matimo.execute('sql-query', { sql: 'DELETE FROM users' }); // Detected via 'DELETE' keyword
-```
-
-### Approval Modes
-
-**Mode 1: Auto-Approve (CI/CD)**
-```bash
-export MATIMO_AUTO_APPROVE=true
-```
-All tools requiring approval are automatically approved. Useful for automation/CI.
-
-**Mode 2: Pattern-Based Pre-Approval**
-```bash
-export MATIMO_APPROVED_PATTERNS="sql-create-*,sql-read-*,github-search-*"
-```
-Tools matching patterns skip approval. Others require interactive approval or auto-approve.
-
-**Mode 3: Interactive (Default)**
-No environment variables set → User sees approval prompt and decides.
-
-## API
-
-### Basic Usage
+### Per-call callback
 
 ```typescript
-import { MatimoInstance, getGlobalApprovalHandler } from '@matimo/core';
-
-const matimo = await MatimoInstance.init({ autoDiscover: true });
-const handler = getGlobalApprovalHandler();
-
-// Set approval callback
-handler.setApprovalCallback(async (request) => {
-  console.info(`Approve ${request.toolName}?`);
-  // return true or false
-  return true;
-});
-
-// Execute tool - will check approval if required
-const result = await matimo.execute('github-delete-repository', {
-  owner: 'myorg',
-  repo: 'temp-repo'
-});
+await matimo.execute('delete_post', { id: 1 }, { onApproval: async () => userClickedConfirm });
 ```
 
-### ApprovalRequest Interface
+```python
+await matimo.execute("delete_post", {"id": 1}, on_approval=confirm_in_ui)
+```
+
+Use it when the reviewer depends on the request — a web handler that already has the user's confirmation, for example.
+
+### Pre-approved patterns
+
+```bash
+export MATIMO_APPROVED_PATTERNS="get_*,list_*,calculator"
+```
+
+Comma-separated globs (`*` matches anything), case-insensitive. A matching tool runs without asking. The variable is read when the process-wide handler is created, so set it before your app starts; in a running process use `getGlobalApprovalHandler().addApprovedPattern('get_*')` (`add_approved_pattern` in Python).
+
+### `MATIMO_AUTO_APPROVE`
+
+`MATIMO_AUTO_APPROVE=true` approves every request unseen (except `matimo_approve_tool`); each instance logs a warning when it starts with it on. It is meant for throwaway test environments only. For CI, prefer an `onApproval` that encodes the test's intent, or `MATIMO_APPROVED_PATTERNS` listing the tools the test may run.
+
+### Skipping the prompt for one call
+
+`execute(tool, params, { approved: true })` (`approved=True`) skips the approval prompt for that call — for a host that has already confirmed the call through its own UI. It skips **only** the prompt: policy denials, draft gates and HITL quarantine still apply.
+
+## What the reviewer sees
 
 ```typescript
 interface ApprovalRequest {
-  toolName: string;              // 'github-delete-repository'
-  description: string;           // From tool YAML description field
-  params: Record<string, unknown>; // All params passed to tool
+  toolName: string;                 // 'github-delete-repository'
+  description?: string;             // the tool's description from its YAML
+  params: Record<string, unknown>;  // the arguments of this call
 }
 ```
 
-### Return Value
+Python's `ApprovalRequest` dataclass has the same fields in snake_case: `tool_name`, `description`, `params`.
 
-Callback returns `Promise<boolean>`:
-- `true` → Operation approved, proceed
-- `false` → Operation rejected, throw MatimoError
+## Outcomes
 
-## Examples
+| Outcome | Result | Event |
+|---------|--------|-------|
+| Approved | The call runs | `tool:approval_granted` |
+| Callback returns false | `MatimoError`: `Operation rejected by approval handler: <tool>` | `tool:approval_denied` |
+| No one to ask | `MatimoError`: `Destructive operation requires approval: <tool>`, with a hint naming `onApproval` and `MATIMO_APPROVED_PATTERNS` | `tool:approval_denied` |
 
-### Example 1: Auto-Approve in Tests
+Events reach `onEvent` and the audit sink; see [Types](TYPES.md) for their fields.
 
-```typescript
-process.env.MATIMO_AUTO_APPROVE = 'true';
+## Destructive keywords
 
-const matimo = await MatimoInstance.init({ autoDiscover: true });
+The keyword scan upper-cases the `sql` argument (or `command`, for command tools) and looks for each keyword as a substring. Set `MATIMO_APPROVAL_SCAN_ALL_PARAMS=true` to scan every string argument instead.
 
-// No interactive prompt, auto-approved
-const result = await matimo.execute('sql-delete-user', { id: 'test' });
-expect(result).toBeDefined();
-```
+Built-in keywords in both SDKs: `CREATE`, `DELETE`, `DROP`, `ALTER`, `TRUNCATE`, `UPDATE`, `INSERT`, `UPSERT`, `REPLACE`, `MERGE`, `GRANT`, `REVOKE`, `EDIT`, `WRITE`, `APPEND`, `REMOVE`, `RENAME`, `SHUTDOWN`, `EXECUTE`, `EXEC`. Python's list also has `DESTROY` and `PURGE`.
 
-### Example 2: Interactive Approval
+Because the match is a substring of upper-cased text, a column such as `created_at` contains `CREATE` and makes a `SELECT` ask. Give such a tool its own approval rule rather than relying on the scan.
 
-```typescript
-import { MatimoInstance, getGlobalApprovalHandler } from '@matimo/core';
-import * as readline from 'readline';
+**TypeScript** reads the list from `destructive-keywords.yaml`, looked up in `./packages/core/`, then `./node_modules/@matimo/core/`, then the working directory, falling back to the built-in list. Write keywords in **upper case**: content is upper-cased before matching, so a lower-case entry never matches. **Python** uses the built-in list; change `matimo.get_global_approval_handler().destructive_keywords` to adjust it.
 
-const matimo = await MatimoInstance.init({ autoDiscover: true });
+## In MCP servers
 
-const handler = getGlobalApprovalHandler();
-const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+An MCP server asks the person behind the client through an MCP elicitation request. Clients that can't show one get a clear error. See [MCP](../MCP.md#approval-over-mcp) for `trustClientApproval` and the server's `context` option.
 
-handler.setApprovalCallback(async (request) => {
-  return new Promise((resolve) => {
-    rl.question(
-      `\n🔒 Approve ${request.toolName}? (yes/no): `,
-      (answer) => {
-        rl.close();
-        resolve(answer.toLowerCase() === 'yes');
-      }
-    );
-  });
-});
+## Environment variables
 
-// Will prompt user for approval
-await matimo.execute('github-delete-repository', { owner: 'org', repo: 'temp' });
-```
+| Variable | Effect |
+|----------|--------|
+| `MATIMO_APPROVED_PATTERNS` | Comma-separated globs of tools that never ask |
+| `MATIMO_AUTO_APPROVE` | `true` approves everything except `matimo_approve_tool`, with a warning — test environments only |
+| `MATIMO_APPROVAL_SCAN_ALL_PARAMS` | `true` scans every string argument for destructive keywords |
 
-### Example 3: Pre-Approved Patterns
-
-```bash
-# Shell - approve all SQL read operations
-export MATIMO_APPROVED_PATTERNS="sql-read-*,sql-query-*"
-
-# TypeScript
-const matimo = await MatimoInstance.init({ autoDiscover: true });
-
-// No approval needed - matches pattern
-await matimo.execute('sql-read-users', {});
-
-// Approval needed - doesn't match pattern
-await matimo.execute('sql-delete-user', { id: 'user123' });
-```
-
-## YAML Configuration
-
-### Mark Tool as Requiring Approval
-
-In tool YAML definition (`packages/{provider}/tools/{tool}/definition.yaml`):
-
-```yaml
-name: github-delete-repository
-requires_approval: true
-# Other fields...
-parameters:
-  owner:
-    type: string
-    required: true
-  repo:
-    type: string
-    required: true
-```
-
-## Destructive Keywords YAML Configuration
-
-The `destructive-keywords.yaml` file contains keywords organized by category. Each category defines keywords that trigger automatic approval detection.
-
-### File Location
-
-```
-packages/core/destructive-keywords.yaml
-```
-
-### Structure
-
-```yaml
-# Destructive keywords used by ApprovalHandler to auto-detect operations requiring approval
-# These are checked against SQL content and command parameters to determine if approval is needed
-
-sql:                    # SQL-related destructive operations
-  - CREATE
-  - DELETE
-  - DROP
-  - ALTER
-  - TRUNCATE
-  - UPDATE
-  - GRANT
-  - REVOKE
-
-file:                   # File operation keywords
-  - EDIT
-  - WRITE
-  - APPEND
-  - REMOVE
-  - RENAME
-
-system:                 # System-level dangerous operations
-  - SHUTDOWN
-  - EXECUTE
-  - EXEC
-  - bash
-  - powershell
-  - "rm -rf"
-  - "del /f"
-```
-
-### How Keywords Are Used
-
-When a tool executes:
-
-1. **Load Keywords**: ApprovalHandler loads keywords from `destructive-keywords.yaml`
-2. **Check Content**: Scans tool parameters (especially SQL content) for keyword matches
-3. **Case-Insensitive Match**: `DELETE`, `delete`, `Delete` all match
-4. **Require Approval**: If any keyword found, approval is required (unless pre-approved)
-
-### Adding Custom Keywords
-
-Edit `packages/core/destructive-keywords.yaml` to add keywords:
-
-```yaml
-sql:
-  - CREATE
-  - DELETE
-  - UPDATE
-  - BACKUP      # Add custom keyword
-  - RESTORE     # Add custom keyword
-
-custom:         # Add new category
-  - CUSTOM_OP
-```
-
-After modifying, keywords are loaded on next `MatimoInstance` initialization.
-
-### Disabling Keyword Detection for a Tool
-
-If a tool contains a keyword but should NOT require approval, use the `requires_approval` flag:
-
-```yaml
-name: sql-backup
-requires_approval: false  # Override auto-detection, no approval needed
-```
-
-## Environment Variables Reference
-
-| Variable | Purpose | Example |
-|----------|---------|---------|
-| `MATIMO_AUTO_APPROVE` | Auto-approve all approvals | `true` |
-| `MATIMO_APPROVED_PATTERNS` | Pre-approved tool patterns | `sql-*,github-read-*` |
-
-## Testing
-
-### Test that Approval is Required
+## Testing approval
 
 ```typescript
-import { MatimoInstance, getGlobalApprovalHandler } from '@matimo/core';
-
-test('should require approval for delete', async () => {
-  const matimo = await MatimoInstance.init({ autoDiscover: true });
-  const handler = getGlobalApprovalHandler();
-  
-  let approvalAsked = false;
-  
-  handler.setApprovalCallback(async (request) => {
-    approvalAsked = true;
-    return false; // Deny
+test('asks before deleting', async () => {
+  const asked: string[] = [];
+  const matimo = await MatimoInstance.init({
+    toolPaths: ['./tools'],
+    onApproval: async (request) => {
+      asked.push(request.toolName);
+      return false;
+    },
   });
 
-  await expect(
-    matimo.execute('sql-delete-user', { id: 'test' })
-  ).rejects.toThrow(); // MatimoError
-
-  expect(approvalAsked).toBe(true);
+  await expect(matimo.execute('delete_post', { id: 1 })).rejects.toThrow(
+    'Operation rejected by approval handler'
+  );
+  expect(asked).toEqual(['delete_post']);
 });
 ```
 
-### Test Auto-Approval
+```python
+async def test_asks_before_deleting() -> None:
+    asked: list[str] = []
 
-```typescript
-test('should auto-approve in CI', async () => {
-  process.env.MATIMO_AUTO_APPROVE = 'true';
-  
-  const matimo = await MatimoInstance.init({ autoDiscover: true });
-  
-  const result = await matimo.execute('sql-delete-database', {
-    dbname: 'temp'
-  });
-  
-  expect(result).toBeDefined();
-});
+    async def decline(request: ApprovalRequest) -> bool:
+        asked.append(request.tool_name)
+        return False
+
+    matimo = await Matimo.init("./tools", on_approval=decline)
+    with pytest.raises(MatimoError, match="rejected by approval handler"):
+        await matimo.execute("delete_post", {"id": 1})
+    assert asked == ["delete_post"]
 ```
 
 ## Troubleshooting
 
-### "destructive-keywords.yaml not found"
-
-**Problem**: Warning in logs that destructive keywords configuration file cannot be found.
-
-**Solution**: 
-1. Ensure file exists at: `packages/core/destructive-keywords.yaml` (development)
-2. Or in `node_modules/@matimo/core/destructive-keywords.yaml` (installed)
-3. Uses fallback built-in keywords if file missing
-4. Fallback keywords: DELETE, DROP, TRUNCATE, ALTER, CREATE, GRANT, REVOKE, UPDATE
-
-### Custom Keywords Not Being Applied
-
-**Problem**: Added keyword to `destructive-keywords.yaml` but tool still doesn't require approval.
-
-**Solution**:
-1. Restart your application (keywords loaded on `MatimoInstance.init()`)
-2. Verify YAML syntax is correct (check spaces/indentation)
-3. Verify keyword case matches content (checks are case-insensitive, but keyword definition matters)
-4. Check file path - system looks in specific locations
-5. Run with `MATIMO_LOG_LEVEL=debug` to see which keywords were loaded
-
-### Keyword Matches But Shouldn't Require Approval
-
-**Problem**: Tool contains keyword (e.g., "UPDATE" in a comment) but operation is read-only.
-
-**Solution**: Add explicit flag to tool YAML:
-```yaml
-name: my-safe-tool
-requires_approval: false  # Override keyword detection
-```
-
-### "Approval required but not configured"
-
-**Problem**: Tool requires approval but no callback set.
-
-**Solution**: Set one of:
-1. `MATIMO_AUTO_APPROVE=true` for CI/CD
-2. `MATIMO_APPROVED_PATTERNS="pattern"` for pre-approved tools
-3. Call `handler.setApprovalCallback(callback)` for interactive approval
-
-### "Non-interactive environment - approval rejected"
-
-**Problem**: Tool needs approval but no TTY (terminal) available.
-
-**Solution**: Set:
-- `MATIMO_AUTO_APPROVE=true` in CI/CD scripts
-- Or add tool to `MATIMO_APPROVED_PATTERNS`
-- Or ensure script runs in interactive terminal
-
-### Tool Requires Approval But Shouldn't
-
-**Problem**: `requires_approval: true` in YAML but operation is safe.
-
-**Solution**: Remove `requires_approval` flag from tool YAML and let auto-detection handle it based on actual keywords.
-
----
-
-## Python SDK — Approval System
-
-Approval configuration in Python uses `InitOptions` (snake_case) and the same underlying `ApprovalHandler`.
-
-### Auto-Approve
-
-```python
-import os
-from matimo import Matimo, InitOptions
-
-os.environ['MATIMO_AUTO_APPROVE'] = 'true'
-matimo = await Matimo.init('./tools')
-```
-
-### Interactive Approval (Terminal)
-
-```python
-from matimo import Matimo, InitOptions
-
-async def interactive_approval(request) -> dict:
-    print(f"\nApproval required for: {request.tool_name}")
-    print(f"Parameters: {request.params}")
-    answer = input("Approve? (y/n): ").strip().lower()
-    return {'approved': answer == 'y', 'reason': 'interactive review'}
-
-matimo = await Matimo.init('./tools', InitOptions(
-    on_hitl=interactive_approval,
-))
-```
-
-### Pre-Approve Patterns
-
-```python
-from matimo import Matimo, InitOptions
-
-matimo = await Matimo.init('./tools', InitOptions(
-    approval_patterns=['SELECT *', 'read_', 'list_'],
-))
-```
-
-### Session Whitelist (Python)
-
-```python
-approved_tools: set[str] = set()
-
-async def session_approval(request) -> dict:
-    if request.tool_name in approved_tools:
-        return {'approved': True, 'reason': 'session whitelist'}
-    answer = input(f"Approve {request.tool_name}? [y/n] ").strip()
-    if answer == 'y':
-        approved_tools.add(request.tool_name)
-    return {'approved': answer == 'y', 'reason': 'user decision'}
-
-matimo = await Matimo.init('./tools', InitOptions(on_hitl=session_approval))
-```
-
-### Environment Variables (same as TypeScript)
-
-| Variable | Values | Effect |
-|----------|--------|--------|
-| `MATIMO_AUTO_APPROVE` | `true` / `false` | Skip all approval prompts |
-| `MATIMO_NON_INTERACTIVE` | `true` | Reject all approvals (non-interactive env) |
-
-> See [`python/examples/native/policy/policy_demo.py`](../../python/examples/native/policy/policy_demo.py) for approval patterns used in a full Python lifecycle demo.
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| `Destructive operation requires approval: <tool>` | The call needs approval and nothing can answer | Pass `onApproval` to `init()`, or pre-approve the tool with `MATIMO_APPROVED_PATTERNS` |
+| A read-only SQL query asks | The text contains a keyword, e.g. `created_at` | Expected with substring matching; approve it, or use a dedicated read-only tool |
+| A tool with `requires_approval: false` still asks | The keyword scan found a destructive keyword | Expected: the flag doesn't disable the scan |
+| A DELETE tool started asking after upgrading | Secure mode, new in 0.2.0 | Add an `onApproval`, set `requires_approval: false` on the tool, or use `governanceMode: 'legacy'` while migrating |
+| A custom keyword in `destructive-keywords.yaml` never triggers | It is lower-case | Write it in upper case |
+| `matimo_approve_tool` asks even with `MATIMO_AUTO_APPROVE=true` | By design | A person must approve every tool approval |
 
 ## See Also
 
-- [Tool Development Guide](../tool-development/)
-- [Architecture Overview](../architecture/OVERVIEW.md)
-- [Policy & Lifecycle Guide](POLICY_AND_LIFECYCLE.md) — Full policy engine documentation
-- Examples: `examples/tools/postgres/postgres-with-approval.ts`, `examples/tools/github/github-with-approval.ts`
-- Python: `python/examples/native/policy/policy_demo.py`
+- [Policy and Lifecycle](POLICY_AND_LIFECYCLE.md) — risk levels, HITL quarantine, execution gates, migration to 0.2.0
+- Runnable demos (no API keys): `typescript/examples/tools/policy/approval-modes-demo.ts`, `python/examples/native/policy/approval_modes_demo.py`
+- Provider examples: `typescript/examples/tools/postgres/postgres-with-approval.ts`, `typescript/examples/tools/github/github-with-approval.ts`
