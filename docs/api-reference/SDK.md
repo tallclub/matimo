@@ -942,7 +942,7 @@ result = await matimo.execute(
 try:
     result = await matimo.execute('unknown_tool', {})
 except MatimoError as e:
-    print(f"[{e.code}] {e.message}")
+    print(f"[{e.code}] {e}")
     if e.details:
         print("Details:", e.details)
 ```
@@ -1181,7 +1181,7 @@ from matimo.errors import ErrorCode
 try:
     result = await matimo.execute('unknown_tool', {})
 except MatimoError as e:
-    print(f"[{e.code}] {e.message}")
+    print(f"[{e.code}] {e}")
     # e.code is a string matching ErrorCode enum values
     if e.code == ErrorCode.TOOL_NOT_FOUND:
         available = [t.name for t in matimo.list_tools()]

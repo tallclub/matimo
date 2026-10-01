@@ -343,9 +343,9 @@ execution:
     - '{param1}'
     - '{param2}'
   timeout: 30000
-  env:
-    DEBUG: 'true'
 ```
+
+Only `args` are templated; `command` must be a fixed executable. Every call to a command tool asks for approval unless the YAML says `requires_approval: false`. The process gets the parent environment plus per-call `credentials` (an `execution.env` map works in Python only).
 
 ### HTTP Execution
 
