@@ -201,33 +201,35 @@ to apply the override.
 
 ### Acting on `risk:` - Opt-In HITL Quarantine
 
-`classifyRisk(tool)` always returns each generated tool's explicit `risk:`
-field. `DefaultPolicyEngine.canExecute()` gates `execute()` calls on that
-risk level, but only when HITL quarantine is turned on - it's **off by
-default** so enabling it never surprises callers who haven't configured it.
+**By default no Composio call asks for approval.** Each generated tool is an
+HTTP POST to Composio and declares no `requires_approval`, so 0.2.0's
+approval default (HTTP DELETE and command tools) does not cover them, and
+even `risk: high` actions such as `composio_jira_delete_issue` run when
+called.
 
-To get `pending_approval` quarantine for medium/high-risk composio tools
-(e.g. `composio_jira_create_issue`, `composio_jira_delete_issue`), configure
-the default policy engine with:
+The policy engine rates each Composio tool by
+`classifyExecutionRisk(tool)`: the higher of `medium` (any POST) and the
+declared `risk:`. To pause every `risk: high` action for a human, turn on
+quarantine at that level:
 
 ```typescript
 const matimo = await MatimoInstance.init({
   autoDiscover: true,
-  policyConfig: {
-    enableHITL: true,
-    quarantineRiskLevels: ['medium', 'high'],
-  },
+  policyConfig: { enableHITL: true, hitlMinRiskLevel: 'high' },
+  onHITL: async (request) => askReviewer(request), // Promise<boolean>
 });
 ```
 
-With this set, `DefaultPolicyEngine.canExecute()` returns
-`{ allowed: 'pending_approval', riskLevel, reason, toolName }` for any tool
-whose `classifyRisk(tool)` falls in `quarantineRiskLevels`, and
-`MatimoInstance.execute()` invokes the configured `onHITL` callback before
-proceeding. No custom `PolicyEngine` implementation is required.
+This also pauses every other high or critical tool in the instance. To
+pause `risk: medium` writes too while `risk: low` reads run immediately,
+use a small custom `PolicyEngine` that quarantines `composio_*` tools by
+their declared `risk:` — see
+[`examples/tools/composio/composio-with-approval.ts`](../../examples/tools/composio/composio-with-approval.ts)
+and [docs/COMPOSIO.md](../../../docs/COMPOSIO.md#governance--adding-hitl-approval).
 
-See [`skills/composio/SKILL.md`](./skills/composio/SKILL.md) for how agents
-should handle a `pending_approval` result if the host wires this up.
+With no `onHITL`, a quarantined call is rejected with `POLICY_DENIED`.
+See [`skills/composio/SKILL.md`](./skills/composio/SKILL.md) for what agents
+are told about quarantined calls.
 
 ## 🚀 Quick Start
 
@@ -243,8 +245,8 @@ const result = await matimo.execute('composio_jira_get_issue', {
   issue_id_or_key: 'PROJ-123',
 });
 
-// Medium-risk: executes immediately under DefaultPolicyEngine - see
-// "Acting on risk:" above for how to make this return `pending_approval`
+// Medium-risk: executes immediately under the default policy - see
+// "Acting on risk:" above to require approval
 const created = await matimo.execute('composio_linear_create_linear_issue', {
   composio_user_id: 'user_123',
   composio_connected_account_id: 'ca_def456',
