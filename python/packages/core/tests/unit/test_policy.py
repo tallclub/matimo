@@ -202,12 +202,20 @@ class TestDefaultPolicyEngine:
         decision = engine.can_execute(ctx, tool)
         assert decision.allowed is False
 
-    def test_draft_tool_allowed_in_dev(self) -> None:
+    def test_draft_tool_allowed_in_dev_for_admin(self) -> None:
+        engine = DefaultPolicyEngine()
+        tool = _make_http_tool(status=ToolStatus.DRAFT)
+        ctx = PolicyContext(agent_id="agent1", environment="development", roles=["admin"])
+        decision = engine.can_execute(ctx, tool)
+        assert decision.allowed is True
+
+    def test_draft_tool_denied_in_dev_without_admin(self) -> None:
         engine = DefaultPolicyEngine()
         tool = _make_http_tool(status=ToolStatus.DRAFT)
         ctx = PolicyContext(agent_id="agent1", environment="development")
         decision = engine.can_execute(ctx, tool)
-        assert decision.allowed is True
+        assert decision.allowed is False
+        assert "requires admin role" in decision.reason
 
     def test_draft_tool_denied_for_prod_like_environment_strings(self) -> None:
         """

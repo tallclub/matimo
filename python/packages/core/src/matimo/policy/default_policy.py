@@ -190,7 +190,8 @@ class DefaultPolicyEngine:
 
         Block conditions:
         - Tool is deprecated
-        - Tool is in 'draft' status in a production environment without admin role
+        - Tool is in 'draft' status in a production environment, or elsewhere
+          without the admin role
         - Tool requires explicit approval in production without admin/operator role
         - Policy HITL is enabled and tool execution risk meets the HITL threshold
         """
@@ -205,11 +206,18 @@ class DefaultPolicyEngine:
                 + (f": {tool.deprecation_message}" if tool.deprecation_message else ""),
             )
 
-        # 2. Draft tools blocked in production without admin role
-        if tool.status.value == "draft" and _is_production(env) and "admin" not in roles:
+        # 2. Draft tools: never in production, and elsewhere only for admins
+        if tool.status.value == "draft" and _is_production(env):
             return PolicyDenied(
                 allowed=False,
                 reason=f"Tool '{tool.name}' is in draft status and cannot be used in production",
+                risk_level=RiskLevel.MEDIUM,
+            )
+        if tool.status.value == "draft" and "admin" not in roles:
+            return PolicyDenied(
+                allowed=False,
+                reason=f"Draft tool '{tool.name}' requires admin role",
+                risk_level=RiskLevel.MEDIUM,
             )
 
         # 3. requires_approval in production without privileged role
