@@ -477,6 +477,6 @@ export OAUTH_MICROSOFT_AUTH_URL=...
 
 ## See Also
 
-- [OAuth2Handler API](./src/auth/oauth2-handler.ts)
-- [Provider Loader Implementation](./src/auth/oauth2-provider-loader.ts)
-- [Integration Examples](./test/integration/)
+- [OAuth2Handler API](../../typescript/packages/core/src/auth/oauth2-handler.ts)
+- [Provider Loader Implementation](../../typescript/packages/core/src/auth/oauth2-provider-loader.ts)
+- [Integration Tests](../../typescript/packages/core/test/integration/oauth2-provider-config.integration.test.ts)

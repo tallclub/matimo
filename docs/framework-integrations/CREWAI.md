@@ -384,6 +384,6 @@ nest_asyncio.apply()  # Allow nested event loops
 
 - [LangChain Integration](./LANGCHAIN.md)
 - [Agno Integration](./AGNO.md) — Use with LangChain agents
-- [Native Python Patterns](../user-guide/SDK_PATTERNS.md#python) — SDK without framework
-- [Provider Tools Reference](../tools/) — Full tool documentation
-- [API Reference](../api-reference/SDK.md#python) — Python SDK API
+- [Native Python Patterns](../user-guide/SDK_PATTERNS.md#python-sdk) — SDK without framework
+- [Tool Discovery](../user-guide/TOOL_DISCOVERY.md) — Provider packages and their tools
+- [API Reference](../api-reference/SDK.md#python-sdk--matimo-api) — Python SDK API

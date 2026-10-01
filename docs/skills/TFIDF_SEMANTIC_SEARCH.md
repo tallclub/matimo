@@ -561,7 +561,7 @@ if (cached) {
 
 - **TF-IDF Fundamentals:** https://en.wikipedia.org/wiki/Tf%E2%80%93idf
 - **Cosine Similarity:** https://en.wikipedia.org/wiki/Cosine_similarity
-- **Matimo Skills System:** [Skills System Docs](./SKILLS_SYSTEM.md)
+- **Matimo Skills System:** [Skills System Docs](./SKILLS.md)
 - **Embeddings for Production:** OpenAI (text-embedding-3), Cohere, Hugging Face
 - **Stopwords Lists:** NLTK, SpaCy (extensible in Matimo)
 

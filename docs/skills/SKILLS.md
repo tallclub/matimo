@@ -18,7 +18,7 @@
   - [getSkillContent() — Selective Loading](#getskillcontent--selective-loading)
   - [getSkillSections() — Section Inventory](#getskillsections--section-inventory)
 - [Semantic Search](#semantic-search)
-  - [Built-in TF-IDF Search](#built-in-tf-idf-search)
+  - [Built-in TF-IDF Search](#built-in-tf-idf-term-frequency---inverse-document-frequency-search)
   - [Custom Embedding Provider](#custom-embedding-provider)
 - [Agent Skill Lifecycle](#agent-skill-lifecycle)
   - [Creating a Skill](#creating-a-skill)
@@ -174,7 +174,7 @@ difficulty: intermediate     # ❌ not a spec field
 ---
 ```
 
-### Matimo's Progressive Disclosure Levels
+### Progressive Disclosure Levels
 
 The spec defines three levels of detail an agent loads:
 
@@ -188,7 +188,7 @@ Agents should use Level 1 first to survey available skills, then Level 2 to load
 
 ### Minimal Valid Example
 
-```markdown
+````markdown
 ---
 name: api-error-handling
 description: Patterns for handling API errors gracefully in TypeScript services.
@@ -219,7 +219,7 @@ if (!response.ok) {
   );
 }
 ```
-```
+````
 
 ---
 

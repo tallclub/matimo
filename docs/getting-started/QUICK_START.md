@@ -103,7 +103,7 @@ python main.py
 A Python HTTP tool returns the parsed response body.
 
 **Python next steps:**
-- [SDK Patterns (Python)](#python-sdk-patterns) — factory, decorator, LangChain
+- [SDK Patterns (Python)](../user-guide/SDK_PATTERNS.md#python-sdk) — factory, decorator, LangChain
 - [LangChain Integration](../framework-integrations/LANGCHAIN.md)
 - [Examples →](../../python/examples/)
 

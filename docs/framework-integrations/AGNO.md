@@ -410,5 +410,5 @@ uv run python agno/agents/agno_agent.py
 - [LangChain Integration](./LANGCHAIN.md): ReAct agents, Python and TypeScript
 - [CrewAI Integration](./CREWAI.md): multi-agent crews, Python
 - [Policy Engine and Tool Lifecycle](../api-reference/POLICY_AND_LIFECYCLE.md): risk classification and HITL
-- [SDK Usage Patterns](../user-guide/SDK_PATTERNS.md#python): factory and decorator patterns
+- [SDK Usage Patterns](../user-guide/SDK_PATTERNS.md#python-sdk): factory and decorator patterns
 - [MCP Server](../MCP.md): governed tools over Model Context Protocol

@@ -1589,10 +1589,6 @@ print(f"Loaded {len(tools)} tools")
 
 ## v0.1.0-alpha.13
 
----
-
-## v0.1.0-alpha.13
-
 > Release: Skills System, Policy Engine, Meta-Tools Hardening — Complete agent autonomy layer with skill discovery, policy-driven tool creation, HITL quarantine, hot-reload safety, and security hardening
 
 **Released**: March 22, 2026
@@ -1708,8 +1704,8 @@ None. All new features are additive or opt-in.
 
 ### 🔗 Related
 
-- **Previous**: [v0.1.0-alpha.12.1](#v0101-alpha121)
-- **Next**: [v0.1.0-alpha.14](./ROADMAP.md#v0101-alpha14--next-release)
+- **Previous**: [v0.1.0-alpha.12.1](#v010-alpha121)
+- **Next**: [v0.1.0-alpha.14](#v010-alpha14)
 
 ---
 

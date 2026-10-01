@@ -877,4 +877,4 @@ tools/
 - [Quick Start](../getting-started/QUICK_START.md) — Get started in 5 minutes
 - [API Reference](../api-reference/SDK.md) — Complete SDK documentation
 - [Decorator Guide](./DECORATOR_GUIDE.md) — Use decorators
-- [CONTRIBUTING.md](../CONTRIBUTING.md) — Development guide
+- [CONTRIBUTING.md](../../CONTRIBUTING.md) — Development guide

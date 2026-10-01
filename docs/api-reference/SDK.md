@@ -6,7 +6,7 @@ Complete reference for the Matimo SDK in **TypeScript** and **Python**. For a si
 
 ### TypeScript SDK (`MatimoInstance`)
 - [init()](#initoptions)
-- [execute()](#executetoolname-params)
+- [execute()](#executetoolname-params-options)
 - [getRequiredCredentials()](#getrequiredcredentialstoolname)
 - [listTools()](#listtools)
 - [getTool()](#gettoolname)

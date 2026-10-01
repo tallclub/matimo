@@ -29,8 +29,8 @@ Expose your Matimo tools to AI assistants via the [Model Context Protocol](https
 - [Programmatic Usage](#programmatic-usage)
 - [Architecture](#architecture)
 - [Troubleshooting](#troubleshooting)
-  - [TypeScript](#troubleshootingtypescript)
-  - [Python](#troubleshootingpython)
+  - [TypeScript](#troubleshooting)
+  - [Python](#troubleshooting-python)
 
 ---
 
@@ -61,7 +61,7 @@ Both have identical capabilities and security features. Choose based on your lan
 
 **Implementation details:**
 - **TypeScript:** `typescript/packages/core/mcp/` — see [mcp-server.ts](https://github.com/tallclub/matimo/blob/main/typescript/packages/core/src/mcp/mcp-server.ts)
-- **Python:** `python/packages/core/src/matimo/mcp/` — see [README.md](../../python/packages/core/src/matimo/mcp/README.md)
+- **Python:** `python/packages/core/src/matimo/mcp/` — see [README.md](../python/packages/core/src/matimo/mcp/README.md)
 
 ---
 
@@ -1129,7 +1129,7 @@ The Python MCP implementation mirrors TypeScript with full feature parity:
 3. **Secret storage:** Both store in memory **after resolution**, never written back to process env — Python uses `dict[str, str]`, TypeScript uses `Record<string, string>`
 4. **Test coverage:** Both at 95%+ — 995 Python tests, 2001 TypeScript tests
 
-For full implementation details, see [python/packages/core/src/matimo/mcp/README.md](../../python/packages/core/src/matimo/mcp/README.md).
+For full implementation details, see [python/packages/core/src/matimo/mcp/README.md](../python/packages/core/src/matimo/mcp/README.md).
 
 ---
 

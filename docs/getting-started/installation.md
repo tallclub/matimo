@@ -266,7 +266,7 @@ Works out of the box with TypeScript support.
 
 ### Security Settings
 
-**Embedded Code Execution** (Disabled by Default)
+**Embedded Code Execution** (TypeScript; disabled by default)
 
 Embedded code in tool YAML is **disabled by default** for security. To enable it:
 
@@ -279,7 +279,7 @@ export MATIMO_ALLOW_EMBEDDED_CODE=true
 
 ⚠️ **Only enable if you fully trust all tool YAML sources. Never enable in production without careful review.**
 
-See [Security Guide](../user-guide/SECURITY.md) for more details.
+See the [Security Policy](../../SECURITY.md) and [Policy Engine](../api-reference/POLICY_AND_LIFECYCLE.md) for more details.
 
 ## Quick Verification Checklist
 
