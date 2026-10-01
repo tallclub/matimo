@@ -70,10 +70,17 @@ matimo doctor                             # check config, installed providers, c
 Operates on the current directory (or `$MATIMO_TOOL_DIR`), not an arbitrary path argument:
 
 ```bash
-matimo review list                        # list draft tools awaiting approval
+matimo review list                        # list approved tools and HITL-pending ones
 matimo review approve my_tool             # approve a pending tool
 matimo review reject my_tool              # reject/revoke a tool
 ```
+
+`review` works on one directory that holds both the agent-created tools (`<dir>/<tool>/definition.yaml`) and the approval manifest (`<dir>/.matimo-approvals.json`): the current directory, or `MATIMO_TOOL_DIR`. For your app to see a CLI approval:
+
+- set `approvalDir` (`approval_dir`) in the app to that same directory, and
+- use the same `MATIMO_APPROVAL_SECRET` in the CLI and the app (`approve` refuses to run without it).
+
+`approve` sets `status: approved` in the YAML and signs it; reload the app's tools afterwards. `list` shows the tools the manifest records as approved, and those held as pending by HITL quarantine on reload. Inside a running agent, `matimo_approve_tool` does the same job with the app's own manifest.
 
 ---
 
