@@ -17,7 +17,7 @@ Core capabilities: 139+ production tools across 10 first-party provider packages
 - [Approval System](./docs/api-reference/APPROVAL-SYSTEM.md): which calls need a human, who answers, MATIMO_APPROVED_PATTERNS
 - [Tool Specification](./docs/tool-development/TOOL_SPECIFICATION.md) / [YAML Tools](./docs/tool-development/YAML_TOOLS.md): how to define a tool
 - [Adding Tools](./docs/tool-development/ADDING_TOOLS.md): 6-step guide to a new `@matimo/<provider>` package
-- [MCP Server](./docs/MCP.md) / [MCP Setup Guide](./docs/mcp/SETUP_GUIDE.md): stdio/HTTP transport, client config for Claude Desktop/Cursor/Windsurf
+- [MCP Server](./docs/MCP.md): stdio/HTTP transport, client config for Claude Desktop/Cursor/Windsurf, approval over MCP
 - [LangChain Integration](./docs/framework-integrations/LANGCHAIN.md)
 - [CrewAI Integration](./docs/framework-integrations/CREWAI.md)
 - [Agno Integration](./docs/framework-integrations/AGNO.md): Python-only, maps risk classification onto Agno's confirmation flow

@@ -93,7 +93,7 @@ To add a new governed capability at runtime rather than hand-writing an ungovern
 
 ## MCP
 
-Matimo ships a first-party MCP server (stdio and Streamable HTTP transports) exposing every installed `@matimo/*` tool. Setup and full flag reference: [docs/MCP.md](./docs/MCP.md), [docs/mcp/SETUP_GUIDE.md](./docs/mcp/SETUP_GUIDE.md).
+Matimo ships a first-party MCP server (stdio and Streamable HTTP transports) exposing every installed `@matimo/*` tool. Setup and full flag reference: [docs/MCP.md](./docs/MCP.md). Contributors building provider packages with Copilot over MCP: [docs/mcp/SETUP_GUIDE.md](./docs/mcp/SETUP_GUIDE.md).
 
 ## Where to look for more
 

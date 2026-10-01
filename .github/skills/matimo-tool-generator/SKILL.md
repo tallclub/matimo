@@ -1,6 +1,6 @@
 ---
 name: matimo-tool-generator
-description: Coding agents use this skill to rapidly create new Matimo tools and skills by invoking Matimo's own core tools via MCP. Self-maintaining Matimo codebase through AI agents.
+description: Coding agents use this skill to work on the Matimo repository with Matimo's own MCP tools — validating tool and skill definitions, finding patterns, and running checks — and to know which meta-tools are for runtime agents instead.
 metadata:
   category: "Tool Development"
   difficulty: "advanced"
@@ -9,227 +9,68 @@ metadata:
   invocation: "When user asks to create tools, skills, or extend Matimo — use this skill + Matimo MCP tools"
 ---
 
-# Self-Maintaining Matimo via Coding Agents
+# Working on Matimo with Matimo's MCP Tools
 
-This skill enables **coding agents** to create new **Matimo tools and skills** using **Matimo's own core tools via MCP**.
+This skill is for **coding agents changing this repository** (adding tools, skills or provider packages) while connected to Matimo's MCP server — usually the Python example server, `python/examples/mcp/src/server_http.py`, at `http://localhost:3101/mcp`. Setup: `docs/mcp/SETUP_GUIDE.md`.
 
-## The Self-Maintaining Loop
+## Two kinds of tool, two workflows
 
-```
-Agent Request
-     ↓
-Connect to MCP Server (http://0.0.0.0:3101)
-     ↓
-Invoke Matimo Core Tools:
-  • matimo_create_tool
-  • matimo_validate_tool
-  • matimo_create_skill
-  • matimo_reload_tools
-  • execute (tests + git)
-     ↓
-Tool/Skill Added to Codebase
-     ↓
-Matimo Maintains Itself 🚀
-```
+| You are adding… | Write it as | Check it with |
+|-----------------|-------------|---------------|
+| A tool or skill **in this repo** (a provider package, a core tool) | Files in the package directory, reviewed in a pull request | `matimo_validate_tool`, `matimo_validate_skill`, `pnpm validate-tools`, tests |
+| A tool an agent needs **at runtime**, in a user's deployment | `matimo_create_tool` → a draft in `./matimo-tools/<name>/` | `matimo_approve_tool` by a human, then `matimo_reload_tools` |
 
-## Available Matimo Core Tools via MCP
+Never use `matimo_create_tool` for the repo. It forces `status: draft` and `requires_approval: true`, and a draft runs only for the `admin` role.
 
-### 1. `matimo_create_tool`
-**Purpose:** Generate tool YAML definition with validation
+## The MCP tools you will use
 
-**Signature:**
-```
-POST http://0.0.0.0:3101/messages
+| Tool | Input | Output | Asks the user? |
+|------|-------|--------|----------------|
+| `matimo_validate_tool` | `yaml_content` | `{ valid, schemaErrors, policyViolations, riskLevel }` | No |
+| `matimo_validate_skill` | `name`, `skills_dir` | validation report | No |
+| `matimo_list_skills`, `matimo_get_skill`, `matimo_search_skills` | `name` / `query` | skill metadata or content | No |
+| `matimo_search_tools`, `matimo_get_tool` | `query` / `name` | loaded tools, a tool's YAML | No |
+| `search`, `read` | `query`, `directory` / `filePath` | matching files / file content | Yes |
+| `edit` | `filePath`, `operation`, `content` | result | Yes |
+| `execute` | `command` | stdout, stderr, exit code | Yes |
+| `matimo_reload_tools` | — | `{ loaded, removed, revalidated, rejected }` | Yes |
 
-{
-  "method": "call_tool",
-  "params": {
-    "name": "matimo_create_tool",
-    "arguments": {
-      "name": "tool-name",
-      "yaml_content": "name: tool_name\ngit: ...",
-      "justification": "Why create this tool",
-      "proposed_by": "Agent Name"
-    }
-  }
-}
-```
+"Asks the user" means the tool declares `requires_approval: true`; the server asks the person in the MCP client (an elicitation prompt) before it runs. Say what you are about to do before calling one. If the user declines, do not retry the same call.
 
-### 2. `matimo_validate_tool`
-**Purpose:** Validate tool YAML against Matimo schema
+`matimo_validate_tool` applies the rules for agent-created tools. For a repo tool, fix every `schemaErrors` entry; a `policyViolations` entry such as `blocked-http-method` on a legitimate DELETE tool is expected. `pnpm validate-tools` is the authority for the repo.
 
-**Signature:**
-```
-POST http://0.0.0.0:3101/messages
-
-{
-  "method": "call_tool",
-  "params": {
-    "name": "matimo_validate_tool",
-    "arguments": {
-      "name": "tool-name"
-    }
-  }
-}
-```
-
-### 3. `matimo_create_skill`
-**Purpose:** Create skill documentation with YAML frontmatter
-
-**Signature:**
-```
-POST http://0.0.0.0:3101/messages
-
-{
-  "method": "call_tool",
-  "params": {
-    "name": "matimo_create_skill",
-    "arguments": {
-      "name": "skill-name",
-      "content": "---\nname: skill-name\n...\n---\n# Skill Content"
-    }
-  }
-}
-```
-
-### 4. `matimo_reload_tools`
-**Purpose:** Reload tools after creation
-
-**Signature:**
-```
-POST http://0.0.0.0:3101/messages
-
-{
-  "method": "call_tool",
-  "params": {
-    "name": "matimo_reload_tools",
-    "arguments": {}
-  }
-}
-```
-
-### 5. `execute`
-**Purpose:** Run shell commands (tests, git commits)
-
-**Signature:**
-```
-POST http://0.0.0.0:3101/messages
-
-{
-  "method": "call_tool",
-  "params": {
-    "name": "execute",
-    "arguments": {
-      "command": "git commit -m 'feat: add new tool'"
-    }
-  }
-}
-```
-
-## Complete Workflow: Create a Slack Tool
-
-### Step 1: Research API
-```bash
-search query="Slack API user.info endpoint"
-```
-
-### Step 2: Generate Tool YAML
-```bash
-matimo_create_tool(
-  name="slack-get-user-info",
-  yaml_content="""
-name: slack_get_user_info
-description: Get information about a Slack user
-version: '1.0.0'
-status: draft
-
-parameters:
-  user_id:
-    type: string
-    required: true
-    description: Slack user ID
-
-execution:
-  type: http
-  method: GET
-  url: 'https://slack.com/api/users.info?user={user_id}'
-  headers:
-    Authorization: 'Bearer {SLACK_BOT_TOKEN}'
-
-authentication:
-  type: bearer
-
-output_schema:
-  type: object
-  properties:
-    ok:
-      type: boolean
-""",
-  justification="Enable agents to retrieve Slack user profiles",
-  proposed_by="Agent"
-)
-```
-
-### Step 3: Validate Tool
-```bash
-matimo_validate_tool(name="slack-get-user-info")
-```
-
-### Step 4: Create Skill Documentation
-```bash
-matimo_create_skill(
-  name="slack-user-management",
-  content="""---
-name: slack-user-management
-description: Slack user management tools
----
-
-# Slack User Management
-
-Tools for querying and managing Slack users.
-
-## slack_get_user_info
-
-Get user profile information by user ID.
-"""
-)
-```
-
-### Step 5: Reload Tools
-```bash
-matimo_reload_tools()
-```
-
-### Step 6: Test and Commit
-```bash
-execute(command="cd python && uv run pytest packages/core/tests/ -k slack")
-execute(command="git add -A && git commit -m 'feat(slack): add slack_get_user_info tool'")
-```
-
-## Agent Invocation Pattern
-
-When user requests a new tool:
+## Adding a tool to a provider package
 
 ```
-User: "Create a GitHub tool to list repository PRs"
-  ↓
-Agent: Load matimo-tool-generator skill
-  ↓
-Agent: Follow Complete Workflow above
-  ↓
-Agent: Uses Matimo tools via MCP to generate, validate, test, commit
-  ↓
-Result: Tool in codebase + documented + tested ✨
+1. Read the API docs; read an existing tool in the package (search, read)
+2. Write typescript/packages/<provider>/tools/<tool>/definition.yaml
+   and the same YAML in python/packages/<provider>/src/matimo_<provider>/tools/<tool>/
+3. matimo_validate_tool(yaml_content) → fix schema errors
+4. Write unit tests with mocked HTTP in both SDKs (docs/tool-development/TESTING.md)
+5. execute: cd typescript && pnpm validate-tools && pnpm lint && pnpm test -- packages/<provider>
+   execute: cd python && uv run ruff check packages/<provider> && uv run pytest packages/<provider>
+6. Add the examples listed in CLAUDE.md
 ```
 
-## Key Principles
+Governance fields: `requires_approval: true` on DELETE and other destructive calls; `risk:` on every function tool. Leave `status` unset.
 
-✅ **Use Matimo tools, not manual scripts** — leverage standardization
-✅ **Validate every generated tool** — matimo_validate_tool catches issues
-✅ **Automate documentation** — matimo_create_skill maintains consistency
-✅ **Test before committing** — execute runs test suites
-✅ **Commit with proper messages** — version control with clarity
+For a whole new provider, follow `.github/skills/matimo-provider-creation/SKILL.md`.
 
-## Result
+## Adding a skill
 
-Matimo becomes **self-maintaining** — coding agents build the SDK using the SDK's own tools. 🚀
+1. Write `typescript/packages/<provider>/skills/<provider>/SKILL.md` (frontmatter `name` and `description`, then Markdown).
+2. `matimo_validate_skill(name: "<provider>", skills_dir: "typescript/packages/<provider>/skills")`.
+3. Check every tool name and input the skill mentions against the tool definitions.
+
+`matimo_create_skill` writes to `./matimo-tools/skills` unless given `target_dir`, and asks the user first; writing the file directly is simpler for the repo.
+
+## Seeing your change through the server
+
+The server loads tools when it starts. Restart it, or call `matimo_reload_tools` (the user approves), then `matimo_search_tools` to confirm the new tool is listed.
+
+## Rules
+
+- Every input, field and path you write must exist in the code; check `typescript/packages/core/src/core/schema.ts` and the meta-tool definitions in `typescript/packages/core/tools/`.
+- TypeScript and Python change together.
+- Never set `MATIMO_AUTO_APPROVE` to get past an approval prompt.
+- Never call a live API in a unit test.

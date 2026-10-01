@@ -570,45 +570,58 @@ const result = await matimo.execute('stripe_list_customers', { limit: 10 });
 
 ## Agent & Skill System
 
-Matimo uses its own MCP server to self-maintain — agents create new tools by calling Matimo tools via MCP.
+Contributors can build provider packages with a Copilot agent that checks its work with tools from Matimo's own MCP server. Setup: `docs/mcp/SETUP_GUIDE.md`.
 
 ### MCP Server (port 3101)
 
 ```bash
-# Start the HTTP MCP server (exposes all 128+ tools via JSON-RPC)
+# Start the HTTP MCP server (core tools plus every installed matimo_* package)
 cd python/examples/mcp
 uv run python src/server_http.py
-# Configurable: MATIMO_SERVER_PORT, MATIMO_EXTRA_TOOLS_PATH, MATIMO_LOG_LEVEL
+# Configurable: MATIMO_SERVER_PORT, MATIMO_EXTRA_TOOLS_PATH
+# Endpoint: http://localhost:3101/mcp   Health: /health
 ```
+
+Name the server `matimo-python-mcp-server` in `.vscode/mcp.json`; the agent's tool list uses that name. Tools with `requires_approval: true` (`execute`, `edit`, `read`, `search`, …) ask you through an MCP elicitation prompt.
 
 ### Agent Files (`.github/agents/`)
 
 | File | Purpose |
 |------|---------|
-| `matimo-tool-creator-refactored.agent.md` | **Preferred** — lean 200-line orchestrator; loads skill, calls MCP tools |
-| `matimo-tool-creator.agent.md` | Original full-featured agent |
+| `matimo-tool-creator-refactored.agent.md` | Builds a provider package in both SDKs; loads the provider skill, validates with MCP tools |
+| `release-engineer.agent.md` | Release preparation |
 
 ### Skill Files (`.github/skills/`)
 
 | File | Content |
 |------|---------|
-| `matimo-provider-creation/SKILL.md` | 400+ lines; bilingual TS+Python patterns for all 8 aspects of tool creation |
-| `matimo-tool-generator/SKILL.md` | Self-maintenance workflow patterns (220 lines) |
-| `tool-creation/SKILL.md` | General tool creation guidance |
+| `matimo-provider-creation/SKILL.md` | Package layout, YAML formats, auth, tests, README template for both SDKs |
+| `matimo-tool-generator/SKILL.md` | Using Matimo's MCP tools while maintaining the repo |
+| `tool-creation/SKILL.md` | Copy of the core `tool-creation` skill |
 
-### Self-Maintenance Loop
+### Provider Workflow
 
 ```
-User request → Agent loads Skill (patterns) → calls MCP meta-tools
-  → matimo_create_tool (YAML) → matimo_validate_tool → matimo_approve_tool
-  → matimo_reload_tools → execute new tool
-  → Report: definition.yaml + index.ts + executor.py + tests
+User request → agent reads the provider skill and the API docs
+  → writes definition.yaml in typescript/ and python/ packages
+  → matimo_validate_tool(yaml_content) for each tool
+  → execute: pnpm validate-tools, lint, tests (user approves each)
+  → README, SKILL.md, examples → report files and results
 ```
+
+Provider tools are written as files. `matimo_create_tool` is only for agents creating their own runtime tools: it writes drafts under `./matimo-tools` that need `matimo_approve_tool`.
 
 ### Developer Documentation (`docs/mcp/`)
 
 | File | Purpose |
 |------|---------|
+| `docs/mcp/INDEX.md` | Entry point |
+| `docs/mcp/SETUP_GUIDE.md` | Setting up Copilot + the MCP server for the provider workflow |
+| `docs/mcp/QUICK_REFERENCE.md` | Commands, tool inputs, file paths |
+| `docs/mcp/MAINTENANCE_GUIDE.md` | Keeping the agent and skills in step with the SDK |
+| `docs/mcp/NAVIGATION_MAP.md` | Task-based navigation |
+
+------|---------|
 | `docs/mcp/INDEX.md` | Entry point |
 | `docs/mcp/SETUP_GUIDE.md` | Complete bilingual setup guide (TypeScript + Python) |
 | `docs/mcp/QUICK_REFERENCE.md` | Cheat sheet with code examples |

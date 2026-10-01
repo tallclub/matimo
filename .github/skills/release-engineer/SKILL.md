@@ -149,8 +149,7 @@ Every release touches these files (verify each one):
 | `docs/RELEASES.md` | Prepend new release block at top: version, date, features, tools table, examples, requirements |
 | `docs/ROADMAP.md` | Move completed items to ✅, update "Current Status" header, uncheck next-release items |
 | `docs/index.md` | Update "latest version" badge/mention if present |
-| `docs/mcp/QUICK_REFERENCE.md` | Update version references if any |
-| `docs/mcp/SETUP_GUIDE.md` | Update install commands (`npm install matimo@vN`) if version pinned |
+| `docs/mcp/*.md` | Update if the example MCP server, the agent or the meta-tool inputs changed (no version pins today) |
 | `typescript/packages/core/CHANGELOG.md` | If file exists: prepend new version block |
 | `README.md` (root) | Update "Latest Release" or badge if present |
 | `landing-page/index.html` | Update version text if hardcoded |
