@@ -102,6 +102,20 @@ describe('DefaultPolicyEngine', () => {
       }
     });
 
+    it('should deny high-severity violations outside production', () => {
+      const tool = makeTool({
+        execution: { type: 'http', method: 'GET', url: 'https://elsewhere.example.org/data' },
+        requires_approval: true,
+        status: 'draft',
+      });
+      const engine = new DefaultPolicyEngine({ allowedDomains: ['api.example.com'] });
+      const result = engine.canCreate({ environment: 'development' }, tool);
+      expect(result.allowed).toBe(false);
+      if (!result.allowed) {
+        expect(result.reason).toContain('blocked-domain');
+      }
+    });
+
     it('should deny tools with medium violations when HITL disabled', () => {
       // Tool that tries to bypass forced-draft-status constraint
       const tool = makeTool({

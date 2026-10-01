@@ -367,6 +367,23 @@ class TestDefaultPolicyEngine:
         # should be allowed (no critical violations, not in production)
         assert result.allowed is not False or result.allowed == "pending_approval"
 
+    def test_can_create_rejects_high_severity_outside_production(self) -> None:
+        """A tool outside allowed_domains is rejected in development too, as in TS."""
+        import tempfile
+        engine = DefaultPolicyEngine(config=PolicyConfig(allowed_domains=["api.example.com"]))
+        tool = _make_http_tool(
+            url="https://elsewhere.example.org/data",
+            requires_approval=True,
+            status=ToolStatus.DRAFT,
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tool.set_definition_path(f"{tmpdir}/definition.yaml")
+            engine.register_untrusted_path(tmpdir)
+            ctx = PolicyContext(agent_id="a1", environment="development")
+            result = engine.can_create(ctx, tool)
+        assert result.allowed is False
+        assert "not in allowed_domains" in result.reason
+
     def test_can_create_rejects_hand_edited_approved_status(self) -> None:
         """
         A tool whose status was hand-edited to 'approved' (bypassing

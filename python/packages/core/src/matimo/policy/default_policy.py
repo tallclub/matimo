@@ -295,15 +295,16 @@ class DefaultPolicyEngine:
                     risk_level=RiskLevel.CRITICAL,
                 )
 
+            # High-severity violations (disallowed domain or HTTP method, forced
+            # approval, credentials) reject the tool in every environment, as in
+            # TypeScript; allowed_domains would otherwise mean nothing outside prod.
             if high:
-                env = (context.environment or "").lower()
-                if _is_production(env):
-                    msgs = "; ".join(v.message for v in high)
-                    return PolicyDenied(
-                        allowed=False,
-                        reason=f"Tool '{tool_def.name}' failed high-severity content policy in production: {msgs}",
-                        risk_level=RiskLevel.HIGH,
-                    )
+                msgs = "; ".join(v.message for v in high)
+                return PolicyDenied(
+                    allowed=False,
+                    reason=f"Tool '{tool_def.name}' failed high-severity content policy: {msgs}",
+                    risk_level=RiskLevel.HIGH,
+                )
 
             # Remaining (medium/low) violations — e.g. forced-draft-status, which fires
             # when a tool's status no longer matches 'draft' without a legitimate approval
