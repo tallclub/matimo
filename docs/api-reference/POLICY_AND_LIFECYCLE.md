@@ -1507,6 +1507,13 @@ the old default, and nothing else. Both SDKs assert the same table,
 | MCP HTTP bearer check | String comparison | Constant-time comparison |
 | `matimo_approve_tool` | Any caller could approve any tool, including one it had just created; `MATIMO_AUTO_APPROVE` and patterns applied | Refuses when the caller's `agentId` created the tool. Requires the `admin` role when a policy context is supplied. Never pre-approved |
 | `MATIMO_AUTO_APPROVE=true` | Silent, and recommended in the approval error hint | Logs a warning at init. The hint recommends `onApproval` or `MATIMO_APPROVED_PATTERNS` |
+| `matimo_approve_tool` + reload | Without `MATIMO_APPROVAL_SECRET` (or with a different `approvalDir`) the tool signed with its own key, so the next reload rejected the tool it had just approved | Approvals are recorded with the owning instance and survive the reload |
+| `matimo_create_tool` / `matimo_get_tool_status` | Called a low-risk draft "auto-approved … ready for use" | Report `pending` until a human approves the draft |
+| `matimo_validate_tool` | TypeScript flagged the `requires_approval`/`status` fields creation sets itself; Python said `valid: true` despite critical violations | `valid` is true exactly when `matimo_create_tool` would accept the definition |
+| Python draft tools | Ran for anyone outside production, and for admins in production | Never in production; elsewhere only for the `admin` role, as in TypeScript |
+| Python untrusted tools | High-severity violations (disallowed domain, method or credential) rejected only in production; a tool with no `status` was always rejected | Critical and high violations reject in every environment; an unset `status` is accepted, as in TypeScript |
+| Python `no-ssrf` | Missed `*.internal`, `*.local`, `*.localhost` and `0.0.0.0` | Blocks them, as in TypeScript |
+| Python `ReloadResult` | `loaded` counted new names; `revalidated` counted replaced tools | `loaded` counts every registered tool; `revalidated` the untrusted tools re-checked, as in TypeScript |
 
 ### Events
 
