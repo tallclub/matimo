@@ -788,11 +788,14 @@ class Matimo:
                     )
                     # Still register the tool so it exists, but it will be blocked
                     # at execution time until approved.
+                # As in TypeScript: revalidated counts untrusted tools re-checked
+                # against the policy, loaded counts every tool now registered.
+                result.revalidated += 1
 
             existing = self._registry.get(name)
             if existing is not None:
                 self._registry.register_or_replace(tool)
-                result.revalidated += 1
+                result.loaded += 1
             else:
                 try:
                     self._registry.register(tool)

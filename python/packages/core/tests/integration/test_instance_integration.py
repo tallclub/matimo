@@ -70,6 +70,30 @@ class TestMatimoReload:
         assert len(matimo.list_tools()) == 2
         assert reload_result is not None
 
+    @pytest.mark.asyncio
+    async def test_reload_counts_match_typescript(self, tmp_path: Path) -> None:
+        """loaded counts every registered tool; revalidated counts untrusted tools re-checked."""
+        trusted_dir = tmp_path / "trusted"
+        untrusted_dir = tmp_path / "untrusted"
+        (trusted_dir / "tool_a").mkdir(parents=True)
+        (untrusted_dir / "tool_b").mkdir(parents=True)
+        (trusted_dir / "tool_a" / "definition.yaml").write_text(
+            "name: tool_a\ndescription: A\nexecution:\n  type: http\n  method: GET\n  url: https://a.com\n"
+        )
+        (untrusted_dir / "tool_b" / "definition.yaml").write_text(
+            "name: tool_b\ndescription: B\nstatus: draft\nrequires_approval: true\n"
+            "execution:\n  type: http\n  method: GET\n  url: https://b.com\n"
+        )
+        matimo = await Matimo.init(
+            [str(trusted_dir), str(untrusted_dir)], untrusted_paths=[str(untrusted_dir)]
+        )
+
+        result = await matimo.reload()
+
+        assert result.loaded == 2
+        assert result.revalidated == 1
+        assert result.rejected == []
+
 
 class TestApproveReloadLifecycle:
     """
