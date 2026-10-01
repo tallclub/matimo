@@ -1,48 +1,93 @@
 ---
 name: notion
-description: "Complete guide to all Notion tools — databases, pages, blocks, queries, and content management."
+description: "Guide to the Notion tools — search, list and query databases, create and update pages, comments, and users."
 version: "1.0.0"
 license: "MIT"
 metadata:
   category: "Productivity"
   difficulty: "beginner"
-  apply-to: "notion-create-page notion-get-page notion-update-page notion-query-database notion-create-database notion-get-database notion-update-database"
+  apply-to: "notion_search notion_list_databases notion_query_database notion_create_page notion_update_page notion_create_comment notion_get_user"
   author: "Matimo"
   tags: "notion,pages,databases,content,wiki"
 ---
 
 # Notion
 
-Complete guide to using Matimo's Notion tools for managing pages, databases, and content.
+How to use Matimo's Notion tools to find, read and write pages and databases.
 
 ## All Available Tools
 
-| Tool | Purpose | Category |
+| Tool | Purpose | Approval |
 |------|---------|----------|
-| `notion-create-page` | Create a new page or database entry | Pages |
-| `notion-get-page` | Retrieve page content and properties | Pages |
-| `notion-update-page` | Update page properties or archive | Pages |
-| `notion-query-database` | Query a database with filters and sorts | Databases |
-| `notion-create-database` | Create a new database | Databases |
-| `notion-get-database` | Get database schema and metadata | Databases |
-| `notion-update-database` | Update database title, description, or schema | Databases |
+| `notion_search` | Search pages and databases by title | No |
+| `notion_list_databases` | List the databases the integration can see | No |
+| `notion_query_database` | Query a database's pages with filters and sorts | No |
+| `notion_create_page` | Create a page in a database or under a page | No |
+| `notion_update_page` | Update properties, icon, cover; archive or trash a page | No |
+| `notion_create_comment` | Comment on a page or reply in a discussion | No |
+| `notion_get_user` | Get a user by ID | No |
+
+There is no tool to read a page's block content or to create or change a database schema.
 
 ## Authentication
 
-Requires `NOTION_API_KEY` (internal integration token). The integration must be connected to the workspace and shared with relevant pages/databases.
+Requires `NOTION_API_KEY` (an internal integration secret). Share each page or database with the integration, or the API answers 404. The tools send `Notion-Version: 2025-09-03`.
 
 ---
 
-## Pages
+## Finding Things
 
-### Creating Pages
+- `notion_search` with `query` (title text); optional `filter_object` (`{"property": "object", "value": "page"}` or `"data_source"`), `sort_direction`, `sort_timestamp`, `page_size`, `start_cursor`. Omit `query` to list everything shared with the integration.
+- `notion_list_databases` with `page_size` (1-100, set it explicitly). Each result's `id` is the `database_id` the other tools take.
 
-Use `notion-create-page` with:
-- `parent` — either `{ "database_id": "..." }` (add row to database) or `{ "page_id": "..." }` (create sub-page)
-- `properties` — property values matching the parent database schema
-- `children` — optional array of block content
+## Querying a Database
 
-**Adding a row to a database:**
+`notion_query_database` with `database_id` (from `notion_list_databases`) and optional `filter`, `sorts`, `page_size` (max 100), `start_cursor`, `archived`, `in_trash`.
+
+**Filter:**
+```json
+{ "database_id": "abc123", "filter": { "property": "Status", "select": { "equals": "Done" } } }
+```
+
+**Compound filter and sort:**
+```json
+{
+  "database_id": "abc123",
+  "filter": {
+    "and": [
+      { "property": "Status", "select": { "equals": "In Progress" } },
+      { "property": "Priority", "select": { "equals": "High" } }
+    ]
+  },
+  "sorts": [{ "property": "Created", "direction": "descending" }]
+}
+```
+
+When the response has `has_more: true`, call again with `start_cursor` set to `next_cursor`.
+
+### Property Types
+
+| Type | Filter operators |
+|------|------------------|
+| `title` / `rich_text` | equals, contains, starts_with, ends_with |
+| `number` | equals, greater_than, less_than |
+| `select` | equals, does_not_equal |
+| `multi_select` | contains, does_not_contain |
+| `date` | equals, before, after, on_or_before |
+| `checkbox` | equals (true/false) |
+| `people` / `relation` | contains, does_not_contain |
+
+---
+
+## Creating Pages
+
+`notion_create_page` with `parent` — exactly one of `{ "database_id": "..." }` (a new row) or `{ "page_id": "..." }` (a sub-page) — and any of:
+
+- `markdown` — page content as Markdown; the simplest way to add content
+- `properties` — values matching the database's schema
+- `children` — block objects (max 100), `icon`, `cover`, `template`, `position`
+
+**A database row:**
 ```json
 {
   "parent": { "database_id": "abc123" },
@@ -53,87 +98,33 @@ Use `notion-create-page` with:
 }
 ```
 
-### Getting Pages
-
-Use `notion-get-page` with `page_id`. Returns all properties. For rich content (blocks), you'll see the page structure.
-
-### Updating Pages
-
-Use `notion-update-page` with `page_id` and the `properties` to change. To archive: `{ "archived": true }`.
-
----
-
-## Databases
-
-### Querying
-
-Use `notion-query-database` with `database_id` and optional:
-- `filter` — property-based conditions
-- `sorts` — ordering rules
-- `page_size` — results per page (max 100)
-- `start_cursor` — for pagination
-
-**Filter examples:**
+**A sub-page with content:**
 ```json
-{
-  "filter": {
-    "property": "Status",
-    "select": { "equals": "Done" }
-  }
-}
+{ "parent": { "page_id": "def456" }, "markdown": "# Meeting notes\n\n- Decided X\n- Follow up on Y" }
 ```
 
-**Compound filters:**
-```json
-{
-  "filter": {
-    "and": [
-      { "property": "Status", "select": { "equals": "In Progress" } },
-      { "property": "Priority", "select": { "equals": "High" } }
-    ]
-  }
-}
-```
+## Updating Pages
 
-**Sort examples:**
-```json
-{
-  "sorts": [
-    { "property": "Created", "direction": "descending" }
-  ]
-}
-```
+`notion_update_page` with `page_id` and any of `properties`, `icon`, `cover`, `is_locked`, `template` (with `erase_content` to replace the content), `archived`, `in_trash`. To archive: `{ "page_id": "...", "archived": true }`.
 
-### Creating Databases
+## Comments and Users
 
-Use `notion-create-database` with `parent` (page_id), `title`, and `properties` schema definition.
-
-### Notion Property Types
-
-| Type | Filter Operators | Example |
-|------|-----------------|---------|
-| `title` / `rich_text` | equals, contains, starts_with, ends_with | Text fields |
-| `number` | equals, greater_than, less_than | Numeric values |
-| `select` | equals, does_not_equal | Single choice |
-| `multi_select` | contains, does_not_contain | Multiple choices |
-| `date` | equals, before, after, on_or_before | Date values |
-| `checkbox` | equals (true/false) | Boolean |
-| `people` | contains, does_not_contain | User references |
-| `relation` | contains, does_not_contain | Links to other DBs |
+- `notion_create_comment` with `rich_text` (array of rich-text objects) and either `parent` (`{ "page_id": "..." }`) or `discussion_id` to reply in a thread.
+- `notion_get_user` with `user_id`.
 
 ---
 
 ## Common Workflows
 
 ### Task Management
-1. Query database for open tasks: `notion-query-database` with status filter
-2. Get task details: `notion-get-page`
-3. Update completion: `notion-update-page` with new status
+1. `notion_list_databases` → find the tasks database ID
+2. `notion_query_database` with a status filter
+3. `notion_update_page` with the new status
 
-### Content Wiki
-1. Create page: `notion-create-page` under a parent page
-2. Query existing pages: `notion-query-database` for related content
-3. Update pages: `notion-update-page` as content evolves
+### Notes
+1. `notion_search` for the parent page
+2. `notion_create_page` with `parent.page_id` and `markdown`
+3. `notion_create_comment` to flag it for review
 
 ---
 

@@ -6,7 +6,7 @@ license: "MIT"
 metadata:
   category: "CRM"
   difficulty: "intermediate"
-  apply-to: "hubspot-create-contact hubspot-get-contact hubspot-update-contact hubspot-delete-contact hubspot-list-contacts hubspot-create-company hubspot-get-company hubspot-update-company hubspot-delete-company hubspot-list-companies hubspot-create-deal hubspot-get-deal hubspot-update-deal hubspot-delete-deal hubspot-list-deals hubspot-create-ticket hubspot-get-ticket hubspot-update-ticket hubspot-delete-ticket hubspot-list-tickets hubspot-create-product hubspot-get-product hubspot-update-product hubspot-delete-product hubspot-list-products hubspot-create-line-item hubspot-get-line-item hubspot-update-line-item hubspot-delete-line-item hubspot-list-line-items hubspot-create-quote hubspot-get-quote hubspot-update-quote hubspot-delete-quote hubspot-list-quotes hubspot-create-task hubspot-get-task hubspot-update-task hubspot-delete-task hubspot-list-tasks hubspot-create-note hubspot-get-note hubspot-update-note hubspot-delete-note hubspot-list-notes hubspot-create-meeting hubspot-get-meeting hubspot-update-meeting hubspot-delete-meeting hubspot-list-meetings hubspot-create-call hubspot-get-call hubspot-update-call hubspot-delete-call hubspot-list-calls"
+  apply-to: "hubspot-create-company hubspot-create-contact hubspot-create-custom-object hubspot-create-deal hubspot-create-invoice hubspot-create-lead hubspot-create-line-item hubspot-create-order hubspot-create-product hubspot-create-ticket hubspot-delete-company hubspot-delete-contact hubspot-delete-custom-object hubspot-delete-deal hubspot-delete-invoice hubspot-delete-lead hubspot-delete-line-item hubspot-delete-order hubspot-delete-product hubspot-delete-ticket hubspot-get-company hubspot-get-contact hubspot-get-custom-object hubspot-get-deal hubspot-get-invoice hubspot-get-lead hubspot-get-line-item hubspot-get-order hubspot-get-product hubspot-get-ticket hubspot-list-companies hubspot-list-contacts hubspot-list-custom-objects hubspot-list-deals hubspot-list-invoices hubspot-list-leads hubspot-list-line-items hubspot-list-orders hubspot-list-products hubspot-list-tickets hubspot-update-company hubspot-update-contact hubspot-update-custom-object hubspot-update-deal hubspot-update-invoice hubspot-update-lead hubspot-update-line-item hubspot-update-order hubspot-update-product hubspot-update-ticket"
   author: "Matimo"
   tags: "hubspot,crm,contacts,deals,companies,pipeline,sales"
 ---
@@ -17,7 +17,7 @@ Complete guide to using Matimo's HubSpot CRM tools for managing contacts, compan
 
 ## Entity Types & Tools
 
-HubSpot tools follow a CRUD pattern. Each entity type has 5 operations:
+Every entity has the same five operations. Delete tools ask for approval before running.
 
 | Entity | Create | Get | Update | Delete | List |
 |--------|--------|-----|--------|--------|------|
@@ -25,17 +25,18 @@ HubSpot tools follow a CRUD pattern. Each entity type has 5 operations:
 | Companies | `hubspot-create-company` | `hubspot-get-company` | `hubspot-update-company` | `hubspot-delete-company` | `hubspot-list-companies` |
 | Deals | `hubspot-create-deal` | `hubspot-get-deal` | `hubspot-update-deal` | `hubspot-delete-deal` | `hubspot-list-deals` |
 | Tickets | `hubspot-create-ticket` | `hubspot-get-ticket` | `hubspot-update-ticket` | `hubspot-delete-ticket` | `hubspot-list-tickets` |
+| Leads | `hubspot-create-lead` | `hubspot-get-lead` | `hubspot-update-lead` | `hubspot-delete-lead` | `hubspot-list-leads` |
 | Products | `hubspot-create-product` | `hubspot-get-product` | `hubspot-update-product` | `hubspot-delete-product` | `hubspot-list-products` |
 | Line Items | `hubspot-create-line-item` | `hubspot-get-line-item` | `hubspot-update-line-item` | `hubspot-delete-line-item` | `hubspot-list-line-items` |
-| Quotes | `hubspot-create-quote` | `hubspot-get-quote` | `hubspot-update-quote` | `hubspot-delete-quote` | `hubspot-list-quotes` |
-| Tasks | `hubspot-create-task` | `hubspot-get-task` | `hubspot-update-task` | `hubspot-delete-task` | `hubspot-list-tasks` |
-| Notes | `hubspot-create-note` | `hubspot-get-note` | `hubspot-update-note` | `hubspot-delete-note` | `hubspot-list-notes` |
-| Meetings | `hubspot-create-meeting` | `hubspot-get-meeting` | `hubspot-update-meeting` | `hubspot-delete-meeting` | `hubspot-list-meetings` |
-| Calls | `hubspot-create-call` | `hubspot-get-call` | `hubspot-update-call` | `hubspot-delete-call` | `hubspot-list-calls` |
+| Orders | `hubspot-create-order` | `hubspot-get-order` | `hubspot-update-order` | `hubspot-delete-order` | `hubspot-list-orders` |
+| Invoices | `hubspot-create-invoice` | `hubspot-get-invoice` | `hubspot-update-invoice` | `hubspot-delete-invoice` | `hubspot-list-invoices` |
+| Custom Objects | `hubspot-create-custom-object` | `hubspot-get-custom-object` | `hubspot-update-custom-object` | `hubspot-delete-custom-object` | `hubspot-list-custom-objects` |
+
+There are no tools for quotes, tasks, notes, meetings, calls or associations.
 
 ## Authentication
 
-Requires `MATIMO_HUBSPOT_API_KEY` (private app token) or OAuth2. Token needs scopes: `crm.objects.contacts.read`, `crm.objects.contacts.write`, etc.
+Requires `MATIMO_HUBSPOT_API_KEY`: a private app access token (or an OAuth access token) with the CRM scopes for the objects you use, e.g. `crm.objects.contacts.read` and `crm.objects.contacts.write`.
 
 ---
 
@@ -43,27 +44,45 @@ Requires `MATIMO_HUBSPOT_API_KEY` (private app token) or OAuth2. Token needs sco
 
 ### Create
 
-All create tools accept a `properties` object:
+Create tools take the entity's fields as top-level parameters (Matimo wraps them in HubSpot's `properties` object):
+
+| Tool | Parameters (* required) |
+|------|-------------------------|
+| `hubspot-create-contact` / `hubspot-create-lead` | `email`*, `firstname`, `lastname`, `phone`, `company` |
+| `hubspot-create-company` | `name`*, `domain` |
+| `hubspot-create-deal` | `dealname`*, `dealstage`*, `pipeline`, `amount`, `closedate` |
+| `hubspot-create-ticket` | `subject`*, `description`, `priority`, `ticketstatus` |
+| `hubspot-create-product` | `name`*, `description`, `price` |
+| `hubspot-create-line-item` | `name`, `quantity`, `price`, `description` |
+| `hubspot-create-order` | `ordernumber`, `amount`, `orderdate`, `status` |
+| `hubspot-create-invoice` | `hs_currency` |
+| `hubspot-create-custom-object` | `object_type`*, `name`, `description` |
+
 ```json
-{ "properties": { "email": "alice@acme.com", "firstname": "Alice", "lastname": "Smith" } }
+{ "email": "alice@acme.com", "firstname": "Alice", "lastname": "Smith" }
 ```
-Returns the created object with its `id`.
+
+Returns the created object with its `id`. To set a field the create tool doesn't list, create the object and then update it.
 
 ### Get
 
-All get tools accept an `objectId` (string) and optional `properties` list to limit returned fields.
+Get tools take `id`; most also take `properties` (an array of field names to return). Custom objects also take `object_type`.
 
 ### Update
 
-All update tools accept `objectId` and `properties` with fields to change.
+Update tools take `id` and `properties`, an object of the fields to change:
+
+```json
+{ "id": "12345", "properties": { "dealstage": "closedwon", "amount": "5000" } }
+```
 
 ### Delete
 
-All delete tools accept `objectId`. Moves to recycling bin (recoverable for 90 days).
+Delete tools take `id` (and `object_type` for custom objects), ask for approval, and move the object to HubSpot's recycling bin.
 
 ### List
 
-All list tools accept optional `limit` (max 100), `after` (cursor for pagination), and `properties` (fields to return).
+List tools take optional `limit` (max 100) and `after` (the cursor from the previous page's `paging.next.after`). Contacts, leads, products, line items, orders, invoices and custom objects also take `properties`.
 
 ---
 
@@ -105,16 +124,7 @@ All list tools accept optional `limit` (max 100), `after` (cursor for pagination
 
 **Key properties:** `subject`, `content`, `hs_pipeline`, `hs_pipeline_stage`, `hs_ticket_priority` (HIGH/MEDIUM/LOW).
 
----
-
-## Engagement Entities
-
-Tasks, Notes, Meetings, and Calls are engagement objects that track interactions.
-
-**Tasks:** `hs_task_subject`, `hs_task_body`, `hs_task_status` (NOT_STARTED/IN_PROGRESS/COMPLETED), `hs_task_priority`.
-**Notes:** `hs_note_body`, `hs_timestamp`.
-**Meetings:** `hs_meeting_title`, `hs_meeting_body`, `hs_meeting_start_time`, `hs_meeting_end_time`.
-**Calls:** `hs_call_title`, `hs_call_body`, `hs_call_duration`, `hs_call_direction` (INBOUND/OUTBOUND).
+`hubspot-create-ticket` sends its `description`, `priority` and `ticketstatus` parameters under those names, which are not HubSpot's standard ticket fields. Create the ticket with `subject` (and the pipeline stage your portal requires), then set `content`, `hs_ticket_priority` and `hs_pipeline_stage` with `hubspot-update-ticket`.
 
 ---
 
@@ -124,14 +134,12 @@ Tasks, Notes, Meetings, and Calls are engagement objects that track interactions
 1. Create contact: `hubspot-create-contact`
 2. Create company: `hubspot-create-company`
 3. Create deal: `hubspot-create-deal` in first pipeline stage
-4. Log activities: `hubspot-create-note`, `hubspot-create-call`
-5. Progress deal: `hubspot-update-deal` to advance stage
+4. Progress deal: `hubspot-update-deal` with a new `dealstage`
 
 ### Support Ticket Flow
-1. Create ticket: `hubspot-create-ticket` with priority
-2. Log investigation: `hubspot-create-note`
-3. Update status: `hubspot-update-ticket` as work progresses
-4. Close: `hubspot-update-ticket` to closed stage
+1. Create ticket: `hubspot-create-ticket`
+2. Update status: `hubspot-update-ticket` with `properties.hs_pipeline_stage` as work progresses
+3. Close: `hubspot-update-ticket` to the closed stage
 
 ### Bulk Operations
 1. List entities with pagination (`after` cursor)
