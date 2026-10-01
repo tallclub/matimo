@@ -37,7 +37,7 @@ Your Agent
 MatimoInstance.execute()
     │
     │ 1. PolicyEngine.canExecute()          ← risk gate (custom or default)
-    │ 2. [onHITL callback]                  ← optional human approval
+    │ 2. [onHITL callback]                  ← human approval, once you configure it
     │ 3. HttpExecutor → POST /v3/tools/execute/JIRA_CREATE_ISSUE
     ▼
 Composio REST API
@@ -104,8 +104,8 @@ const user = await matimo.execute('composio_jira_get_current_user', {
   composio_connected_account_id: 'ca_abc123',
 });
 
-// Medium-risk: also executes immediately with DefaultPolicyEngine —
-// see "Governance" below to add HITL approval for write operations
+// Medium- and high-risk tools also execute immediately with the default
+// policy — see "Governance" below to require approval for them
 const files = await matimo.execute('composio_googledrive_list_files', {
   composio_user_id: 'user_123',
   composio_connected_account_id: 'ca_def456',
@@ -127,44 +127,53 @@ Every generated tool has an explicit `risk: low | medium | high` field derived f
 
 Destructive patterns are checked first, so `ARCHIVE_AND_GET` → `high`. Some actions are overridden manually in `scripts/risk-overrides.json` when the heuristic gets it wrong (e.g. `GOOGLEDRIVE_EMPTY_TRASH` → `high`, `GOOGLECALENDAR_CLEAR_CALENDAR` → `high`).
 
-Use `classifyRisk(tool)` from `@matimo/core` to read a tool's risk level at runtime:
+Read the declared level from the definition. `classifyExecutionRisk(tool)`, which the policy engine uses, rates every Composio tool at least `medium`, because each one is an HTTP POST to Composio:
 
 ```typescript
-import { classifyRisk } from '@matimo/core';
+import { classifyExecutionRisk } from '@matimo/core';
 
-const tool = matimo.getRegistry().get('composio_jira_delete_issue');
-console.log(classifyRisk(tool)); // 'high'
+const del = matimo.getTool('composio_jira_delete_issue');
+console.log(del?.risk, classifyExecutionRisk(del!)); // 'high' 'high'
+
+const get = matimo.getTool('composio_jira_get_current_user');
+console.log(get?.risk, classifyExecutionRisk(get!)); // 'low' 'medium'
 ```
 
 ---
 
 ## Governance — Adding HITL Approval
 
-As of the fix landing alongside this doc update, `DefaultPolicyEngine.canExecute()` gates on `risk:` for **every** tool (composio-bridged or native) when you opt in:
+**By default nothing asks.** Generated Composio tools are HTTP POSTs and declare no `requires_approval`, so 0.2.0's per-call approval default (HTTP DELETE and command tools) does not cover them: even a `risk: high` action such as `composio_jira_delete_issue` runs as soon as it is called. Turn on one of the two options below before giving an agent write access.
+
+**Quarantine high-risk actions** with the default policy engine:
 
 ```typescript
 const matimo = await MatimoInstance.init({
   toolPaths: [TOOLS_DIR],
-  policyConfig: { enableHITL: true, quarantineRiskLevels: ['medium', 'high'] },
+  policyConfig: { enableHITL: true, hitlMinRiskLevel: 'high' },
   onHITL: async (request) => {
     console.log(`⏸  Approval needed: ${request.toolName} (${request.riskLevel})`);
-    return promptUser();
+    return promptUser(); // Promise<boolean>
   },
 });
 ```
 
-`enableHITL` defaults to `false`, so this is opt-in — nothing changes for callers who haven't configured it. If you want HITL scoped to *only* `composio_*` tools rather than every tool in the instance (e.g. because your native providers are already fully trusted), wrap a custom `PolicyEngine` instead:
+This pauses the 45 `risk: high` Composio tools, and every other high or critical tool in the instance (native DELETE tools, `execute`, `edit`, …). A lower threshold cannot separate Composio reads from writes, since the engine rates every Composio POST at least `medium`.
+
+**Quarantine by declared risk** with a small custom engine, to also pause `medium` writes while `low` reads run immediately:
 
 ```typescript
 import {
   MatimoInstance,
   DefaultPolicyEngine,
-  classifyRisk,
   type PolicyEngine,
   type PolicyContext,
   type PolicyDecision,
+  type RiskLevel,
   type ToolDefinition,
 } from '@matimo/core';
+
+const QUARANTINE_LEVELS: ReadonlySet<RiskLevel> = new Set(['medium', 'high']);
 
 class ComposioRiskPolicy implements PolicyEngine {
   private base = new DefaultPolicyEngine();
@@ -173,22 +182,23 @@ class ComposioRiskPolicy implements PolicyEngine {
     const base = this.base.canExecute(ctx, tool);
     if (base.allowed !== true) return base;
 
-    if (tool.name.startsWith('composio_')) {
-      const risk = classifyRisk(tool);
-      if (risk === 'medium' || risk === 'high') {
-        return {
-          allowed: 'pending_approval',
-          riskLevel: risk,
-          reason: `${tool.name} (${risk} risk) requires approval`,
-          toolName: tool.name,
-        };
-      }
+    if (tool.name.startsWith('composio_') && tool.risk && QUARANTINE_LEVELS.has(tool.risk)) {
+      return {
+        allowed: 'pending_approval',
+        riskLevel: tool.risk,
+        reason: `${tool.name} (risk: ${tool.risk}) requires approval`,
+        toolName: tool.name,
+      };
     }
     return { allowed: true };
   }
 
   canCreate(ctx: PolicyContext, tool: ToolDefinition): PolicyDecision {
     return this.base.canCreate(ctx, tool);
+  }
+
+  filterForAgent(ctx: PolicyContext, tools: ToolDefinition[]): ToolDefinition[] {
+    return this.base.filterForAgent(ctx, tools);
   }
 }
 
@@ -198,10 +208,12 @@ const matimo = await MatimoInstance.init({
   onHITL: async (request) => {
     // Wire to: interactive prompt, Slack message, approval queue, etc.
     console.log(`⏸  Approval needed: ${request.toolName} (${request.riskLevel})`);
-    return promptUser(); // returns Promise<boolean>
+    return promptUser(); // Promise<boolean>
   },
 });
 ```
+
+With no `onHITL`, a quarantined call is rejected. Approvals and rejections reach `onEvent` and the `auditSink` as `tool:quarantine_approved` / `tool:quarantine_rejected`.
 
 See `typescript/examples/tools/composio/composio-with-approval.ts` for the full runnable example.
 
