@@ -201,6 +201,21 @@ describe('ApprovalHandler', () => {
       expect(result).toBe(false);
     });
 
+    it('pre-approves tools matching a pattern added at runtime', () => {
+      const freshHandler = new ApprovalHandler();
+      expect(freshHandler.isPreApproved('get_post')).toBe(false);
+      freshHandler.addApprovedPattern(' get_* ');
+      freshHandler.addApprovedPattern('   ');
+      expect(freshHandler.isPreApproved('get_post')).toBe(true);
+      expect(freshHandler.isPreApproved('delete_post')).toBe(false);
+    });
+
+    it('never pre-approves matimo_approve_tool through an added pattern', () => {
+      const freshHandler = new ApprovalHandler();
+      freshHandler.addApprovedPattern('*');
+      expect(freshHandler.isPreApproved('matimo_approve_tool')).toBe(false);
+    });
+
     it('should trim whitespace from patterns', () => {
       process.env.MATIMO_APPROVED_PATTERNS = '  slack-*  , github-* ';
       const freshHandler = new ApprovalHandler();

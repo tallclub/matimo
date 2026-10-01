@@ -218,6 +218,17 @@ export class ApprovalHandler {
   }
 
   /**
+   * Pre-approve tools matching a glob, as an entry in MATIMO_APPROVED_PATTERNS
+   * would. Mirrors add_approved_pattern() in the Python SDK.
+   */
+  addApprovedPattern(pattern: string): void {
+    const trimmed = pattern.trim();
+    if (trimmed) {
+      this.approvedPatterns.add(trimmed);
+    }
+  }
+
+  /**
    * Check if operation is pre-approved via env vars
    */
   isPreApproved(toolName: string): boolean {
