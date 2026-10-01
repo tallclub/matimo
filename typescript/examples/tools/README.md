@@ -99,6 +99,12 @@ pnpm bruno:langchain      # LangChain agent driving Bruno tools (needs OPENAI_AP
 pnpm meta:flow            # Meta-tools + policy + approvals
 pnpm policy:demo
 pnpm skills:demo
+
+# No API key or LLM needed:
+pnpm policy:approval-modes   # Who approves what: callbacks, governance modes, HITL threshold
+pnpm policy:audit            # Execution events + hash-chained JSONL audit log
+pnpm policy:response-size    # Response-size guardrail
+pnpm skills:registry         # registerSkill, addSkillPath, buildSkillPromptContext, skill:created
 ```
 
 ---
@@ -121,7 +127,11 @@ Covers: `bruno_create_collection`, `bruno_add_request`, `bruno_get_collection_in
 ```bash
 pnpm meta:flow            # Meta-tools integration (most comprehensive)
 pnpm policy:demo             # Policy engine validation
+pnpm policy:approval-modes   # Approval triggers, callbacks, governance modes (no API key)
+pnpm policy:audit            # Execution events + audit log (no API key)
+pnpm policy:response-size    # Response-size guardrail (no API key)
 pnpm skills:demo             # Skills system
+pnpm skills:registry         # Skills from anywhere (no API key)
 pnpm credentials:example     # Credentials management
 ```
 
@@ -346,8 +356,8 @@ examples/tools/
 ├── search/                             # Search files (3 patterns)
 ├── web/                                # Web scraping (3 patterns)
 ├── meta-flow/                          # Meta-tools integration demo
-├── policy/                             # Policy engine demo
-├── skills/                             # Skills system demo
+├── policy/                             # Policy engine demo, approval modes, audit log, response size
+├── skills/                             # Skills system demo, skills registry
 ├── credentials/                        # Credentials management
 ├── package.json                        # Dependencies (LangChain, Matimo, etc.)
 ├── tsconfig.json                       # TypeScript configuration

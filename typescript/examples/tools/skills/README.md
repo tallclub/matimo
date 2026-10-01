@@ -10,6 +10,8 @@ Skills are SKILL.md files with YAML frontmatter that agents load on demand via *
 
 > **This is not a scripted demo.** The agent is given goals like "I need a code review checklist" and must independently discover how to create, list, validate, read, and apply skills.
 
+**`pnpm skills:registry`** (`skills-registry-demo.ts`) needs no API key and no LLM. It shows where skills can come from and how a host controls them: `registerSkill()` for skills fetched from your own storage, `addSkillPath()` + `reloadSkills()` to mount a directory at runtime, `getSkillSections()` / `getSkillContent({ sections })` to load only part of a skill, `buildSkillPromptContext()` to pick the relevant skills for a request, and `defaultSkillWriteDir` with the `skill:created` event for skills an agent writes.
+
 ## What It Proves
 
 | Mission | Agent's Goal (No Tool Names) | Expected Outcome |

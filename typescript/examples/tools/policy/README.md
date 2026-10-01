@@ -4,6 +4,14 @@ A **real LangChain ReAct agent** (gpt-4o-mini) that **autonomously discovers** t
 
 > **This is not a scripted demo.** The agent is given goals like "I need a city lookup tool" and must independently discover the create → approve → reload lifecycle. No mission tells the agent which tool to call.
 
+**Three smaller examples in this folder need no API keys and no LLM:**
+
+| Command | File | Shows |
+|---------|------|-------|
+| `pnpm policy:approval-modes` | `approval-modes-demo.ts` | Which calls ask (`requires_approval`, the DELETE/command default, `requires_approval: false`), fail-closed with no callback, instance vs per-call `onApproval`, `governanceMode: 'legacy'`, `hitlMinRiskLevel` quarantine with `onHITL`, and the `policyContext` a function tool receives |
+| `pnpm policy:audit` | `audit-log-demo.ts` | `tool:executed` / `tool:execution_failed` / approval events, a hash-chained `JsonlFileSink`, `verifyAuditLog()` catching an edited line, a reopened log continuing its chain, `redactSecrets()` |
+| `pnpm policy:response-size` | `response-size-demo.ts` | The response-size guardrail: `output_schema.max_response_size`, `defaultMaxResponseSize`, and the `_truncated` marker |
+
 ## What It Proves
 
 | Mission | Agent's Goal (No Tool Names) | Expected Outcome |
@@ -44,16 +52,16 @@ After the agent finishes, **Phase 3** runs programmatic checks that can't be don
 
 **Success Pattern**
 ```
-🔧 Agent calls: matimo_doctor(...)
-📋 Result: Valid: safe domain, HTTP GET allowed
+🔧 Agent calls: matimo_validate_tool(...)
+📋 Result: {"valid": true, "schemaErrors": [], "policyViolations": [], "riskLevel": "low"}
 ✓ PASS  Tool creation on disk
 ✅ Approved by human operator.
 ```
 
 **Policy Block Pattern**
 ```
-🔧 Agent calls: matimo_doctor(...)
-❌ Command tools are blocked by policy
+🔧 Agent calls: matimo_validate_tool(...)
+📋 Result: {"valid": false, ... "no-command-execution" ...}
 💬 Agent: I understand. I'll try a different approach.
 ```
 
@@ -377,11 +385,14 @@ User/Agent calls matimo.execute('tool_name', params)
 | File | Purpose |
 |------|---------|
 | `policy-demo.ts` | Main demo - 11 autonomous missions + Phase 3 checks |
+| `approval-modes-demo.ts` | Approval triggers, callbacks, governance modes, HITL threshold, function-tool context |
+| `audit-log-demo.ts` | Execution events and the hash-chained JSONL audit log |
+| `response-size-demo.ts` | Response-size guardrail |
 | `README.md` | This file |
 
 ## Related Documentation
 
-- [Policy Engine & Tool Lifecycle Guide](../../../docs/tool-development/POLICY_AND_LIFECYCLE.md) - Complete developer guide
-- [Meta-Tools Reference](../../../docs/tool-development/META_TOOLS.md) - All built-in matimo_* tools
-- [Approval System](../../../docs/APPROVAL-SYSTEM.md) - Approval handler configuration
-- [MCP Server](../../../docs/MCP.md) - Model Context Protocol integration
+- [Policy Engine & Tool Lifecycle Guide](../../../../docs/api-reference/POLICY_AND_LIFECYCLE.md) - Complete developer guide
+- [Meta-Tools Reference](../../../../docs/api-reference/META_TOOLS.md) - All built-in matimo_* tools
+- [Approval System](../../../../docs/api-reference/APPROVAL-SYSTEM.md) - Approval handler configuration
+- [MCP Server](../../../../docs/MCP.md) - Model Context Protocol integration
