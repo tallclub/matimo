@@ -15,11 +15,11 @@ interface ToolDefinition {
   version: string;
 
   parameters?: Record<string, Parameter>;
-  execution: ExecutionConfig;
+  execution: HttpExecution | CommandExecution | FunctionExecution;
   output_schema?: OutputSchema;
   authentication?: AuthConfig;
   rate_limiting?: RateLimitConfig;
-  error_handling?: ErrorHandling;
+  error_handling?: ErrorHandlingConfig;
   examples?: ToolExample[];
 
   // Governance
@@ -123,57 +123,62 @@ const tags: Parameter = {
 
 ---
 
-### ExecutionConfig
+### Execution types
 
-Defines how a tool executes.
+`ToolDefinition.execution` is one of three shapes, chosen by `type`.
 
 ```typescript
-type ExecutionConfig = CommandExecution | HttpExecution;
+interface HttpExecution {
+  type: 'http';
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+  url: string;
+  headers?: Record<string, string>;
+  body?: unknown;
+  params?: Record<string, string>;
+  query_params?: Record<string, string>;
+  parameter_encoding?: ParameterEncodingConfig[];
+  timeout?: number; // ms
+}
+
+interface FunctionExecution {
+  type: 'function';
+  code: string; // module path, relative to the YAML file
+  timeout?: number; // ms
+}
 
 interface CommandExecution {
   type: 'command';
   command: string;
   args?: string[];
-  working_directory?: string;
-  timeout_ms?: number;
+  cwd?: string;
+  shell?: boolean;
+  timeout?: number; // ms
   env?: Record<string, string>;
-}
-
-interface HttpExecution {
-  type: 'http';
-  url: string;
-  method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
-  headers?: Record<string, string>;
-  query_params?: Record<string, string>;
-  request_body?: unknown;
-  timeout_ms?: number;
-  parameter_encoding?: ParameterEncoding;
 }
 ```
 
 **Examples:**
 
 ```typescript
-// Command execution
-const cmdExecution: CommandExecution = {
-  type: 'command',
-  command: 'python script.py',
-  args: ['--param', '{param}'],
-  timeout_ms: 30000,
-};
+import type { HttpExecution, FunctionExecution } from '@matimo/core';
 
 // HTTP execution
 const httpExecution: HttpExecution = {
   type: 'http',
-  url: 'https://api.gmail.com/v1/users/me/messages/send',
   method: 'POST',
+  url: 'https://gmail.googleapis.com/gmail/v1/users/me/messages/send',
   headers: {
     Authorization: 'Bearer {GMAIL_ACCESS_TOKEN}',
     'Content-Type': 'application/json',
   },
-  request_body: {
-    raw: '{emailData}',
-  },
+  body: { raw: '{raw}' },
+  timeout: 15000,
+};
+
+// Function execution
+const functionExecution: FunctionExecution = {
+  type: 'function',
+  code: './calculator.ts',
 };
 ```
 
@@ -251,28 +256,17 @@ const schema: OutputSchema = {
 
 ---
 
-### ErrorHandling
+### ErrorHandlingConfig
 
-Error recovery configuration.
+Retry settings a tool can declare. The schema accepts them, but neither SDK applies them yet: a failed call is not retried.
 
 ```typescript
-interface ErrorHandling {
+interface ErrorHandlingConfig {
   retry?: number;
-  backoff_type?: 'linear' | 'exponential';
+  backoff_type?: 'exponential' | 'linear' | 'fixed';
   initial_delay_ms?: number;
   max_delay_ms?: number;
 }
-```
-
-**Example:**
-
-```typescript
-const errorHandling: ErrorHandling = {
-  retry: 3,
-  backoff_type: 'exponential',
-  initial_delay_ms: 1000,
-  max_delay_ms: 30000,
-};
 ```
 
 ---
@@ -389,10 +383,10 @@ interface ValidationError {
 import {
   ToolDefinition,
   Parameter,
-  ExecutionConfig,
+  HttpExecution,
   AuthConfig,
   OutputSchema,
-  ErrorHandling,
+  ErrorHandlingConfig,
   MatimoInstance,
   MatimoError,
 } from 'matimo';
