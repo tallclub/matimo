@@ -10,8 +10,8 @@ A call needs approval when any of these is true:
 
 | Trigger | Example |
 |---------|---------|
-| The tool's YAML says `requires_approval: true` | `github-delete-repository`, `matimo_create_tool` |
-| The YAML doesn't set `requires_approval`, and the tool is an HTTP `DELETE` or a `type: command` tool (secure mode, the 0.2.0 default) | `delete_post`, `execute` |
+| The tool's YAML says `requires_approval: true` | `github-delete-repository`, `execute`, `matimo_create_tool` |
+| The YAML doesn't set `requires_approval`, and the tool is an HTTP `DELETE` or a `type: command` tool (secure mode, the 0.2.0 default) | a `delete_post` HTTP tool you define (no built-in tool is a command tool) |
 | A destructive keyword appears in the call's `sql` argument, or in `command` for a command tool | `{ sql: 'DROP TABLE users' }` |
 
 `requires_approval: false` opts a tool out of the first two triggers. It does **not** turn off the keyword scan: a call whose `sql` contains `DELETE` still asks.
