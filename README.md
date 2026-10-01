@@ -156,7 +156,7 @@ Matimo ships with built-in support for:
 - **OAuth2 Support**: Provider-agnostic authorization for Slack, Gmail, GitHub, etc.
 - **Framework Support**: Factory pattern, Decorator pattern, LangChain, CrewAI, Agno
 - **TypeScript SDK**: Full type safety and IDE support
-- **Python SDK**: Full feature parity with TypeScript - factory pattern, decorator, LangChain, CrewAI, MCP, policy engine
+- **Python SDK**: The same policy engine, approval rules and YAML tools as TypeScript - factory pattern, decorator, LangChain, CrewAI, Agno, MCP (the Composio catalog and a few instance methods are TypeScript-only; see [SDK.md](./docs/api-reference/SDK.md))
 - **Agent Skills System**: [SKILL.md](https://agentskills.io) knowledge files with semantic search, content chunking, and progressive disclosure
 - **Policy Engine**: 9 security rules, HITL quarantine, hot-reload, SHA-256 integrity tracking, HMAC approvals, audit events
 
@@ -354,8 +354,10 @@ See [Policy & Lifecycle Docs](./docs/api-reference/POLICY_AND_LIFECYCLE.md) for 
 
 ## Features **Coming Soon:**
 
-- More tool providers (Stripe, Jira, Linear, etc.)
+- More native tool providers (Google Calendar/Drive/Sheets, Jira, Linear, Stripe)
 - Custom Tool Marketplace
+
+See the [Roadmap](./docs/ROADMAP.md).
 
 ---
 
@@ -366,6 +368,7 @@ If you build @matimo/<provider> following this pattern, we’ll list it in the o
 Create tool providers as independent npm packages:
 
 ```bash
+cd typescript
 mkdir packages/github
 cd packages/github && cat > package.json << 'EOF'
 { "name": "@matimo/github", "type": "module", ... }
@@ -374,6 +377,9 @@ EOF
 mkdir tools/github-create-issue
 cat > tools/github-create-issue/definition.yaml << 'EOF'
 name: github-create-issue
+description: Create an issue in a repository
+version: '1.0.0'
+requires_approval: true
 parameters:
   owner: { type: string, required: true }
   repo: { type: string, required: true }
@@ -391,8 +397,10 @@ Then publish to npm as `@matimo/github`. Users install and auto-discover:
 
 ```bash
 npm install @matimo/github
-# New tools automatically available!
-const matimo = await MatimoInstance.init({ autoDiscover: true });
+```
+
+```typescript
+const matimo = await MatimoInstance.init({ autoDiscover: true }); // github-* tools are now loaded
 ```
 
 See [Adding Tools to Matimo](./docs/tool-development/ADDING_TOOLS.md) for the complete 6-step guide.
