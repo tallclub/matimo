@@ -1,640 +1,159 @@
 # Tool Development Workflow
 
-Complete step-by-step process for creating and submitting a new Matimo tool.
-
----
-
-## Overview
+The step-by-step process for adding a tool to Matimo and submitting it. Every tool ships in **both** SDKs with tests and examples. [ADDING_TOOLS.md](./ADDING_TOOLS.md) has the detail for each step; this page is the checklist.
 
 ```
-1. Create Tool Directory
-        ↓
-2. Write definition.yaml
-        ↓
-3. Validate Syntax
-        ↓
-4. Implement Tool Logic (if needed)
-        ↓
-5. Write Tests
-        ↓
-6. Add Examples
-        ↓
-7. Validate Coverage
-        ↓
-8. Submit PR
-```
-
-**Total time:** 30 minutes (simple tool) to 2 hours (full provider package)
-
----
-
-## Step 1: Create Tool Structure
-
-### For a Simple Tool (in core)
-
-```bash
-# Create directory
-mkdir -p packages/core/tools/{tool-name}
-
-# Create YAML definition
-touch packages/core/tools/{tool-name}/definition.yaml
-```
-
-### For a Provider Package (npm)
-
-```bash
-# Create provider structure
-mkdir -p packages/{provider}/tools/{tool-name}
-
-# Create YAML definition
-touch packages/{provider}/tools/{tool-name}/definition.yaml
-```
-
-**Directory structure:**
-
-```
-packages/core-or-provider/
-├── tools/
-│   └── my-tool/
-│       ├── definition.yaml          # Tool definition (YAML)
-│       ├── index.ts                 # Implementation (optional)
-│       └── README.md                # Usage docs (optional)
+1. Read the provider's API docs
+2. Write definition.yaml (TypeScript and Python copies)
+3. Validate
+4. Add executor code (function tools only)
+5. Write tests (both SDKs, mocked HTTP)
+6. Add examples (both SDKs)
+7. Run the full gate
+8. Open the PR
 ```
 
 ---
 
-## Step 2: Write definition.yaml
+## Step 1: Read the API Docs
 
-See full specification: [TOOL_SPECIFICATION.md](./TOOL_SPECIFICATION.md)
+Get the endpoint, method, parameters, response shape, auth and rate limits from the provider's official reference. Don't guess field names.
 
-**Minimal example (command-based):**
+## Step 2: Write `definition.yaml`
+
+```
+typescript/packages/<provider>/tools/<tool-name>/definition.yaml
+python/packages/<provider>/src/matimo_<provider>/tools/<tool-name>/definition.yaml   # same YAML
+```
+
+Use `type: http` unless the tool needs several calls, response shaping or file I/O.
 
 ```yaml
-name: my-tool
-description: Brief description of what the tool does
+name: provider_get_item
+description: Get one item by ID
 version: '1.0.0'
 
 parameters:
-  input:
+  item_id:
     type: string
     required: true
-    description: Input parameter
+    description: The item's ID
 
-execution:
-  type: command
-  command: node
-  args:
-    - -e
-    - |
-      console.log(JSON.stringify({ result: process.argv[1].toUpperCase() }));
-    - '{input}'
-
-output_schema:
-  type: object
-  properties:
-    result:
-      type: string
-  required: [result]
-```
-
-**For HTTP tools:**
-
-```yaml
-name: api-tool
 execution:
   type: http
-  method: POST
-  url: https://api.example.com/endpoint
+  method: GET
+  url: 'https://api.provider.com/v1/items/{item_id}'
   headers:
-    Authorization: 'Bearer {API_TOKEN}'
-  body:
-    param: '{param_value}'
+    Authorization: 'Bearer {PROVIDER_API_KEY}'
+  timeout: 15000
+
+authentication:
+  type: api_key
+  location: header
+  name: Authorization
+
+notes:
+  env: PROVIDER_API_KEY
 ```
 
----
+Governance:
+- **Every tool needs a risk classification.** Writes are `medium` automatically; DELETE and other destructive calls must declare `requires_approval: true`; function tools must declare `risk:`.
+- **Leave `status` unset.** Only `draft`, `approved` and `deprecated` are valid, and TypeScript skips a tool with any other value.
 
-## Step 3: Validate Syntax
+Field reference: [TOOL_SPECIFICATION.md](./TOOL_SPECIFICATION.md).
 
-**Before writing tests, validate your YAML:**
+## Step 3: Validate
 
 ```bash
-# Validate all tools
-pnpm validate-tools
-
-# What it checks:
-# ✅ Valid YAML syntax
-# ✅ Matches ToolDefinition schema
-# ✅ All required fields present
-# ✅ Parameter types are valid
-# ✅ Output schema is valid
+cd typescript && pnpm validate-tools
 ```
 
-**Expected output:**
+It checks every definition against the schema, and that DELETE tools declare `requires_approval: true` and function tools declare `risk:`. Unknown keys (such as `timeout_ms`) are dropped silently, so compare your YAML with [TOOL_SPECIFICATION.md](./TOOL_SPECIFICATION.md) too.
 
-```
-✅ Validating tools...
-  ✅ packages/core/tools/my-tool/definition.yaml
-  ✅ packages/slack/tools/slack-send-message/definition.yaml
-  ...
-✅ All tools valid!
-```
+## Step 4: Executor Code (function tools only)
 
-**If validation fails:**
+HTTP tools need no code. A `type: function` tool has two files beside its YAML:
 
-```
-❌ Error in packages/core/tools/my-tool/definition.yaml:
-   Missing required field: "name"
+| SDK | File | Entry point |
+|-----|------|-------------|
+| TypeScript | `<tool-name>.ts` (compiled to `.js`; `code:` points at the `.js`) | `export default async function (params, context?)` |
+| Python | `<tool-name>.py` (`code:` points at it) | `async def run(params, context=None)` |
 
-❌ Error in packages/slack/tools/slack-api/definition.yaml:
-   Unknown execution type: "webhook" (valid: command, http, function)
-```
+`context` carries the call's `credentials` and the caller's `policyContext`. See `typescript/packages/microsoft/tools/` for a working example.
 
-**Fix and re-validate immediately.**
+Command tools (`type: command`) exist for shell CLIs, ask for approval on every call, and are rarely the right choice for a provider package.
 
----
+## Step 5: Tests
 
-## Step 4: Implement Tool Logic (If Needed)
+| SDK | Location | Framework |
+|-----|----------|-----------|
+| TypeScript | `typescript/packages/<provider>/test/unit/<tool-name>.test.ts` | Jest, `jest.mock('axios')` |
+| Python | `python/packages/<provider>/tests/unit/test_<tool_name>.py` | pytest, `respx` |
 
-### For Command-Based Tools
+Cover: the YAML loads, required parameters, the request sent (method, URL, body), the success result, an error status, and — for tools that need approval — that a refused approval sends nothing. Never call a live API. Copy the patterns in [TESTING.md](./TESTING.md).
 
-If your tool type is `command`, you may need an executable file.
+## Step 6: Examples
 
-**Simple implementation (inline in YAML):**
+| SDK | Files |
+|-----|-------|
+| TypeScript | `typescript/examples/tools/<provider>/<provider>-factory.ts`, `-decorator.ts`, `-langchain.ts`, and `-with-approval.ts` for write/delete tools |
+| Python | `python/examples/native/<provider>/…`, `python/examples/langchain/<provider>/…`, `python/examples/crewai/<provider>/…` |
 
-```yaml
-execution:
-  type: command
-  command: node
-  args:
-    - -e
-    - |
-      // JS code inline
-      const result = process.argv[1].toUpperCase();
-      console.log(JSON.stringify({ result }));
-    - '{input}'
-```
+Add to the existing files when the provider already has them.
 
-**Complex implementation (separate file):**
-
-Create `packages/{provider}/tools/{tool-name}/index.ts`:
-
-```typescript
-// Receives args from YAML, outputs JSON to stdout
-const input = process.argv[1];
-const result = await processInput(input);
-console.log(JSON.stringify(result));
-
-async function processInput(data: string) {
-  // Your logic here
-  return { result: data.toUpperCase() };
-}
-```
-
-Then reference in YAML:
-
-```yaml
-execution:
-  type: command
-  command: tsx
-  args:
-    - packages/provider/tools/my-tool/index.ts
-    - '{input}'
-```
-
-### For HTTP Tools
-
-No implementation needed — just define the HTTP request in YAML.
-
-### For Function-Based Tools
-
-Not yet supported, but coming in Phase 2.
-
----
-
-## Step 5: Write Tests
-
-### Create Test Fixture
-
-Tests use YAML fixtures to validate tools. Create:
-
-**File:** `packages/core/test/fixtures/{tool-category}/{tool-name}-fixture.yaml`
-
-```yaml
-# Copy of your tool definition or a test variant
-name: my-tool
-description: My test tool
-version: '1.0.0'
-
-parameters:
-  input:
-    type: string
-    required: true
-    description: Test input
-
-execution:
-  type: command
-  command: node
-  args:
-    - -e
-    - |
-      console.log(JSON.stringify({ result: process.argv[1].toUpperCase() }));
-    - '{input}'
-
-output_schema:
-  type: object
-  properties:
-    result:
-      type: string
-  required: [result]
-```
-
-### Write Unit Tests
-
-**File:** `packages/core/test/unit/tools/{tool-name}.test.ts`
-
-```typescript
-import { MatimoInstance } from '../../src/matimo-instance';
-
-describe('MyTool', () => {
-  let matimo: MatimoInstance;
-
-  beforeAll(async () => {
-    matimo = await MatimoInstance.init('./packages/core/tools');
-  });
-
-  it('should execute with valid parameters', async () => {
-    const result = await matimo.execute('my-tool', {
-      input: 'test',
-    });
-    expect(result).toHaveProperty('result');
-    expect(result.result).toBe('TEST');
-  });
-
-  it('should fail with missing required parameter', async () => {
-    await expect(matimo.execute('my-tool', {})).rejects.toThrow();
-  });
-
-  it('should validate output schema', async () => {
-    const result = await matimo.execute('my-tool', {
-      input: 'hello',
-    });
-    // Output validation happens automatically
-    expect(typeof result.result).toBe('string');
-  });
-});
-```
-
-**Test template:**
-
-```typescript
-describe('ToolName', () => {
-  // Test basic execution
-  // Test with invalid params
-  // Test with edge cases
-  // Test output validation
-  // Test error handling (if HTTP, test error codes)
-});
-```
-
----
-
-## Step 6: Add Examples
-
-Add your tool to `examples/tools/` if it's a provider tool.
-
-**Example:** `examples/tools/{provider}/{tool-name}.ts`
-
-```typescript
-import { MatimoInstance } from '@matimo/core';
-
-async function main() {
-  const matimo = await MatimoInstance.init({ autoDiscover: true });
-
-  console.log('Executing my-tool...');
-  const result = await matimo.execute('my-tool', {
-    input: 'Hello World',
-  });
-
-  console.log('Result:', result);
-}
-
-main().catch(console.error);
-```
-
----
-
-## Step 7: Validate Coverage
-
-Before submitting PR, ensure tests pass:
+## Step 7: Run the Full Gate
 
 ```bash
-# Run tests
-pnpm test
-
-# Check coverage (target: 95%+)
-pnpm test:coverage
-
-# View coverage report
-open coverage/lcov-report/index.html
+cd typescript && pnpm validate-tools && pnpm lint && pnpm test:coverage
+cd python && uv run ruff check . && uv run pytest --cov
 ```
 
-**For your tool, aim for:**
+TypeScript coverage must stay at or above the thresholds in `typescript/jest.config.cjs` (lines 95%, functions 97%, branches 87%, statements 95%). Aim for full coverage of the new tool.
 
-- ✅ 95%+ line coverage
-- ✅ 87%+ branch coverage
-- ✅ 97%+ function coverage
-- ✅ Happy path + error cases
-
----
-
-## Full Checklist Before PR
-
-Before submitting a pull request, verify:
-
-### YAML & Validation
-
-- [ ] `pnpm validate-tools` passes
-- [ ] All required fields in definition.yaml
-- [ ] Parameter types match Zod schema
-- [ ] Output schema is valid
-
-### Code Quality
-
-- [ ] `pnpm lint:fix` + `pnpm format` passes
-- [ ] No TypeScript errors (if code implementation)
-- [ ] No console.log in core SDK (use logger instead)
-- [ ] Proper error handling with MatimoError
-
-### Testing
-
-- [ ] Unit tests written (95%+ coverage)
-- [ ] Test fixtures created
-- [ ] `pnpm test` passes (all 603+ tests)
-- [ ] `pnpm test:coverage` shows 95%+ for tool
-
-### Documentation
-
-- [ ] Tool has clear description
-- [ ] Parameters documented with descriptions
-- [ ] Examples provided (at least 1)
-- [ ] README added (if complex tool)
-
-### Security
-
-- [ ] No hardcoded secrets
-- [ ] No sensitive data in logs
-- [ ] API keys from environment variables (prefix: MATIMO\_)
-- [ ] Input validated via Zod
-
-### Logging
-
-- [ ] Tool imports `getGlobalMatimoLogger()`
-- [ ] Errors logged with context
-- [ ] No silent failures
-- [ ] Debug logs for validation issues
-
----
-
-## Step 8: Submit PR
-
-### Branch & Commit
+## Step 8: Open the PR
 
 ```bash
-# Create feature branch
-git checkout -b feat/my-tool-description
-
-# Stage changes
-git add packages/core/tools/my-tool/
-
-# Commit with conventional message
-git commit -m "feat(core): add my-tool for X functionality"
-
-# Push
-git push origin feat/my-tool-description
+git checkout -b feat/<provider>-<tool-name>
+git add typescript/packages/<provider> python/packages/<provider> typescript/examples python/examples
+git commit -m "feat(<provider>): add <tool-name>"
+git push -u origin feat/<provider>-<tool-name>
 ```
 
-### PR Description Template
+Commits follow Conventional Commits (enforced by commitlint); see [COMMIT_GUIDELINES.md](../community/COMMIT_GUIDELINES.md).
 
-````markdown
-## Description
+PR description:
 
-What does this tool do? Why is it useful?
+```markdown
+## What
+<tool-name>: <one line> (<METHOD> <endpoint>)
 
-## Changes
-
-- Added my-tool definition
-- Implemented core logic
-- Added comprehensive tests
-- Created usage examples
-
-## Tool Details
-
-- **Name:** my-tool
-- **Type:** command/http/function
-- **Authentication:** none/api_key/oauth2
-- **Parameters:** [list them]
+## Risk
+low / medium / high — requires_approval: yes/no, and why
 
 ## Testing
-
-- [x] All tests pass (`pnpm test`)
-- [x] Coverage 95%+ (`pnpm test:coverage`)
-- [x] YAML validates (`pnpm validate-tools`)
-- [x] Lint passes (`pnpm lint`)
-
-## Example Usage
-
-```typescript
-const result = await matimo.execute('my-tool', {
-  param: 'value',
-});
+- [ ] pnpm validate-tools
+- [ ] pnpm lint && pnpm test:coverage
+- [ ] uv run ruff check . && uv run pytest
+- [ ] Examples run (or explain why they need credentials)
 ```
-````
-
-## Related Issues
-
-Closes #123
-
-## Checklist
-
-- [x] YAML syntax valid
-- [x] Tests cover happy path + errors
-- [x] Documentation complete
-- [x] No hardcoded secrets
-- [x] Logger used for errors
-
-````
-
-### What to Expect
-
-1. **Automated checks run:**
-   - Tests (must all pass)
-   - Linting (auto-fixed if needed)
-   - Coverage (must be 95%+)
-
-2. **Maintainer review:**
-   - Code quality feedback
-   - Documentation suggestions
-   - Security considerations
-
-3. **Merge:**
-   - Once approved, tool is merged
-   - Published with next release
 
 ---
 
 ## Troubleshooting
 
-### "pnpm validate-tools fails"
+| Symptom | Fix |
+|---------|-----|
+| `pnpm validate-tools` fails | Run it and read the path and message; compare with [TOOL_SPECIFICATION.md](./TOOL_SPECIFICATION.md) |
+| `HTTP DELETE tools must declare requires_approval: true` | Add `requires_approval: true` |
+| `function tools must declare risk` | Add `risk: low | medium | high | critical` |
+| The tool loads in Python but not TypeScript | Remove an invalid `status` such as `stable` |
+| A key in the YAML has no effect | It isn't in the schema and was dropped |
+| `Authentication credentials are missing` in a test | Set the variable in the test, or pass `credentials` |
+| Coverage drops below the threshold | Add tests for the uncovered branches the report lists |
 
-**Check:**
-```bash
-# See actual error
-pnpm validate-tools 2>&1
+## See Also
 
-# Common issues:
-# - Missing required field (name, execution, output_schema)
-# - Invalid YAML syntax
-# - Parameter type mismatched
-````
-
-**Fix:**
-
-- Review [TOOL_SPECIFICATION.md](./TOOL_SPECIFICATION.md)
-- Check existing tools for examples
-- Run again after fixes
-
----
-
-### "Tests don't find my tool"
-
-**Check:**
-
-```bash
-# Verify tool loads
-pnpm test -- --testPathPattern="tool-loader"
-
-# Tool must be in:
-# packages/core/tools/{name}/definition.yaml
-# packages/{provider}/tools/{name}/definition.yaml
-```
-
----
-
-### "Coverage too low"
-
-**Add tests for:**
-
-- Valid parameter combinations
-- Invalid/missing parameters
-- Edge cases (empty strings, zero values)
-- Error scenarios (network failures, timeouts)
-
-```typescript
-// Example: Test error scenario
-it('should handle network errors gracefully', async () => {
-  // If HTTP tool, mock failed request
-  const result = await matimo.execute('my-tool', { bad: 'param' });
-  // Should throw MatimoError with ERROR_CODE
-});
-```
-
----
-
-### "Lint/Format issues"
-
-**Auto-fix:**
-
-```bash
-pnpm lint:fix
-pnpm format
-git add .
-git commit --amend
-```
-
----
-
-## Real Example: Adding git-clone Tool
-
-```bash
-# 1. Create structure
-mkdir -p packages/github/tools/github-clone-repo
-
-# 2. Write definition.yaml
-cat > packages/github/tools/github-clone-repo/definition.yaml << 'EOF'
-name: github-clone-repo
-description: Clone a GitHub repository to a local directory
-version: '1.0.0'
-
-parameters:
-  owner:
-    type: string
-    required: true
-    description: Repository owner (username or org)
-  repo:
-    type: string
-    required: true
-    description: Repository name
-  path:
-    type: string
-    required: false
-    description: Local directory to clone into
-
-execution:
-  type: command
-  command: bash
-  args:
-    - -c
-    - |
-      if [ -z "{path}" ]; then
-        git clone https://github.com/{owner}/{repo}.git
-      else
-        git clone https://github.com/{owner}/{repo}.git {path}
-      fi
-      echo '{"status":"cloned"}'
-
-output_schema:
-  type: object
-  properties:
-    status:
-      type: string
-  required: [status]
-EOF
-
-# 3. Validate
-pnpm validate-tools
-
-# 4. Write tests
-cat > packages/core/test/unit/tools/github-clone.test.ts << 'EOF'
-describe('GitHubClone', () => {
-  it('should clone repository', async () => {
-    // Mock git command in test
-  });
-});
-EOF
-
-# 5. Run tests
-pnpm test
-
-# 6. Check coverage
-pnpm test:coverage
-
-# 7. Submit PR
-git add packages/github/tools/github-clone-repo/
-git commit -m "feat(github): add github-clone-repo tool"
-```
-
----
-
-## Next Steps
-
-- ✅ Follow this workflow
-- ✅ Test locally with `pnpm test`
-- ✅ Validate with `pnpm validate-tools`
-- ✅ Submit PR with description
-- ✅ Respond to feedback from maintainers
-
-**Questions?**
-
-- 📖 [Tool Specification](./TOOL_SPECIFICATION.md)
-- 📖 [YAML Tools](./YAML_TOOLS.md)
-- 💬 [GitHub Discussions](https://github.com/tallclub/matimo/discussions)
+- [ADDING_TOOLS.md](./ADDING_TOOLS.md) — the detailed guide
+- [TOOL_SPECIFICATION.md](./TOOL_SPECIFICATION.md) — every YAML field
+- [TESTING.md](./TESTING.md) — test patterns that run
+- [POLICY_AND_LIFECYCLE.md](../api-reference/POLICY_AND_LIFECYCLE.md) — risk levels and approval
