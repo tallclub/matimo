@@ -2,11 +2,11 @@
 
 ## Current Status
 
-**Latest Release**: **v0.1.8**: **🛡️ Governance Gap Closures: Default Policy Engine, Approve→Reload Lifecycle & Audit Events** (Python: v0.1.3)
+**Latest Release**: **0.2.0** (TypeScript and Python): **🛡️ Secure by default** — DELETE and command tools ask a human, per-instance approval callbacks, MCP elicitation, a hash-chained audit log, and governance enforced identically by both SDKs. See [RELEASES.md](./RELEASES.md) and the [migration guide](./api-reference/POLICY_AND_LIFECYCLE.md#upgrading-to-020).
 
 ### 🏆 Production Launch — General Availability
 
-Matimo v0.1.8 stable (Python: v0.1.3) is now **production-ready** with full TypeScript and Python SDK support, 139+ tools across 10 native provider packages plus a governed 449-tool `@matimo/composio` catalog, enterprise-grade security, and comprehensive framework integrations.
+Matimo 0.2.0 (TypeScript and Python) is **production-ready** with full TypeScript and Python SDK support, 139+ tools across 10 native provider packages plus a governed 449-tool `@matimo/composio` catalog, enterprise-grade security, and comprehensive framework integrations.
 
 ✅ **v0.1.0 Stable — Completed Features**:
 
@@ -17,7 +17,7 @@ Matimo v0.1.8 stable (Python: v0.1.3) is now **production-ready** with full Type
 - **4 SDK patterns**: Factory, Decorator, LangChain, CrewAI
 - **15 meta-tools** for runtime tool and skill management
 - CLI: list, search, install, help, doctor, review, validate, mcp
-- MCP Server (stdio + HTTP on port 3101, Claude Desktop compatible)
+- MCP Server (stdio + Streamable HTTP, Claude Desktop compatible; approval through MCP elicitation)
 - Skills system with TF-IDF semantic search
 - Policy engine with risk classification + HITL workflows
 - Secret management (Env, Dotenv, Vault, AWS Secrets Manager)
@@ -25,7 +25,7 @@ Matimo v0.1.8 stable (Python: v0.1.3) is now **production-ready** with full Type
 **Provider Ecosystem** (139+ native tools across 10 providers, plus a governed 449-tool Composio catalog)
 - **Slack**, **GitHub**, **Gmail**, **Notion**, **HubSpot**, **Mailchimp**, **Postgres**, **Twilio**
 - **Bruno CLI**, **Microsoft Graph** — Mail, Teams, calendar, SharePoint, OneDrive search
-- **Composio** (449) — Jira, Google Workspace, Microsoft 365, Asana, Linear, and more via a policy-governed proxy
+- **Composio** (449) — Jira, Google Workspace, Microsoft 365, Asana, Linear, and more, routed through Composio and governed by Matimo's policy engine
 - All native providers ship with TypeScript + Python SDKs, LangChain/CrewAI examples (`@matimo/composio` is TypeScript-only today)
 
 **Bruno CLI Provider** (v0.1.0 — NEW)
@@ -34,10 +34,10 @@ Matimo v0.1.8 stable (Python: v0.1.3) is now **production-ready** with full Type
 - ✅ JSON reporter integration
 - ✅ Collection and request-level execution
 
-**Meta-Tools** (12 total)
+**Meta-Tools** (15 total)
 - ✅ Tool lifecycle: `create`, `validate`, `approve`, `reload`, `list_user_tools`, `get_tool_status`
 - ✅ Tool discovery: `get_tool`, `search_tools`
-- ✅ Skill management: `create_skill`, `get_skill`, `list_skills`, `validate_skill`
+- ✅ Skill management: `create_skill`, `get_skill`, `list_skills`, `validate_skill`, `search_skills`, `get_skill_sections`, `get_skill_content`
 - ✅ Full MCP + LangChain agent integration
 
 **HITL Enhancements** (v0.1.0 — NEW)
@@ -46,7 +46,7 @@ Matimo v0.1.8 stable (Python: v0.1.3) is now **production-ready** with full Type
 - ✅ Production fail-fast if HITL handler not provided
 
 **Quality & Security** (v0.1.0 stable)
-- ✅ **3,789 total tests** (2,412 TypeScript + 1,377 Python)
+- ✅ **4,600+ tests** across TypeScript and Python, plus shared conformance fixtures that both SDKs must pass
 - ✅ **95%+ test coverage** (both SDKs)
 - ✅ **Zero test pollution** (pytest-asyncio markers fixed)
 - ✅ **5 critical security patches** applied
@@ -105,11 +105,30 @@ See [Searching and Loading Skills Selectively](./skills/SKILLS.md#searching-and-
 
 ---
 
-## v0.2.0 — Future Minor Release
+## After 0.2.0 — What's Next
 
-**Target**: Q3 2026 — Extended Provider Ecosystem
+**Security hardening (0.2.x)**
+- [ ] SSRF checks on every redirect hop and on the resolved IP address, not only the URL
+- [ ] Command tools run with a minimal environment instead of the parent process's
+- [ ] Function tools run out of process, with a timeout that stops them
 
-### Phase 1: Additional 3rd Party Tools
+**Correctness and parity (0.2.x)**
+- [ ] `error_handling` retries applied by the HTTP executors (validated today, not yet used)
+- [ ] Parameter validation before execution, with every problem reported at once
+- [ ] Composio tools classified by the action they perform
+- [ ] Python: `get_tools_by_tag`, `get_required_credentials`, `reload_policy`, `set_hitl_callback`, `get_skill_resource`; built-in skills shipped in the Python packages
+- [ ] One meaning for `allow_command_tools` / `allow_function_tools` on untrusted tools in both SDKs
+- [ ] A policy context passed through the LangChain and CrewAI adapters
+
+**Builder features (0.3.0 →)**
+- [ ] Adapters for the OpenAI, Anthropic, Vercel AI and other agent SDKs
+- [ ] YAML pagination, response field selection, caching and rate limits
+- [ ] Argument-level policy rules, budgets, and a dry-run `explain`
+- [ ] Connections: per-user token storage and refresh, `matimo connect`
+- [ ] Remote MCP with OAuth 2.1
+- [ ] OpenAPI import (`matimo import`)
+
+### Provider Expansion
 
 Expand provider ecosystem with real-world integrations:
 
