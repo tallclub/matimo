@@ -118,7 +118,7 @@ async def run(task: str, auto_approve: bool = False) -> None:
                 else:
                     result = await lc_tool.ainvoke(call["args"])
             except Exception as exc:
-                # A declined approval arrives here as a MatimoError.
+                # A declined approval comes back as "Error: ..." text; this catches anything else.
                 result = f"Error: {exc}"
             print(f"    → {str(result)[:200]}")
             messages.append(ToolMessage(content=str(result), tool_call_id=call["id"]))

@@ -393,3 +393,46 @@ class TestLangChainUnsetArguments:
         matimo_mock.execute.assert_awaited_once_with(
             "echo_tool", {"message": "", "limit": 0, "dry": False}, credentials=None
         )
+
+
+class TestLangChainToolErrors:
+    """Errors reach the model as text, as in TypeScript's convertToolsToLangChain."""
+
+    async def test_matimo_error_is_returned_as_text(self) -> None:
+        pytest.importorskip("langchain_core")
+        from matimo.errors import ErrorCode, MatimoError
+        from matimo.integrations.langchain import convert_tools_to_langchain
+
+        matimo_mock = AsyncMock()
+        matimo_mock.execute = AsyncMock(
+            side_effect=MatimoError(
+                "Operation rejected by approval handler: echo_tool", ErrorCode.EXECUTION_FAILED
+            )
+        )
+
+        [lc_tool] = convert_tools_to_langchain([_make_tool()], matimo_mock)
+        result = await lc_tool.ainvoke({"message": "hi"})
+
+        assert result == "Error: Operation rejected by approval handler: echo_tool"
+
+    async def test_other_exceptions_are_returned_as_text(self) -> None:
+        pytest.importorskip("langchain_core")
+        from matimo.integrations.langchain import convert_tools_to_langchain
+
+        matimo_mock = AsyncMock()
+        matimo_mock.execute = AsyncMock(side_effect=RuntimeError("boom"))
+
+        [lc_tool] = convert_tools_to_langchain([_make_tool()], matimo_mock)
+
+        assert await lc_tool.ainvoke({"message": "hi"}) == "Error: boom"
+
+    async def test_success_returns_the_result(self) -> None:
+        pytest.importorskip("langchain_core")
+        from matimo.integrations.langchain import convert_tools_to_langchain
+
+        matimo_mock = AsyncMock()
+        matimo_mock.execute = AsyncMock(return_value={"ok": True})
+
+        [lc_tool] = convert_tools_to_langchain([_make_tool()], matimo_mock)
+
+        assert await lc_tool.ainvoke({"message": "hi"}) == {"ok": True}
