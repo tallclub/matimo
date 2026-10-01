@@ -1,498 +1,176 @@
 ---
 name: tool-discovery
-description: "Find and manage available tools. Learn how to list user-created tools, search by criteria, categorize by risk level, and understand tool status states."
+description: "Find and inspect available tools. Learn how to search the registry, list the tools you created, read a tool's definition and approval state, and find skills — before creating anything new."
 metadata:
   category: "Tool Management"
   difficulty: "beginner"
-  apply-to: "matimo_list_user_tools matimo_list_skills matimo_get_tool_status"
+  apply-to: "matimo_search_tools matimo_get_tool matimo_list_user_tools matimo_get_tool_status matimo_list_skills matimo_search_skills"
 ---
 
-# Tool Discovery: Finding and Managing Tools
+# Tool Discovery: Finding and Inspecting Tools
 
-This skill teaches you how to **discover, search, and manage** Matimo tools that are available in your system.
+This skill teaches you how to find the tools you can use **before** you write a new one. Reusing an existing, approved tool is always faster and safer than creating one.
 
-## Overview: Tool Sources
+## Where Tools Come From
 
-Three sources of tools:
+1. **Core tools** — shipped with Matimo: `calculator`, `web`, `read`, `search`, `edit`, `execute` and others, plus the `matimo_*` meta-tools that manage tools and skills.
+2. **Provider tools** — from installed provider packages (Slack, GitHub, Gmail, Notion, HubSpot, and more), loaded by the developer.
+3. **Tools created by agents** — written with `matimo_create_tool` into a directory the developer chose. They start as drafts and run only after a human approves them.
 
-1. **Core/Built-in Tools** — Shipped with Matimo SDK
-   - `matimo_create_tool`, `matimo_validate_tool`, `matimo_doctor`, etc.
-   - Read-only, always available
-   - Used by agents to manage tool lifecycle
+## Which Tool Answers Which Question
 
-2. **Provider Tools** — Application-specific tools from packages
-   - Slack tools, GitHub tools, AWS tools, etc.
-   - Defined in `packages/{provider}/tools/`
-   - Available after initialization with `toolPaths`
-
-3. **User-Created Tools** — Dynamically created by agents
-   - Stored in `target_dir` (usually temp directory)
-   - Status: `draft`, `approved`, `rejected`
-   - Discovered via `matimo_list_user_tools`
+| Question | Tool |
+|----------|------|
+| Is there already a tool for this? | `matimo_search_tools` |
+| What exactly does tool X do and take? | `matimo_get_tool` |
+| Which tools have agents created here? | `matimo_list_user_tools` |
+| Can tool X run yet? | `matimo_get_tool_status` |
+| Is there guidance for this kind of task? | `matimo_search_skills`, `matimo_list_skills` |
 
 ---
 
-## Meta-Tool: matimo_list_user_tools
-
-Lists all tools created by agents in a specific directory.
+## matimo_search_tools — search everything that is loaded
 
 ```
-Input:  { target_dir: "/path/to/tools" }
-Output: { tools: [...] status: "success" }
-```
+matimo_search_tools(query: "slack message", limit: 5)
 
-### Basic Usage
-
-```
-Call: matimo_list_user_tools(target_dir="/tmp/my-tools")
-
-Response:
-{
-  "tools": [
-    {
-      "name": "weather_fetch",
-      "version": "1.0.0",
-      "description": "Get current weather for a city",
-      "status": "approved",
-      "riskLevel": "LOW",
-      "createdAt": "2026-03-17T10:30:00Z",
-      "executionType": "http",
-      "requiresApproval": false
-    },
-    {
-      "name": "file_reader",
-      "version": "1.0.0",
-      "description": "Read files from filesystem",
-      "status": "rejected",
-      "riskLevel": "CRITICAL",
-      "reason": "Command tools are blocked by policy",
-      "createdAt": "2026-03-17T10:31:00Z",
-      "executionType": "command",
-      "requiresApproval": true
-    }
-  ],
-  "summary": {
-    "total": 2,
-    "approved": 1,
-    "rejected": 1,
-    "draft": 0
+→ {
+    "results": [
+      { "name": "slack_send_message", "description": "...", "version": "1.0.0", "tags": ["slack", "messaging"], "riskLevel": "medium" }
+    ],
+    "total": 1,
+    "query": "slack message"
   }
-}
 ```
 
----
+- Matches the query against tool names, descriptions and tags.
+- Searches every loaded tool — core, provider and approved agent-created tools.
+- An empty result means nothing loaded matches: try other words before deciding to create a tool.
 
-## Understanding Tool Status
-
-### Status: `approved`
-
-Tool has been validated and approved by human operator. Ready to use.
+## matimo_get_tool — read one tool's definition
 
 ```
-Indicators:
-- ✅ Created with matimo_create_tool
-- ✅ Passed matimo_doctor validation
-- ✅ Human approved via matimo_review
-- ✅ Registry reloaded via matimo_reload_tools
-- ✅ Executable via matimo.execute()
+matimo_get_tool(name: "weather_lookup", tool_dir: "<directory>")
+
+→ { "found": true, "name": "weather_lookup", "yaml_content": "name: weather_lookup\n...", "definition": { ... }, "message": "..." }
 ```
 
-**Example in response:**
-```json
-{
-  "name": "weather_fetch",
-  "status": "approved",
-  "riskLevel": "LOW",
-  "message": "Ready for execution"
-}
-```
+Use it to see a tool's parameters before calling it, or to start a new tool from an existing one.
 
-### Status: `draft`
-
-Tool created but not yet approved. Cannot be executed.
+## matimo_list_user_tools — the tools agents created in a directory
 
 ```
-Indicators:
-- ✅ Created with matimo_create_tool
-- ✅ Passed validation
-- ⏸️ Waiting for human approval via matimo_review
-- ❌ NOT executable
+matimo_list_user_tools(tool_dir: "<directory>", include_drafts: true)
+
+→ {
+    "tools": [
+      { "name": "weather_lookup", "description": "Get current weather for a city", "version": "1.0.0", "status": "approved", "riskLevel": "high", "tags": [] },
+      { "name": "todo_create", "description": "Create a todo item", "version": "1.0.0", "status": "draft", "riskLevel": "high", "tags": [] }
+    ],
+    "total": 2
+  }
 ```
 
-**Example in response:**
-```json
-{
-  "name": "todo_create",
-  "status": "draft",
-  "riskLevel": "MEDIUM",
-  "message": "Awaiting human approval"
-}
-```
+- `include_drafts: false` lists only tools that are no longer drafts.
+- A tool that failed the policy rules is never written by `matimo_create_tool`, and a tool rejected on reload is not loaded — neither appears with a special status. Check the `rejected` list returned by `matimo_reload_tools` instead.
 
-### Status: `rejected`
-
-Tool failed policy validation or human rejected it. Cannot be used.
+## matimo_get_tool_status — can this tool run yet?
 
 ```
-Indicators:
-- ❌ Failed policy check (e.g., command blocked)
-- OR: ❌ Human rejected after review
-- ❌ NOT executable
-- ❌ Marked as rejected
+matimo_get_tool_status(name: "todo_create", tool_dir: "<directory>")
+
+→ {
+    "found": true,
+    "name": "todo_create",
+    "status": "draft",
+    "riskLevel": "high",
+    "approvalState": "pending",
+    "approvedAt": null,
+    "approvedBy": null,
+    "message": "Tool \"todo_create\" is pending (high risk)"
+  }
 ```
 
-**Example in response:**
-```json
-{
-  "name": "file_reader",
-  "status": "rejected",
-  "riskLevel": "CRITICAL",
-  "reason": "Command tools are blocked by policy. Use HTTP endpoints instead."
-}
-```
+| `approvalState` | Meaning | Can it run? |
+|-----------------|---------|-------------|
+| `pending` | A draft waiting for `matimo_approve_tool`, or a tool that needs approval | No — ask a human to approve it, then reload |
+| `approved` | Approved, and the file has not changed since | Yes, after `matimo_reload_tools` |
+| `auto-approved` | A low-risk, read-only tool that is not a draft | Yes |
+| `rejected` | The tool is deprecated | No |
+
+Even an approved tool you created keeps `requires_approval: true`, so each call still asks a human.
 
 ---
 
 ## Understanding Risk Levels
 
-Risk level indicates **potential impact** if the tool is misused or exploited:
+| Risk | Typical tool | What happens when it runs |
+|------|--------------|---------------------------|
+| `low` | HTTP GET | Runs, unless the developer requires review |
+| `medium` | HTTP POST / PUT / PATCH | Runs; the developer may require review |
+| `high` | HTTP DELETE, command tools, any tool with `requires_approval: true` (every tool you create) | A human approves each call |
+| `critical` | Function tools, or tools that declare `risk: critical` | Developer-written code; agents cannot create these |
 
-### Risk Level: `LOW`
-
-**When:** Read-only HTTP GET to public APIs
-
-```yaml
-execution:
-  type: http
-  method: GET
-  url: "https://api.github.com/users/{username}"
-```
-
-**Why LOW:**
-- ✅ No data modification
-- ✅ Public API (no secrets)
-- ✅ Limited impact even if exposed
-- ✅ Auto-approved, no human approval needed
+A tool's `risk:` field can raise its level, never lower it.
 
 ---
 
-### Risk Level: `MEDIUM`
+## Finding Skills
 
-**When:** Data modification via HTTP POST/PUT
+Skills are guidance documents for a kind of task — such as this one.
 
-```yaml
-execution:
-  type: http
-  method: POST
-  url: "https://api.slack.com/api/chat.postMessage"
+```
+matimo_search_skills(query: "create an http tool", limit: 3)
+→ { "success": true, "results": [ { "name": "tool-creation", "description": "...", "relevanceScore": 0.42 } ], "total": 1, ... }
+
+matimo_list_skills()
+→ { "skills": [ { "name": "tool-creation", "description": "...", "path": "..." }, ... ], "total": 6 }
 ```
 
-**Why MEDIUM:**
-- ⚠️ Can modify data (send messages, create issues)
-- ⚠️ Requires credentials (API key)
-- ⚠️ Requires human review before execution
-- ✅ Policy allows it (HTTP only)
+Then load one with `matimo_get_skill(name: "tool-creation")`, or only the part you need with `matimo_get_skill_sections` and `matimo_get_skill_content`.
 
 ---
 
-### Risk Level: `HIGH`
+## Common Patterns
 
-**When:** Access to sensitive APIs or complex operations
-
-```yaml
-execution:
-  type: http
-  method: DELETE
-  url: "https://api.github.com/repos/{owner}/{repo}"
-```
-
-**Why HIGH:**
-- ⚠️ Destructive operation (deletion)
-- ⚠️ Affects multiple users
-- ⚠️ Hard to undo
-- ✅ Policy allows it (HTTP only)
-- ⚠️ Requires careful human review
-
----
-
-### Risk Level: `CRITICAL`
-
-**When:** Shell commands, code execution, or policy violations
-
-```yaml
-execution:
-  type: command
-  command: bash
-  args: ["-c", "{user_command}"]
-```
-
-**Why CRITICAL:**
-- ❌ Full system access
-- ❌ Can read/write files, modify system
-- ❌ Cannot be restricted
-- ❌ Policy blocks (allowCommandTools: false)
-- ❌ Always rejected
-
----
-
-## Query Examples
-
-### Example 1: List All Tools in a Directory
+### Before creating a tool
 
 ```
-Call: matimo_list_user_tools(target_dir="/tmp/matimo-tools")
-
-What you'll see:
-- All tools created in that directory
-- Their current status (approved/draft/rejected)
-- Risk level and reason (if rejected)
-- Execution type and requirements
+1. matimo_search_tools(query: "<what you need>")
+     found → read it with matimo_get_tool → call it
+     none  → try different words once more
+2. Still nothing → follow the meta-tools-lifecycle skill to create one
 ```
 
-### Example 2: Check Which Tools Are Approved
-
-Agent logic:
-```
-Call: matimo_list_user_tools(target_dir="/tmp/matimo-tools")
-Filter: tools where status === "approved"
-Result: Only ready-to-use tools
-```
-
-**Use case:** "What tools can I use right now?"
-
-### Example 3: Check Why a Tool Was Rejected
-
-Agent logic:
-```
-Call: matimo_list_user_tools(target_dir="/tmp/matimo-tools")
-Find: tool named "file_reader"
-Check: status === "rejected"
-Read: tool.reason
-Output: "Command tools are blocked by policy"
-```
-
-**Use case:** "Why doesn't file_reader work?"
-
-### Example 4: Understand Tool Capabilities
-
-Agent logic:
-```
-Call: matimo_list_user_tools(target_dir="/tmp/matimo-tools")
-For each tool:
-  - executionType: "http" or "command" or "function"
-  - riskLevel: "LOW" to "CRITICAL"
-  - requiresApproval: true/false
-
-Decision: Which tools match my goal?
-```
-
-**Use case:** "What operations can I do?"
-
----
-
-## Complete Tool Information
-
-When `matimo_list_user_tools` returns a tool, it includes:
-
-```json
-{
-  "name": "github_create_issue",         // Unique identifier
-  "version": "1.0.0",                    // Semantic version
-  "description": "Create an issue...",   // What it does
-  "status": "approved",                  // approved | draft | rejected
-  "riskLevel": "MEDIUM",                 // LOW | MEDIUM | HIGH | CRITICAL
-  "createdAt": "2026-03-17T10:30:00Z",   // When created
-  "executionType": "http",               // http | command | function
-  "requiresApproval": false,             // approval needed for execution?
-  "reason": null,                        // If rejected, why
-  "approvedBy": "human-operator",        // Who approved it
-  "approvedAt": "2026-03-17T10:31:00Z",  // When approved
-  "parameters": {                        // Input parameters
-    "owner": { "type": "string", "required": true },
-    "repo": { "type": "string", "required": true },
-    "title": { "type": "string", "required": true }
-  }
-}
-```
-
----
-
-## Common Discovery Patterns
-
-### Pattern 1: Report on All Tools
-
-Agent goal: "What tools has the system created?"
+### "What tools did we create, and which can run?"
 
 ```
-Call: matimo_list_user_tools(target_dir=<providedDir>)
-Output each tool:
-  - Name and description
-  - Status (✅ approved or ❌ rejected)
-  - Risk level
-
-Summary: "System has 3 tools: 2 approved, 1 rejected"
+1. matimo_list_user_tools(tool_dir: "<directory>")
+2. For each draft: matimo_get_tool_status → report it as waiting for approval
+3. Report approved tools as ready (each call still asks a human)
 ```
 
-### Pattern 2: Find Tools Ready to Use
-
-Agent goal: "What can I execute right now?"
+### "Why can't I call this tool?"
 
 ```
-Call: matimo_list_user_tools(target_dir=<dir>)
-Filter: status === "approved" AND riskLevel !== "CRITICAL"
-Then: User can safely call matimo.execute(toolName, params)
-```
-
-### Pattern 3: Understand Why Tool Was Rejected
-
-Agent goal: "Can I fix the rejected file_reader tool?"
-
-```
-Call: matimo_list_user_tools(target_dir=<dir>)
-Find: "file_reader"
-Read: reason = "Command tools are blocked by policy"
-Learn: "I can't fix this; policy is immutable. I need HTTP instead."
-```
-
-### Pattern 4: Summarize Safety Status
-
-Agent goal: "Is the tool environment safe?"
-
-```
-Call: matimo_list_user_tools(target_dir=<dir>)
-Count: CRITICAL-level tools
-If count === 0:
-  Result: ✅ "Safe—no critical-risk tools"
-If count > 0:
-  Result: ⚠️ "Unsafe—{count} high-risk tools present"
-```
-
----
-
-## Meta-Tool: matimo_list_skills
-
-Lists available **skills** (domain knowledge files) in the system.
-
-```
-Call: matimo_list_skills()
-
-Response:
-{
-  "skills": [
-    {
-      "name": "tool-creation",
-      "description": "Create tools for the Matimo SDK...",
-      "category": "Tool Development",
-      "difficulty": "intermediate"
-    },
-    {
-      "name": "meta-tools-lifecycle",
-      "description": "Master the tool lifecycle workflow...",
-      "category": "Tool Lifecycle",
-      "difficulty": "advanced"
-    },
-    {
-      "name": "policy-validation",
-      "description": "Security rules and enforcement...",
-      "category": "Security & Policy",
-      "difficulty": "intermediate"
-    }
-  ],
-  "summary": {
-    "total": 3,
-    "byCategory": {
-      "Tool Development": 1,
-      "Tool Lifecycle": 1,
-      "Security & Policy": 1
-    }
-  }
-}
-```
-
-### When to Use Skills
-
-```
-Agent: "I need to learn how to create a tool"
-Agent: matimo_list_skills()
-Agent: "I found 'tool-creation' skill. Let me apply it to my task."
-Result: Agent generates better YAML with complete structure
-```
-
----
-
-## Meta-Tool: matimo_get_tool_status
-
-Gets detailed status of a specific tool.
-
-```
-Call: matimo_get_tool_status(toolName="weather_fetch", target_dir="/tmp/tools")
-
-Response:
-{
-  "name": "weather_fetch",
-  "status": "approved",
-  "details": {
-    "createdAt": "2026-03-17T10:30:00Z",
-    "approvedAt": "2026-03-17T10:31:00Z",
-    "approvedBy": "human-operator",
-    "integrityHash": "sha256:abc123...",
-    "tamperDetected": false,
-    "lastExecutedAt": "2026-03-17T10:45:00Z",
-    "executionCount": 5
-  }
-}
-```
-
----
-
-## Workflow: From Creation to Discovery
-
-```
-1. Agent creates tool
-   matimo_create_tool(name="weather_fetch", yaml, dir)
-   Result: ✅ Created, status="draft"
-
-2. Agent validates with doctor
-   matimo_doctor(yaml)
-   Result: ✅ Valid, no policy errors
-
-3. Human approves via review
-   matimo_review(name="weather_fetch", dir)
-   Result: ✅ Approved, status="approved"
-
-4. Agent reloads registry
-   matimo_reload_tools(dir)
-   Result: ✅ Reloaded
-
-5. Agent lists to verify
-   matimo_list_user_tools(dir)
-   Result: ✅ "weather_fetch" appears with status="approved"
-
-6. Agent uses the tool
-   matimo.execute("weather_fetch", {city: "New York"})
-   Result: ✅ Tool executes, returns weather data
+- matimo_get_tool_status says pending → it needs matimo_approve_tool, then a reload
+- Calling it fails with "Draft tool ... requires admin role" → same: it is still a draft
+- It is not found at all → it was rejected on reload; check matimo_reload_tools' rejected list
 ```
 
 ---
 
 ## Key Principles
 
-1. ✅ **Status is authoritative** — How matimo_list_user_tools reports it is the truth
-2. ✅ **Risk level guides decisions** — Don't assume LOW-risk tools are safe; always understand what they do
-3. ✅ **Rejection is immutable** — If rejected by policy, it cannot be used (policy is frozen)
-4. ✅ **Approval lasts through session** — Approved tool stays approved until session ends
-5. ✅ **Metadata is useful** — createdAt, approvedBy, executionCount help understand tool history
+1. ✅ **Search before you create** — an existing tool is already approved and tested
+2. ✅ **Read the definition before calling** — use the parameter names it declares
+3. ✅ **Check status, not assumptions** — a created tool is a draft until a human approves it
+4. ✅ **Report honestly** — say which tools are waiting for approval rather than calling them
 
 ---
 
 ## References
 
-- **Tool creation**: See `tool-creation` skill
-- **Tool lifecycle**: See `meta-tools-lifecycle` skill
-- **Policy validation**: See `policy-validation` skill
-
----
-
-**Last Updated:** March 2026  
-**Status:** Complete  
-**Level:** Beginner
+- **Creating and approving tools**: see the `meta-tools-lifecycle` skill
+- **Writing tool YAML**: see the `tool-creation` skill
+- **Policy rules**: see the `policy-validation` skill

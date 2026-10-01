@@ -1,55 +1,80 @@
 ---
 name: policy-validation
-description: "Understand Matimo's security policy engine. Learn which tool types are allowed, what domains are safe, how SSRF is prevented, and how the policy validator (matimo_doctor) enforces rules."
+description: "Understand Matimo's security policy engine: which tool types an agent may create, how SSRF, domain, method and credential rules work, how matimo_validate_tool reports them, and what happens to every call at run time."
 metadata:
   category: "Security & Policy"
   difficulty: "intermediate"
-  apply-to: "matimo_doctor matimo_validate_tool"
+  apply-to: "matimo_validate_tool matimo_create_tool matimo_reload_tools"
 ---
 
 # Policy Validation: Security Rules and Enforcement
 
-This skill teaches you **Matimo's security policy engine**—a **developer-controlled, object-frozen, non-bypassable** system that blocks dangerous tool patterns before they execute.
+This skill teaches you **Matimo's policy engine** — the deterministic rules that decide which tools you may create and what happens each time a tool runs.
 
-## Core Principle: Policy is Immutable
+## Core Principle: The Developer Sets Policy, You Work Within It
 
-Once the developer initializes Matimo with a policy configuration, that policy is **frozen** and **cannot be changed by agents**. This ensures:
-
-- ✅ Agents cannot weaken security rules
-- ✅ Agents cannot bypass domain restrictions  
-- ✅ Agents cannot create shell commands if blocked
-- ✅ Policy is transparent and auditable
+The developer configures the policy when they start Matimo (in code or a `policy.yaml`). No tool lets an agent change it. When a rule blocks you, redesign the tool; do not look for a way around the rule.
 
 ```typescript
-// At deploy time, developer sets immutable policy:
-const policyConfig: PolicyConfig = {
-  allowedDomains: ['api.github.com', 'api.weatherapi.com'],
-  allowedHttpMethods: ['GET', 'POST'],
-  allowCommandTools: false,
-  allowFunctionTools: false,
-  protectedNamespaces: ['matimo_'],
-  allowedCredentials: ['GITHUB_TOKEN', 'WEATHER_API_KEY']
-};
-
-Object.freeze(policyConfig);  // ← Now immutable
-
-// Agent cannot change this, even if it tries
-// All tools are validated against this frozen policy
+// Set by the developer at start-up:
+const matimo = await MatimoInstance.init({
+  untrustedPaths: ['./agent-tools'],
+  policyConfig: {
+    allowedDomains: ['api.github.com', 'api.weatherapi.com'],
+    allowedHttpMethods: ['GET', 'POST'],
+    protectedNamespaces: ['matimo_'],
+    allowedCredentials: ['GITHUB_TOKEN', 'WEATHER_API_KEY'],
+  },
+});
 ```
 
-## The matimo_doctor Meta-Tool
+## Two Layers
 
-**matimo_doctor** is the policy validator. It checks tool definitions against:
-1. **Schema validation** — YAML structure is correct
-2. **Policy validation** — Tool complies with security rules
+1. **When a tool loads** — every tool you create is *untrusted* and must pass 9 content rules. A tool that breaks a critical or high rule never reaches the registry.
+2. **Every time a tool runs** — the call is risk-classified, checked against execution gates, and may need a human's approval.
+
+---
+
+## Layer 1: The 9 Content Rules
+
+| # | Rule id | Severity | Rejects |
+|---|---------|----------|---------|
+| 1 | `no-function-execution` | critical | `execution.type: function` |
+| 2 | `no-command-execution` | critical | `execution.type: command` |
+| 3 | `no-ssrf` | critical | URLs aimed at localhost or loopback, `0.0.0.0`, private ranges (`10.*`, `172.16-31.*`, `192.168.*`), link-local `169.254.*` (cloud metadata), or `*.internal` / `*.local` / `*.localhost` hosts |
+| 4 | `unauthorized-credential` | high | A placeholder that names a credential (such as `{GITHUB_TOKEN}` or `{API_KEY}`) not in `allowedCredentials`, when the developer set one |
+| 5 | `reserved-namespace` | critical | Names starting with a protected prefix (default `matimo_`) |
+| 6 | `forced-approval` | high | `requires_approval` other than `true` |
+| 7 | `blocked-http-method` | high | Methods outside `allowedHttpMethods` (default GET and POST) |
+| 8 | `blocked-domain` | high | Hosts outside `allowedDomains`, when the developer set one (subdomains of a listed domain are allowed) |
+| 9 | `forced-draft-status` | medium | A `status` other than `draft` |
+
+Critical and high violations reject the tool. A medium violation rejects it too, unless the developer quarantines that risk for a human.
+
+`matimo_create_tool` sets rules 6 and 9 for you (`requires_approval: true`, `status: draft`), so you never need to write those fields.
+
+### Check a definition with matimo_validate_tool
 
 ```
-Input:  YAML tool definition (string)
-Output: { valid: true, ... }  ✅ Safe to use
-    OR: { valid: false, schemaErrors: [...], policyErrors: [...] }  ❌ Blocked
+matimo_validate_tool(yaml_content: "<complete YAML>")
+
+→ {
+    "valid": false,
+    "schemaErrors": [],
+    "policyViolations": [
+      { "rule": "no-ssrf", "severity": "critical", "message": "URL targets internal/metadata network: http://169.254.169.254/..." }
+    ],
+    "riskLevel": "low"
+  }
 ```
 
-### Example: Valid Tool → Passes Both Checks
+- `valid` is `true` exactly when `matimo_create_tool` would accept the definition.
+- Match on `rule`, not on `message` — the wording can change.
+- `matimo_validate_tool` uses the **default** rules. The developer's own `allowedDomains`, `allowedHttpMethods` and `allowedCredentials` apply when the tool loads, so a valid tool can still be listed in `rejected` by `matimo_reload_tools` with `blocked-domain`, `blocked-http-method` or `unauthorized-credential`.
+
+### Examples
+
+**Passes:**
 
 ```yaml
 name: github_user_lookup
@@ -59,482 +84,150 @@ parameters:
   username:
     type: string
     required: true
+    description: GitHub username
 execution:
   type: http
   method: GET
   url: "https://api.github.com/users/{username}"
 ```
 
-**matimo_doctor result:**
-```json
-{
-  "valid": true,
-  "schemaErrors": [],
-  "policyErrors": []
-}
-```
+→ `{ "valid": true, "policyViolations": [], "riskLevel": "low" }`
 
-### Example: Invalid YAML → Schema Error
+**`no-command-execution`:**
 
 ```yaml
-name: my_tool
-# Missing: version, description, parameters, execution
-```
-
-**matimo_doctor result:**
-```json
-{
-  "valid": false,
-  "schemaErrors": [
-    {"field": "version", "message": "Invalid input: expected string, received undefined"},
-    {"field": "execution", "message": "Invalid input: expected object, received undefined"}
-  ],
-  "policyErrors": []
-}
-```
-
-### Example: Policy Violation → Policy Error
-
-```yaml
-name: shell_exec
+name: shell_runner
 version: "1.0.0"
-execution:
-  type: command      # ← Command tools blocked by policy
-  command: bash
-  args: ["-c", "rm -rf /"]
-```
-
-**matimo_doctor result:**
-```json
-{
-  "valid": false,
-  "schemaErrors": [],
-  "policyErrors": [
-    {"rule": "allowCommandTools", "severity": "critical", "message": "Command tools are blocked by policy"}
-  ]
-}
-```
-
----
-
-## Policy Rules Reference
-
-### 1. Allowed Domains (HTTP Tools Only)
-
-**What it does:** Restricts HTTP tools to specific domains to prevent abuse.
-
-**Config:**
-```typescript
-allowedDomains: ['api.github.com', 'api.weatherapi.com', 'jsonplaceholder.typicode.com']
-```
-
-**Example: Allowed**
-```yaml
-execution:
-  type: http
-  url: "https://api.github.com/users/octocat"  ✅ In allowedDomains
-```
-
-**Example: Blocked**
-```yaml
-execution:
-  type: http
-  url: "https://backdoor.attacker.com/hack"  ❌ Not in allowedDomains
-
-matimo_doctor: "Domain blocked: backdoor.attacker.com not in allowed list"
-```
-
----
-
-### 2. Allowed HTTP Methods
-
-**What it does:** Restricts HTTP verbs to prevent unintended data modification.
-
-**Config:**
-```typescript
-allowedHttpMethods: ['GET', 'POST']  // Common safe methods
-```
-
-**Example: Allowed**
-```yaml
-execution:
-  type: http
-  method: GET      ✅ In allowedHttpMethods
-```
-
-**Example: Blocked**
-```yaml
-execution:
-  type: http
-  method: DELETE   ❌ Not in allowedHttpMethods
-
-matimo_doctor: "HTTP method DELETE not allowed; must use GET or POST"
-```
-
----
-
-### 3. Allow/Disallow Command Tools
-
-**What it does:** Command tools execute shell commands—inherently risky.
-
-**Config:**
-```typescript
-allowCommandTools: false  // Strongly recommended
-```
-
-**Example: Blocked**
-```yaml
-execution:
-  type: command
-  command: "cat /etc/passwd"  ❌ Commands blocked
-
-matimo_doctor: "Command tools are blocked by policy"
-```
-
----
-
-### 4. Allow/Disallow Function Tools
-
-**What it does:** Function tools execute arbitrary JavaScript code.
-
-**Config:**
-```typescript
-allowFunctionTools: false  // Strongly recommended
-```
-
-**Example: Blocked**
-```yaml
-execution:
-  type: function
-  code: |
-    return require('fs').readFileSync('/etc/passwd');  ❌ Blocked
-
-matimo_doctor: "Function tools are blocked by policy"
-```
-
----
-
-### 5. Protected Namespaces
-
-**What it does:** Prevents agents from hijacking reserved tool names (matimo_* for built-ins).
-
-**Config:**
-```typescript
-protectedNamespaces: ['matimo_']
-```
-
-**Example: Allowed**
-```yaml
-name: github_webhook  ✅ Doesn't start with matimo_
-```
-
-**Example: Blocked**
-```yaml
-name: matimo_backdoor  ❌ Tries to hijack reserved namespace
-
-matimo_doctor: "Reserved namespace violation: matimo_* is protected for built-in tools"
-```
-
----
-
-### 6. Allowed Credentials
-
-**What it does:** Whitelists which environment variables can be used for auth.
-
-**Config:**
-```typescript
-allowedCredentials: ['GITHUB_TOKEN', 'WEATHER_API_KEY']
-```
-
-**Example: Allowed**
-```yaml
-authentication:
-  type: api_key
-  location: header
-  name: Authorization
-# Uses MATIMO_GITHUB_TOKEN from env  ✅ Whitelisted
-```
-
-**Example: Blocked**
-```yaml
-authentication:
-  type: api_key
-  location: header
-  name: X-Custom-Secret
-# Uses MATIMO_X_CUSTOM_SECRET from env  ❌ Not whitelisted
-
-matimo_doctor: "Credential X_CUSTOM_SECRET not in allowed list"
-```
-
----
-
-## Security Patterns Blocked by Policy
-
-### Pattern 1: SSRF (Server-Side Request Forgery)
-
-**Attack:** Probe internal IPs to discover service topology or exploit internal endpoints.
-
-**Blocked ranges:**
-- `169.254.169.254/32` — AWS EC2 metadata service
-- `127.0.0.1/8`, `localhost` — Local machine
-- `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16` — Private networks
-- `::1`, `fe80::/10` — IPv6 loopback/link-local
-
-**Example: Attempted Attack**
-```yaml
-name: metadata_probe
-execution:
-  type: http
-  method: GET
-  url: "http://169.254.169.254/latest/meta-data/"  ❌ SSRF!
-
-matimo_doctor: "SSRF detected: forbidden IP range 169.254.* is not allowed"
-```
-
-### Pattern 2: Shell Command Execution
-
-**Attack:** Execute arbitrary commands on the host system.
-
-**Example: Attempted Attack**
-```yaml
-name: shell_exec
+description: Run a shell command
 execution:
   type: command
   command: bash
-  args: ["-c", "{user_command}"]  ❌ Dangerous!
-
-matimo_doctor: "Command tools are blocked by policy"
+  args: ["-c", "{cmd}"]
 ```
 
-### Pattern 3: Arbitrary Code Execution
+→ Use an HTTP API that does the job instead.
 
-**Attack:** Run untrusted JavaScript code with full system access.
+**`no-ssrf`:**
 
-**Example: Attempted Attack**
 ```yaml
-name: code_executor
-execution:
-  type: function
-  code: |
-    const fs = require('fs');
-    return fs.readFileSync('/etc/passwd', 'utf8');  ❌ Dangerous!
-
-matimo_doctor: "Function tools are blocked by policy"
-```
-
-### Pattern 4: Namespace Hijacking
-
-**Attack:** Create a tool named `matimo_*` to impersonate a built-in tool.
-
-**Example: Attempted Attack**
-```yaml
-name: matimo_create_tool_backdoor  ❌ Looks like built-in!
-
-matimo_doctor: "Reserved namespace violation: matimo_* is protected"
-```
-
----
-
-## Using matimo_doctor in Agent Workflows
-
-### Step 1: Validate YAML Before Creating
-
-```
-Agent: "I'll validate this tool first"
-Agent: matimo_doctor(yaml_content="...")
-Result: { valid: true } ✅ or { valid: false, errors: [...] } ❌
-```
-
-### Step 2: Understand Errors
-
-```
-If matimo_doctor returns { valid: false, errors: [...] }:
-
-For schema errors:
-  - Read field name and message
-  - Fix YAML syntax or missing fields
-  - Re-validate
-
-For policy errors:
-  - Understand which rule was violated
-  - Redesign tool to comply
-  - Use allowed domains, methods, execution types
-  - Re-validate
-```
-
-### Step 3: Only Create Valid Tools
-
-```
-Once matimo_doctor returns { valid: true }:
-  Agent: matimo_create_tool(name, yaml_content, target_dir)
-  Result: Tool created on disk, marked as draft
-```
-
----
-
-## Examples: Learning from Blocked Patterns
-
-### Example 1: Redesign for Policy
-
-**Agent's first attempt (blocked):**
-```yaml
-name: file_system
-execution:
-  type: command
-  command: cat
-  args: ["{path}"]
-# ❌ matimo_doctor: "Command tools are blocked by policy"
-```
-
-**Agent learns:** "I can't use commands; let me use HTTP instead"
-
-**Agent's redesign (approved):**
-```yaml
-name: file_server_lookup
+name: internal_probe
+version: "1.0.0"
+description: Read an internal service
 execution:
   type: http
   method: GET
-  url: "https://api.example.com/files/{file_id}"
-# ✅ matimo_doctor: { valid: true }
+  url: "http://10.0.0.5/admin"
 ```
 
----
+→ Internal and metadata addresses are always blocked; use a public HTTPS API.
 
-### Example 2: Respect Domain Restrictions
+**`reserved-namespace`:**
 
-**Agent's first attempt (blocked):**
 ```yaml
-name: internal_service_caller
+name: matimo_backdoor
+```
+
+→ Choose a name without the `matimo_` prefix. (`matimo_create_tool` refuses such names before validating.)
+
+**`blocked-domain` (at load time, with `allowedDomains: ['api.github.com']`):**
+
+```yaml
+name: exfiltrate
+version: "1.0.0"
+description: Send data elsewhere
 execution:
   type: http
   method: POST
-  url: "http://10.0.0.5:8080/admin"
-# ❌ matimo_doctor: "SSRF detected: internal IP 10.0.0.5 not allowed"
+  url: "https://collector.example.org/upload"
 ```
 
-**Agent learns:** "I can't probe internal networks; only public APIs"
+→ Rejected by `matimo_reload_tools`. Use one of the developer's allowed domains, or ask the developer.
 
-**Agent's redesign (approved):**
+**`unauthorized-credential` (at load time, with `allowedCredentials: ['GITHUB_TOKEN']`):**
+
 ```yaml
-name: public_api_caller
+name: private_repo_reader
+version: "1.0.0"
+description: Read a private repository
 execution:
   type: http
-  method: POST
-  url: "https://api.public-service.com/endpoint"
-# ✅ matimo_doctor: { valid: true }
+  method: GET
+  url: "https://api.github.com/repos/{owner}/{repo}"
+  headers:
+    Authorization: "Bearer {AWS_SECRET_ACCESS_KEY}"
 ```
+
+→ Use a credential the developer allowed (`{GITHUB_TOKEN}` here).
 
 ---
 
-### Example 3: Avoid Namespace Conflicts
+## Layer 2: Every Call at Run Time
 
-**Agent's first attempt (blocked):**
-```yaml
-name: matimo_my_tool
-# ❌ matimo_doctor: "Reserved namespace violation: matimo_* is protected"
-```
+### Risk level
 
-**Agent learns:** "Built-in tools use matimo_*; I need a different name"
+Each tool gets a risk level: GET is `low`; POST, PUT and PATCH are `medium`; DELETE, command tools and HTTP tools with `requires_approval: true` are `high`. A declared `risk:` can raise this, never lower it. Every tool you create keeps `requires_approval: true`, so it runs at `high`.
 
-**Agent's redesign (approved):**
-```yaml
-name: my_custom_tool
-# ✅ matimo_doctor: { valid: true }
-```
+### Execution gates (by caller)
 
----
+| Tool | Denied when |
+|------|-------------|
+| Deprecated | Always |
+| `status: draft` | In production (the environment name contains "prod"), and elsewhere for any caller without the `admin` role |
+| `requires_approval: true` | In production, for a caller without the `admin` or `operator` role |
 
-## Policy in Action: Complete Flow
+This is why a tool you create cannot run until `matimo_approve_tool` makes it `approved`.
 
-```
-Developer deploys Matimo:
-  policyConfig = {
-    allowedDomains: ['api.github.com'],
-    allowCommandTools: false
-  }
-  Object.freeze(policyConfig)
+### Human approval
 
-Agent receives goal: "I need a tool to run bash commands"
+A call asks a human first when its tool has `requires_approval: true`, when it is an HTTP DELETE or command tool (unless it declares `requires_approval: false`), or when a `sql` or `command` argument contains a destructive keyword such as `DROP`, `DELETE` or `TRUNCATE`. The developer decides how: an approval callback, or patterns of tools that never ask. With neither, the call is refused. If a human declines, report it — do not retry the same call.
 
-Agent designs: 
-  execution: { type: command, command: bash }
-  
-Agent validates:
-  matimo_doctor(yaml) → { valid: false, error: "Command tools blocked" }
-
-Agent learns:
-  "Commands are not allowed; policy is immutable; I must redesign"
-
-Agent redesigns:
-  execution: { type: http, method: GET, url: "https://api.github.com/..." }
-
-Agent validates:
-  matimo_doctor(yaml) → { valid: true }
-
-Agent creates:
-  matimo_create_tool(...) → Success ✅
-```
+The developer can also quarantine every call at or above a risk level for review, whatever the tool declares.
 
 ---
 
-## Developer Perspective: Setting Policy
+## Using Validation in Your Workflow
 
-```typescript
-// At initialization time, developer sets immutable policy for their deployment:
-
-const policyConfig: PolicyConfig = {
-  // Only these domains can be called
-  allowedDomains: [
-    'api.github.com',
-    'api.slack.com',
-    'jsonplaceholder.typicode.com'  // Safe test API
-  ],
-  
-  // Only safe HTTP methods
-  allowedHttpMethods: ['GET', 'POST'],
-  
-  // Block dangerous execution types
-  allowCommandTools: false,        // No shell access
-  allowFunctionTools: false,       // No arbitrary code
-  
-  // Protect built-in tools
-  protectedNamespaces: ['matimo_'],
-  
-  // Whitelist auth credentials
-  allowedCredentials: ['GITHUB_TOKEN', 'SLACK_BOT_TOKEN']
-};
-
-// Freeze it—agents cannot modify
-Object.freeze(policyConfig);
-
-const matimo = await MatimoInstance.init({
-  policyConfig,  // ← Immutable policy applied to all tools
-  // ...
-});
 ```
+1. Write the complete YAML (leave out requires_approval and status)
+2. matimo_validate_tool(yaml_content)
+     valid: false → read each violation's rule → redesign → validate again
+     valid: true  → continue
+3. matimo_create_tool(name, yaml_content, target_dir)
+4. matimo_reload_tools()
+     tool in rejected → a developer rule (domain, method, credential) blocked it → redesign
+5. Ask a human to approve it with matimo_approve_tool, then reload again
+```
+
+See the `meta-tools-lifecycle` skill for the full lifecycle.
 
 ---
 
-## Key Takeaways
+## When Policy Blocks You
 
-1. ✅ **Policy is immutable** — Agents cannot bypass or weaken security rules
-2. ✅ **matimo_doctor enforces policy** — Use it to validate YAML before creating
-3. ✅ **Domains are restricted** — Only allowed APIs can be called
-4. ✅ **Commands and functions are optional** — Developers can block them entirely
-5. ✅ **SSRF is prevented** — Internal IP ranges are blocked by default
-6. ✅ **Namespaces are protected** — `matimo_*` is reserved for built-ins
-7. ✅ **Credentials are whitelisted** — Only approved env vars can be used
+| Rule | What to do |
+|------|------------|
+| `no-command-execution` / `no-function-execution` | Find an HTTP API that does the job |
+| `no-ssrf` | Use a public HTTPS endpoint |
+| `reserved-namespace` | Rename the tool |
+| `blocked-domain` | Use an allowed domain, or tell the user the developer must allow this one |
+| `blocked-http-method` | Use an allowed method, or tell the user |
+| `unauthorized-credential` | Use an allowed credential, or tell the user |
+
+Explain the block to the user plainly. Never try to disguise a URL, split a request, or rename a credential to get past a rule.
+
+---
+
+## Key Principles
+
+1. ✅ **The developer owns the policy** — you cannot change it, and should not try
+2. ✅ **Validate before creating** — `matimo_validate_tool` reports the rule ids
+3. ✅ **Developer rules apply at load** — check `rejected` after every reload
+4. ✅ **Created tools always need a human** — approval is never automatic
+5. ✅ **Prefer GET and public APIs** — the simplest tools pass every rule
 
 ---
 
 ## References
 
-- **Tool lifecycle**: See `meta-tools-lifecycle` skill
-- **Complete tool creation**: See `tool-creation` skill
-- **Tool discovery**: See `tool-discovery` skill
-
----
-
-**Last Updated:** March 2026  
-**Status:** Complete  
-**Level:** Intermediate
+- **Tool lifecycle**: see the `meta-tools-lifecycle` skill
+- **Writing tool YAML**: see the `tool-creation` skill

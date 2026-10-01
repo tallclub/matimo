@@ -1,303 +1,189 @@
 ---
 name: meta-tools-lifecycle
-description: "Master the complete tool lifecycle workflow: create, validate, approve, reload, and use. Agents learn to autonomously orchestrate tool creation with policy validation and human approval."
+description: "Master the complete tool lifecycle workflow: validate, create, approve, reload, and use. Agents learn to orchestrate tool creation with policy validation and human approval."
 metadata:
   category: "Tool Lifecycle"
   difficulty: "advanced"
-  apply-to: "matimo_create_tool matimo_validate_tool matimo_doctor matimo_review matimo_reload_tools matimo_list_user_tools"
+  apply-to: "matimo_validate_tool matimo_create_tool matimo_approve_tool matimo_reload_tools matimo_list_user_tools matimo_get_tool_status"
 ---
 
 # Meta-Tools Lifecycle: Complete Workflow
 
-This skill teaches you how to autonomously orchestrate Matimo's **complete tool lifecycle**—from conception through validation, human approval, registration, and delivery. This is the workflow for agents that **create tools dynamically**.
+This skill teaches you how to take a new tool from idea to first call: validate the YAML, write it to disk, get a human to approve it, reload the registry, and use it. Every tool you create is **untrusted** — it starts as a draft and cannot run until a human approves it.
 
 ## The Complete Tool Lifecycle
 
 ```
-1. Understand Requirements
+1. Understand requirements
    ↓
-2. Design YAML (matimo_validate_tool or matimo_doctor for validation)
+2. Validate the YAML            matimo_validate_tool
    ↓
-3. Create on Disk (matimo_create_tool)
+3. Create it on disk            matimo_create_tool      → status: draft, approvalState: pending
    ↓
-4. Request Human Approval (matimo_review)
+4. Reload the registry          matimo_reload_tools     → the draft is registered, not yet runnable
    ↓
-5. Reload Registry (matimo_reload_tools)
+5. Ask a human to approve it    matimo_approve_tool     → a human confirms; status: approved
    ↓
-6. Execute the Tool
+6. Reload again                 matimo_reload_tools     → the approved tool is runnable
    ↓
-7. List & Manage (matimo_list_user_tools)
+7. Call the tool                (every call still asks a human: requires_approval is true)
+
+Check progress at any point with matimo_get_tool_status and matimo_list_user_tools.
 ```
 
 ## Step 1: Understand Requirements
 
 Before writing YAML, clarify:
 
-**What does the tool need to do?**
-- Read-only (GET) vs. modify data (POST/PUT/DELETE)
-- Which API endpoint(s) to call
-- What inputs does it need (parameters)
-- What output should it return
+- **What it does:** read-only (GET) or changes data (POST/PUT/DELETE)
+- **Which endpoint:** a public HTTPS API the developer allows
+- **Inputs:** the parameters it needs
+- **Output:** what the caller should get back
 
-**What domain?**
-- Public API (GitHub, weather, etc.)
-- Internal service
-- File system operation
-- Something else
+**Is it allowed?** Untrusted tools must be `type: http`, must not target localhost, private networks or cloud metadata addresses, must not use a `matimo_` name, and must stay within the developer's allowed domains, HTTP methods (GET and POST by default) and credentials.
 
-**Is it safe?**
-- Uses whitelisted domains only
-- Uses safe HTTP methods (GET/POST preferred)
-- No SSRF attacks (no internal IPs)
-- No arbitrary code execution
+## Step 2: Validate the YAML
 
-## Step 2: Design YAML with Validation
-
-### Generate Complete YAML First
-
-**REQUIRED fields (all must be present):**
+### Write the complete YAML first
 
 ```yaml
-name: tool_name                          # snake_case, unique identifier
-version: "1.0.0"                         # semantic version (required string)
-description: "What this tool does"       # clear one-liner
-
-parameters:                              # even if empty, must be present
-  param_name:
-    type: string                         # string, number, boolean, array, object
-    required: true                       # boolean (required/optional)
-    description: "What it does"
-
-execution:                               # must match: http, command, or function
-  type: http                             # exact type string
-  method: GET                            # if http: GET, POST, PUT, DELETE, PATCH
-  url: "https://api.example.com/endpoint"  # if http: full URL
-  # For type: command, provide: command, args
-  # For type: function, provide: handler, code
-```
-
-**Example: Minimal Valid Tool**
-
-```yaml
-name: weather_lookup
-version: "1.0.0"
+name: weather_lookup                     # snake_case, unique
+version: "1.0.0"                         # a string
 description: Get current weather for a city
 parameters:
   city:
-    type: string
+    type: string                         # string | number | boolean | array | object
     required: true
     description: City name (e.g., "New York")
 execution:
   type: http
   method: GET
-  url: "https://api.weatherapi.com/current?q={city}"
+  url: "https://api.weatherapi.com/v1/current.json?q={city}"
 ```
 
-### Validate Before Creating
-
-**Always call matimo_doctor BEFORE matimo_create_tool:**
+### Call matimo_validate_tool before creating
 
 ```
-Input:  matimo_doctor(yaml_content: "<your complete YAML>")
-Output: { valid: true, ... }  ✅ Safe to create
-  OR:   { valid: false, schemaErrors: [...], policyErrors: [...] }  ❌ Fix first
-```
+matimo_validate_tool(yaml_content: "<your complete YAML>")
 
-**If validation fails:**
+→ { "valid": true, "schemaErrors": [], "policyViolations": [], "riskLevel": "low" }   ✅ create it
+→ { "valid": false, "schemaErrors": [...], "policyViolations": [...] }                ❌ fix first
+```
 
 | Error | Cause | Fix |
 |-------|-------|-----|
-| `version: Invalid input, expected string` | Missing/wrong type | Add `version: "1.0.0"` |
-| `execution: Invalid input, expected object` | Missing section | Add complete `execution` block |
-| `execution.method: Invalid option` | Wrong HTTP verb | Use GET, POST, PUT, DELETE, or PATCH |
-| `parameters: Invalid input, expected object` | Missing field | Add `parameters: {}` or with actual params |
-| `Command tools are blocked (policy)` | Trying to use `type: command` | Use HTTP GET/POST instead |
-| `SSRF detected: forbidden IP range` | Using internal IP (169.254.*, 10.*) | Use public APIs |
-| `Reserved namespace violation: matimo_*` | Name starts with `matimo_` | Choose different name |
+| `version: ... expected string` | `version` missing or a number | Add `version: "1.0.0"` |
+| `execution: ... expected object` | No `execution` block | Add a complete `execution` block |
+| `execution.method: Invalid option` | Unknown HTTP verb | Use GET, POST, PUT, DELETE or PATCH |
+| `no-command-execution` / `no-function-execution` | `type: command` or `type: function` | Use `type: http` |
+| `no-ssrf` | URL targets localhost, a private range or `169.254.169.254` | Use a public API |
+| `reserved-namespace` | Name starts with `matimo_` | Choose another name |
+| `blocked-http-method` | Not GET or POST | Use GET or POST, or ask the developer |
 
-**If policy blocks your tool:**
-- **Understand why**: Read the rule that blocked it
-- **Redesign**: Use an allowed API or method
-- **Re-validate**: Check with matimo_doctor again until `valid: true`
+Validate again after each fix until `valid` is `true`.
 
-**Example: Fixing Validation Errors**
+`matimo_validate_tool` checks the default rules, and reports a definition as valid when `matimo_create_tool` would accept it (it adds `requires_approval` and `status` itself, so leave them out). The developer's own policy — allowed domains, allowed methods, allowed credentials — applies when the tool loads, so a valid tool can still appear in `rejected` after `matimo_reload_tools` (rules `blocked-domain`, `blocked-http-method`, `unauthorized-credential`).
 
-```
-WRONG:
-name: weather_fetch
-# Missing version ❌
-
-VALIDATED:
-name: weather_fetch
-version: "1.0.0"
-description: Get weather
-parameters: {}
-execution:
-  type: http
-  method: GET
-  url: "https://api.weatherapi.com/v1/current.json"
-```
-
-## Step 3: Create Tool on Disk
-
-Once `matimo_doctor` returns `valid: true`:
+## Step 3: Create the Tool on Disk
 
 ```
-Call matimo_create_tool with:
-  - name: "tool_name"
-  - yaml_content: "<complete YAML string>"
-  - target_dir: "<directory path provided by user>"
+matimo_create_tool(
+  name: "weather_lookup",
+  yaml_content: "<the validated YAML>",
+  target_dir: "<directory the developer gave you>",
+  proposed_by: "<your agent id>",          # optional
+  justification: "<why the task needs it>"  # optional
+)
 
-Expected response:
-{
-  "success": true,
-  "path": "/path/to/tool_name/definition.yaml",
-  "status": "draft",
-  "approvalState": "pending",
-  "message": "Tool created as draft. Requires approval before execution..."
-}
+→ {
+    "success": true,
+    "path": "<target_dir>/weather_lookup/definition.yaml",
+    "riskLevel": "high",
+    "status": "draft",
+    "approvalState": "pending",
+    "message": "Tool created as a draft (low risk, read-only). It runs after a reviewer approves it with matimo_approve_tool and the tools reload."
+  }
 ```
 
-**What happens:**
-1. ✅ Tool YAML written to disk: `{target_dir}/tool_name/definition.yaml`
-2. ✅ Tool status set to `draft` (not yet approved)
-3. ✅ Approval state marked `pending` (waiting for human)
-4. ⏸️ Tool NOT yet executable (needs approval)
+`matimo_create_tool` itself asks a human before it writes anything. It then forces two fields:
 
-**Common responses:**
+- `status: draft` — a draft never runs in production, and elsewhere runs only for an admin caller
+- `requires_approval: true` — every call of the new tool asks a human (this is also why `riskLevel` is `high`)
 
-| Response | Meaning | Next Step |
+| Response | Meaning | Next step |
 |----------|---------|-----------|
-| `success: true, approvalState: "pending"` | Draft created, awaiting approval | Call matimo_review |
-| `success: true, approvalState: "auto-approved"` | Low-risk tool, ready to use | Call matimo_reload_tools |
-| `success: false, message: "..."` | Creation failed (invalid YAML) | Call matimo_doctor again, fix errors, retry |
+| `success: true, approvalState: "pending"` | Draft written | Reload, then ask for approval |
+| `success: false, errors: [...]` | Policy rejected it | Read the rule, redesign, validate again |
+| `success: false, message: "Schema validation failed..."` | Invalid YAML | Fix it, validate again |
 
-## Step 4: Request Human Approval
-
-**Critical:** Tools created by agents are `untrusted` and require human approval:
+## Step 4: Reload the Registry
 
 ```
-Call matimo_review with:
-  - toolName: "weather_fetch"
-  - target_dir: "<same directory>"
+matimo_reload_tools()        # no parameters
 
-Expected response (if human approves):
-{
-  "approved": true,
-  "message": "Tool approved for production."
-}
-
-Expected response (if human rejects):
-{
-  "approved": false,
-  "message": "Tool rejected."
-  // Tool remains draft, NOT executable
-}
+→ { "success": true, "loaded": 1, "removed": 0, "revalidated": 24, "rejected": [], "message": "..." }
 ```
 
-**What the human sees:**
-- Tool name and description
-- Parameters and their types
-- Execution method (HTTP GET, etc.)
-- Proposed by agent, security reviewed
-- **Decision:** Approve (y) or reject (n)
+A name in `rejected` failed the policy checks on load; read the reason in the logs or validate the YAML again. After this reload the draft is registered, but calling it fails with `Draft tool "<name>" requires admin role` until it is approved.
 
-**If rejected:**
-- ❌ Tool remains in `draft` status
-- ❌ Cannot execute or reload
-- 💡 Understand why human rejected, redesign, and re-submit
+## Step 5: Ask a Human to Approve It
 
-**If approved:**
-- ✅ Tool marked as `approved` status
-- ✅ HMAC signature created (tamper detection)
-- ✅ Ready for reload
-
-## Step 5: Reload Registry
-
-After human approval, the tool registry must be refreshed:
+**You cannot approve your own tool.** `matimo_approve_tool` always asks a human — nothing can pre-approve it — so calling it puts the decision in front of the person running you:
 
 ```
-Call matimo_reload_tools with:
-  - target_dir: "<same directory>"
+matimo_approve_tool(name: "weather_lookup", tool_dir: "<same directory>")
 
-Expected response:
-{
-  "loaded": ["weather_fetch", "..."],
-  "approved": ["weather_fetch"],
-  "rejected": [],
-  "message": "Reloaded X tools..."
-}
+→ approved:  { "success": true, "name": "weather_lookup", "hash": "...", "approvedAt": "...", "message": "Tool approved. Effective after reload..." }
+→ declined:  the call fails with an approval error; the tool stays a draft
 ```
 
-**What happens:**
-1. 🔄 System re-scans all tool directories
-2. ✅ Approved tools become executable
-3. ❌ Rejected tools are skipped
-4. 📝 Registry updated in-memory
+Tell the human what the tool does, which URL it calls, and why the task needs it before you call it. When the host identifies callers, approving also needs the `admin` role, and the agent that created a tool can never approve it — another reviewer must.
 
-**After reload:**
-- Tool is **discoverable** by agents
-- Tool can be **called** via matimo.execute()
-- Tool appears in **LLM tool bindings** (if using LangChain)
+**If approved:** the YAML changes to `status: approved` and a signed approval record is stored. Editing the file afterwards voids the approval.
 
-## Step 6: Execute the Tool
+**If declined:** do not retry the same tool. Ask what concerned the human, then redesign or drop it.
 
-Once reloaded, the agent can call the tool naturally:
+## Step 6: Reload Again
 
 ```
-For HTTP tool:
-  Input:  { city: "New York" }
-  Action: matimo.execute("weather_fetch", { city: "New York" })
-  Output: { success: true, weather: { ... } }
-
-For created tool with requires_approval: true:
-  First call prompts human: "Approve execution of weather_fetch?"
-  On approval: Tool executes
-  On rejection: Tool blocked
+matimo_reload_tools()
 ```
 
-**Agent-created tools with requires_approval:**
-- ✅ Can be created
-- ✅ Can be approved for production
-- ✅ Still require human approval on **first execution** (extra safety)
-- ✅ After human approves once, auto-approved in session
-
-## Step 7: List and Manage Tools
-
-Discover what tools have been created:
+The approved tool loads with its approval verified and is now runnable. Confirm with:
 
 ```
-Call matimo_list_user_tools with:
-  - target_dir: "<same directory>"
-
-Expected response:
-{
-  "tools": [
-    {
-      "name": "weather_fetch",
-      "status": "approved",
-      "riskLevel": "LOW",
-      "description": "Get weather for a city"
-    },
-    {
-      "name": "file_reader",
-      "status": "rejected",
-      "reason": "Command tools are blocked"
-    }
-  ]
-}
+matimo_get_tool_status(name: "weather_lookup", tool_dir: "<same directory>")
+→ { "found": true, "status": "approved", "approvalState": "approved", ... }
 ```
 
-**What you learn:**
-- ✅ `weather_fetch` is ready to use (approved)
-- ❌ `file_reader` failed policy (rejected)
-- 📊 Risk levels guide execution safety
+## Step 7: Call the Tool
+
+```
+weather_lookup(city: "New York")
+```
+
+Because the tool keeps `requires_approval: true`, a human confirms each call. If they decline, the call fails with an approval error — report it rather than retrying.
+
+## Listing What You Created
+
+```
+matimo_list_user_tools(tool_dir: "<same directory>", include_drafts: true)
+
+→ {
+    "tools": [
+      { "name": "weather_lookup", "description": "...", "version": "1.0.0", "status": "approved", "riskLevel": "high", "tags": [] }
+    ],
+    "total": 1
+  }
+```
+
+Pass `include_drafts: false` to see only approved tools.
 
 ---
 
 ## Common Patterns
 
-### Pattern 1: Safe HTTP GET Tool
+### Safe HTTP GET tool
 
 ```yaml
 name: github_user_lookup
@@ -314,11 +200,9 @@ execution:
   url: "https://api.github.com/users/{username}"
 ```
 
-→ **Result**: Auto-approved (low-risk read-only), no human approval needed
+→ Validates as low risk. Still a draft after creation: it needs approval like every created tool.
 
----
-
-### Pattern 2: Safe HTTP POST Tool
+### HTTP POST tool
 
 ```yaml
 name: todo_create
@@ -328,187 +212,95 @@ parameters:
   title:
     type: string
     required: true
-  completed:
-    type: boolean
-    required: false
 execution:
   type: http
   method: POST
   url: "https://jsonplaceholder.typicode.com/todos"
+  body:
+    title: "{title}"
 ```
 
-→ **Result**: Pending approval, human reviews then approves
+→ Validates as medium risk; same lifecycle. The human reviewing it should expect a write.
 
----
-
-### Pattern 3: Blocked Command Tool
+### Rejected: command tool
 
 ```yaml
-name: shell_exec
-version: "1.0.0"
-description: Execute shell commands
-parameters:
-  cmd:
-    type: string
-    required: true
 execution:
   type: command
   command: bash
   args: ["-c", "{cmd}"]
 ```
 
-→ **Result**: `matimo_doctor` blocks immediately with "Command tools are blocked (policy)"
+→ `matimo_validate_tool` reports `no-command-execution`. Agents can only create HTTP tools.
 
-**What agent learns:** "I can't create shell commands; use HTTP instead"
-
----
-
-### Pattern 4: Policy Violation - SSRF
+### Rejected: SSRF
 
 ```yaml
-name: metadata_probe
-version: "1.0.0"
 execution:
   type: http
   method: GET
-  url: "http://169.254.169.254/latest/meta-data/"  # AWS EC2 metadata ❌
+  url: "http://169.254.169.254/latest/meta-data/"
 ```
 
-→ **Result**: `matimo_doctor` blocks with "SSRF detected: forbidden IP range 169.254.*"
+→ `matimo_validate_tool` reports `no-ssrf`. Internal and metadata addresses are always blocked.
 
-**What agent learns:** "Can't probe internal IPs; they're blocked"
-
----
-
-### Pattern 5: Namespace Hijack (Rejected)
+### Rejected: reserved name
 
 ```yaml
-name: matimo_backdoor  # WRONG: Reserved namespace ❌
+name: matimo_backdoor
 ```
 
-→ **Result**: `matimo_doctor` blocks with "Reserved namespace violation: matimo_* is protected"
-
-**What agent learns:** "Can't use matimo_* names; they're reserved for built-ins"
+→ `matimo_create_tool` refuses names starting with `matimo_`.
 
 ---
 
 ## Workflow Decision Tree
 
-**Should I create this tool?**
-
 ```
-Does it solve the user's goal? → YES → Proceed
-  ↓
-Is it safe (policy passes)?
-  ├─ YES → Create (agent-created tools always pending approval)
-  │  └─→ matimo_doctor → matimo_create_tool → matimo_review
-  │     → matimo_reload_tools → Execute
-  │
-  └─ NO → Understand policy error
-     → Redesign to comply (different API, different method)
-     → Re-validate with matimo_doctor
-     → When valid, create
-```
-
-**If human rejects approval:**
-
-```
-Why did they reject?
-  ├─ Security concern → Redesign differently
-  ├─ Governance concern → Ask for clarification
-  ├─ Not needed → Mark complete, try different approach
-  └─ Technical issue → Fix and re-submit
-```
-
-**If policy blocks:**
-
-```
-Which rule blocked it?
-  ├─ Command blocked → Use HTTP instead
-  ├─ SSRF detected → Use public API, not internal IP
-  ├─ Namespace reserved → Rename without matimo_ prefix
-  ├─ Domain blocked → Check allowed-domains policy
-  └─ Other → Read error, understand constraint, redesign
+Does a new tool solve the user's goal?
+  └─ YES → matimo_validate_tool
+       ├─ valid    → matimo_create_tool → matimo_reload_tools
+       │             → matimo_approve_tool (a human decides)
+       │                ├─ approved → matimo_reload_tools → call the tool
+       │                └─ declined → ask why; redesign or stop
+       └─ invalid  → read the rule → redesign → validate again
 ```
 
 ---
 
-## Debugging & Troubleshooting
+## Troubleshooting
 
-### Symptom: matimo_doctor returns validation errors
+### "Draft tool "<name>" requires admin role"
+The tool has not been approved. Run Step 5, then reload (Step 6).
 
-```
-Field: "execution.method"
-Message: "Invalid option: expected one of GET|POST|PUT|DELETE|PATCH"
-```
+### "Draft tool "<name>" is not available in production"
+Drafts never run in production. Approve it first.
 
-**Fix:**
-1. Read error: method was `PATCH` when `execution.type: http` expects GET/POST/PUT/DELETE/PATCH
-2. Check YAML: wrong value or syntax
-3. Correct: `method: POST` (exact casing)
-4. Re-validate with matimo_doctor
+### The tool is missing after matimo_reload_tools
+- Check `rejected` in the reload result: the tool failed a policy rule.
+- A tool whose file changed after approval loses its approval and is checked as a new proposal. A file hand-edited to `status: approved` without `matimo_approve_tool` is rejected.
 
-### Symptom: matimo_create_tool returns "success: false"
+### matimo_approve_tool says the admin role is required
+The host identifies callers and you do not have the role. Ask the human to approve the tool from their side.
 
-```
-Message: "Schema validation failed: Tool schema validation failed:
-  • version: Invalid input: expected string, received undefined"
-```
-
-**Fix:**
-1. YAML is missing `version` field
-2. Add: `version: "1.0.0"`
-3. Call matimo_doctor to verify
-4. Then matimo_create_tool
-
-### Symptom: matimo_review asks for approval but tool is `auto-approved`
-
-```
-Expected: Tool should be executable immediately
-Actual: Human still asked to approve
-```
-
-**Fix:**
-- Low-risk tools (GET-only to public APIs) are `auto-approved`
-- Other tools are `pending` and require human approval
-- This is correct behavior for agent-created tools
-- Call matimo_reload_tools after approval
-
-### Symptom: Tool not in registry after matimo_reload_tools
-
-```
-Expected: "weather_fetch" in matimo_list_user_tools()
-Actual: Not in list
-```
-
-**Fix:**
-1. Did matimo_review succeed? (Check for `approved: true`)
-2. Did matimo_reload_tools complete? (Check response)
-3. Call matimo_list_user_tools() to verify
-4. If still missing, re-run matimo_reload_tools
+### matimo_approve_tool refuses because you created the tool
+Someone other than the creating agent must approve it.
 
 ---
 
 ## Key Principles
 
-1. ✅ **Always validate before creating** — matimo_doctor catches errors early
-2. ✅ **Accept human feedback** — If rejected, learn why and redesign
-3. ✅ **Respect policy** — It's there to prevent attacks; work within it
-4. ✅ **Reload after approval** — Tools don't appear until registry is refreshed
-5. ✅ **Complete YAML is critical** — Missing `version` or `execution` = failure
-6. ✅ **Name tools for discovery** — Clear names help humans understand what they're approving
+1. ✅ **Validate before creating** — matimo_validate_tool catches schema and policy errors early
+2. ✅ **Every created tool needs a human** — approval is never automatic, whatever the risk
+3. ✅ **Reload after creating and after approving** — the registry only changes on reload
+4. ✅ **Accept a decline** — learn why and redesign; do not resubmit the same tool
+5. ✅ **Respect policy** — the rules exist to stop exactly the tools an attacker would write
+6. ✅ **Name tools clearly** — the human approving it should understand it at a glance
 
 ---
 
 ## References
 
-- **Complete tool creation spec**: See `tool-creation` skill
-- **Policy validation rules**: See `policy-validation` skill
-- **Tool discovery**: See `tool-discovery` skill
-- **Matimo Architecture**: See copilot-instructions.md
-
----
-
-**Last Updated:** March 2026  
-**Status:** Complete  
-**Level:** Advanced (assumes familiarity with tool-creation skill)
+- **Writing tool YAML**: see the `tool-creation` skill
+- **Policy rules**: see the `policy-validation` skill
+- **Finding existing tools first**: see the `tool-discovery` skill

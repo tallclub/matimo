@@ -17,7 +17,7 @@ This skill teaches you how to properly create, configure, and validate tools for
 > |---|---|
 > | Creating tools dynamically via `matimo_create_tool` | Adding tools to the SDK codebase |
 > | Tools go to `./matimo-tools/{tool-name}/definition.yaml` (configured by developer) | Tools go to `packages/{provider}/tools/{tool-name}/definition.yaml` |
-> | Validate with `matimo_doctor` (meta-tool) | Validate with `pnpm validate-tools` (CLI) |
+> | Validate with `matimo_validate_tool` (meta-tool) | Validate with `pnpm validate-tools` (CLI) |
 > | Approval needed: `matimo_approve_tool` → `matimo_reload_tools` | No approval flow — merged via git |
 >
 > **If you are an agent using meta-tools, follow the "Agent at runtime" column throughout this skill.**
@@ -54,7 +54,7 @@ CommandExecutor | HttpExecutor | FunctionExecutor
 - **Output validation**: All responses validated against Zod schemas
 - **Error handling**: Structured errors with retry/backoff policies
 
-> ⚠️ **Policy defaults block `command` and `function` tools.** Always use `type: http` unless you have confirmed the developer has set `allowCommandTools: true` or `allowFunctionTools: true` in the policy. Creating a `command` or `function` tool without explicit policy permission will fail validation.
+> ⚠️ **Agents create `type: http` tools only.** `command` and `function` tools are rejected for untrusted sources; they are added by SDK developers in the codebase.
 
 ### File Structure
 
@@ -75,20 +75,21 @@ packages/{provider}/tools/{tool-name}/
 ### Agent Tool Lifecycle (runtime creation)
 
 ```
-matimo_doctor(yaml_content)             ← 1. Validate YAML + policy FIRST
+matimo_validate_tool(yaml_content)             ← 1. Validate YAML + policy FIRST
          ↓ { valid: true }
 matimo_create_tool(name, yaml_content, target_dir)
          ↓ writes {target_dir}/{name}/definition.yaml
          ↓ status: "draft", approvalState: "pending"
-matimo_approve_tool(name, tool_dir)     ← 3. Human approves
-         ↓ status updated to "approved" in same file
-         ↓ .matimo-approvals.json written to target_dir
-matimo_reload_tools()                   ← 4. Hot-reload registry
-         ↓ approved tool is now live and executable
-matimo.execute(tool-name, params)       ← 5. Use the tool
+matimo_reload_tools()                   ← 3. Registers the draft (not runnable yet)
+matimo_approve_tool(name, tool_dir)     ← 4. A human approves
+         ↓ status updated to "approved" in the same file
+         ↓ signed approval recorded with the Matimo instance
+matimo_reload_tools()                   ← 5. Hot-reload registry
+         ↓ approved tool is now live; each call asks a human
+tool-name(params)                       ← 6. Use the tool
 ```
 
-> ✅ **Approved tools are stored permanently** in `target_dir` on disk. They survive restarts as long as `target_dir` is included in Matimo's `toolPaths` config. They are NOT stored in temp directories — that is only used in demo examples.
+> ✅ **Created tools stay on disk** in `target_dir`, which the developer includes in Matimo's `toolPaths`. Their approvals survive a restart when the developer sets `MATIMO_APPROVAL_SECRET`; without it, approvals last for the current process only and tools must be approved again.
 
 ## When Creating Tools
 
@@ -147,7 +148,7 @@ examples:
 
 ## Execution Types
 
-> **Policy Rule:** By default, `command` and `function` execution types are **blocked** (`allowCommandTools: false`, `allowFunctionTools: false`). The safe default is `type: http`. Before using `command` or `function`, always run `matimo_doctor` to check if the policy in your environment allows it.
+> **Policy Rule:** Tools an agent creates must be `type: http`. `command` and `function` tools are rejected for untrusted sources. The `command` and `function` sections below are for SDK developers adding tools to the codebase.
 
 ### Type: HTTP ✅ Always Allowed
 
@@ -177,9 +178,9 @@ execution:
 
 ### Type: Command ⛔ Blocked by Default
 
-> **Policy:** `allowCommandTools: false` by default. Creating a `command` tool will fail `matimo_doctor` unless the developer has explicitly set `allowCommandTools: true`. Do not attempt to create command tools unless you have confirmed this is allowed.
+> **Policy:** Agents cannot create `command` tools — `matimo_validate_tool` reports `no-command-execution` and `matimo_create_tool` refuses them. SDK developers add them to the codebase, where every call asks a human unless the YAML says `requires_approval: false`.
 
-If allowed by policy:
+For SDK developers:
 
 ```yaml
 execution:
@@ -200,9 +201,9 @@ execution:
 
 ### Type: Function ⛔ Blocked by Default
 
-> **Policy:** `allowFunctionTools: false` by default. Creating a `function` tool will fail `matimo_doctor` unless the developer has explicitly set `allowFunctionTools: true`. Do not attempt to create function tools unless you have confirmed this is allowed.
+> **Policy:** Agents cannot create `function` tools — `matimo_validate_tool` reports `no-function-execution` and `matimo_create_tool` refuses them. SDK developers add them to the codebase and must declare `risk:` for each.
 
-If allowed by policy:
+For SDK developers:
 
 ```yaml
 execution:
@@ -428,7 +429,7 @@ error_handling:
 
 ## Command Executor Implementation
 
-> ⚠️ **Only applicable if `allowCommandTools: true` is set in policy.** If you are unsure, run `matimo_doctor` on your YAML first — it will fail immediately if command tools are blocked.
+> ⚠️ **For SDK developers only.** Agents cannot create command tools.
 
 For `type: command` tools, create an executor at `packages/{provider}/tools/{tool-name}/index.ts`:
 
@@ -818,13 +819,13 @@ NAMING CONVENTIONS GATE
 ✓ Tool name does NOT start with matimo_ (reserved namespace)
 ✓ TypeScript uses PascalCase for classes
 
-POLICY GATE (run matimo_doctor first — fail fast)
-✓ execution.type is http  (command/function blocked by default)
+POLICY GATE (run matimo_validate_tool first — fail fast)
+✓ execution.type is http  (agents cannot create command/function tools)
 ✓ URL domain is in allowedDomains list
 ✓ HTTP method is GET or POST (default allowed methods)
 ✓ No SSRF risk (no internal IPs or metadata endpoints)
 ✓ Credential name is in allowedCredentials list
-✓ matimo_doctor returns { valid: true } before create
+✓ matimo_validate_tool returns { valid: true } before create
 
 COMPLETENESS GATE
 ✓ YAML parses without errors
@@ -852,34 +853,33 @@ DELIVERY GATE
 
 #### Step 1: Write YAML in memory
 
-Compose the full tool definition YAML string. Required fields:
-- `name`, `description`, `version`
-- `requires_approval: true` ← **mandatory — policy will reject without it**
-- `parameters` (with types and descriptions)
-- `execution` — **use `type: http`** (command/function blocked by default)
-- `authentication` (mandatory for HTTP tools)
-- `output_schema`
+Compose the full tool definition YAML string:
+- `name`, `description`, `version` — required
+- `parameters` — with types and descriptions
+- `execution` — **use `type: http`**; agents cannot create command or function tools
+- `authentication` — only when the API needs credentials, using a credential the developer allows
+- Leave out `requires_approval` and `status`: `matimo_create_tool` sets them
 
-#### Step 2: Validate with `matimo_doctor` FIRST
+#### Step 2: Validate with `matimo_validate_tool` FIRST
 
 ```
-matimo_doctor(yaml_content: "<full YAML string>")
+matimo_validate_tool(yaml_content: "<full YAML string>")
 ```
 
 - ✅ `{ valid: true }` → proceed to Step 3
-- ❌ `{ valid: false, policyViolations: [...] }` → fix the YAML and re-validate
+- ❌ `{ valid: false, schemaErrors: [...], policyViolations: [...] }` → fix the YAML and re-validate
 
-**Common failures and fixes:**
+**Common failures and fixes** (match on the violation's `rule`):
 
-| Failure | Fix |
-|---------|-----|
-| `command tools blocked` | Change `type: command` → `type: http` |
-| `function tools blocked` | Change `type: function` → `type: http` |
-| `domain not allowed` | Use a domain in the `allowedDomains` list |
-| `HTTP method not allowed` | Use `GET` or `POST` |
-| `reserved namespace` | Rename — don't start with `matimo_` |
-| `requires_approval missing` | Add `requires_approval: true` |
-| `forced-approval` | Same — add `requires_approval: true` |
+| Rule | Fix |
+|------|-----|
+| `no-command-execution` | Change `type: command` → `type: http` |
+| `no-function-execution` | Change `type: function` → `type: http` |
+| `no-ssrf` | Use a public HTTPS endpoint, not an internal or metadata address |
+| `blocked-http-method` | Use `GET` or `POST` |
+| `reserved-namespace` | Rename — don't start with `matimo_` |
+
+The developer's allowed domains and credentials are checked when the tool loads: look for it in the `rejected` list of `matimo_reload_tools` (`blocked-domain`, `unauthorized-credential`).
 
 #### Step 3: Create on disk with `matimo_create_tool`
 
@@ -893,7 +893,7 @@ matimo_create_tool(
 
 Result:
 - Tool written to `{target_dir}/{name}/definition.yaml`
-- `status: "draft"`, `approvalState: "pending"` (or `"auto-approved"` for low-risk GET tools)
+- `status: "draft"`, `approvalState: "pending"` — every created tool waits for `matimo_approve_tool`, whatever its risk
 - **This path is permanent** — approved tools stay here and survive restarts
 
 #### Step 4: Get human approval
@@ -902,14 +902,14 @@ Result:
 matimo_approve_tool(name: "my_tool_name", tool_dir: "<same target_dir>")
 ```
 
-- Updates `status` to `"approved"` in the same `definition.yaml`
-- Writes approval hash to `{target_dir}/.matimo-approvals.json`
+- Always asks a human, who is the real reviewer — you cannot approve your own tool
+- Updates `status` to `"approved"` in the same `definition.yaml` and records a signed approval with the Matimo instance; editing the file afterwards voids it
 
 #### Step 5: Reload and use
 
 ```
 matimo_reload_tools()         ← Hot-reloads registry from disk
-matimo.execute("my_tool_name", params)   ← Tool is now live
+my_tool_name(params)          ← Tool is now live; each call asks a human (requires_approval: true)
 ```
 
 ---
@@ -943,14 +943,14 @@ pnpm lint                        # Check code quality
 
 ## Validation & Quality Checks
 
-### Agent: Validate with `matimo_doctor`
+### Agent: Validate with `matimo_validate_tool`
 
 Run before every `matimo_create_tool` call:
 
 ✅ YAML syntax is valid  
-✅ Policy compliance (domains, methods, execution type, namespace)  
-✅ Schema fields present (name, parameters, execution, output_schema)  
-✅ `requires_approval: true` present  
+✅ Schema fields present and well-typed (name, version, description, parameters, execution)  
+✅ Default policy rules (execution type, SSRF, HTTP method, namespace)  
+✅ `valid: true` exactly when `matimo_create_tool` would accept it  
 
 ### SDK Developer: Validate with CLI
 
