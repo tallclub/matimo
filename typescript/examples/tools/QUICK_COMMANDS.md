@@ -217,10 +217,10 @@ For detailed validation details and expected outputs, see individual README file
 ### Meta-Tools Integration (`meta:flow`)
 📖 **Full details:** [meta-flow/README.md](./meta-flow/README.md)
 
+✓ Policy validation (matimo_validate_tool)  
 ✓ Tool creation (matimo_create_tool)  
-✓ Policy validation (matimo_doctor)  
-✓ Human approval (matimo_review)  
 ✓ Registry reload (matimo_reload_tools)  
+✓ Human approval (matimo_approve_tool)  
 ✓ Tool listing (matimo_list_user_tools)  
 ✓ Tool execution after approval  
 ✓ Agent learns from policy rejections  

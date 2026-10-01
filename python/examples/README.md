@@ -293,7 +293,7 @@ Phase 4 (no agent): `Matimo.init(skill_paths=[...])` → `get_skills_metadata()`
 
 | Mission | What it shows |
 |---------|--------------|
-| 1 | `weather_fetch` - safe HTTP GET: doctor → create → review → reload → execute |
+| 1 | `weather_fetch` - safe HTTP GET: validate → create → reload → you approve → reload |
 | 2 | `shell_exec` - command type blocked by policy (expect WARN) |
 | 3 | `file_reader` - `cat` command blocked by policy (expect WARN) |
 | 4 | `user_lookup` + `github_stars` - two safe tools, full lifecycle |

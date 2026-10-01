@@ -6,21 +6,21 @@ META-TOOLS INTEGRATION FLOW -- LangChain Agent
 
 A REAL LangChain ReAct agent (gpt-4o-mini) that demonstrates the complete
 tool lifecycle with Matimo meta-tools:
-  1. Agent creates a new tool  (matimo_create_tool)
-  2. Doctor validates the YAML (matimo_doctor)
-  3. Policy engine enforces security rules (automatic)
-  4. If safe -> human approves via matimo_review
-  5. If unsafe -> agent learns why and tries again
-  6. Matimo reloads the registry (matimo_reload_tools)
-  7. Agent uses the newly approved tool
+  1. Agent validates the YAML (matimo_validate_tool)
+  2. Policy engine enforces security rules (automatic)
+  3. If safe -> agent creates a draft tool (matimo_create_tool)
+  4. If unsafe -> agent learns why and tries again
+  5. Matimo reloads the registry (matimo_reload_tools)
+  6. A human approves the tool (matimo_approve_tool asks you in the terminal)
+  7. Matimo reloads again, and the agent uses the approved tool
 
 This is NOT a mock -- it is a real agent making real decisions based on
 actual policy enforcement and human feedback.
 
 Missions (goal-driven -- agent is NOT told which tools to call):
-  1. "Create a safe HTTP GET tool" -> agent creates, validates, approves, reloads
+  1. "Create a safe HTTP GET tool" -> agent validates, creates, reloads, you approve, reloads
   2. "Create a shell command tool" -> policy rejects -> agent learns limits
-  3. "Create a file reader tool"   -> policy blocks / human rejects
+  3. "Create a file reader tool"   -> policy blocks
   4. "Build working tools"         -> agent learns from failures, creates 2 safe tools
   5. "List and use created tools"  -> discovers matimo_list_user_tools, executes one
 
@@ -142,25 +142,24 @@ async def interactive_approval(request: ApprovalRequest) -> bool:
 AGENT_SYSTEM_PROMPT = (
     "You are an expert Matimo agent orchestrating a tool creation and approval workflow.\n\n"
     "You have these meta-tools:\n"
-    "1. matimo_doctor -- Validate a YAML tool definition against schema and policies\n"
-    "   - Input: YAML string\n"
-    "   - Output: Validation report (errors, warnings, or 'valid')\n"
-    "   - Use this BEFORE submitting tools for approval\n\n"
-    "2. matimo_create_tool -- Create a new tool YAML file on disk (draft status)\n"
-    "   - Input: toolName, yaml_content (complete YAML string), target_dir\n"
-    "   - Output: { success, message, ... }\n"
-    "   - After creation, must be approved via matimo_review before use\n\n"
-    "3. matimo_review -- Approve a tool for production (human-in-the-loop)\n"
-    "   - Input: toolName, target_dir\n"
-    "   - Output: Approval status or error if human rejects\n"
-    "   - After approval, you must reload the registry\n\n"
-    "4. matimo_reload_tools -- Reload the tool registry after changes\n"
-    "   - Input: target_dir\n"
-    "   - Output: Refreshed tool list\n"
-    "   - Call this after approving a tool to make it available\n\n"
-    "5. matimo_list_user_tools -- List all tools in a directory\n"
-    "   - Input: target_dir\n"
-    "   - Output: Array of tool metadata\n\n"
+    "1. matimo_validate_tool -- Validate a YAML tool definition against schema and policy rules\n"
+    "   - Input: yaml_content (the complete YAML string)\n"
+    "   - Output: { valid, schemaErrors, policyViolations: [{ rule, severity, message }], riskLevel }\n"
+    "   - Use this BEFORE creating a tool; valid is true exactly when creation would accept it\n\n"
+    "2. matimo_create_tool -- Write a new tool to disk as a draft\n"
+    "   - Input: name, yaml_content, target_dir\n"
+    "   - Output: { success, path, riskLevel, status: 'draft', approvalState: 'pending', message }\n"
+    "   - A draft cannot run until a human approves it\n\n"
+    "3. matimo_reload_tools -- Reload the tool registry from disk (no parameters)\n"
+    "   - Output: { success, loaded, removed, rejected, message }\n"
+    "   - Call it after creating a tool and again after it is approved\n\n"
+    "4. matimo_approve_tool -- Ask the human operator to approve a draft tool\n"
+    "   - Input: name, tool_dir\n"
+    "   - The human decides; if they decline, the call fails and the tool stays a draft\n"
+    "   - You cannot approve your own tool: the human is the reviewer\n\n"
+    "5. matimo_list_user_tools -- List the tools in a directory\n"
+    "   - Input: tool_dir\n"
+    "   - Output: { tools: [{ name, description, version, status, riskLevel, tags }], total }\n\n"
     "REQUIRED YAML STRUCTURE:\n"
     "Every tool MUST have these fields:\n"
     "```yaml\n"
@@ -192,7 +191,7 @@ AGENT_SYSTEM_PROMPT = (
     "  method: GET\n"
     "  url: \"https://api.github.com/users/{username}\"\n"
     "```\n\n"
-    "Your policy constraints (enforced by matimo_doctor):\n"
+    "Your policy constraints (reported by matimo_validate_tool):\n"
     "- HTTP GET/POST to allowed public APIs only\n"
     "- No shell commands (command type blocked)\n"
     "- No arbitrary code execution (function type blocked)\n"
@@ -201,14 +200,15 @@ AGENT_SYSTEM_PROMPT = (
     "Strategy:\n"
     "1. Understand the requirements\n"
     "2. Generate complete YAML with name, version, description, parameters, and execution\n"
-    "3. Validate with matimo_doctor -- if errors, read them and revise YAML\n"
+    "3. Validate with matimo_validate_tool -- if errors, read each violation's rule and revise\n"
     "4. Create with matimo_create_tool when validation passes\n"
-    "5. Review with matimo_review (human approves or rejects)\n"
-    "6. Reload with matimo_reload_tools\n"
-    "7. Use the tool in the next mission\n\n"
+    "5. Reload with matimo_reload_tools\n"
+    "6. Approve with matimo_approve_tool (the human approves or declines)\n"
+    "7. Reload again, then use the tool -- each call asks the human\n\n"
     "IMPORTANT:\n"
     "- Always include version, description, and execution fields -- never omit them\n"
     "- Parameters and execution fields are always required\n"
+    "- Leave out requires_approval and status -- matimo_create_tool sets them\n"
     "- You are NOT told which tools to call -- discover them from the descriptions above."
 )
 
@@ -411,8 +411,8 @@ async def main() -> None:
             (
                 "Create a tool to fetch weather data from api.weatherapi.com. "
                 "Use HTTP GET method. Name it \"weather_fetch\". Include parameters for city. "
-                "After creating and validating, submit it for approval (matimo_review) "
-                "and then reload the tools registry."
+                "Validate it, create it, reload the tools registry, ask for approval "
+                "with matimo_approve_tool, and reload again."
             ),
             context=f"Tools directory: {tools_dir}",
             system_prompt=agent_system_prompt,
@@ -434,7 +434,7 @@ async def main() -> None:
             (
                 'Create a tool that can execute arbitrary shell commands. Name it "shell_exec". '
                 "Use command execution type with bash. "
-                "Validate it first with matimo_doctor to see what happens."
+                "Validate it first with matimo_validate_tool to see what happens."
             ),
             context=(
                 f"Tools directory: {tools_dir}\n\n"
@@ -460,7 +460,7 @@ async def main() -> None:
             (
                 'Try to create a tool that reads files using the "cat" command. '
                 'Name it "file_reader". '
-                "Validate it with matimo_doctor first. See what happens."
+                "Validate it with matimo_validate_tool first. See what happens."
             ),
             context=(
                 f"Tools directory: {tools_dir}\n\n"
@@ -490,10 +490,11 @@ async def main() -> None:
                 "api.github.com/repos endpoint\n\n"
                 "For each:\n"
                 "1. Generate YAML\n"
-                "2. Validate with matimo_doctor\n"
+                "2. Validate with matimo_validate_tool\n"
                 "3. Create with matimo_create_tool\n"
-                "4. Review with matimo_review (I will approve)\n"
-                "5. Reload with matimo_reload_tools\n\n"
+                "4. Reload with matimo_reload_tools\n"
+                "5. Ask for approval with matimo_approve_tool (I will approve)\n"
+                "6. Reload again with matimo_reload_tools\n\n"
                 "Be thorough and complete each step."
             ),
             context=f"Tools directory: {tools_dir}",
