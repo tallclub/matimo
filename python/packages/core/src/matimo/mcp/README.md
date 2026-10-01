@@ -568,8 +568,8 @@ export MATIMO_MCP_TOKEN="your-secret-token"
 
 ## Related Documentation
 
-- [Matimo MCP Overview](../../docs/MCP.md)
-- [Matimo Core Architecture](../../docs/architecture/)
-- [Auth & Secret Management](../../docs/user-guide/secrets.md)
-- [Tool Development Guide](../../docs/tool-development/)
+- [Matimo MCP Overview](../../../../../../docs/MCP.md)
+- [Matimo Core Architecture](../../../../../../docs/architecture/OVERVIEW.md)
+- [Auth & Secret Management](../../../../../../docs/MCP.md#secret-management)
+- [Tool Development Guide](../../../../../../docs/tool-development/TOOL_WORKFLOW.md)
 - [MCP Specification](https://modelcontextprotocol.io/)
