@@ -46,6 +46,8 @@ Every call emits `tool:executed` or the new `tool:execution_failed`, with identi
 - Untrusted tools that leave `status` unset are accepted (the model's `stable` default made the forced-draft-status rule reject them all).
 - `ReloadResult.loaded` and `revalidated` count what TypeScript's do.
 - The MCP server works with both `mcp` 1.x and `mcp>=2.0`.
+- Credentials are read from `MATIMO_<NAME>` as in TypeScript (the documented name was ignored before).
+- LangChain tools return `"Error: <message>"` to the model instead of raising, so a refused approval no longer ends a LangChain 1.x agent run.
 - New: Agno integration, `Matimo.get_approval_manifest()`, and `tool:quarantined` / `tool:rejected` events.
 
 ### ✨ **Also new**

@@ -69,6 +69,7 @@ Parity release with typescript/v0.2.0. Every governance change above applies to 
 - Critical and high content violations reject an untrusted tool in every environment. Python used to reject high ones only in production, so `allowed_domains` and `allowed_http_methods` had no effect elsewhere
 - `no-ssrf` also blocks `*.internal`, `*.local` and `*.localhost` hosts and `0.0.0.0`, as in TypeScript
 - `ReloadResult.loaded` counts every tool the reload registered and `revalidated` the untrusted tools re-checked, as in TypeScript
+- LangChain tools return `"Error: <message>"` to the model when a call fails, as in TypeScript. They used to raise, and LangGraph's `ToolNode` re-raises, so one refused approval ended the agent run
 
 ### ✨ Features
 - Agno framework integration
@@ -83,6 +84,7 @@ Parity release with typescript/v0.2.0. Every governance change above applies to 
 - The meta-tool fixes listed for TypeScript (approvals surviving reload, `pending` drafts, `matimo_validate_tool` validity) apply to Python too, and `matimo_validate_tool` no longer reports `valid: true` with a critical or high violation
 - LangChain and CrewAI tools no longer send `None` for optional parameters the model left out
 - A call confirmed in Agno is not asked again by Matimo
+- Credential placeholders are filled from `MATIMO_<NAME>` (and that key in `credentials`), as in TypeScript and the docs. Only `MATIMO_<TOOL_NAME>_<NAME>` and `<NAME>` used to work
 - The `matimo` meta-package re-exports `classify_execution_risk` and `meets_risk_threshold`
 
 ### 🔧 Chores

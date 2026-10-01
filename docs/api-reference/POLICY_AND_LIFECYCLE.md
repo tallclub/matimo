@@ -1514,6 +1514,8 @@ the old default, and nothing else. Both SDKs assert the same table,
 | Python untrusted tools | High-severity violations (disallowed domain, method or credential) rejected only in production; a tool with no `status` was always rejected | Critical and high violations reject in every environment; an unset `status` is accepted, as in TypeScript |
 | Python `no-ssrf` | Missed `*.internal`, `*.local`, `*.localhost` and `0.0.0.0` | Blocks them, as in TypeScript |
 | Python `ReloadResult` | `loaded` counted new names; `revalidated` counted replaced tools | `loaded` counts every registered tool; `revalidated` the untrusted tools re-checked, as in TypeScript |
+| Python LangChain tools | A failed call raised; LangGraph re-raises it, so a refused approval ended the agent run | The tool returns `"Error: <message>"` to the model, as in TypeScript |
+| Python credential lookup | Read `MATIMO_<TOOL_NAME>_<NAME>` and `<NAME>`, not the documented `MATIMO_<NAME>` | Reads `MATIMO_<NAME>` first (also from `credentials`); the older names still work |
 
 ### Events
 
