@@ -419,13 +419,15 @@ const matimo = await MatimoInstance.init('./tools', {
 
 **Python:**
 ```python
-from matimo import Matimo, InitOptions
+from matimo import Matimo
 
-matimo = await Matimo.init('./tools', InitOptions(
+matimo = await Matimo.init(
+    './tools',
     policy_file='./policy.yaml',
     on_event=lambda event: logger.info(event),
-    on_hitl=my_async_approval_callback,
-))
+    on_approval=my_async_approval_callback,  # async (ApprovalRequest) -> bool
+    on_hitl=my_async_hitl_callback,          # async (HITLRequest) -> bool
+)
 ```
 
 Policy tiers: `low` / `medium` / `high` / `critical`
@@ -469,9 +471,9 @@ const content = matimo.getSkillContent('slack-messaging', { sections: ['examples
 
 **Python:**
 ```python
-matimo = await Matimo.init('./tools', InitOptions(skill_paths=['./skills']))
-skills = matimo.list_tools()   # skills exposed as tools
-results = await matimo.search_tools('sending messages')
+matimo = await Matimo.init('./tools', skill_paths=['./skills'])
+skills = matimo.list_skills()
+results = await matimo.semantic_search_skills('sending messages')
 ```
 
 ---

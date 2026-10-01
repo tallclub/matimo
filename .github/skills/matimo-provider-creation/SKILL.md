@@ -746,7 +746,7 @@ console.log(user);
 \`\`\`python
 from matimo import Matimo
 
-matimo = await Matimo.init('./tools', InitOptions(auto_discover=True))
+matimo = await Matimo.init('./tools', auto_discover=True)
 
 user = await matimo.execute('{provider}_get_user', {'user_id': '123'})
 print(user)
@@ -778,7 +778,7 @@ const tools = convertToolsToLangChain(matimo.listTools(), matimo);
 \`\`\`python
 from matimo import Matimo, convert_tools_to_langchain
 
-matimo = await Matimo.init('./tools', InitOptions(auto_discover=True))
+matimo = await Matimo.init('./tools', auto_discover=True)
 tools = convert_tools_to_langchain(matimo.list_tools(), matimo)
 
 # Use with LangChain agents

@@ -89,7 +89,7 @@ result = await matimo.execute('slack_send_channel_message', {
 })
 ```
 
-To add a new governed capability at runtime rather than hand-writing an ungoverned script, use the meta-tools (`matimo_create_tool`, `matimo_create_skill`, `matimo_reload_tools`) documented in [docs/api-reference/META_TOOLS.md](./docs/api-reference/META_TOOLS.md) — new tools are policy-validated and, if high-risk, held for human approval before they're usable.
+To add a new governed capability at runtime rather than hand-writing an ungoverned script, use the meta-tools (`matimo_create_tool`, `matimo_create_skill`, `matimo_reload_tools`) documented in [docs/api-reference/META_TOOLS.md](./docs/api-reference/META_TOOLS.md) — new tools are policy-validated, start as drafts, and run only after a human approves them with `matimo_approve_tool` (or `matimo review approve`).
 
 ## MCP
 
