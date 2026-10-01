@@ -711,133 +711,113 @@ output_schema:
 
 ### GitHub Create Issue
 
+From `typescript/packages/github/tools/create-issue/definition.yaml` (abridged):
+
 ```yaml
 name: github-create-issue
-description: Create a new issue in a GitHub repository
+description: Create a new issue in a repository
 version: '1.0.0'
+requires_approval: true
 
 parameters:
   owner:
     type: string
-    description: Repository owner
     required: true
+    description: Repository owner username or organization
   repo:
     type: string
-    description: Repository name
     required: true
+    description: Repository name
   title:
     type: string
-    description: Issue title
     required: true
-    validation:
-      minLength: 1
-      maxLength: 200
+    description: Issue title
   body:
     type: string
-    description: Issue body/description
     required: false
+    description: Issue description (markdown supported)
   labels:
     type: array
-    description: Labels to assign
     required: false
+    description: Array of label names
 
 execution:
   type: http
   method: POST
   url: 'https://api.github.com/repos/{owner}/{repo}/issues'
   headers:
-    Accept: application/vnd.github.v3+json
-  auth:
-    type: bearer
-    secret_env_var: MATIMO_GITHUB_TOKEN
+    Accept: application/vnd.github+json
+    Authorization: 'Bearer {GITHUB_TOKEN}'
+    X-GitHub-Api-Version: '2022-11-28'
+    Content-Type: application/json
+  body:
+    title: '{title}'
+    body: '{body}'
+    labels: '{labels}'          # an array parameter is sent as a JSON array
+  timeout: 15000
+
+authentication:
+  type: bearer
+  location: header
 
 output_schema:
   type: object
   properties:
-    id:
-      type: number
     number:
       type: number
+      description: Issue number in repository
     title:
       type: string
-    url:
+    html_url:
       type: string
-  required:
-    - id
-    - number
-    - title
-    - url
-
-error_handling:
-  retry: 3
-  backoff_type: exponential
-  initial_delay_ms: 1000
 ```
 
 ### Slack Send Message
 
-```yaml
-name: slack-send-message
-description: Send a message to a Slack channel
-version: '1.0.0'
+From `typescript/packages/slack/tools/slack_send_channel_message/definition.yaml`:
 
+```yaml
+name: slack_send_channel_message
+description: Post a message (text, markdown, blocks) to a public/private Slack channel.
+version: '1.0.0'
 parameters:
   channel:
     type: string
-    description: Channel ID or name
     required: true
-  message:
+    description: Channel ID or name to post the message to
+  text:
     type: string
-    description: Message text
-    required: true
-    validation:
-      minLength: 1
-      maxLength: 4000
-  thread_ts:
-    type: string
-    description: Thread timestamp (for replies)
     required: false
-
+    description: Plain-text message (optional if blocks provided, recommended as fallback for accessibility)
 execution:
   type: http
   method: POST
   url: 'https://slack.com/api/chat.postMessage'
   headers:
+    Authorization: 'Bearer {SLACK_BOT_TOKEN}'
     Content-Type: application/json
-  auth:
-    type: bearer
-    secret_env_var: MATIMO_SLACK_TOKEN
-
-output_schema:
-  type: object
-  properties:
-    ok:
-      type: boolean
-    ts:
-      type: string
-    channel:
-      type: string
-  required:
-    - ok
-    - ts
-    - channel
-
-error_handling:
-  retry: 2
-  backoff_type: exponential
-  initial_delay_ms: 500
+  body:
+    channel: '{channel}'
+    text: '{text}'
+  timeout: 15000
+authentication:
+  type: api_key
+  location: header
+  name: Authorization
+notes:
+  env: SLACK_BOT_TOKEN
 ```
 
 ---
 
 ## Best Practices
 
-1. **Naming** — Use lowercase, kebab-case, globally unique
+1. **Naming** — Lowercase and globally unique; new tools use `snake_case` (`slack_send_channel_message`), though older packages use kebab-case
 2. **Description** — Clear, one sentence explaining purpose
-3. **Parameters** — Validate with min/max, enum, patterns
-4. **Output Schema** — Document all response fields
-5. **Authentication** — Use environment variables, never hardcode
-6. **Error Handling** — Include retry logic for flaky APIs
+3. **Parameters** — A description on every parameter; use `enum` for fixed values and state limits in the description (there are no min/max/pattern keys)
+4. **Output Schema** — Document the response fields the caller needs
+5. **Authentication** — `{UPPER_CASE}` placeholders filled from the environment; never hardcode a secret
+6. **Governance** — `requires_approval: true` on anything destructive, and `risk:` on function tools
 7. **Timeout** — Set appropriate timeouts (avoid infinite hangs)
 8. **Testing** — Include examples of real-world usage
 
