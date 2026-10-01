@@ -708,7 +708,7 @@ interface ToolDefinition {
   version: string; // Semantic version
   description: string; // Tool description
   parameters?: Record<string, Parameter>; // Tool parameters
-  execution: ExecutionConfig; // How to execute
+  execution: HttpExecution | FunctionExecution | CommandExecution; // How to execute
   output_schema?: Record<string, unknown>; // Response schema (Zod)
   authentication?: AuthConfig; // Auth configuration
   examples?: Example[]; // Usage examples
@@ -733,27 +733,34 @@ interface Parameter {
 }
 ```
 
-### ExecutionConfig
+### Execution types
 
 ```typescript
-type ExecutionConfig =
+type Execution =
+  | {
+      type: 'http';
+      method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+      url: string;
+      headers?: Record<string, string>;
+      body?: unknown;
+      query_params?: Record<string, string>;
+      parameter_encoding?: ParameterEncodingConfig[];
+      timeout?: number; // ms
+    }
+  | {
+      type: 'function';
+      code: string; // module path, relative to the YAML file
+      timeout?: number;
+    }
   | {
       type: 'command';
       command: string;
       args?: string[];
-    }
-  | {
-      type: 'http';
-      method: string;
-      url: string;
-      headers?: Record<string, string>;
-      body?: Record<string, unknown>;
-    }
-  | {
-      type: 'function';
-      function: string; // Path to function
+      timeout?: number;
     };
 ```
+
+Exported as `HttpExecution`, `FunctionExecution` and `CommandExecution`. See [Types](TYPES.md#execution-types).
 
 ### AuthConfig
 

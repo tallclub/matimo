@@ -316,7 +316,7 @@ interface ToolDefinition {
 }
 
 // Use union types for variants
-type ExecutionType = 'command' | 'http' | 'script';
+type ExecutionType = 'http' | 'function' | 'command';
 
 // Use const assertions for immutable data
 const EXECUTION_TYPES = ['command', 'http', 'script'] as const;
@@ -384,8 +384,8 @@ class MatimoError extends Error {}
 
 // PascalCase for types/interfaces
 interface ToolDefinition {}
-interface ExecutionConfig {}
-type ExecutionType = 'command' | 'http' | 'script';
+interface HttpExecution {}
+type ExecutionType = 'http' | 'function' | 'command';
 ```
 
 ### Functions & Variables

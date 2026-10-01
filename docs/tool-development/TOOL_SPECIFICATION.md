@@ -251,17 +251,19 @@ execution:
     - script.js
     - '{param1}'
     - '{param2}'
-  timeout_ms: 5000
-  env:
-    CUSTOM_VAR: value
+  timeout: 5000
 ```
 
 **Fields:**
 
-- `command` (string, required) — Command to execute
+- `command` (string, required) — The executable. It cannot contain `{placeholders}`; only `args` are templated
 - `args` (array, optional) — Command arguments with parameter substitution
-- `timeout_ms` (number, optional, default: 30000) — Timeout in milliseconds
-- `env` (object, optional) — Environment variables
+- `timeout` (number, optional, default: 30000) — Timeout in milliseconds
+- `cwd`, `shell` (optional) — Accepted by the schema. Python applies `cwd`; TypeScript ignores both and runs without a shell
+
+The child process gets the parent's environment plus any per-call `credentials`. Python also accepts an `env` map under `execution` and adds it; TypeScript's schema drops `env`, so don't rely on it in a tool meant for both SDKs.
+
+A command tool asks a human before every call unless it declares `requires_approval: false`, and agents cannot create one.
 
 **Parameter Substitution:**
 
@@ -291,11 +293,10 @@ execution:
   url: 'https://api.example.com/endpoint'
   headers:
     Content-Type: application/json
-    Authorization: 'Bearer {api_key}'
-  auth:
-    type: bearer
-    secret_env_var: MATIMO_API_KEY
-  timeout_ms: 10000
+    Authorization: 'Bearer {MATIMO_API_KEY}'
+  body:
+    name: '{name}'
+  timeout: 10000
 ```
 
 **Fields:**
@@ -303,8 +304,12 @@ execution:
 - `method` (string, required) — HTTP method: GET, POST, PUT, DELETE, PATCH
 - `url` (string, required) — API endpoint URL with parameter substitution
 - `headers` (object, optional) — HTTP headers
-- `auth` (object, optional) — Authentication config (see Authentication section)
-- `timeout_ms` (number, optional, default: 30000) — Timeout in milliseconds
+- `body` (any, optional) — Request body, with parameter substitution
+- `query_params` (object, optional) — Query string parameters
+- `parameter_encoding` (array, optional) — See [HTTP Parameter Embedding](HTTP_PARAMETER_EMBEDDING.md)
+- `timeout` (number, optional) — Timeout in milliseconds. Python defaults to 30000; TypeScript sets no timeout unless you give one, so set it explicitly
+
+Authentication goes in the top-level `authentication` block (see [Authentication](#authentication)), not under `execution`.
 
 **URL Templating:**
 
