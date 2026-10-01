@@ -576,7 +576,7 @@ const matimo = await MatimoInstance.init({
 });
 ```
 
-**Python:** the same API exists under snake_case — `matimo.add_skill_path(path)`, `await matimo.reload_skills()`, `matimo.register_skill(skill)` / `register_skills(skills)`, `InitOptions(default_skill_write_dir=...)`, and an `on_event` handler that receives a `{"type": "skill:created", "skill_name": ..., "source": ..., "timestamp": ...}` dict.
+**Python:** the same API exists under snake_case — `matimo.add_skill_path(path)`, `await matimo.reload_skills()`, `matimo.register_skill(skill)` / `register_skills(skills)`, `Matimo.init(default_skill_write_dir=...)`, and an `on_event` handler that receives a `{"type": "skill:created", "skill_name": ..., "source": ..., "timestamp": ...}` dict.
 
 ---
 

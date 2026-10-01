@@ -186,6 +186,20 @@ lc_tools = convert_tools_to_langchain(
 # SLACK_BOT_TOKEN injected automatically
 ```
 
+### Approvals and Unset Parameters (Python)
+
+An agent's calls go through the same governance as `matimo.execute()`. Calls to tools that need approval — `requires_approval: true`, HTTP `DELETE` or command tools (secure by default in 0.2.0), or a destructive keyword in a `sql`/`command` argument — ask the instance's `on_approval` callback. Without one they raise `MatimoError` ("Destructive operation requires approval"), so give the instance a reviewer before handing the agent such tools:
+
+```python
+async def ask_operator(request: ApprovalRequest) -> bool:
+    return await my_ui.confirm(f"Allow {request.tool_name} with {request.params}?")
+
+matimo = await Matimo.init(auto_discover=True, on_approval=ask_operator)
+lc_tools = convert_tools_to_langchain(matimo.list_tools(), matimo)
+```
+
+LangChain fills every optional parameter the model leaves out with `None`. Since 0.2.0 those are dropped before the call, so a tool sees only the arguments the model actually chose and its own defaults apply.
+
 ### Skills Integration (Python, Non-MCP)
 
 When running LangChain without an MCP server, use the skills helpers to implement progressive skill disclosure:
@@ -574,6 +588,20 @@ try {
   }
 }
 ```
+
+## Approvals
+
+Agent calls go through the same governance as `matimo.execute()`. Calls to tools that need approval — `requires_approval: true`, HTTP `DELETE` or command tools (secure by default in 0.2.0), or a destructive keyword in a `sql`/`command` argument — ask the instance's `onApproval` callback. If it declines, or there is none, the tool returns `Error: ...` to the model instead of running:
+
+```typescript
+const matimo = await MatimoInstance.init({
+  autoDiscover: true,
+  onApproval: async (request) => confirmWithOperator(request.toolName, request.params),
+});
+const tools = await convertToolsToLangChain(matimo.listTools(), matimo);
+```
+
+See [Approval System](../api-reference/APPROVAL-SYSTEM.md).
 
 ## Skills Integration (Non-MCP)
 

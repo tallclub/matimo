@@ -67,6 +67,20 @@ asyncio.run(setup())
 
 ---
 
+## Approvals and Unset Parameters
+
+A crew's tool calls go through the same governance as `matimo.execute()`. Calls to tools that need approval — `requires_approval: true`, HTTP `DELETE` or command tools (secure by default in 0.2.0), or a destructive keyword in a `sql`/`command` argument — ask the instance's `on_approval` callback, and are refused without one:
+
+```python
+async def ask_operator(request: ApprovalRequest) -> bool:
+    return await my_ui.confirm(f"Allow {request.tool_name} with {request.params}?")
+
+matimo = await Matimo.init(auto_discover=True, on_approval=ask_operator)
+crewai_tools = convert_tools_to_crewai(matimo.list_tools(), matimo)
+```
+
+CrewAI fills optional parameters the model leaves out with `None`; since 0.2.0 those are dropped before the call, so the tool's own defaults apply.
+
 ## Single Agent Example
 
 ```python
