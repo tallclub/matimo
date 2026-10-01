@@ -241,7 +241,7 @@ The tool validates `entity_types` against `["driveItem", "listItem", "site", "li
 - [Microsoft Entra admin center](https://entra.microsoft.com) (app registration)
 - [Graph Explorer](https://developer.microsoft.com/en-us/graph/graph-explorer) (try API calls interactively)
 - [Package Docs](../../../packages/microsoft/README.md)
-- [Matimo Documentation](https://matimo.dev/docs)
+- [Matimo Documentation](https://docs.matimo.dev)
 
 ---
 

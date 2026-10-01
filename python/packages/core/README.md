@@ -4,7 +4,7 @@
 
 [![PyPI](https://img.shields.io/pypi/v/matimo-core)](https://pypi.org/project/matimo-core/)
 [![Python](https://img.shields.io/pypi/pyversions/matimo-core)](https://pypi.org/project/matimo-core/)
-[![Docs](https://img.shields.io/badge/docs-matimo.dev-blue)](https://matimo.dev/docs)
+[![Docs](https://img.shields.io/badge/docs-matimo.dev-blue)](https://docs.matimo.dev)
 [![Tests](https://img.shields.io/badge/tests-1134%20passing-brightgreen)](https://github.com/tallclub/matimo)
 [![Coverage](https://img.shields.io/badge/coverage-97%25-brightgreen)](https://github.com/tallclub/matimo)
 
@@ -260,20 +260,20 @@ Built-in tools that let agents manage other tools at runtime:
 
 ## Documentation
 
-- [Getting Started](https://matimo.dev/docs/getting-started/QUICK_START)
-- [Full API Reference](https://matimo.dev/docs/api-reference/SDK)
-- [LangChain Integration](https://matimo.dev/docs/framework-integrations/LANGCHAIN)
-- [CrewAI Integration](https://matimo.dev/docs/framework-integrations/CREWAI)
-- [MCP Guide](https://matimo.dev/docs/MCP)
-- [Policy & Lifecycle](https://matimo.dev/docs/api-reference/POLICY_AND_LIFECYCLE)
-- [Meta-Tools Reference](https://matimo.dev/docs/api-reference/META_TOOLS)
+- [Getting Started](https://docs.matimo.dev/getting-started/QUICK_START)
+- [Full API Reference](https://docs.matimo.dev/api-reference/SDK)
+- [LangChain Integration](https://docs.matimo.dev/framework-integrations/LANGCHAIN)
+- [CrewAI Integration](https://docs.matimo.dev/framework-integrations/CREWAI)
+- [MCP Guide](https://docs.matimo.dev/MCP)
+- [Policy & Lifecycle](https://docs.matimo.dev/api-reference/POLICY_AND_LIFECYCLE)
+- [Meta-Tools Reference](https://docs.matimo.dev/api-reference/META_TOOLS)
 
 ---
 
 ## Links
 
 - **PyPI:** https://pypi.org/project/matimo-core/
-- **Docs:** https://matimo.dev/docs
+- **Docs:** https://docs.matimo.dev/
 - **GitHub:** https://github.com/tallclub/matimo
 - **Changelog:** https://github.com/tallclub/matimo/blob/main/docs/RELEASES.md
 

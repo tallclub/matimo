@@ -3,7 +3,7 @@
 > Command-line interface for [Matimo](https://matimo.dev) - tool package manager & MCP server launcher.
 
 [![PyPI](https://img.shields.io/pypi/v/matimo-cli)](https://pypi.org/project/matimo-cli/)
-[![Docs](https://img.shields.io/badge/docs-matimo.dev-blue)](https://matimo.dev/docs)
+[![Docs](https://img.shields.io/badge/docs-matimo.dev-blue)](https://docs.matimo.dev)
 
 ---
 
@@ -40,7 +40,7 @@ matimo search "send message"
 
 ### `matimo mcp` - Start MCP server
 
-Serve all loaded tools over the [Model Context Protocol](https://matimo.dev/docs/MCP) so Claude Desktop, Cursor, or any MCP client can access them.
+Serve all loaded tools over the [Model Context Protocol](https://docs.matimo.dev/MCP) so Claude Desktop, Cursor, or any MCP client can access them.
 
 ```bash
 matimo mcp                                # start on stdio (default)
@@ -99,15 +99,15 @@ export MATIMO_APPROVED_PATTERNS="get_*,list_*"  # tools that never ask for appro
 
 ## Documentation
 
-- [CLI Guide](https://matimo.dev/docs/user-guide/)
-- [MCP Guide](https://matimo.dev/docs/MCP)
-- [Getting Started](https://matimo.dev/docs/getting-started/QUICK_START)
+- [CLI Guide](https://github.com/tallclub/matimo/blob/main/python/packages/cli/README.md)
+- [MCP Guide](https://docs.matimo.dev/MCP)
+- [Getting Started](https://docs.matimo.dev/getting-started/QUICK_START)
 
 ---
 
 ## Links
 
 - **PyPI:** https://pypi.org/project/matimo-cli/
-- **Docs:** https://matimo.dev/docs
+- **Docs:** https://docs.matimo.dev/
 - **GitHub:** https://github.com/tallclub/matimo
 

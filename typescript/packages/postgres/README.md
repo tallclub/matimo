@@ -429,6 +429,6 @@ Found a bug or want to request a feature?
 ## Part of the Matimo Ecosystem
 
 Learn more about Matimo:
-- 📖 [Documentation](https://matimo.dev/docs)
+- 📖 [Documentation](https://docs.matimo.dev)
 - 🔗 [GitHub Repository](https://github.com/tallclub/matimo)
 - ⭐ [Star the project](https://github.com/tallclub/matimo)

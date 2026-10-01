@@ -3,7 +3,7 @@
 > PostgreSQL tools for [Matimo](https://matimo.dev) - execute SQL queries safely with policy-gated approval.
 
 [![PyPI](https://img.shields.io/pypi/v/matimo-postgres)](https://pypi.org/project/matimo-postgres/)
-[![Docs](https://img.shields.io/badge/docs-matimo.dev-blue)](https://matimo.dev/docs)
+[![Docs](https://img.shields.io/badge/docs-matimo.dev-blue)](https://docs.matimo.dev)
 
 ---
 
@@ -23,7 +23,7 @@ pip install matimo matimo-postgres
 
 The tool does not set `requires_approval` itself - if you want destructive operations
 (INSERT, UPDATE, DELETE, DROP) to require human approval, gate them yourself via a
-[policy file](https://matimo.dev/docs/api-reference/POLICY_AND_LIFECYCLE) or a custom
+[policy file](https://docs.matimo.dev/api-reference/POLICY_AND_LIFECYCLE) or a custom
 `PolicyEngine`.
 
 ---
@@ -91,14 +91,14 @@ export MATIMO_POSTGRES_PASSWORD="mypassword"
 - All SQL queries go through Matimo's **content validator** - SSRF and injection patterns are detected
 - The tool itself does not require approval - use a policy file if you want writes gated
 - Use a **read-only database user** for agent workloads when possible
-- Consider a [policy file](https://matimo.dev/docs/api-reference/POLICY_AND_LIFECYCLE) to restrict allowed SQL patterns
+- Consider a [policy file](https://docs.matimo.dev/api-reference/POLICY_AND_LIFECYCLE) to restrict allowed SQL patterns
 
 ---
 
 ## Documentation
 
-- [Approval System](https://matimo.dev/docs/api-reference/APPROVAL-SYSTEM)
-- [Policy & Lifecycle](https://matimo.dev/docs/api-reference/POLICY_AND_LIFECYCLE)
+- [Approval System](https://docs.matimo.dev/api-reference/APPROVAL-SYSTEM)
+- [Policy & Lifecycle](https://docs.matimo.dev/api-reference/POLICY_AND_LIFECYCLE)
 - [Python Examples](https://github.com/tallclub/matimo/tree/main/python/examples/langchain/postgres)
 
 ---

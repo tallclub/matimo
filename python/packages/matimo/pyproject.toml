@@ -39,7 +39,7 @@ all = ["matimo-core[all]"]
 
 [project.urls]
 Homepage = "https://matimo.dev"
-Documentation = "https://matimo.dev/docs"
+Documentation = "https://docs.matimo.dev/"
 Repository = "https://github.com/tallclub/matimo"
 Issues = "https://github.com/tallclub/matimo/issues"
 
