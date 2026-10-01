@@ -255,7 +255,7 @@ const upload = await matimo.execute('slack_upload_file', {
 
 ## 📚 Documentation
 
-- **[Comprehensive Guide](/typescript/examples/tools/slack/README.md)** - Full guide with examples
+- **[Comprehensive Guide](../../examples/tools/slack/README.md)** - Full guide with examples
 - **[Official Slack Docs](https://docs.slack.dev/)** - Slack Web API reference
 
 ## 🔐 Authentication

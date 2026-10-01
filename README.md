@@ -279,7 +279,7 @@ matimo search email  # Find tools
 matimo install slack # Install tools
 ```
 
-See [CLI Docs](./packages/cli/README.md) for full reference.
+See [CLI Docs](./typescript/packages/cli/README.md) for full reference.
 
 ### From Source (Contributors)
 

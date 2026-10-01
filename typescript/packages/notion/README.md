@@ -329,7 +329,7 @@ NOTION_OAUTH_REDIRECT_URI=https://yourdomain.com/callback
 
 ## 🤝 Contributing
 
-Found a bug or want to suggest a feature? See [CONTRIBUTING.md](/CONTRIBUTING.md).
+Found a bug or want to suggest a feature? See [CONTRIBUTING.md](../../../CONTRIBUTING.md).
 
 ---
 
