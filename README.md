@@ -48,27 +48,36 @@ Want a hosted runtime on top of this governance layer, with a visual builder and
 ### See It In Action
 
 ```python
-# Agent encounters a new API mid-task
-result = await agent.execute('matimo_create_tool', {
+matimo = await Matimo.init(
+    './agent-tools',
+    auto_discover=True,
+    untrusted_paths=['./agent-tools'],  # agent-written tools must pass the content rules
+    on_approval=ask_reviewer,           # a human answers every call that needs approval
+)
+set_global_matimo_instance(matimo)
+
+# The agent meets a new API mid-task and writes a tool for it (a draft)
+await matimo.execute('matimo_create_tool', {
     'name': 'stripe_create_payment',
-    'definition': yaml_content  # Agent generates this
+    'yaml_content': yaml_content,  # agent-generated YAML
+    'target_dir': './agent-tools',
 })
 
-# Policy engine classifies risk → requires approval
-# HITL callback triggers → human reviews and approves
+# A human reviews the draft and approves it
+await matimo.execute(
+    'matimo_approve_tool',
+    {'name': 'stripe_create_payment', 'tool_dir': './agent-tools'},
+    context=PolicyContext(agent_id='reviewer', roles=['admin']),
+)
+await matimo.execute('matimo_reload_tools', {})
 
-await agent.execute('matimo_reload_tools')
-
-# Tool is now live and production-ready
-payment = await agent.execute('stripe_create_payment', {
-    'amount': 5000,
-    'currency': 'usd'
-})
+# Live - and every call still asks the reviewer
+payment = await matimo.execute('stripe_create_payment', {'amount': 5000, 'currency': 'usd'})
 ```
 
 **Other SDKs give agents a toolbox. Matimo gives them a workshop - with safety guardrails.**
 
-🎯 **Production-ready** - 3,700+ tests across TypeScript and Python · 95%+ coverage · see [CHANGELOG](./CHANGELOG.md) for release history
+🎯 **0.2.0 - secure by default** - DELETE and command tools ask a human, per-instance approval callbacks, MCP elicitation, a hash-chained audit log, and one set of rules enforced identically by both SDKs · 4,600+ tests across TypeScript and Python · see [CHANGELOG](./CHANGELOG.md) and the [migration guide](./docs/api-reference/POLICY_AND_LIFECYCLE.md#upgrading-to-020)
 
 [📖 Documentation](./docs) · [🚀 Quick Start](./docs/getting-started/QUICK_START.md) · [📚 API Reference](./docs/api-reference/SDK.md) · [🛠️ Add Tools](./docs/tool-development/ADDING_TOOLS.md) · [🤖 Examples](./typescript/examples) ([Python](./python/examples))
 
@@ -160,14 +169,14 @@ Matimo ships with built-in support for:
 1. **Governance by Default** - Every tool execution is classified by risk (low/medium/high/critical), checked against deterministic security rules (SSRF detection, namespace protection, credential allowlists), and can require human approval before running. This applies uniformly to built-in tools, third-party providers, and anything an agent creates itself.
 2. **Write Once, Use Everywhere** - Define tools in clean YAML, deploy to SDK, LangChain, MCP, or custom agents without duplication - with the same policy enforcement in every context.
 3. **Agent Self-Extension, Safely** - Agents autonomously build new tools and skills at runtime without restarting, and every new capability is policy-gated:
-   - **Tool Creation**: `matimo_create_tool` - agents write YAML definitions, submit for approval, and use instantly
+   - **Tool Creation**: `matimo_create_tool` - agents write YAML definitions as drafts; a human approves them with `matimo_approve_tool`
    - **Skill Creation**: `matimo_create_skill` - agents author domain knowledge (SKILL.md) directly into the system
    - **Hot-Reload**: `matimo_reload_tools` - updated capabilities live immediately without server restart
-   - **Policy-Gated**: All agent-created tools validated against security rules; HITL approval for high-risk changes
+   - **Policy-Gated**: All agent-created tools are validated against security rules, run only once a human approves them, and ask again on every call
 4. **Pre-built Ecosystem** - 10 providers (Slack, Gmail, GitHub, Notion, HubSpot, Postgres, Twilio, Mailchimp, Microsoft, Bruno) ready to go, all governed by the same policy engine, plus a governed 449-tool Composio catalog for broader coverage.
 
 Included:
-- **Policy Engine** - 9 security rules, risk classification, HITL quarantine, HMAC approval manifests, audit events
+- **Policy Engine** - 9 content rules, risk classification, per-call approval, HITL quarantine, HMAC approval manifests, events and a hash-chained audit log
 - TypeScript SDK (factory & decorator patterns)
 - **Python SDK** (factory, decorator, LangChain, CrewAI, MCP - full parity)
 - LangChain integration (with examples)
