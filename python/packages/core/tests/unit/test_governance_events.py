@@ -79,6 +79,54 @@ async def test_quarantined_call_emits_tool_quarantined_before_on_hitl(tmp_path: 
 
 
 @pytest.mark.asyncio
+async def test_quarantine_without_on_hitl_ends_in_quarantine_rejected(tmp_path: Path) -> None:
+    _write(tmp_path / "tools", "get_item", GET_TOOL)
+    events: list[dict[str, Any]] = []
+    matimo = await Matimo.init(
+        str(tmp_path / "tools"),
+        log_level="silent",
+        approval_dir=str(tmp_path),
+        policy_config=PolicyConfig(enable_hitl=True, hitl_min_risk_level="low"),
+        on_event=events.append,
+    )
+    with pytest.raises(Exception):  # noqa: B017 — the event, not the error, is under test
+        await matimo.execute("get_item", {})
+
+    assert [e["type"] for e in events] == ["tool:quarantine_rejected"]
+
+
+@pytest.mark.asyncio
+async def test_stored_quarantine_approval_emits_quarantine_approved(tmp_path: Path) -> None:
+    _write(tmp_path / "tools", "get_item", GET_TOOL)
+    events: list[dict[str, Any]] = []
+    asked: list[str] = []
+
+    async def on_hitl(request: Any) -> bool:  # noqa: ANN401
+        asked.append(request.tool_name)
+        return True
+
+    matimo = await Matimo.init(
+        str(tmp_path / "tools"),
+        log_level="silent",
+        approval_dir=str(tmp_path),
+        policy_config=PolicyConfig(enable_hitl=True, hitl_min_risk_level="low"),
+        on_hitl=on_hitl,
+        on_event=events.append,
+    )
+    import httpx
+    import respx
+
+    with respx.mock:
+        respx.get("https://api.example.com/item").mock(return_value=httpx.Response(200, json={}))
+        await matimo.execute("get_item", {})
+        events.clear()
+        await matimo.execute("get_item", {})
+
+    assert asked == ["get_item"]  # the second call used the stored approval
+    assert [e["type"] for e in events][0] == "tool:quarantine_approved"
+
+
+@pytest.mark.asyncio
 async def test_no_environment_key_without_one_in_the_context(tmp_path: Path) -> None:
     _write(tmp_path / "tools", "get_item", GET_TOOL)
     events: list[dict[str, Any]] = []

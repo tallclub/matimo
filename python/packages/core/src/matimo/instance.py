@@ -950,12 +950,14 @@ class Matimo:
         if self._approval_manifest is not None and self._approval_manifest.is_approved(
             tool.name, approval_hash
         ):
+            self._emit_quarantine_outcome(tool.name, approved=True)
             return True
 
         if self._on_hitl is None:
             self._logger.warn(
                 f"Tool '{tool.name}' requires HITL approval but no on_hitl callback is set — denying"
             )
+            self._emit_quarantine_outcome(tool.name, approved=False)
             return False
 
         event: dict[str, Any] = {
@@ -994,12 +996,16 @@ class Matimo:
         if approved and self._approval_manifest is not None:
             self._approval_manifest.approve(tool.name, approval_hash)
 
+        self._emit_quarantine_outcome(tool.name, approved=approved)
+        return approved
+
+    def _emit_quarantine_outcome(self, tool_name: str, *, approved: bool) -> None:
+        """Every quarantine ends in one of these events, as in TypeScript's execute()."""
         self._emit_event({
             "type": "tool:quarantine_approved" if approved else "tool:quarantine_rejected",
-            "tool_name": tool.name,
+            "tool_name": tool_name,
             "timestamp": _now(),
         })
-        return approved
 
     async def _require_call_approval(
         self,

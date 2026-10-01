@@ -61,6 +61,57 @@ describe('governance events', () => {
     expect(events[events.length - 1].type).toBe('tool:quarantine_rejected');
   });
 
+  const GET_ITEM =
+    "name: get_item\nversion: '1.0.0'\ndescription: Fetch an item\nexecution:\n  type: http\n  method: GET\n  url: 'https://api.example.com/item'\n";
+
+  it('ends a quarantine without onHITL in tool:quarantine_rejected', async () => {
+    const tools = path.join(dir, 'tools');
+    writeTool(tools, 'get_item', GET_ITEM);
+    const events: MatimoEvent[] = [];
+    const matimo = await MatimoInstance.init({
+      toolPaths: [tools],
+      logLevel: 'silent',
+      approvalDir: dir,
+      policyConfig: { enableHITL: true, hitlMinRiskLevel: 'low' },
+      onEvent: (event) => events.push(event),
+    });
+
+    await expect(matimo.execute('get_item', {})).rejects.toThrow();
+    expect(events.map((e) => e.type)).toEqual(['tool:quarantine_rejected']);
+  });
+
+  it('emits tool:quarantine_approved when a stored approval lets a call through', async () => {
+    const tools = path.join(dir, 'tools');
+    writeTool(tools, 'get_item', GET_ITEM);
+    const events: MatimoEvent[] = [];
+    const asked: string[] = [];
+    const matimo = await MatimoInstance.init({
+      toolPaths: [tools],
+      logLevel: 'silent',
+      approvalDir: dir,
+      policyConfig: { enableHITL: true, hitlMinRiskLevel: 'low' },
+      onHITL: async (request) => {
+        asked.push(request.toolName);
+        return true;
+      },
+      onEvent: (event) => events.push(event),
+    });
+    const spy = jest
+      .spyOn(
+        (matimo as unknown as { httpExecutor: { execute: () => Promise<unknown> } }).httpExecutor,
+        'execute'
+      )
+      .mockResolvedValue({ success: true });
+
+    await matimo.execute('get_item', {});
+    events.length = 0;
+    await matimo.execute('get_item', {});
+
+    expect(asked).toEqual(['get_item']);
+    expect(events[0].type).toBe('tool:quarantine_approved');
+    spy.mockRestore();
+  });
+
   it('emits tool:rejected when a reload denies an untrusted tool', async () => {
     const untrusted = path.join(dir, 'untrusted');
     writeTool(
