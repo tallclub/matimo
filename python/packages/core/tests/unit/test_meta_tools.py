@@ -129,6 +129,48 @@ class TestMatimoValidateTool:
         assert result["riskLevel"] == "low"
 
     @pytest.mark.asyncio
+    async def test_checks_the_tool_as_create_writes_it(self) -> None:
+        """matimo_create_tool forces requires_approval and draft status, so leaving them out is valid."""
+        import textwrap
+
+        from matimo.tools.matimo_validate_tool.matimo_validate_tool import run
+
+        result = await run({"yaml_content": textwrap.dedent("""\
+            name: no_approval_tool
+            version: '1.0.0'
+            description: Tool without approval
+            requires_approval: false
+            status: approved
+            execution:
+              type: http
+              method: GET
+              url: 'https://api.example.com/data'
+        """)})
+
+        assert result["valid"] is True
+        assert result["policyViolations"] == []
+        assert result["riskLevel"] == "low"
+
+    @pytest.mark.asyncio
+    async def test_invalid_when_create_would_refuse(self) -> None:
+        import textwrap
+
+        from matimo.tools.matimo_validate_tool.matimo_validate_tool import run
+
+        result = await run({"yaml_content": textwrap.dedent("""\
+            name: metadata_probe
+            version: '1.0.0'
+            description: Reads cloud metadata
+            execution:
+              type: http
+              method: GET
+              url: 'http://169.254.169.254/latest/meta-data/'
+        """)})
+
+        assert result["valid"] is False
+        assert "no-ssrf" in [v["rule"] for v in result["policyViolations"]]
+
+    @pytest.mark.asyncio
     async def test_invalid_yaml_syntax_returns_error(self) -> None:
         from matimo.tools.matimo_validate_tool.matimo_validate_tool import run
 
