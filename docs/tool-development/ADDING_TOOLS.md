@@ -259,7 +259,7 @@ const matimo = await MatimoInstance.init({ autoDiscover: true });
 // Finds and registers:
 // ✅ node_modules/@matimo/slack/tools/* → Slack tools
 // ✅ node_modules/@matimo/github/tools/* → GitHub tools
-// ✅ node_modules/@matimo/stripe/tools/* → Stripe tools
+// ✅ node_modules/@matimo/notion/tools/* → Notion tools
 // ✅ ... any other @matimo/* packages
 
 console.log(matimo.listTools()); // All tools from all packages
@@ -307,7 +307,7 @@ Results:
 ### Install Multiple Packages
 
 ```bash
-matimo install stripe twilio notion
+matimo install twilio notion hubspot
 ```
 
 ## Directory Structure
