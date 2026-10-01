@@ -6,7 +6,37 @@
 > planned API, not something you can `import` and run yet. For a working framework integration, see
 > [LANGCHAIN.md](./LANGCHAIN.md) or [CREWAI.md](./CREWAI.md) instead.
 
-Matimo provides `convertToolsToVercelAI` to wrap any Matimo tool as a [`CoreTool`](https://sdk.vercel.ai/docs/ai-sdk-core/tools-and-tool-calling) accepted by `generateText`, `streamText`, `generateObject`, and `streamObject`.
+## Until the adapter ships
+
+You can wrap Matimo tools for the AI SDK yourself with exported helpers. Each call still goes through `matimo.execute()`, so policy, approval and audit events apply:
+
+```typescript
+import { tool } from 'ai';
+import { z } from 'zod';
+import { MatimoInstance, convertParametersToMcpSchema } from '@matimo/core';
+
+const matimo = await MatimoInstance.init({ autoDiscover: true, onApproval: askUser });
+
+const tools = Object.fromEntries(
+  matimo
+    .listTools()
+    .filter((t) => t.name.startsWith('github'))
+    .map((def) => [
+      def.name,
+      tool({
+        description: def.description,
+        inputSchema: z.object(convertParametersToMcpSchema(def.parameters ?? {})), // `parameters` in AI SDK 4
+        execute: async (args) => matimo.execute(def.name, args as Record<string, unknown>),
+      }),
+    ])
+);
+```
+
+`convertParametersToMcpSchema` leaves out credential-like parameters; Matimo fills those from the environment or the call's `credentials`. Tool names with `-` are accepted by most providers; rename them if yours is stricter.
+
+## Planned API
+
+Matimo will provide `convertToolsToVercelAI` to wrap any Matimo tool as a [`CoreTool`](https://sdk.vercel.ai/docs/ai-sdk-core/tools-and-tool-calling) accepted by `generateText`, `streamText`, `generateObject`, and `streamObject`.
 
 ## Installation
 
