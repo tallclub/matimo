@@ -1,3 +1,75 @@
+## v0.2.0 (TypeScript and Python) - Governance by Default 🛡️
+
+> **Release**: Makes the core claim true: every tool call is governed, the same way, in both SDKs. DELETE and command tools ask a human before they run, approval callbacks belong to each instance, MCP asks the person behind the client instead of the model, `matimo_approve_tool` can no longer be used by an agent to approve its own tool, and every call ends in an audit event that can be written to a tamper-evident log. Both SDKs move to `0.2.0` together.
+
+**Released**: September 30, 2026
+**Scope**: `typescript/` - all 13 packages `0.1.8` → `0.2.0`. `python/` - all 13 packages `0.1.3` → `0.2.0`; provider packages require `matimo-core>=0.2.0,<0.3.0`.
+**Severity**: 🔴 **Minor bump with behaviour changes** - read [Upgrading to 0.2.0](api-reference/POLICY_AND_LIFECYCLE.md#upgrading-to-020) first. `governanceMode: 'legacy'` (`governance_mode="legacy"`) restores the old approval default while you migrate.
+
+---
+
+### ⚠️ **What changes when you upgrade**
+
+| Before | 0.2.0 |
+|--------|-------|
+| An HTTP `DELETE` or `type: command` tool ran unless its YAML said `requires_approval: true` | It asks for approval unless its YAML says `requires_approval: false` |
+| Python ignored `requires_approval` | Enforced on every call, as in TypeScript |
+| Python `execute(..., approved=True)` skipped policy denials | It skips only the approval prompt |
+| HITL quarantine applied only to risk levels listed in `quarantineRiskLevels`, so DELETE and function tools slipped past it | It applies to every call at or above `hitlMinRiskLevel` |
+| Python ran draft tools for anyone outside production | Drafts never run in production, and elsewhere only for the `admin` role (both SDKs, pinned by `conformance/policy/execution-gates.json`) |
+| An MCP error told the model to retry with `_matimo_approved: true` | The server asks the human through MCP elicitation; `_matimo_approved` is honoured only with `trustClientApproval` |
+| Python events reported `duration` in seconds | `duration_ms`, with the same fields as TypeScript |
+| `pnpm validate-tools` accepted a DELETE tool without `requires_approval` | Rejected, as is a function tool without `risk` |
+
+### 🛡️ **Who approves a call**
+
+Approval now has one order in both SDKs: pre-approved patterns (`MATIMO_APPROVED_PATTERNS`) → the `onApproval` passed to that `execute()` call → the instance's `onApproval` (`init()` or `setApprovalCallback()`) → the old global handler → refuse. Two tenants in one process no longer share a reviewer. The error raised when nobody can answer recommends `onApproval` and patterns, not `MATIMO_AUTO_APPROVE`, and an instance logs a warning when it starts with auto-approve on. `ApprovalHandler.addApprovedPattern()` (`add_approved_pattern()`) adds a pattern in a running process. See [Approval System](api-reference/APPROVAL-SYSTEM.md).
+
+### 🤖 **The agent self-extension lifecycle, end to end**
+
+`matimo_validate_tool` → `matimo_create_tool` → `matimo_reload_tools` → `matimo_approve_tool` → `matimo_reload_tools` now works as documented, and the meta-tools report what is actually true:
+
+- `matimo_approve_tool` refuses a tool created by the calling agent, requires the `admin` role when a policy context is supplied, and is never pre-approved by patterns or `MATIMO_AUTO_APPROVE`.
+- An approval survives the next reload. The approve and status tools used to sign with their own manifest, so without `MATIMO_APPROVAL_SECRET` the reload rejected the tool just approved.
+- `matimo_create_tool` reports every new tool as a `pending` draft and names the approval step, instead of calling low-risk drafts "auto-approved, ready for use".
+- `matimo_validate_tool` says `valid` exactly when `matimo_create_tool` would accept the definition.
+- Function tools receive `{ credentials, policyContext }` (`FunctionToolContext` in Python); the MCP server's `context` option supplies the policy context for MCP calls.
+
+### 📜 **Audit trail**
+
+Every call emits `tool:executed` or the new `tool:execution_failed`, with identical fields in both SDKs (`conformance/events/execution-events.json`), and every quarantined call emits its outcome. Pass `auditSink: new JsonlFileSink(path)` (`audit_sink=JsonlFileSink(path)`) for a hash-chained JSONL log with secrets redacted; `verifyAuditLog()` (`verify_audit_log()`) detects any edited, removed or reordered line. Both SDKs write and verify the same format (`conformance/audit/hash-chain.json`).
+
+### 🐍 **Python parity fixes**
+
+- Critical and high content violations reject an untrusted tool in every environment; `allowed_domains` and `allowed_http_methods` used to have no effect outside production.
+- `no-ssrf` blocks `*.internal`, `*.local`, `*.localhost` and `0.0.0.0`, as in TypeScript.
+- Untrusted tools that leave `status` unset are accepted (the model's `stable` default made the forced-draft-status rule reject them all).
+- `ReloadResult.loaded` and `revalidated` count what TypeScript's do.
+- The MCP server works with both `mcp` 1.x and `mcp>=2.0`.
+- New: Agno integration, `Matimo.get_approval_manifest()`, and `tool:quarantined` / `tool:rejected` events.
+
+### ✨ **Also new**
+
+- Skills: pluggable skill paths, `matimo_search_skills`, `matimo_get_skill_sections`, `matimo_get_skill_content`, per-section token budgets and prompt-context helpers - 15 meta-tools in all.
+- MCP: standard tool annotations, readable titles, structured error codes, and a response-size guardrail with configurable ceilings.
+- No-key demos in both SDKs: approval modes, audit log, response-size guardrail and skills registry.
+
+### 📚 **Documentation**
+
+API references, guides, package READMEs, the core skills shipped to agents, and all seven notebooks were checked against the code and rerun against the 0.2.0 packages. The core skills named two meta-tools (`matimo_doctor`, `matimo_review`) that never existed; they now describe the real lifecycle.
+
+### 🔧 **Chores**
+
+- `.matimo-approvals.json` is no longer tracked (a committed manifest pre-approved two Composio Jira tools).
+- Python: strict mypy on `matimo-core` blocks CI, and CI runs every provider package's tests.
+- CVE patches for `@modelcontextprotocol/sdk`, `@usebruno/cli`, undici, nanoid and others; Dependabot config.
+
+### 🔜 **Known differences between the SDKs**
+
+Kept for a later release (see the [roadmap](ROADMAP.md)): TypeScript blocks untrusted command and function tools even with `allowCommandTools`; Python's wheels ship no built-in skills; Python lacks `get_tools_by_tag`, `get_required_credentials`, `reload_policy`, `set_hitl_callback` and `get_skill_resource`; the default MCP port (3000 vs 3100) and `autoDiscover` default differ; `error_handling.retry` is not applied by either SDK.
+
+---
+
 ## v0.1.8 - Governance Gap Closures: Default Policy Engine, Approve→Reload Lifecycle & Audit Events 🛡️
 
 > **Release**: Closes the gap between what Matimo's docs claim about governance ("every tool call passes through a policy engine", "full audit trail") and what a zero-config instance actually enforced - `MatimoInstance.init()` now always gets a real `DefaultPolicyEngine`, the `matimo_approve_tool` → `reloadTools()` lifecycle no longer trusts stale hashes, SSRF targets are re-checked at the fully-resolved URL immediately before a request fires, and the simple per-tool `requires_approval` flag now emits real audit events. Plus a large wave of Windows/cross-platform fixes and a full documentation accuracy audit.
