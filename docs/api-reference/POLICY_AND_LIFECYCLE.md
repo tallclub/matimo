@@ -873,7 +873,7 @@ Note: Agent-created tools always have `requires_approval: true`, so every execut
 ### Full Lifecycle Example
 
 ```typescript
-import { MatimoInstance, getGlobalApprovalHandler } from 'matimo';
+import { MatimoInstance, setGlobalMatimoInstance } from 'matimo';
 import type { PolicyConfig } from 'matimo';
 
 // 1. Configure
@@ -884,17 +884,18 @@ const policyConfig: PolicyConfig = {
   allowFunctionTools: false,
 };
 
+// 2. Give the instance a reviewer: creating, approving, reloading and
+//    calling the new tool all need approval.
 const matimo = await MatimoInstance.init({
   toolPaths: ['./core-tools', './agent-tools'],
   untrustedPaths: ['./agent-tools'],
   policyConfig,
+  onApproval: async (request) => {
+    console.log(`Approve ${request.toolName}? [y/n]`);
+    return true; // or prompt user
+  },
 });
-
-// 2. Set up approval handler
-getGlobalApprovalHandler().setApprovalCallback(async (request) => {
-  console.log(`Approve ${request.toolName}? [y/n]`);
-  return true; // or prompt user
-});
+setGlobalMatimoInstance(matimo); // meta-tools act on this instance
 
 // 3. Create
 await matimo.execute('matimo_create_tool', {
@@ -939,59 +940,52 @@ console.log(user);
 matimo.execute('tool_name', params)
          │
          ▼
-   tool.requires_approval === true    ──── OR ────   content has destructive keywords?
-         │ yes                                        (DELETE, DROP, TRUNCATE, etc.)
+   needs approval?
+   • requires_approval: true in the YAML
+   • HTTP DELETE or command tool without requires_approval (secure mode)
+   • destructive keyword in the sql / command argument
+         │ yes
          ▼
-   Is tool pre-approved?
-   • MATIMO_AUTO_APPROVE=true?         → yes → execute
-   • matches MATIMO_APPROVED_PATTERNS? → yes → execute
+   pre-approved?  (MATIMO_APPROVED_PATTERNS, or MATIMO_AUTO_APPROVE;
+                   never for matimo_approve_tool)        → yes → execute
          │ no
          ▼
-   Call approval callback
-   • interactiveApproval(request)
-   • Shows: toolName, description, params
-   • Returns: boolean (approved or rejected)
+   ask, first one that is set:
+   1. execute(..., { onApproval })      per call
+   2. init({ onApproval })              per instance
+   3. getGlobalApprovalHandler()        process-wide (older code)
+   4. none                              → rejected
          │
     ┌────┴────┐
     │approved │rejected
     ▼         ▼
   Execute   Throw MatimoError
-            (EXECUTION_FAILED)
 ```
+
+Full reference: [Approval System](APPROVAL-SYSTEM.md).
 
 ### Interactive Terminal Approval
 
 ```typescript
-import { getGlobalApprovalHandler } from 'matimo';
+import { MatimoInstance, type ApprovalRequest } from 'matimo';
 import readline from 'readline';
 
-const handler = getGlobalApprovalHandler();
+async function askInTerminal(request: ApprovalRequest): Promise<boolean> {
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  console.log(`\nTool: ${request.toolName}`);
+  console.log(`Description: ${request.description}`);
+  console.log(`Params: ${JSON.stringify(request.params)}`);
+  const answer = await new Promise<string>((resolve) => rl.question('Approve? (y/n): ', resolve));
+  rl.close();
+  return answer.toLowerCase() === 'y';
+}
 
-handler.setApprovalCallback(async (request) => {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-
-  return new Promise<boolean>((resolve) => {
-    console.log(`\nTool: ${request.toolName}`);
-    console.log(`Description: ${request.description}`);
-    console.log(`Params: ${JSON.stringify(request.params)}`);
-
-    rl.question('Approve? (y/n): ', (answer) => {
-      rl.close();
-      resolve(answer.toLowerCase() === 'y');
-    });
-  });
-});
+const matimo = await MatimoInstance.init({ autoDiscover: true, onApproval: askInTerminal });
 ```
 
-### Auto-Approve (CI/CD)
+### Tests and CI
 
-```bash
-# Approve ALL tools (use in trusted CI/CD only)
-export MATIMO_AUTO_APPROVE=true
-```
+Prefer an `onApproval` that encodes what the test allows, or `MATIMO_APPROVED_PATTERNS` listing the tools it may run. `MATIMO_AUTO_APPROVE=true` approves everything unseen (except `matimo_approve_tool`) and logs a warning; keep it to throwaway environments.
 
 ### Pre-Approved Patterns
 
@@ -1002,7 +996,7 @@ export MATIMO_APPROVED_PATTERNS="calculator,weather_*,search"
 # Supports wildcards:
 #   calculator      → exact match
 #   weather_*       → matches weather_get, weather_forecast, etc.
-#   *               → matches everything (same as AUTO_APPROVE)
+#   *               → matches everything except matimo_approve_tool
 ```
 
 ### Session Whitelisting
@@ -1012,19 +1006,19 @@ In interactive mode, approved tools can be added to a session whitelist so subse
 ```typescript
 const whitelist = new Set<string>();
 
-handler.setApprovalCallback(async (request) => {
-  // Skip prompt if already approved this session
-  if (whitelist.has(request.toolName)) {
-    return true;
-  }
-
-  const approved = await promptUser(request);
-
-  if (approved) {
-    whitelist.add(request.toolName);
-  }
-
-  return approved;
+const matimo = await MatimoInstance.init({
+  autoDiscover: true,
+  onApproval: async (request) => {
+    // Skip prompt if already approved this session
+    if (whitelist.has(request.toolName)) {
+      return true;
+    }
+    const approved = await promptUser(request);
+    if (approved) {
+      whitelist.add(request.toolName);
+    }
+    return approved;
+  },
 });
 ```
 
@@ -1147,7 +1141,7 @@ curl -X POST http://localhost:3000/mcp \
 ### Setup
 
 ```typescript
-import { MatimoInstance, convertToolsToLangChain, getGlobalApprovalHandler } from 'matimo';
+import { MatimoInstance, convertToolsToLangChain, setGlobalMatimoInstance } from 'matimo';
 import { ChatOpenAI } from '@langchain/openai';
 import type { ToolDefinition, PolicyConfig } from 'matimo';
 
@@ -1155,7 +1149,13 @@ const matimo = await MatimoInstance.init({
   toolPaths: ['./tools', './agent-tools'],
   untrustedPaths: ['./agent-tools'],
   policyConfig: { /* ... */ },
+  // Human-in-the-loop approval for every call that needs it
+  onApproval: async (request) => {
+    console.log(`Agent wants to call: ${request.toolName}`);
+    return true; // or prompt user
+  },
 });
+setGlobalMatimoInstance(matimo); // meta-tools act on this instance
 
 // Convert Matimo tools to LangChain format
 const tools = matimo.listTools();
@@ -1164,12 +1164,6 @@ const langchainTools = await convertToolsToLangChain(tools as ToolDefinition[], 
 // Create LLM with tools bound
 const llm = new ChatOpenAI({ model: 'gpt-4o-mini', temperature: 0 });
 let llmWithTools = llm.bindTools(langchainTools);
-
-// Set up human-in-the-loop approval
-getGlobalApprovalHandler().setApprovalCallback(async (request) => {
-  console.log(`Agent wants to call: ${request.toolName}`);
-  return true; // or prompt user
-});
 ```
 
 ### Full Lifecycle from LangChain Agent
@@ -1184,7 +1178,7 @@ const createResult = await matimo.execute('matimo_create_tool', {
   yaml_content: '...',
 });
 
-// 2. Agent calls matimo_approve_tool
+// 2. A reviewer approves it (the agent cannot approve its own tool)
 await matimo.execute(
   'matimo_approve_tool',
   { name: 'city_lookup', tool_dir: './agent-tools' },
@@ -1225,13 +1219,16 @@ const result = await matimo.execute('city_lookup', { id: '1' });
 | `matimo.hasPolicy()` | `boolean` | Always `true` — `init()` always constructs a `DefaultPolicyEngine()` when no `policy`/`policyFile`/`policyConfig` is given, so every instance is policy-gated by default |
 | `matimo.reloadPolicy(configOrFile?)` | `Promise<ReloadResult>` | Hot-reload policy engine + re-validate tools |
 | `matimo.setHITLCallback(callback)` | `void` | Set or clear the HITL quarantine callback |
+| `matimo.setApprovalCallback(callback)` | `void` | Set or clear the instance's approval callback (`null` falls back to the process-wide handler) |
+| `matimo.getGovernanceMode()` | `'secure' \| 'legacy'` | The governance mode in effect |
+| `matimo.getApprovalManifest()` | `ApprovalManifest \| null` | The manifest `matimo_approve_tool` records approvals in |
 
 ### ReloadResult
 
 ```typescript
 interface ReloadResult {
-  loaded: number;       // Total tools loaded
-  removed: number;      // Tools no longer on disk
+  loaded: number;       // Tools registered by this reload
+  removed: number;      // Tools no longer loaded
   revalidated: number;  // Untrusted tools re-checked
   rejected: string[];   // Tool names that failed policy
 }
@@ -1307,12 +1304,14 @@ const matimo = await MatimoInstance.init({
 ```typescript
 const whitelist = new Set<string>();
 
-getGlobalApprovalHandler().setApprovalCallback(async (req) => {
-  if (whitelist.has(req.toolName)) return true;
-
-  const approved = await askUser(`Approve ${req.toolName}?`);
-  if (approved) whitelist.add(req.toolName);
-  return approved;
+const matimo = await MatimoInstance.init({
+  toolPaths: ['./tools'],
+  onApproval: async (req) => {
+    if (whitelist.has(req.toolName)) return true;
+    const approved = await askUser(`Approve ${req.toolName}?`);
+    if (approved) whitelist.add(req.toolName);
+    return approved;
+  },
 });
 ```
 
@@ -1340,18 +1339,18 @@ The Python SDK exposes the same policy engine, risk classifier, and lifecycle co
 ### Quick Start (Python)
 
 ```python
-from matimo import Matimo, InitOptions
+from matimo import Matimo, PolicyConfig
 
 # Load policy from file
-matimo = await Matimo.init('./tools', InitOptions(
+matimo = await Matimo.init(
+    ['./tools', './agent-tools'],
     policy_file='./policy.yaml',
     untrusted_paths=['./agent-tools'],
-))
+)
 
 # Inline policy config
-from matimo.policy.types import PolicyConfig
-
-matimo = await Matimo.init('./tools', InitOptions(
+matimo = await Matimo.init(
+    './tools',
     policy_config=PolicyConfig(
         allowed_domains=['api.github.com', 'api.slack.com'],
         allowed_http_methods=['GET', 'POST'],
@@ -1359,22 +1358,36 @@ matimo = await Matimo.init('./tools', InitOptions(
         allow_function_tools=False,
         protected_namespaces=['matimo_'],
     ),
-))
+)
 ```
 
-### HITL (Human-in-the-Loop) Callback
+`Matimo.init()` takes keyword arguments after the tool paths.
+
+### Approval and HITL Callbacks
 
 ```python
-async def my_approval_callback(request):
-    print(f"Approve {request.tool_name}? (y/n)")
-    answer = input()
-    return {'approved': answer == 'y', 'reason': 'manual review'}
+from matimo import ApprovalRequest, HITLRequest, Matimo, PolicyConfig
 
-matimo = await Matimo.init('./tools', InitOptions(
-    policy_file='./policy.yaml',
-    on_hitl=my_approval_callback,
-))
+
+# Per-call approval (requires_approval, DELETE/command tools, destructive keywords)
+async def on_approval(request: ApprovalRequest) -> bool:
+    return input(f"Approve {request.tool_name} {request.params}? (y/n) ") == 'y'
+
+
+# Risk-based quarantine (enable_hitl): every call at or above hitl_min_risk_level
+async def on_hitl(request: HITLRequest) -> bool:
+    return input(f"Run {request.tool_name} ({request.risk_level})? (y/n) ") == 'y'
+
+
+matimo = await Matimo.init(
+    './tools',
+    policy_config=PolicyConfig(enable_hitl=True, hitl_min_risk_level='high'),
+    on_approval=on_approval,
+    on_hitl=on_hitl,
+)
 ```
+
+Both callbacks return `True` to allow the call and `False` to refuse it.
 
 ### Policy Events (Python)
 
@@ -1391,33 +1404,38 @@ for `tool:executed` / `tool:execution_failed`.
 ### Risk Classification (Python)
 
 ```python
-from matimo.policy.risk_classifier import classify_risk
+from matimo import classify_execution_risk, classify_risk
 
 tool = matimo.get_tool('my_api_tool')
-risk = classify_risk(tool)
-print(risk)  # 'low' | 'medium' | 'high' | 'critical'
+print(classify_risk(tool).value)            # risk as an untrusted proposal
+print(classify_execution_risk(tool).value)  # risk of running it: 'low' | 'medium' | 'high' | 'critical'
 ```
 
 ### Custom PolicyEngine (Python)
 
 ```python
-from matimo.policy.default_policy import PolicyEngine
-from matimo.policy.types import PolicyDecision
+from matimo import Matimo, PolicyAllowed, PolicyDecision, PolicyDenied
 
-class MyPolicy(PolicyEngine):
-    def can_create(self, context, tool) -> PolicyDecision:
-        return PolicyDecision(allowed=True)
+
+class MyPolicy:
+    """Any object with these three methods satisfies the PolicyEngine protocol."""
+
+    def can_create(self, context, tool_def) -> PolicyDecision:
+        return PolicyAllowed()
 
     def can_execute(self, context, tool) -> PolicyDecision:
         if tool.name.startswith('delete_'):
-            return PolicyDecision(allowed=False, reason='Delete ops require manual approval')
-        return PolicyDecision(allowed=True)
+            return PolicyDenied(reason='Delete operations are not allowed for agents')
+        return PolicyAllowed()
 
-    def filter_for_agent(self, tools, context):
-        return [t for t in tools if t.status == 'approved']
+    def filter_for_agent(self, context, tools):
+        return [t for t in tools if not t.name.startswith('delete_')]
 
-matimo = await Matimo.init('./tools', InitOptions(policy=MyPolicy()))
+
+matimo = await Matimo.init('./tools', policy=MyPolicy())
 ```
+
+Return `PolicyPendingApproval(reason=..., risk_level=...)` from `can_execute` to quarantine a call for `on_hitl`.
 
 ### Tool Lifecycle (Python)
 
@@ -1425,7 +1443,7 @@ matimo = await Matimo.init('./tools', InitOptions(policy=MyPolicy()))
 # 1. Validate
 result = await matimo.execute('matimo_validate_tool', {'yaml_content': yaml_str})
 
-# 2. Create (triggers HITL if on_hitl is set)
+# 2. Create (asks on_approval: matimo_create_tool requires approval)
 result = await matimo.execute('matimo_create_tool', {
     'name': 'my_tool',
     'yaml_content': yaml_str,
