@@ -20,7 +20,9 @@ Give your agents **139+ production-ready tools** to start (plus a governed 449-t
 - 🤝 **Human-in-the-Loop (HITL)** — Critical tools require human approval before execution with configurable timeouts and audit trails
 - 🌐 **Universal Integration** — One YAML definition works across TypeScript, Python, LangChain, CrewAI, Claude MCP, OpenAI
 
-Complete documentation for Matimo **v0.1.8** (TypeScript & Python).
+Complete documentation for Matimo **0.2.0** (TypeScript `@matimo/core` 0.2.0 and Python `matimo` 0.2.0).
+
+> **New in 0.2.0 — secure by default.** HTTP DELETE and command tools ask a human before every call, each instance has its own approval callback (`onApproval`), MCP servers ask the client's user through elicitation, every call emits events you can keep in a tamper-evident audit log, and both SDKs enforce the same rules. Upgrading? Read the [migration guide](./api-reference/POLICY_AND_LIFECYCLE.md#upgrading-to-020).
 
 ---
 
@@ -29,13 +31,12 @@ Complete documentation for Matimo **v0.1.8** (TypeScript & Python).
 ### 🟦 **TypeScript / Node.js**
 - Node.js 18+, npm/pnpm
 - ESM, full type support
-- 2,001 tests, 95%+ coverage
+- Enforced coverage floors (95% lines)
 - **[Start with TypeScript](#typescript-getting-started)**
 
 ### 🐍 **Python** 🎉 *Stable Release*
 - Python 3.11+, pip/uv
-- Native asyncio, full type hints
-- 995 tests, 96.89% coverage
+- Native asyncio, full type hints (mypy strict)
 - LangChain, CrewAI, MCP support
 - **[Start with Python](#python-getting-started)**
 
@@ -55,7 +56,7 @@ Complete documentation for Matimo **v0.1.8** (TypeScript & Python).
 2. **[LangChain Integration](./framework-integrations/LANGCHAIN.md#python-langchain-integration)** — Build ReAct agents
 3. **[CrewAI Integration](./framework-integrations/CREWAI.md)** — Multi-agent orchestration
 4. **[Agno Integration](./framework-integrations/AGNO.md)** — Governed Agno agents, teams and workflows
-4. **[API Reference](./api-reference/SDK.md#python)** — Python SDK documentation
+5. **[API Reference](./api-reference/SDK.md#python)** — Python SDK documentation
 
 ### 📦 **Installation & Requirements**
 
