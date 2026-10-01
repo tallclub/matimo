@@ -224,7 +224,7 @@ export interface ExecuteOptions {
   timeout?: number;
   /**
    * Per-call credential overrides. Keys must match the env-var names that the
-   * tool's YAML references (e.g. `SLACK_BOT_TOKEN`, `GITHUB_ACCESS_TOKEN`).
+   * tool's YAML references (e.g. `SLACK_BOT_TOKEN`, `GITHUB_TOKEN`).
    *
    * When provided:
    * - **HttpExecutor**: used for Authorization headers / query params / Basic Auth

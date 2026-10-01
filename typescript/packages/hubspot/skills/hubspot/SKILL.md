@@ -35,7 +35,7 @@ HubSpot tools follow a CRUD pattern. Each entity type has 5 operations:
 
 ## Authentication
 
-Requires `HUBSPOT_ACCESS_TOKEN` (private app token) or OAuth2. Token needs scopes: `crm.objects.contacts.read`, `crm.objects.contacts.write`, etc.
+Requires `MATIMO_HUBSPOT_API_KEY` (private app token) or OAuth2. Token needs scopes: `crm.objects.contacts.read`, `crm.objects.contacts.write`, etc.
 
 ---
 
@@ -144,7 +144,7 @@ Tasks, Notes, Meetings, and Calls are engagement objects that track interactions
 
 | Error | Cause | Fix |
 |-------|-------|-----|
-| 401 `Unauthorized` | Invalid token | Check `HUBSPOT_ACCESS_TOKEN` |
+| 401 `Unauthorized` | Invalid token | Check `MATIMO_HUBSPOT_API_KEY` |
 | 404 `Not Found` | Invalid object ID | Verify ID exists |
 | 409 `Conflict` | Duplicate (e.g., email exists) | Search first, then create |
 | 429 `Rate limit` | Too many requests | 100 req/10 sec — implement backoff |

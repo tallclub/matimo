@@ -212,7 +212,7 @@ await matimo.execute(
   { repo: 'myorg/myrepo', title: 'Bug report' },
   {
     timeout: 10_000,
-    credentials: { GITHUB_ACCESS_TOKEN: 'ghp-tenant-c-token' },
+    credentials: { GITHUB_TOKEN: 'ghp-tenant-c-token' },
   }
 );
 ```
@@ -220,7 +220,7 @@ await matimo.execute(
 **Credential key naming convention:**
 
 Credential keys must match the env-var names the tool's YAML definition
-references (e.g. `SLACK_BOT_TOKEN`, `GITHUB_ACCESS_TOKEN`). The credential
+references (e.g. `SLACK_BOT_TOKEN`, `GITHUB_TOKEN`). The credential
 value is resolved in this order for each placeholder found in the tool YAML:
 
 1. `credentials[paramName]` — per-call override (highest priority)
@@ -292,7 +292,7 @@ const credentialManifest = Object.fromEntries(
 // credentialManifest looks like:
 // {
 //   'slack-send-message':   ['SLACK_BOT_TOKEN'],
-//   'github-create-issue':  ['GITHUB_ACCESS_TOKEN'],
+//   'github-create-issue':  ['GITHUB_TOKEN'],
 //   'twilio-send-sms':      ['TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN'],
 // }
 
