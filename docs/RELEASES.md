@@ -2,7 +2,7 @@
 
 > **Release**: Makes the core claim true: every tool call is governed, the same way, in both SDKs. DELETE and command tools ask a human before they run, approval callbacks belong to each instance, MCP asks the person behind the client instead of the model, `matimo_approve_tool` can no longer be used by an agent to approve its own tool, and every call ends in an audit event that can be written to a tamper-evident log. Both SDKs move to `0.2.0` together.
 
-**Released**: September 30, 2026
+**Released**: October 4, 2026
 **Scope**: `typescript/` - all 13 packages `0.1.8` → `0.2.0`. `python/` - all 13 packages `0.1.3` → `0.2.0`; provider packages require `matimo-core>=0.2.0,<0.3.0`.
 **Severity**: 🔴 **Minor bump with behaviour changes** - read [Upgrading to 0.2.0](api-reference/POLICY_AND_LIFECYCLE.md#upgrading-to-020) first. `governanceMode: 'legacy'` (`governance_mode="legacy"`) restores the old approval default while you migrate.
 

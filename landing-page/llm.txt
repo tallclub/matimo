@@ -192,7 +192,7 @@ See [Contributing Guide](https://github.com/tallclub/matimo/blob/main/CONTRIBUTI
 
 ## Version
 
-v0.2.0 — **Governance by Default** (TypeScript and Python, released Sep 30, 2026)
+v0.2.0 — **Governance by Default** (TypeScript and Python, released Oct 4, 2026)
 
 Read [Upgrading to 0.2.0](https://github.com/tallclub/matimo/blob/main/docs/api-reference/POLICY_AND_LIFECYCLE.md#upgrading-to-020) before upgrading. `governanceMode: 'legacy'` restores the old approval default.
 

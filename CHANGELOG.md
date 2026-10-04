@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
-## [typescript/v0.2.0] - 2026-09-30
+## [typescript/v0.2.0] - 2026-10-04
 
 Governance is now true by default: every tool call is governed the same way in both SDKs. Read
 [Upgrading to 0.2.0](docs/api-reference/POLICY_AND_LIFECYCLE.md#upgrading-to-020) before upgrading.
@@ -61,7 +61,7 @@ Governance is now true by default: every tool call is governed the same way in b
 - All `typescript/` packages: `0.1.8` → `0.2.0`
 
 ---
-## [python/v0.2.0] - 2026-09-30
+## [python/v0.2.0] - 2026-10-04
 
 Parity release with typescript/v0.2.0. Every governance change above applies to the Python SDK too, with snake_case names (`on_approval`, `governance_mode`, `audit_sink`, `hitl_min_risk_level`, `verify_audit_log`).
 
