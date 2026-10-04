@@ -205,7 +205,7 @@ async def main() -> None:
         sys.exit(1)
 
     # ── Print configuration ────────────────────────────────────────────────────
-    print(f"🚀 Configuration:")
+    print("🚀 Configuration:")
     print(f"   Transport: {config['transport'].upper()}")
     print(f"   Model: {config['model']}")
     if config["transport"] in ("http", "multi"):
@@ -280,7 +280,7 @@ async def main() -> None:
     agent = create_react_agent(llm, bound_tools)
 
     # ── Task prompt ───────────────────────────────────────────────────────
-    task = f"""
+    task = """
 You have access to various tools for interacting with multiple services.
 Please perform these tasks:
 

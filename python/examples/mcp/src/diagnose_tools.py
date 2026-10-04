@@ -36,11 +36,11 @@ async def main() -> None:
     print("DIAGNOSTIC: Tool Discovery")
     print("="*80)
     
-    print(f"\n📁 site-packages directories:")
+    print("\n📁 site-packages directories:")
     for sp in site_packages_list:
         print(f"   {sp}")
         
-    print(f"\n📁 ts_tools path:")
+    print("\n📁 ts_tools path:")
     print(f"   {ts_tools or '<not configured>'}")
     print(f"   exists: {os.path.exists(ts_tools) if ts_tools else False}")
     
@@ -52,7 +52,7 @@ async def main() -> None:
         if len(tools_in_dir) > 10:
             print(f"      ... and {len(tools_in_dir) - 10} more")
     
-    print(f"\n🔍 Checking for matimo_* packages in site-packages:")
+    print("\n🔍 Checking for matimo_* packages in site-packages:")
     for sp in site_packages_list:
         if os.path.exists(sp):
             matimopkgs = [d for d in os.listdir(sp) if d.startswith("matimo_")]
@@ -63,13 +63,13 @@ async def main() -> None:
                 print(f"   {exists} {pkg}/tools")
     
     # ── Now try initializing exactly like server_stdio.py ────────────────────
-    print(f"\n⚡ Initialising Matimo...")
+    print("\n⚡ Initialising Matimo...")
     tool_paths = list(site_packages_list)
     if ts_tools and os.path.exists(ts_tools):
         tool_paths.append(ts_tools)
 
     print(f"   tool_paths = {tool_paths}")
-    print(f"   auto_discover = True")
+    print("   auto_discover = True")
 
     matimo = await Matimo.init(
         tool_paths=tool_paths,

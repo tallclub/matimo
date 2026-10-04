@@ -98,7 +98,7 @@ async def main() -> None:
     server_url = os.getenv("MCP_SERVER_URL", "http://localhost:3101/mcp")
     bearer_token = os.getenv("MCP_BEARER_TOKEN") or os.getenv("MATIMO_MCP_TOKEN")
 
-    print(f"🤖 Using OpenAI (GPT-4o-mini) as the AI agent")
+    print("🤖 Using OpenAI (GPT-4o-mini) as the AI agent")
     print(f"🔌 Transport: HTTP → {server_url}")
     if bearer_token:
         print("🔑 Using bearer token authentication")
