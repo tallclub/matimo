@@ -83,7 +83,7 @@ core = "matimo:get_core_tools_path"
 packages = ["src/matimo"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src/", "README.md", "../../../LICENSE"]
+include = ["src/", "README.md", "LICENSE"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
