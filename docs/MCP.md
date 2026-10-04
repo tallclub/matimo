@@ -934,7 +934,7 @@ Options for clients without elicitation:
 | `MATIMO_APPROVED_PATTERNS="get_*,list_*"` on the server | Matching tools never ask |
 | `trustClientApproval: true` (`trust_client_approval=True`) | Tools that need approval advertise an optional `_matimo_approved` argument, and a call with `_matimo_approved: true` counts as approved. Only for clients that confirm every call with their user themselves — the argument comes from the client and model. |
 
-`context` (`PolicyContext`) sets the identity and roles every call from this server is checked with — for example `{ agentId: 'claude-desktop', roles: ['admin'] }` on a single-user local server, so that user can approve agent-written tools with `matimo_approve_tool`. Without it, calls carry no roles.
+`context` (`PolicyContext`) sets the identity and roles every call from this server is checked with — for example `{ agentId: 'claude-desktop', roles: ['admin'] }` on a single-user local server, so that user can approve agent-written tools with `matimo_approve_tool`. Without it, calls carry no roles. The model cannot set this context; it comes only from the server's options. See [Where roles come from](api-reference/POLICY_AND_LIFECYCLE.md#where-roles-come-from).
 
 `trustClientApproval` and `context` are programmatic options (below); the `matimo mcp` CLI does not set them.
 

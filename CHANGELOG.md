@@ -21,7 +21,7 @@ Governance is now true by default: every tool call is governed the same way in b
 - HITL approvals of tools loaded at `init()` are read back from the approval manifest instead of being asked again on every call
 - Per-call approval callbacks: `InitOptions.onApproval`, `setApprovalCallback()`, and `execute(..., { onApproval })`. The global handler remains a fallback, and with no callback the call fails closed
 - MCP asks the human through elicitation. `_matimo_approved` is no longer offered to the model unless the server sets `trustClientApproval`. The HTTP bearer token is compared in constant time
-- `matimo_approve_tool` refuses to approve a tool created by the calling agent, requires `admin` when a policy context is supplied, and can never be pre-approved by `MATIMO_AUTO_APPROVE` or patterns
+- `matimo_approve_tool` refuses to approve a tool created by the calling agent, requires `admin` when the host supplies a policy context (roles come from your application, never from the agent; with no context the human approval prompt is the only gate), and can never be pre-approved by `MATIMO_AUTO_APPROVE` or patterns
 - The approval hint no longer recommends `MATIMO_AUTO_APPROVE`, and a warning is logged while it is on
 
 ### ✨ Features
@@ -43,6 +43,11 @@ Governance is now true by default: every tool call is governed the same way in b
 - `matimo_validate_tool` is valid exactly when `matimo_create_tool` would accept the definition. It used to flag the `requires_approval` and `status` fields that creation sets itself
 - `matimo_list_skills` adds the skills in `skills_dir` when a global instance is registered; it used to ignore the parameter
 - Examples pass approval callbacks where 0.2.0 needs them, and the meta-flow agents name meta-tools that exist (`matimo_doctor` and `matimo_review` never did)
+- Every npm package, wheel and sdist includes the MIT `LICENSE`. They shipped without one before; `core` listed `LICENSE` in `files` but the file did not exist in the package directory
+- `matimo`'s `matimo` command runs the CLI from `@matimo/cli` instead of a second bundled copy
+- `matimo` re-exports `@matimo/core` instead of bundling a second copy of it. With two copies, `import … from 'matimo'` kept the global instance in a different module than the provider tools and meta-tools used, so `matimo_search_skills`, `matimo_get_skill_sections` and `matimo_get_skill_content` reported "No active Matimo instance found"
+- The TypeScript MCP server starts under plain Node. Its imports of the MCP SDK's `server/mcp`, `server/stdio`, `server/streamableHttp` and `types` lacked the `.js` the SDK's export map requires, so a Node process failed with `ERR_MODULE_NOT_FOUND`; Jest and tsx resolved them anyway
+- The `@matimo/core` and provider npm packages include their `skills/` directory. Earlier tarballs left it out, so `autoDiscover` found no skills in an installed project
 
 ### 📚 Documentation
 - The core skills shipped to agents (`meta-tools-lifecycle`, `policy-validation`, `tool-creation`, `tool-discovery`) describe the real lifecycle and the meta-tools as defined
@@ -75,6 +80,7 @@ Parity release with typescript/v0.2.0. Every governance change above applies to 
 - Agno framework integration
 - `run(params, context)` function tools receive a `FunctionToolContext(credentials, policy_context)`
 - `Matimo.get_approval_manifest()`, mirroring `getApprovalManifest()`
+- The `matimo-core` and provider wheels ship their `SKILL.md` files. `Matimo.init()` always loads the six core skills and, with `auto_discover=True`, each installed provider's skills, as TypeScript does
 - `tool:quarantined` and `tool:rejected` events, and an outcome event (`tool:quarantine_approved` / `_rejected`) for every quarantined call, as in TypeScript
 
 ### 🐛 Bug Fixes

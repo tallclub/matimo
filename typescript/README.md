@@ -21,7 +21,7 @@
 
 ## The TypeScript AI SDK with Meta-Tools, Policy Engine, Governance and Human-in-the-Loop Control
 
-Give your agents **139+ production-ready tools** to start. Then activate **15 meta-tools** that let them create, validate, and approve new capabilities at runtime - governed by your **policy engine** with **human approval workflows** for critical actions.
+Give your agents **129 production-ready tools** to start. Then activate **15 meta-tools** that let them create, validate, and approve new capabilities at runtime - governed by your **policy engine** with **human approval workflows** for critical actions.
 
 **Why this matters:**
 

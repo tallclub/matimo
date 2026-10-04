@@ -6,7 +6,7 @@ Framework-agnostic, policy-governed tool-execution SDK for AI agents. Define a t
 
 ## What this is
 
-Governance-first: every tool call (built-in, third-party, or agent-created) passes through a **policy engine** (risk classification low/medium/high/critical, deterministic security rules, HITL quarantine) before executing. On top of that: 139+ tools across 10 provider packages (plus a governed Composio catalog for third-party reach), 15 meta-tools for runtime self-extension (`matimo_create_tool`, `matimo_create_skill`, `matimo_reload_tools`, and 12 more), and one YAML tool definition that runs across TS, Python, LangChain, CrewAI, and MCP.
+Governance-first: every tool call (built-in, third-party, or agent-created) passes through a **policy engine** (risk classification low/medium/high/critical, deterministic security rules, HITL quarantine) before executing. On top of that: 129 tools across 10 provider packages (plus a governed Composio catalog for third-party reach), 15 meta-tools for runtime self-extension (`matimo_create_tool`, `matimo_create_skill`, `matimo_reload_tools`, and 12 more), and one YAML tool definition that runs across TS, Python, LangChain, CrewAI, and MCP.
 
 ---
 

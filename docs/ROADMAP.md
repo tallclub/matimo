@@ -6,7 +6,7 @@
 
 ### 🏆 Production Launch — General Availability
 
-Matimo 0.2.0 (TypeScript and Python) is **production-ready** with full TypeScript and Python SDK support, 139+ tools across 10 native provider packages plus a governed 449-tool `@matimo/composio` catalog, enterprise-grade security, and comprehensive framework integrations.
+Matimo 0.2.0 (TypeScript and Python) is **production-ready** with full TypeScript and Python SDK support, 129 tools across 10 native provider packages plus a governed 449-tool `@matimo/composio` catalog, enterprise-grade security, and comprehensive framework integrations.
 
 ✅ **v0.1.0 Stable — Completed Features**:
 
@@ -22,7 +22,7 @@ Matimo 0.2.0 (TypeScript and Python) is **production-ready** with full TypeScrip
 - Policy engine with risk classification + HITL workflows
 - Secret management (Env, Dotenv, Vault, AWS Secrets Manager)
 
-**Provider Ecosystem** (139+ native tools across 10 providers, plus a governed 449-tool Composio catalog)
+**Provider Ecosystem** (129 native tools across 10 providers, plus a governed 449-tool Composio catalog)
 - **Slack**, **GitHub**, **Gmail**, **Notion**, **HubSpot**, **Mailchimp**, **Postgres**, **Twilio**
 - **Bruno CLI**, **Microsoft Graph** — Mail, Teams, calendar, SharePoint, OneDrive search
 - **Composio** (449) — Jira, Google Workspace, Microsoft 365, Asana, Linear, and more, routed through Composio and governed by Matimo's policy engine
@@ -116,7 +116,7 @@ See [Searching and Loading Skills Selectively](./skills/SKILLS.md#searching-and-
 - [ ] `error_handling` retries applied by the HTTP executors (validated today, not yet used)
 - [ ] Parameter validation before execution, with every problem reported at once
 - [ ] Composio tools classified by the action they perform
-- [ ] Python: `get_tools_by_tag`, `get_required_credentials`, `reload_policy`, `set_hitl_callback`, `get_skill_resource`; built-in skills shipped in the Python packages
+- [ ] Python: `get_tools_by_tag`, `get_required_credentials`, `reload_policy`, `set_hitl_callback`, `get_skill_resource`
 - [ ] One meaning for `allow_command_tools` / `allow_function_tools` on untrusted tools in both SDKs
 - [ ] A policy context passed through the LangChain and CrewAI adapters
 

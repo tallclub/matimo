@@ -49,7 +49,7 @@ The only difference should be the note in the repository copy saying it is a cop
 ## Known Limits
 
 - `matimo_validate_tool` applies the rules for *agent-created* tools, so it reports `blocked-http-method` for legitimate DELETE provider tools. `pnpm validate-tools` is the authority for provider packages.
-- Python packages ship no SKILL.md yet; the package skill lives in the TypeScript package only.
+- Python packages ship the same SKILL.md as the TypeScript package, copied into `src/matimo_<name>/skills/`; edit both together (a test fails when they drift).
 - The example server sets no bearer token and binds to all interfaces; keep it on a trusted machine.
 - The agent's `tools:` list names the server `matimo-python-mcp-server`; a different name in `.vscode/mcp.json` hides every Matimo tool from it.
 

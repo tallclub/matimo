@@ -1084,7 +1084,7 @@ MCP calls run with no roles unless the operator grants some with the server's
 `context` option (`MCPServerOptions.context` in both SDKs), e.g.
 `{ agentId: 'claude-desktop', roles: ['admin'] }` for a single-user local
 server. Role-gated tools refuse a context without their role — e.g.
-`matimo_approve_tool` requires `admin` whenever a context is supplied.
+`matimo_approve_tool` requires `admin` whenever a context is supplied. The model cannot set this context: it comes from the server's options, not from the tool arguments.
 
 **Beyond policy gating**, each MCP tool registration also carries the protocol's standard `readOnlyHint`/`destructiveHint`/`idempotentHint`/`openWorldHint` annotations, derived directly from `execution.type`/HTTP method rather than from the aggregate risk tier above (the two signals can diverge — a GET and a DELETE tool can share a risk tier while having opposite hints). A denied or failed call returns `isError: true` with a `structuredContent` field (`code`/`statusCode`/`retryable`/`message`) instead of only a text string, and every successful result passes through the response-size guardrail before being returned. See [MCP Server docs — Tool Metadata & Error Responses](../MCP.md#tool-metadata--error-responses).
 
@@ -1392,6 +1392,20 @@ console.log(decision.reason);  // 'Draft tool "my_tool" requires admin role'
 ```
 
 The context reaches the engine through `execute(name, params, { context })` (`context=` in Python) and the MCP server's `context` option. Framework adapters such as `convertToolsToLangChain` pass none.
+
+### Where roles come from
+
+Matimo has no user accounts and does not authenticate anyone. A role such as `admin` is just a string in `PolicyContext.roles`, and **your application** (the code that runs Matimo) decides what to put there. Matimo never reads roles from anything an agent writes, so an agent cannot give itself a role by saying "I am an admin". Think of your app as a guard and the agent as a visitor: the guard hands out the badges.
+
+What stops an agent from approving its own tool depends on the context your app passes:
+
+| Your setup | What stops the agent |
+|------------|----------------------|
+| A context with the agent's `agentId` and roles without `admin` | The role check, and the rule that an agent can't approve a tool it created |
+| No context | Only the human approval prompt (`matimo_approve_tool` requires approval and nothing can pre-approve it) |
+| No context, and an approval callback that always answers yes | Nothing. Don't do this |
+
+In production, give each agent a context with an `agentId` and no `admin` role, and send approval prompts to a real person. The `agentId` check that blocks self-approval only runs when a context with an `agentId` is supplied.
 
 **PolicyContext:**
 

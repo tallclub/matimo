@@ -29,7 +29,7 @@ Approval now has one order in both SDKs: pre-approved patterns (`MATIMO_APPROVED
 
 `matimo_validate_tool` → `matimo_create_tool` → `matimo_reload_tools` → `matimo_approve_tool` → `matimo_reload_tools` now works as documented, and the meta-tools report what is actually true:
 
-- `matimo_approve_tool` refuses a tool created by the calling agent, requires the `admin` role when a policy context is supplied, and is never pre-approved by patterns or `MATIMO_AUTO_APPROVE`.
+- `matimo_approve_tool` refuses a tool created by the calling agent, requires the `admin` role when your application supplies a policy context (roles are set by your app, never read from what the agent writes; with no context, the human approval prompt is the only gate), and is never pre-approved by patterns or `MATIMO_AUTO_APPROVE`. See [Where roles come from](api-reference/POLICY_AND_LIFECYCLE.md#where-roles-come-from).
 - An approval survives the next reload. The approve and status tools used to sign with their own manifest, so without `MATIMO_APPROVAL_SECRET` the reload rejected the tool just approved.
 - `matimo_create_tool` reports every new tool as a `pending` draft and names the approval step, instead of calling low-risk drafts "auto-approved, ready for use".
 - `matimo_validate_tool` says `valid` exactly when `matimo_create_tool` would accept the definition.
@@ -68,7 +68,7 @@ API references, guides, package READMEs, the core skills shipped to agents, and 
 
 ### 🔜 **Known differences between the SDKs**
 
-Kept for a later release (see the [roadmap](ROADMAP.md)): TypeScript blocks untrusted command and function tools even with `allowCommandTools`; Python's wheels ship no built-in skills; Python lacks `get_tools_by_tag`, `get_required_credentials`, `reload_policy`, `set_hitl_callback` and `get_skill_resource`; the default MCP port (3000 vs 3100) and `autoDiscover` default differ; `error_handling.retry` is not applied by either SDK.
+Kept for a later release (see the [roadmap](ROADMAP.md)): TypeScript blocks untrusted command and function tools even with `allowCommandTools`; Python lacks `get_tools_by_tag`, `get_required_credentials`, `reload_policy`, `set_hitl_callback` and `get_skill_resource`; the default MCP port (3000 vs 3100) and `autoDiscover` default differ; `error_handling.retry` is not applied by either SDK.
 
 ---
 

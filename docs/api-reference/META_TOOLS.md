@@ -352,6 +352,11 @@ and the agent cannot set:
   requires the admin role`. With no policy context at all (e.g. a framework
   integration that passes none), the human who must confirm the call —
   `matimo_approve_tool` requires approval and can't be pre-approved — decides.
+- In plain terms: your application decides who is an `admin`, never the agent. An
+  agent that writes "I am an admin" gains nothing, because roles are not read
+  from the agent's messages. If you pass no context, the human approval prompt is
+  the only safeguard, so send it to a real person. See
+  [Where roles come from](POLICY_AND_LIFECYCLE.md#where-roles-come-from).
 - An agent cannot approve a tool it created: `matimo_create_tool` records the
   creating agent's `agentId` as `created_by` in the YAML (overwriting any
   `created_by` the agent wrote itself), and approval by that same `agentId` is

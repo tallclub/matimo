@@ -5,7 +5,7 @@
 > **Snapshot from alpha.14 (April 2026).** The "Matimo Today" columns below describe that release. As of 0.2.0:
 > - **Shipped since:** the agent meta-tools `matimo_search_skills`, `matimo_get_skill_sections` and `matimo_get_skill_content` (7 skill meta-tools, 15 meta-tools in all); per-section token budgets and prompt-context helpers; a `SKILL.md` in every provider package (10, plus 6 core skills).
 > - **Still not built:** a skill catalog, a `matimo skill install` command (`matimo install` installs provider packages only), and runtime `dependsOn` resolution (the field is typed but unused).
-> - **Python:** the wheels ship no built-in skills yet, so `auto_discover` finds none.
+> - **Python:** the wheels ship the same core and provider skills, and `auto_discover=True` loads them.
 
 ---
 

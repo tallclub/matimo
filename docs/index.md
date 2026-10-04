@@ -10,15 +10,17 @@
 
 **Matimo — Enable AI Agents To Build Themselves**
 
-> The First AI SDK with Meta-Tools, Policy Engine, and Human-in-the-Loop Control
+> Open-source tool governance for AI agents: every call risk-checked, every risky one approved by a human, every result on a log you can verify
 
-Give your agents **139+ production-ready tools** to start (plus a governed 449-tool Composio catalog). Then activate **15 meta-tools** that let them create, validate, and approve new capabilities at runtime — governed by your **policy engine** with **human approval workflows** for critical actions.
+Give your agents **129 production-ready tools** to start (plus a governed 449-tool Composio catalog). Then activate **15 meta-tools** that let them create, validate, and approve new capabilities at runtime — governed by your **policy engine** with **human approval workflows** for critical actions.
 
 **Self-extending agents with enterprise-grade control:**
 - 🔧 **Meta-Tools** — Agents write new tool definitions in YAML, validate schemas, approve for production, and hot-reload — all mid-conversation
 - 🛡️ **Policy Engine** — Classify every action by risk level, block dangerous operations, quarantine draft tools
 - 🤝 **Human-in-the-Loop (HITL)** — Critical tools require human approval before execution with configurable timeouts and audit trails
 - 🌐 **Universal Integration** — One YAML definition works across TypeScript, Python, LangChain, CrewAI, Claude MCP, OpenAI
+
+New here? Read [Why Matimo OSS](why-matimo) and [what changed in 0.2.0](blog/2026-10-01-matimo-0-2-0-tool-governance).
 
 Complete documentation for Matimo **0.2.0** (TypeScript `@matimo/core` 0.2.0 and Python `matimo` 0.2.0).
 
