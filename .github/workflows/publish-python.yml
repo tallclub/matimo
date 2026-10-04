@@ -64,29 +64,50 @@ jobs:
         with:
           version: "latest"
 
-      - name: Build matimo-core wheel + sdist
-        run: uv build --package matimo-core
-
-      - name: Build matimo umbrella wheel + sdist
-        run: uv build --package matimo
-
-      - name: Build all provider packages
+      # Dependency order matters: matimo requires matimo-core and matimo-cli at the same
+      # version, and providers require matimo-core. Publish the base packages first so a
+      # `pip install matimo` that runs mid-release never falls back to the previous version.
+      - name: Build base packages (matimo-core, matimo-cli)
         run: |
-          # Discover and build all provider packages from workspace
+          uv build --package matimo-core --out-dir dist-base
+          uv build --package matimo-cli --out-dir dist-base
+
+      - name: Build umbrella and provider packages
+        run: |
+          uv build --package matimo --out-dir dist-rest
           cd packages
           for provider_dir in */; do
             provider_name="${provider_dir%/}"
-            # Skip non-provider packages
-            if [[ "$provider_name" != "core" && "$provider_name" != "matimo" ]]; then
+            # Skip packages built above
+            if [[ "$provider_name" != "core" && "$provider_name" != "cli" && "$provider_name" != "matimo" ]]; then
               echo "Building matimo-$provider_name..."
-              uv build --package matimo-$provider_name
+              uv build --package matimo-$provider_name --out-dir ../dist-rest
             fi
           done
 
-      - name: Publish to PyPI
+      - name: Publish base packages to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          packages-dir: python/dist/
+          packages-dir: python/dist-base/
+          password: ${{ secrets.PYPI_API_TOKEN }}
+
+      - name: Wait for matimo-core and matimo-cli to be installable
+        run: |
+          VERSION="${GITHUB_REF_NAME#python/v}"
+          for pkg in matimo-core matimo-cli; do
+            for i in $(seq 1 30); do
+              if curl -fsS "https://pypi.org/pypi/$pkg/$VERSION/json" > /dev/null; then
+                echo "$pkg $VERSION is live"; break
+              fi
+              if [ "$i" = 30 ]; then echo "$pkg $VERSION not visible on PyPI after 5 minutes"; exit 1; fi
+              sleep 10
+            done
+          done
+
+      - name: Publish umbrella and provider packages to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: python/dist-rest/
           password: ${{ secrets.PYPI_API_TOKEN }}
 
   # -------------------------------------------------------------------------

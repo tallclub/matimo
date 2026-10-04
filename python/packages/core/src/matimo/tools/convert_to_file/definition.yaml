@@ -1,5 +1,6 @@
 name: convert_to_file
 version: '1.0.0'
+risk: medium
 description: >-
   Convert structured content between JSON, CSV, Markdown, and plain text into a
   target file format. Supports JSON<->CSV round-tripping, Markdown->PDF,

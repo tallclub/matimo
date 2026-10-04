@@ -1,5 +1,6 @@
 name: edit
 version: '1.0.0'
+risk: high
 description: Edit file contents with precise line-based insertion, replacement, and deletion. Supports undo/backup creation.
 requires_approval: true
 

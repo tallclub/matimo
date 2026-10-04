@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
@@ -103,7 +104,7 @@ class ToolLoader:
         """
         root = Path(dir_path)
         if not root.exists():
-            logger.warning("Tool directory does not exist: %s", root)
+            logger.warning("Configured tool directory does not exist; skipping it")
             return {}
 
         tools: dict[str, ToolDefinition] = {}
@@ -125,7 +126,7 @@ class ToolLoader:
         return tools
 
     def load_tools_from_multiple_paths(
-        self, paths: list[str | Path]
+        self, paths: Sequence[str | Path]
     ) -> dict[str, ToolDefinition]:
         """
         Load tools from multiple directories.

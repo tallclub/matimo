@@ -34,6 +34,7 @@ from matimo.approval.handler import (
     ApprovalCallback,
     ApprovalHandler,
     ApprovalRequest,
+    definition_requires_approval,
     get_global_approval_handler,
     set_global_approval_handler,
 )
@@ -122,7 +123,7 @@ from matimo.errors import (
 
 # Executors
 from matimo.executors.command_executor import CommandExecutor
-from matimo.executors.function_executor import FunctionExecutor
+from matimo.executors.function_executor import FunctionExecutor, FunctionToolContext
 from matimo.executors.http_executor import HttpExecutor
 
 # Main entry point + sync API
@@ -150,12 +151,26 @@ from matimo.mcp.tool_converter import convert_parameters_to_mcp_schema
 
 # Policy
 from matimo.policy.approval_manifest import ApprovalManifest, ApprovalRecord
+from matimo.policy.audit_sink import (
+    AUDIT_GENESIS_HASH,
+    AuditLogVerification,
+    AuditSink,
+    JsonlFileSink,
+    hash_audit_entry,
+    redact_secrets,
+    verify_audit_log,
+)
 from matimo.policy.content_validator import ContentViolation, validate_tool_content
 from matimo.policy.default_policy import DefaultPolicyEngine, PolicyEngine, get_tier_for_tool
 from matimo.policy.integrity_tracker import IntegrityAction, ToolIntegrityTracker
 from matimo.policy.policy_loader import load_policy_from_file
-from matimo.policy.risk_classifier import classify_risk
+from matimo.policy.risk_classifier import (
+    classify_execution_risk,
+    classify_risk,
+    meets_risk_threshold,
+)
 from matimo.policy.types import (
+    GovernanceMode,
     HITLCallback,
     HITLRequest,
     MatimoEvent,
@@ -170,7 +185,7 @@ from matimo.policy.types import (
 )
 from matimo.sync import MatimoSync
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 
 def get_core_tools_path() -> str:
@@ -231,6 +246,36 @@ def convert_tools_to_crewai(
     return _inner(tools, matimo_instance, credentials)
 
 
+def convert_tools_to_agno(
+    tools: list[Any],
+    matimo_instance: Matimo,
+    credentials: dict[str, str] | None = None,
+    **kwargs: Any,  # noqa: ANN401
+) -> list[Any]:
+    """Convert Matimo tools to Agno Function list. Requires agno.
+
+    Extra keyword arguments (context, confirm_risk_levels) are forwarded to
+    matimo.integrations.agno.convert_tools_to_agno.
+    """
+    from matimo.integrations.agno import convert_tools_to_agno as _inner
+    return _inner(tools, matimo_instance, credentials, **kwargs)
+
+
+def MatimoTools(  # noqa: N802
+    matimo_instance: Matimo,
+    tools: list[Any] | None = None,
+    **kwargs: Any,  # noqa: ANN401
+) -> Any:  # noqa: ANN401
+    """Build an Agno Toolkit exposing governed Matimo tools. Requires agno.
+
+    Named in CapWords to match Agno's <Name>Tools toolkit convention. Returns Any
+    because Toolkit comes from an optional dependency (agno). Extra keyword
+    arguments are forwarded to matimo.integrations.agno.MatimoTools.
+    """
+    from matimo.integrations.agno import MatimoTools as _inner
+    return _inner(matimo_instance, tools, **kwargs)
+
+
 # ---------------------------------------------------------------------------
 # Decorators
 # ---------------------------------------------------------------------------
@@ -272,7 +317,7 @@ __all__ = [
     "ParsedSkillContent", "SemanticSearchResult",
     "TfIdfEmbeddingProvider", "EmbeddingProvider", "cosine_similarity",
     # Executors
-    "HttpExecutor", "CommandExecutor", "FunctionExecutor",
+    "HttpExecutor", "CommandExecutor", "FunctionExecutor", "FunctionToolContext",
     # Auth
     "inject_auth_parameters", "extract_parameter_placeholders",
     "OAuth2Handler", "OAuth2ProviderLoader",
@@ -280,17 +325,20 @@ __all__ = [
     # Approval
     "ApprovalHandler", "ApprovalRequest", "ApprovalCallback",
     "get_global_approval_handler", "set_global_approval_handler",
+    "definition_requires_approval",
     # Encodings
     "apply_parameter_encodings",
     # Policy
     "PolicyEngine", "DefaultPolicyEngine", "PolicyConfig",
     "PolicyDecision", "PolicyAllowed", "PolicyDenied", "PolicyPendingApproval",
     "RiskLevel", "PolicyTier",
-    "MatimoEvent", "MatimoEventHandler", "HITLCallback", "HITLRequest",
+    "MatimoEvent", "MatimoEventHandler", "GovernanceMode", "HITLCallback", "HITLRequest",
     "ContentViolation", "validate_tool_content",
-    "classify_risk", "get_tier_for_tool",
+    "classify_risk", "classify_execution_risk", "meets_risk_threshold", "get_tier_for_tool",
     "ToolIntegrityTracker", "IntegrityAction",
     "ApprovalManifest", "ApprovalRecord",
+    "AuditSink", "JsonlFileSink", "AuditLogVerification", "verify_audit_log",
+    "redact_secrets", "hash_audit_entry", "AUDIT_GENESIS_HASH",
     "load_policy_from_file",
     # MCP
     "MCPServer", "MCPServerOptions", "create_mcp_server",
@@ -303,6 +351,8 @@ __all__ = [
     "get_skills_metadata",
     "build_relevant_skill_prompt",
     "convert_tools_to_crewai",
+    "convert_tools_to_agno",
+    "MatimoTools",
     # Decorators
     "tool", "set_global_matimo_instance", "get_global_matimo_instance",
     # Logging

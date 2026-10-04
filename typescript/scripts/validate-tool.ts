@@ -16,6 +16,30 @@ const __dirname = path.dirname(__filename);
 const PACKAGES_DIR = path.join(__dirname, '../packages');
 
 /**
+ * Governance rules for tools shipped in this repo, on top of the schema.
+ * Mirrors governance_problems() in python/scripts/validate_tools.py.
+ * - HTTP DELETE tools must say `requires_approval: true`: the runtime already
+ *   asks for approval when it is absent, but the YAML should say so.
+ * - Function tools must declare `risk:`: it is the risk the policy engine
+ *   uses when deciding whether running them needs human review.
+ */
+function governanceProblems(tool: any): string[] {
+  const problems: string[] = [];
+  const exec = tool?.execution ?? {};
+  if (
+    exec.type === 'http' &&
+    String(exec.method).toUpperCase() === 'DELETE' &&
+    tool.requires_approval !== true
+  ) {
+    problems.push('HTTP DELETE tools must declare requires_approval: true');
+  }
+  if (exec.type === 'function' && !tool.risk) {
+    problems.push('function tools must declare risk: low | medium | high | critical');
+  }
+  return problems;
+}
+
+/**
  * Validate a single tool YAML file
  * @param filePath - Path to the tool YAML file
  * @returns true if valid, false otherwise
@@ -33,6 +57,10 @@ function validateToolFile(filePath: string): boolean {
       console.log(`✅ ${filePath} (provider)`);
     } else {
       validateToolDefinition(parsed);
+      const problems = governanceProblems(parsed);
+      if (problems.length > 0) {
+        throw new Error(problems.join('; '));
+      }
       console.log(`✅ ${filePath} (tool)`);
     }
 

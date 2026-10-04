@@ -1,6 +1,6 @@
 # Troubleshooting & FAQ
 
-Common issues and solutions for Matimo v0.1.0 (TypeScript & Python)
+Common issues and solutions for Matimo 0.2.0 (TypeScript & Python). Upgrading from 0.1.x? Start with [Governance in 0.2.0](#governance-in-020).
 
 ## Installation & Setup
 
@@ -89,7 +89,7 @@ pip install --upgrade pip
 pip install matimo
 
 # For specific version:
-pip install matimo==0.1.0a14
+pip install matimo==0.2.0
 ```
 
 #### Q: LangChain or CrewAI imports fail
@@ -558,34 +558,43 @@ const tool = m.getTool('gmail-send-email');
 
 ---
 
-## v0.1.0-alpha.11 Features & Roadmap
+## Governance in 0.2.0
 
-### ✅ Available Now (as of February 27, 2026)
+0.2.0 is secure by default. These are the errors you are most likely to meet after upgrading, and what to do. The full list of changes is in the [migration guide](../api-reference/POLICY_AND_LIFECYCLE.md#upgrading-to-020).
 
-- ✅ **Core SDK** - MatimoInstance, tool execution, discovery
-- ✅ **CLI** - `matimo` command for tool management
-- ✅ **LangChain Integration** - Full schema conversion with enum/default support
-- ✅ **OAuth2** - Provider-agnostic authentication
-- ✅ **Native Basic Auth** - Automatic base64 encoding with username/password env vars
-- ✅ **Form-Encoded Requests** - Automatic URLSearchParams conversion for `application/x-www-form-urlencoded`
-- ✅ **Provider Packages** - Slack (16+ tools), Gmail (5 tools), GitHub (12+ tools), HubSpot (50+ tools), Notion (8 tools), Twilio (4 tools), Mailchimp (7 tools), Postgres (4+ tools)
-- ✅ **Structured Error Handling** - MatimoError with cause chaining
-- ✅ **HTTP Executor Enhancements** - Parameter embedding for objects/arrays, form encoding, type conversion
-- ✅ **Multiple Executors** - Command, HTTP, Function
-- ✅ **Auto-Discovery** - Automatic tool loading from `node_modules`
-- ✅ **Test Coverage** - 100% line coverage for HTTP executor
-- ✅ **Type Safety** - Full TypeScript support with Zod validation
+### Q: `Destructive operation requires approval: <tool>`
 
-### 🔜 Coming Soon
+The call needs a person's approval and nothing can answer. In 0.2.0 that covers tools with `requires_approval: true`, HTTP `DELETE` and `type: command` tools that don't set `requires_approval`, and calls whose `sql`/`command` argument contains a destructive keyword.
 
-- 🔜 **MCP Server** - Claude/LLM integration (v0.2.0)
-- 🔜 **REST API** - HTTP API (v0.3.0)
-- 🔜 **Python SDK** - Python support (v0.3.0)
-- 🔜 **Docker** - Containerization (v0.3.0)
-- 🔜 **Rate Limiting** - Token bucket (v0.2.0)
-- 🔜 **Health Monitoring** - Schema drift detection (v0.2.0)
+- Give the instance a reviewer: `MatimoInstance.init({ onApproval })` / `Matimo.init(on_approval=...)`.
+- Or pre-approve tools that are safe in your setting: `MATIMO_APPROVED_PATTERNS="get_*,list_*"`.
+- Or opt one tool out with `requires_approval: false` in its YAML, or restore the pre-0.2.0 default with `governanceMode: 'legacy'` while you migrate.
 
-See [Roadmap](../ROADMAP.md) for details on future features and planned releases.
+See [Approval System](../api-reference/APPROVAL-SYSTEM.md).
+
+### Q: `Operation rejected by approval handler: <tool>`
+
+Your `onApproval` callback returned `false` (or threw). That is the intended outcome of a decline.
+
+### Q: `Draft tool "<name>" requires admin role` / `is not available in production`
+
+The tool's YAML has `status: draft` — every tool an agent creates starts that way. A draft never runs in production and runs elsewhere only for a caller whose `PolicyContext` has the `admin` role. Have a reviewer approve it with `matimo_approve_tool` (or the `matimo review approve` CLI), then reload the tools.
+
+### Q: An approved tool disappears on the next reload
+
+Check `rejected` in the reload result and the `tool:rejected` event. Common causes: the file changed after approval (the approval no longer matches), the tool breaks one of the developer's policy rules (`blocked-domain`, `blocked-http-method`, `unauthorized-credential`), or the approval was made by another process without the same `MATIMO_APPROVAL_SECRET` and `approvalDir`.
+
+### Q: `Tool '<name>' needs human approval, but this MCP client does not support elicitation`
+
+Over MCP, Matimo asks the person behind the client through an elicitation request. Use a client that supports it, pre-approve the tool on the server with `MATIMO_APPROVED_PATTERNS`, or — only if the client confirms every call with its user — start the server with `trustClientApproval: true`. See [MCP](../MCP.md#approval-over-mcp).
+
+### Q: A read-only SQL query asks for approval
+
+The keyword scan matches substrings of the upper-cased query, so a column like `created_at` contains `CREATE`. Approve it, or give read-only queries their own tool.
+
+### Q: Should I set `MATIMO_AUTO_APPROVE=true` in CI?
+
+Prefer an `onApproval` that encodes what the test allows, or `MATIMO_APPROVED_PATTERNS`. `MATIMO_AUTO_APPROVE` approves everything unseen (except `matimo_approve_tool`) and logs a warning.
 
 ---
 

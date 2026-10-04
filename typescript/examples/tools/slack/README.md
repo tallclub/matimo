@@ -96,7 +96,7 @@ pnpm slack:factory
 
 **Key Code:**
 ```typescript
-const matimo = await MatimoInstance.init('./tools');
+const matimo = await MatimoInstance.init({ autoDiscover: true });
 
 // Send message
 await matimo.execute('slack-send-message', {
@@ -222,7 +222,7 @@ All patterns have access to these 19 Slack tools:
 - `slack_get_user_info` - User details
 - `slack-get-user` - User alias
 
-See [packages/slack/tools/README.md](../../../packages/slack/tools/README.md) for complete reference.
+See [packages/slack/README.md](../../../packages/slack/README.md) for complete reference.
 
 ## 🔧 Customization
 
@@ -276,8 +276,7 @@ pnpm slack:test-all
 
 ## 📖 Full Documentation
 
-- **[Comprehensive Guide](README-COMPREHENSIVE.md)** - Detailed guide with all examples
-- **[Tool Reference](../../../packages/slack/tools/README.md)** - All 19 tools documented
+- **[Tool Reference](../../../packages/slack/README.md)** - All 16 tools documented
 - **[Slack API Docs](https://docs.slack.dev/)** - Official Slack reference
 
 ## ✅ What's Working

@@ -68,10 +68,13 @@
     "composio:approval": "tsx composio/composio-with-approval.ts",
     "bruno:complete": "tsx ./bruno/bruno-complete-workflow.ts",
     "bruno:langchain": "tsx ./bruno/bruno-langchain-agent.ts",
-    "debug:discovery": "tsx ./debug-discovery.ts",
     "credentials:example": "tsx credentials/credentials-example.ts",
     "policy:demo": "tsx policy/policy-demo.ts",
+    "policy:audit": "tsx policy/audit-log-demo.ts",
+    "policy:approval-modes": "tsx policy/approval-modes-demo.ts",
+    "policy:response-size": "tsx policy/response-size-demo.ts",
     "skills:demo": "tsx skills/skills-demo.ts",
+    "skills:registry": "tsx skills/skills-registry-demo.ts",
     "meta:flow": "tsx meta-flow/meta-tools-integration.ts",
     "validate:impl": "tsx validate-implementation.ts",
     "validate:all": "tsx validate-implementation.ts",
@@ -82,8 +85,8 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@langchain/core": "^1.1.18",
-    "@langchain/openai": "^1.2.4",
+    "@langchain/core": "^1.2.14",
+    "@langchain/openai": "^1.6.2",
     "@matimo/bruno": "workspace:*",
     "@matimo/core": "workspace:*",
     "@matimo/github": "workspace:*",
@@ -95,15 +98,15 @@
     "@matimo/postgres": "workspace:*",
     "@matimo/slack": "workspace:*",
     "@matimo/twilio": "workspace:*",
-    "dotenv": "^17.2.3",
-    "langchain": "^1.2.16",
+    "dotenv": "^17.4.2",
+    "langchain": "^1.5.15",
     "matimo": "workspace:*",
-    "zod": "^4.3.6"
+    "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@types/node": "^25.1.0",
-    "better-sqlite3": "^12.6.2",
-    "tsx": "^4.21.0",
+    "@types/node": "^25.9.9",
+    "better-sqlite3": "^12.11.1",
+    "tsx": "^4.23.15",
     "typescript": "^5.9.3"
   },
   "engines": {

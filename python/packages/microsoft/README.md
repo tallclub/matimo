@@ -4,7 +4,7 @@
 > files, Outlook mail, Microsoft Teams, calendar, and SharePoint publishing.
 
 [![PyPI](https://img.shields.io/pypi/v/matimo-microsoft)](https://pypi.org/project/matimo-microsoft/)
-[![Docs](https://img.shields.io/badge/docs-matimo.dev-blue)](https://matimo.dev/docs)
+[![Docs](https://img.shields.io/badge/docs-matimo.dev-blue)](https://docs.matimo.dev)
 
 ---
 
@@ -107,4 +107,4 @@ will classify as `critical` if `critical` is in your `quarantineRiskLevels`.
 - **PyPI:** https://pypi.org/project/matimo-microsoft/
 - **GitHub:** https://github.com/tallclub/matimo
 - **Microsoft Graph API Docs:** https://learn.microsoft.com/en-us/graph/overview
-- **Matimo documentation:** https://matimo.dev/docs
+- **Matimo documentation:** https://docs.matimo.dev/

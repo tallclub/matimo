@@ -39,6 +39,8 @@ describe('HttpExecutor', () => {
         method: 'GET',
         url: 'https://api.example.com/users',
         timeout: undefined,
+        maxContentLength: 50 * 1024 * 1024,
+        maxBodyLength: 50 * 1024 * 1024,
       });
     });
 
@@ -76,6 +78,8 @@ describe('HttpExecutor', () => {
         url: 'https://api.example.com/users',
         data: { name: 'New User' },
         timeout: undefined,
+        maxContentLength: 50 * 1024 * 1024,
+        maxBodyLength: 50 * 1024 * 1024,
       });
     });
 

@@ -259,6 +259,42 @@ class TestInjectionPrecedenceOrder:
         assert params["SLACK_BOT_TOKEN"] == "matimo_value"
 
 
+class TestTypeScriptCompatibleNames:
+    """The names TypeScript's injectAuthParameters() reads work in Python too."""
+
+    def test_matimo_prefixed_placeholder_env_var(self) -> None:
+        """MATIMO_{PLACEHOLDER}, which the docs and TS error message name, is read."""
+        tool = _make_slack_tool()
+        with patch.dict(os.environ, {"MATIMO_SLACK_BOT_TOKEN": "prefixed"}, clear=True):
+            params = inject_auth_parameters(tool, {"channel": "#c", "text": "t"})
+        assert params["SLACK_BOT_TOKEN"] == "prefixed"
+
+    def test_matimo_prefixed_placeholder_wins_over_direct_env(self) -> None:
+        tool = _make_slack_tool()
+        env = {"MATIMO_SLACK_BOT_TOKEN": "prefixed", "SLACK_BOT_TOKEN": "direct"}
+        with patch.dict(os.environ, env, clear=True):
+            params = inject_auth_parameters(tool, {"channel": "#c", "text": "t"})
+        assert params["SLACK_BOT_TOKEN"] == "prefixed"
+
+    def test_matimo_prefixed_key_in_credentials(self) -> None:
+        tool = _make_slack_tool()
+        with patch.dict(os.environ, {}, clear=True):
+            params = inject_auth_parameters(
+                tool,
+                {"channel": "#c", "text": "t"},
+                credentials={"MATIMO_SLACK_BOT_TOKEN": "from_credentials"},
+            )
+        assert params["SLACK_BOT_TOKEN"] == "from_credentials"
+
+    def test_empty_credential_falls_back_to_env(self) -> None:
+        tool = _make_slack_tool()
+        with patch.dict(os.environ, {"SLACK_BOT_TOKEN": "direct"}, clear=True):
+            params = inject_auth_parameters(
+                tool, {"channel": "#c", "text": "t"}, credentials={"SLACK_BOT_TOKEN": ""}
+            )
+        assert params["SLACK_BOT_TOKEN"] == "direct"
+
+
 class TestCommandAndHttpPlaceholderExtraction:
     """Verify placeholder extraction works correctly for both HTTP and command tools."""
 

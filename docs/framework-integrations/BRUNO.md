@@ -170,6 +170,28 @@ result = crew.kickoff()
 
 ---
 
+## Governance
+
+`bruno_run_collection` and `bruno_run_request` are `risk: high`: they run the `bru` CLI and send real HTTP requests to whatever the collection targets. The authoring tools (`bruno_create_collection`, `bruno_add_request`, `bruno_import_openapi`) are `medium` and write files; the two read tools are `low`.
+
+None of them declares `requires_approval`, so by default they run without asking. To have a person approve each run, turn on quarantine at `high`:
+
+```typescript
+const matimo = await MatimoInstance.init({
+  autoDiscover: true,
+  policyConfig: { enableHITL: true, hitlMinRiskLevel: 'high' },
+  onHITL: async (request) => askReviewer(request), // Promise<boolean>
+});
+```
+
+```python
+matimo = await Matimo.init(
+    auto_discover=True,
+    policy_config=PolicyConfig(enable_hitl=True, hitl_min_risk_level="high"),
+    on_hitl=ask_reviewer,
+)
+```
+
 ## Tool Reference
 
 ### `bruno_create_collection`

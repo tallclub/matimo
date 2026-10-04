@@ -15,7 +15,7 @@
  *   - Core skills (tool-discovery, skill-creator, policy-validation, etc.)
  *   - Provider skills (@matimo/slack, @matimo/gmail, etc.)
  *   - Policy engine blocks unsafe tools
- *   - HITL quarantine for medium/high-risk tools
+ *   - HITL quarantine for tools at or above medium risk (hitlMinRiskLevel)
  *   - Audit event logging for all decisions
  *   - Agent can create new tools via matimo_create_tool
  *
@@ -41,7 +41,6 @@ import {
   convertToolsToLangChain,
   getSkillsMetadata,
   buildRelevantSkillPrompt,
-  getGlobalApprovalHandler,
   setGlobalMatimoInstance,
 } from 'matimo';
 import type { ToolDefinition, PolicyConfig, MatimoEvent, HITLRequest } from 'matimo';
@@ -207,10 +206,8 @@ async function runMission(
 
   const activatedProviders = new Set<string>();
 
-  async function bindActiveTools(): Promise<
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    any
-  > {
+  async function bindActiveTools(): Promise<// eslint-disable-next-line @typescript-eslint/no-explicit-any
+  any> {
     const active = allTools.filter((t) => {
       const provider = isProviderTool(t.name, providerNames);
       return provider === undefined || activatedProviders.has(provider);
@@ -346,6 +343,9 @@ async function main(): Promise<void> {
       allowFunctionTools: false,
       protectedNamespaces: ['matimo_'],
       enableHITL: true,
+      // Execution: quarantine every call whose risk is at or above this level.
+      hitlMinRiskLevel: 'medium',
+      // Creation: agent-written tools at these levels wait for review.
       quarantineRiskLevels: ['medium', 'high'],
     };
 
@@ -353,6 +353,7 @@ async function main(): Promise<void> {
     console.info(`    • allowedDomains:          ${policyConfig.allowedDomains!.join(', ')}`);
     console.info(`    • allowCommandTools:       ${policyConfig.allowCommandTools}`);
     console.info(`    • enableHITL:              ${policyConfig.enableHITL}`);
+    console.info(`    • hitlMinRiskLevel:        ${policyConfig.hitlMinRiskLevel}`);
     console.info(`    • quarantineRiskLevels:    ${policyConfig.quarantineRiskLevels!.join(', ')}`);
 
     // autoDiscover: true — discovers all @matimo/* tools AND skills automatically
@@ -378,10 +379,10 @@ async function main(): Promise<void> {
           console.info(`    🔄 POLICY RELOADED at ${event.timestamp}`);
         }
       },
-      onHITL: hitlApproval,
+      onHITL: hitlApproval, // Quarantined calls (risk ≥ hitlMinRiskLevel)
+      onApproval: interactiveApproval, // Calls to requires_approval tools
     });
 
-    getGlobalApprovalHandler().setApprovalCallback(interactiveApproval);
     setGlobalMatimoInstance(matimo);
 
     const tools = matimo.listTools();
@@ -434,6 +435,29 @@ async function main(): Promise<void> {
     if (skillsMeta.length > 0) {
       status('Skill names (Level 1) injected into system prompt');
     }
+
+    // ── Demo: Semantic Skill Discovery (matimo_search_skills) ───────
+    //
+    // matimo_search_skills ranks skills by meaning instead of requiring an
+    // exact name match — useful when the agent doesn't know a skill's exact
+    // name yet. This scripted step proves the search-then-load pattern
+    // before handing control to the interactive mission below.
+
+    header('DEMO: Semantic Skill Discovery Before Loading');
+    console.info(
+      `    ${INFO} Goal: "Find the skill most relevant to rate limiting" — agent discovers matimo_search_skills before matimo_get_skill.\n`
+    );
+    await runMission(
+      llm,
+      tools as ToolDefinition[],
+      coreTools,
+      providerNames,
+      matimo,
+      'Find the skill that is most relevant to "handling API rate limits and retries", using ' +
+        'semantic search rather than guessing its exact name. Then load that skill and ' +
+        'summarize its key guidance in 2-3 sentences.',
+      agentSystemPrompt
+    );
 
     // ── Interactive: Agent takes mission from user ─────────────────
 

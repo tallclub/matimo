@@ -57,14 +57,20 @@ async def run() -> None:
     svc = MicrosoftGraphService()
 
     print("🔍  Searching organizational knowledge for 'quarterly report'…")
-    result = await svc.search_knowledge(query="quarterly report", top=3)
-    for hit in (result.get("results") or [])[:3]:
-        print(f"   • {hit.get('name')} — {hit.get('web_url')}")
+    try:
+        result = await svc.search_knowledge(query="quarterly report", top=3)
+        for hit in (result.get("results") or [])[:3]:
+            print(f"   • {hit.get('name')} — {hit.get('web_url')}")
+    except Exception as e:  # noqa: BLE001
+        print(f"   ❌ {e}")
 
     print("\n📥  Listing inbox (top 3, unread)…")
-    result = await svc.get_email(top=3, filter="isRead eq false")
-    for msg in (result.get("messages") or [])[:3]:
-        print(f"   • \"{msg.get('subject')}\" — from {msg.get('from')}")
+    try:
+        result = await svc.get_email(top=3, filter="isRead eq false")
+        for msg in (result.get("messages") or [])[:3]:
+            print(f"   • \"{msg.get('subject')}\" — from {msg.get('from')}")
+    except Exception as e:  # noqa: BLE001
+        print(f"   ❌ {e}")
 
     print("\n" + "═" * 60)
     print("✨  Decorator Pattern example complete!\n")

@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { ToolLoader } from './core/tool-loader.js';
@@ -24,14 +25,29 @@ import {
   createLogger,
   setGlobalMatimoLogger,
 } from './logging/index.js';
-import { ApprovalHandler, getGlobalApprovalHandler } from './approval/approval-handler.js';
+import {
+  ApprovalHandler,
+  definitionRequiresApproval,
+  getGlobalApprovalHandler,
+  type ApprovalCallback,
+} from './approval/approval-handler.js';
 import type { ExecuteOptions } from './core/types.js';
-import type { PolicyEngine, PolicyContext, PolicyConfig, HITLCallback } from './policy/types.js';
+import type {
+  PolicyEngine,
+  PolicyContext,
+  PolicyConfig,
+  HITLCallback,
+  GovernanceMode,
+} from './policy/types.js';
 import { DefaultPolicyEngine } from './policy/default-policy.js';
+import { classifyExecutionRisk } from './policy/risk-classifier.js';
 import { loadPolicyFromFile } from './policy/policy-loader.js';
 import { ToolIntegrityTracker } from './policy/integrity-tracker.js';
 import { ApprovalManifest } from './policy/approval-manifest.js';
 import type { MatimoEvent, MatimoEventHandler } from './policy/events.js';
+import type { AuditSink } from './policy/audit-sink.js';
+import { applyResponseSizeGuardrail } from './core/response-size-guardrail.js';
+import { buildRelevantSkillPrompt } from './integrations/langchain.js';
 
 /**
  * Find the core skills directory by walking up from process.cwd().
@@ -67,6 +83,10 @@ export interface ReloadResult {
 /**
  * Options for MatimoInstance initialization
  */
+const AUTO_APPROVE_WARNING =
+  'MATIMO_AUTO_APPROVE=true: every tool call that needs approval (requires_approval, ' +
+  'destructive SQL/commands) is approved without a human seeing it. Use only in CI or tests.';
+
 export interface InitOptions extends LoggerConfig {
   toolPaths?: string[];
   /** Skill paths for discovering SKILL.md files (Level 1 discovery) */
@@ -92,8 +112,21 @@ export interface InitOptions extends LoggerConfig {
    * and the tool must be re-approved. If not set, approvals never expire.
    */
   approvalTtlSeconds?: number;
+  /**
+   * Default approval behaviour for tools that don't declare
+   * `requires_approval`. 'secure' (default): HTTP DELETE and command tools ask
+   * before every call. 'legacy': the pre-0.2.0 defaults. Overrides
+   * `governanceMode` in the policy config or policy file.
+   */
+  governanceMode?: GovernanceMode;
   /** Event handler for audit events (tool creation, approval, execution, etc.) */
   onEvent?: MatimoEventHandler;
+  /**
+   * Durable destination for the same audit events, e.g.
+   * `new JsonlFileSink('./matimo-audit.jsonl')`. Runs alongside `onEvent`;
+   * a failing sink is logged and never fails the tool call.
+   */
+  auditSink?: AuditSink;
   /**
    * Human-in-the-loop callback for quarantined tools.
    * Called when a tool enters `pending_approval` state (medium-risk in prod with enableHITL).
@@ -102,11 +135,33 @@ export interface InitOptions extends LoggerConfig {
    */
   onHITL?: HITLCallback;
   /**
+   * Per-call approval callback for this instance: decides calls to tools that
+   * declare `requires_approval` or whose command/SQL contains a destructive
+   * keyword. Takes precedence over the process-wide
+   * `getGlobalApprovalHandler().setApprovalCallback()`, so instances serving
+   * different tenants never share a reviewer.
+   */
+  onApproval?: ApprovalCallback;
+  /**
    * Timeout in milliseconds for the HITL callback.
    * If the callback does not resolve within this time, the tool is auto-rejected.
    * Defaults to no timeout (waits indefinitely).
    */
   hitlTimeoutMs?: number;
+  /**
+   * Instance-wide default cap (UTF-8 bytes) on a tool's serialized response
+   * size, applied to every tool that doesn't declare its own
+   * `output_schema.max_response_size`. Falls back to
+   * DEFAULT_MAX_RESPONSE_SIZE_BYTES when unset.
+   */
+  defaultMaxResponseSize?: number;
+  /**
+   * Default directory `matimo_create_skill` writes new skills to when the
+   * caller doesn't pass `target_dir` explicitly. Lets a host configure the
+   * write location once at startup instead of relying on every agent call
+   * to pass `target_dir` correctly. Falls back to `./matimo-tools/skills`.
+   */
+  defaultSkillWriteDir?: string;
 }
 
 /**
@@ -128,14 +183,19 @@ export class MatimoInstance {
   private functionExecutor: FunctionExecutor;
   private logger: MatimoLogger;
   private approvalHandler: ApprovalHandler;
+  private defaultMaxResponseSize: number | undefined;
+  private defaultSkillWriteDir: string | undefined;
 
   // Policy engine fields — runtime-enforced encapsulation via ES #private
   #policy: PolicyEngine;
   #integrityTracker: ToolIntegrityTracker;
   #approvalManifest: ApprovalManifest | null;
   #onEvent: MatimoEventHandler | null;
+  #auditSink: AuditSink | null;
   #hitlCallback: HITLCallback | null;
   #hitlTimeoutMs: number | null;
+  #approvalCallback: ApprovalCallback | null;
+  #governanceMode: GovernanceMode | null;
   #trustedPaths: string[];
   #untrustedPaths: string[];
   #policyFile: string | null;
@@ -152,14 +212,21 @@ export class MatimoInstance {
       approvalDir?: string;
       approvalTtlSeconds?: number;
       onEvent?: MatimoEventHandler;
+      auditSink?: AuditSink;
       onHITL?: HITLCallback;
+      onApproval?: ApprovalCallback;
+      governanceMode?: GovernanceMode;
       hitlTimeoutMs?: number;
       policyFile?: string;
+      defaultMaxResponseSize?: number;
+      defaultSkillWriteDir?: string;
     }
   ) {
     this.toolPaths = toolPaths;
     this.skillPaths = skillPaths;
     this.logger = logger;
+    this.defaultMaxResponseSize = policyOptions.defaultMaxResponseSize;
+    this.defaultSkillWriteDir = policyOptions.defaultSkillWriteDir;
     this.loader = new ToolLoader();
     this.registry = new ToolRegistry();
     this.skillLoader = new SkillLoader();
@@ -170,6 +237,9 @@ export class MatimoInstance {
     this.httpExecutor = new HttpExecutor();
     this.functionExecutor = new FunctionExecutor(toolPaths[0] || '');
     this.approvalHandler = getGlobalApprovalHandler();
+    if (this.approvalHandler.isAutoApproveEnabled()) {
+      this.logger.warn(AUTO_APPROVE_WARNING);
+    }
 
     // Policy engine setup — always present; static init() defaults to a
     // DefaultPolicyEngine() when the caller supplies no policy option.
@@ -178,8 +248,11 @@ export class MatimoInstance {
     this.#untrustedPaths = policyOptions.untrustedPaths ?? [];
     this.#integrityTracker = new ToolIntegrityTracker();
     this.#onEvent = policyOptions.onEvent ?? null;
+    this.#auditSink = policyOptions.auditSink ?? null;
     this.#hitlCallback = policyOptions.onHITL ?? null;
     this.#hitlTimeoutMs = policyOptions.hitlTimeoutMs ?? null;
+    this.#approvalCallback = policyOptions.onApproval ?? null;
+    this.#governanceMode = policyOptions.governanceMode ?? null;
     this.#policyFile = policyOptions.policyFile ?? null;
 
     // Approval manifest
@@ -320,10 +393,15 @@ export class MatimoInstance {
       approvalSecret: finalOptions.approvalSecret,
       approvalDir: finalOptions.approvalDir,
       onEvent: finalOptions.onEvent,
+      auditSink: finalOptions.auditSink,
       onHITL: finalOptions.onHITL,
+      onApproval: finalOptions.onApproval,
+      governanceMode: finalOptions.governanceMode,
       hitlTimeoutMs: finalOptions.hitlTimeoutMs,
       approvalTtlSeconds: finalOptions.approvalTtlSeconds,
       policyFile: finalOptions.policyFile,
+      defaultMaxResponseSize: finalOptions.defaultMaxResponseSize,
+      defaultSkillWriteDir: finalOptions.defaultSkillWriteDir,
     });
 
     // Load tools from all paths
@@ -407,6 +485,11 @@ export class MatimoInstance {
       paramCount: Object.keys(params).length,
     });
 
+    // Set once every gate (policy, quarantine, approval) has passed: from then
+    // on the call is the tool's own run and ends in tool:executed or
+    // tool:execution_failed. Gate refusals have their own events.
+    let run: { traceId: string; startedAt: number } | undefined;
+
     try {
       // Policy check: enforce RBAC and tool status before any execution
       const policyContext: PolicyContext = options?.context ?? {};
@@ -474,7 +557,7 @@ export class MatimoInstance {
       }
 
       const requiresApproval = this.approvalHandler.requiresApproval(
-        tool.requires_approval,
+        definitionRequiresApproval(tool, this.getGovernanceMode()),
         scanContent
       );
 
@@ -489,11 +572,12 @@ export class MatimoInstance {
       ) {
         this.logger.debug(`Approval required for: ${toolName}`, { toolName });
         try {
-          await this.approvalHandler.requestApproval({
-            toolName,
-            description: tool.description,
-            params,
-          });
+          await this.approvalHandler.requestApproval(
+            { toolName, description: tool.description, params },
+            options?.onApproval ??
+              this.#approvalCallback ??
+              this.approvalHandler.getApprovalCallback()
+          );
         } catch (approvalError) {
           this.#emitEvent({
             type: 'tool:approval_denied',
@@ -513,6 +597,7 @@ export class MatimoInstance {
         this.logger.info(`Destructive operation approved: ${toolName}`, { toolName });
       }
 
+      run = { traceId: randomUUID(), startedAt: Date.now() };
       const credentials = options?.credentials;
       const timeoutOverride = options?.timeout;
 
@@ -538,7 +623,7 @@ export class MatimoInstance {
           removed: reloadResult.removed,
           rejected: reloadResult.rejected.length,
         });
-        return {
+        const reloadSummary = {
           success: true,
           loaded: reloadResult.loaded,
           removed: reloadResult.removed,
@@ -546,6 +631,8 @@ export class MatimoInstance {
           rejected: reloadResult.rejected,
           message: `Reload complete. ${reloadResult.loaded} tools loaded, ${reloadResult.removed} removed, ${reloadResult.rejected.length} rejected.`,
         };
+        this.#emitRunOutcome(tool, options?.context, run, { result: reloadSummary });
+        return reloadSummary;
       }
 
       const effectiveTool =
@@ -554,21 +641,83 @@ export class MatimoInstance {
           : tool;
 
       const executor = this.getExecutor(effectiveTool);
-      const result = await executor.execute(effectiveTool, finalParams, credentials);
+      // Function tools also get the caller's PolicyContext (e.g. so
+      // matimo_approve_tool can check the approver's role and identity).
+      const rawResult =
+        effectiveTool.execution.type === 'function'
+          ? await this.functionExecutor.execute(
+              effectiveTool,
+              finalParams,
+              credentials,
+              options?.context
+            )
+          : await executor.execute(effectiveTool, finalParams, credentials);
+
+      // Cap the result size here — the one place every execution path
+      // (direct SDK, LangChain, CrewAI, MCP) funnels through — so an
+      // oversized page doesn't silently consume the caller's whole
+      // context budget regardless of which entry point they used.
+      const result = applyResponseSizeGuardrail(
+        effectiveTool,
+        rawResult,
+        this.defaultMaxResponseSize
+      );
 
       this.logger.debug(`Tool executed successfully: ${toolName}`, {
         toolName,
         hasResult: !!result,
       });
 
+      this.#emitRunOutcome(tool, options?.context, run, { result });
       return result;
     } catch (error) {
       this.logger.error(`Tool execution failed: ${toolName}`, {
         toolName,
         error: error instanceof Error ? error.message : String(error),
       });
+      if (run) {
+        this.#emitRunOutcome(tool, options?.context, run, { error });
+      }
       throw error;
     }
+  }
+
+  /**
+   * Emit how a tool's own run ended: `tool:executed` when it returned
+   * (`success: false` if it returned `{ success: false }`), or
+   * `tool:execution_failed` when it threw. Field names follow
+   * conformance/events/execution-events.json, shared with the Python SDK.
+   */
+  #emitRunOutcome(
+    tool: ToolDefinition,
+    context: PolicyContext | undefined,
+    run: { traceId: string; startedAt: number },
+    outcome: { result: unknown } | { error: unknown }
+  ): void {
+    const common = {
+      toolName: tool.name,
+      ...(context?.agentId !== undefined ? { agentId: context.agentId } : {}),
+      traceId: run.traceId,
+      durationMs: Date.now() - run.startedAt,
+      riskLevel: classifyExecutionRisk(tool),
+      timestamp: new Date().toISOString(),
+    };
+    if ('error' in outcome) {
+      const { error } = outcome;
+      this.#emitEvent({
+        type: 'tool:execution_failed',
+        ...common,
+        errorCode: error instanceof MatimoError ? error.code : ErrorCode.UNKNOWN_ERROR,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return;
+    }
+    const { result } = outcome;
+    const reportedFailure =
+      typeof result === 'object' &&
+      result !== null &&
+      (result as { success?: unknown }).success === false;
+    this.#emitEvent({ type: 'tool:executed', ...common, success: !reportedFailure });
   }
 
   /**
@@ -798,6 +947,89 @@ export class MatimoInstance {
    */
   getSkillPaths(): string[] {
     return [...this.skillPaths];
+  }
+
+  /**
+   * Add a skill path at runtime — the mutable counterpart to the
+   * construction-time `skillPaths` option. A `skillPath` is a filesystem
+   * directory (local disk, or anything the OS mounts as one — NFS/EFS/SMB,
+   * a synced git checkout, a FUSE-mounted bucket); it is read on the next
+   * `reloadSkills()` call, not eagerly. For skills that don't live on a
+   * filesystem (Postgres, S3 via its API, an internal service), use
+   * `registerSkill()`/`registerSkills()` instead.
+   *
+   * @example
+   * matimo.addSkillPath('/mnt/tenant-42/skills');
+   * await matimo.reloadSkills();
+   */
+  addSkillPath(skillPath: string): void {
+    if (!this.skillPaths.includes(skillPath)) {
+      this.skillPaths.push(skillPath);
+      this.logger.debug('Skill path added', { skillPath });
+    }
+  }
+
+  /**
+   * Get the default directory `matimo_create_skill` writes new skills to
+   * when the caller doesn't pass `target_dir` explicitly.
+   */
+  getDefaultSkillWriteDir(): string | undefined {
+    return this.defaultSkillWriteDir;
+  }
+
+  /**
+   * Register a single skill directly, bypassing the filesystem entirely.
+   * The "storage can be anywhere" answer for skills: a host with skills in
+   * Postgres, MongoDB, S3, or an internal API fetches them however it
+   * wants and pushes plain `SkillDefinition` objects straight into the
+   * running instance — visible immediately to `listSkills()`/
+   * `searchSkills()`/the `matimo_search_skills` meta-tool.
+   *
+   * @example
+   * matimo.registerSkill({ name: 'my-skill', description: '...', body: '...' });
+   */
+  registerSkill(skill: SkillDefinition): void {
+    this.skillRegistry.register(skill);
+  }
+
+  /**
+   * Register multiple skills directly. See `registerSkill()`.
+   */
+  registerSkills(skills: SkillDefinition[]): void {
+    this.skillRegistry.registerAll(skills);
+  }
+
+  /**
+   * Emit a `skill:created` event to the configured `onEvent` handler.
+   * Called by the `matimo_create_skill` meta-tool after it successfully
+   * writes a new skill to disk, so a host can observe an agent's skill
+   * creation in real time and mirror it into its own storage — the
+   * counterpart to `registerSkill()` for content flowing the other way.
+   */
+  notifySkillCreated(skillName: string, source: 'user' | 'catalog' = 'user'): void {
+    this.#emitEvent({
+      type: 'skill:created',
+      skillName,
+      source,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  /**
+   * Build a per-request system prompt snippet from semantically relevant skills.
+   * Instance-method counterpart to the standalone `buildRelevantSkillPrompt()`
+   * export in `integrations/langchain.js` — for integrators who already hold a
+   * `MatimoInstance` and would rather call a method than import a free function.
+   * Both call styles do the same thing; see `docs/skills/SKILLS.md`.
+   *
+   * @example
+   * const skillContext = await matimo.buildSkillPromptContext(userMessage, { topK: 2 });
+   */
+  async buildSkillPromptContext(
+    query: string,
+    options?: { topK?: number; minScore?: number; header?: string }
+  ): Promise<string> {
+    return buildRelevantSkillPrompt(this, query, options);
   }
 
   /**
@@ -1085,6 +1317,17 @@ export class MatimoInstance {
         // Never let event handler errors break SDK execution
       }
     }
+    if (this.#auditSink) {
+      const reportSinkError = (error: unknown) =>
+        this.logger.warn(
+          `Audit sink failed to record ${event.type}: ${error instanceof Error ? error.message : String(error)}`
+        );
+      try {
+        Promise.resolve(this.#auditSink.write(event)).catch(reportSinkError);
+      } catch (error) {
+        reportSinkError(error);
+      }
+    }
   }
 
   /**
@@ -1308,6 +1551,27 @@ export class MatimoInstance {
   }
 
   /**
+   * The governance mode in force: `InitOptions.governanceMode`, else the
+   * policy config's `governanceMode` (followed across `reloadPolicy()`), else
+   * 'secure'.
+   */
+  getGovernanceMode(): GovernanceMode {
+    if (this.#governanceMode) return this.#governanceMode;
+    if (this.#policy instanceof DefaultPolicyEngine) {
+      return this.#policy.getConfig().governanceMode ?? 'secure';
+    }
+    return 'secure';
+  }
+
+  /**
+   * Set this instance's per-call approval callback (see `InitOptions.onApproval`).
+   * Pass `null` to fall back to the global approval handler's callback.
+   */
+  setApprovalCallback(callback: ApprovalCallback | null): void {
+    this.#approvalCallback = callback;
+  }
+
+  /**
    * Hot-reload the policy engine at runtime.
    *
    * - If `configOrFile` is a `PolicyConfig` object, creates a new `DefaultPolicyEngine`.
@@ -1379,15 +1643,19 @@ export class MatimoInstance {
     decision: {
       allowed: 'pending_approval';
       reason: string;
-      riskLevel: import('./policy/types').RiskLevel;
+      riskLevel: import('./policy/types.js').RiskLevel;
       toolName?: string;
     },
     context: PolicyContext
   ): Promise<boolean> {
-    // 1. Check approval manifest — previously approved tools pass through
+    // 1. Check approval manifest — previously approved tools pass through.
+    // Tools loaded at init() have no integrity-tracker entry until the first
+    // reload, so fall back to the same definition hash the approval below records.
     if (this.#approvalManifest) {
-      const yamlHash = this.#integrityTracker.getHash(tool.name);
-      if (yamlHash && this.#approvalManifest.isApproved(tool.name, yamlHash)) {
+      const yamlHash =
+        this.#integrityTracker.getHash(tool.name) ??
+        this.#approvalManifest.computeHash(JSON.stringify(tool));
+      if (this.#approvalManifest.isApproved(tool.name, yamlHash)) {
         return true;
       }
     }

@@ -1,324 +1,136 @@
 # Tool Discovery & Filtering
 
-Find and filter tools by name, description, and tags.
+Load tools, then find the ones you need by name, tag, text or definition.
 
-## Auto-Discovery
-
-Matimo automatically discovers tools from installed packages in `node_modules`. When you call `MatimoInstance.init()`, it scans for tool provider packages and loads all available tools.
-
-### How Auto-Discovery Works
+## Loading Tools
 
 ```typescript
-import { MatimoInstance } from 'matimo';
+import { MatimoInstance } from '@matimo/core';
 
-// Auto-discovery: scans node_modules for @matimo/* packages
-const m = await MatimoInstance.init({ autoDiscover: true });
-
-// All tools from installed providers are now available
-const allTools = m.listTools();
-console.log(`Discovered ${allTools.length} tools`);
-```
-
-**Discovery Process:**
-
-1. **Scan node_modules** — Looks for `@matimo/*` scoped packages
-2. **Load definitions** — Each package's `definition.yaml` is parsed
-3. **Register tools** — Tools are indexed by name for fast lookup
-4. **Cache in memory** — Tools remain available for the lifetime of the Matimo instance
-
-### Installed Providers
-
-Tools are automatically discovered from these providers:
-
-```typescript
-// Tools are auto-discovered from installed packages:
-// @matimo/slack      → slack_send_message, slack_list_channels, etc.
-// @matimo/gmail      → gmail_send_email, gmail_list_messages, etc.
-// @matimo/github     → github_create_issue, github_list_repos, etc.
-
-const m = await MatimoInstance.init({ autoDiscover: true });
-const allTools = m.listTools();
-
-allTools.forEach((tool) => {
-  console.log(`• ${tool.name}`);
-  // • slack_send_message
-  // • slack_list_channels
-  // • gmail_send_email
-  // • gmail_list_messages
-  // • github_create_issue
-  // ...
+const matimo = await MatimoInstance.init({
+  autoDiscover: true,     // built-in tools + every installed @matimo/* package
+  toolPaths: ['./tools'], // optional: your own tools
 });
+console.log(matimo.listTools().length); // e.g. 153 with all providers installed
 ```
 
-### Install New Providers
+```python
+from matimo import Matimo
 
-Add more tools by installing new provider packages:
+matimo = await Matimo.init("./tools", auto_discover=True)
+print(len(matimo.list_tools()))
+```
+
+- **`autoDiscover` / `auto_discover`** loads the core tools (`calculator`, `web`, `read`, `edit`, `execute`, the `matimo_*` meta-tools, …) and the tools of every installed provider package: `@matimo/*` in `node_modules`, or `matimo-*` packages in the Python environment.
+- **`toolPaths`** adds directories of your own. They are scanned recursively for `definition.yaml` files, so `tools/my-provider/my_tool/definition.yaml` works.
+- **A path alone** (`init('./tools')`) loads only that directory, without the built-in tools.
+
+Tools are read once at start-up. After installing a package, restart the process; after adding YAML files, call `reloadTools()` / `reload()`.
+
+### Provider packages
 
 ```bash
-# Install Gmail tools
-npm install @matimo/gmail
-
-# Install GitHub tools
-npm install @matimo/github
-
-# Install Slack tools
-npm install @matimo/slack
+npm install @matimo/github @matimo/slack     # TypeScript
+pip install matimo-github matimo-slack       # Python
 ```
 
-Restart your Matimo instance to pick up newly installed providers:
+Tool names come from each package's YAML, and the packages use both styles:
 
-```typescript
-// Before: only some tools loaded
-const m1 = await MatimoInstance.init({ autoDiscover: true });
-console.log(m1.listTools().length); // e.g., 12 tools
+| Package | Example tools |
+|---------|---------------|
+| `@matimo/github` | `github-create-issue`, `github-get-repository`, `github-list-repositories` |
+| `@matimo/gmail` | `gmail-send-email`, `gmail-list-messages`, `gmail-get-message` |
+| `@matimo/slack` | `slack-send-message`, `slack_send_channel_message`, `slack_get_channel_history` |
+| `@matimo/microsoft` | `ms_get_email`, `ms_send_email`, `ms_list_files` |
 
-// After installing @matimo/github:
-// Restart your app/service
-
-// Now: GitHub tools are included
-const m2 = await MatimoInstance.init({ autoDiscover: true });
-console.log(m2.listTools().length); // e.g., 18 tools (12 + 6 GitHub tools)
-```
-
-### Local Tools with Auto-Discovery
-
-Auto-discovery also loads tools from the local `./tools` directory if provided:
-
-```typescript
-// Load from both node_modules (auto-discovery) AND local ./tools directory
-const m = await MatimoInstance.init({
-  autoDiscover: true,
-  toolPaths: ['./tools'],
-});
-
-// Includes:
-// 1. All @matimo/* provider packages from node_modules
-// 2. Custom tools from ./tools directory
-const allTools = m.listTools();
-```
-
-**Directory structure:**
-
-```
-project/
-├── package.json
-├── tools/                    # Local custom tools
-│   ├── my-provider/
-│   │   └── my-tool/
-│   │       └── definition.yaml
-│   └── ...
-└── node_modules/
-    ├── @matimo/slack/       # Auto-discovered
-    ├── @matimo/gmail/       # Auto-discovered
-    └── @matimo/github/      # Auto-discovered
-```
+Use `startsWith('slack')` rather than `'slack_'` or `'slack-'` to catch both styles.
 
 ---
 
-```typescript
-import { MatimoInstance } from 'matimo';
-
-const m = await MatimoInstance.init({
-  autoDiscover: true,
-  toolPaths: ['./tools'],
-});
-
-// List all loaded tools
-const allTools = m.listTools();
-console.log(`Loaded ${allTools.length} tools`);
-
-allTools.forEach((tool) => {
-  console.log(`• ${tool.name} - ${tool.description}`);
-});
-```
-
-**Output:**
-
-```
-Loaded 8 tools
-• calculator - Perform basic math operations
-• gmail_send_email - Send an email via Gmail API
-• gmail_list_messages - List emails from Gmail
-• github_create_issue - Create a GitHub issue
-... (more tools)
-```
-
----
-
-## Get Specific Tool
+## Get One Tool
 
 ```typescript
-const tool = m.getTool('calculator');
+const tool = matimo.getTool('calculator');
+if (!tool) throw new Error('calculator is not loaded');
 
-console.log(`Name: ${tool.name}`);
-console.log(`Description: ${tool.description}`);
-console.log(`Version: ${tool.version}`);
+console.log(tool.description);
+console.log(Object.keys(tool.parameters ?? {})); // ['operation', 'a', 'b', 'expression', 'precision']
+console.log(tool.execution.type);                // 'function'
 ```
 
----
+```python
+tool = matimo.get_tool("calculator")
+```
 
-## Filter by Tags
+## Search by Text
+
+`searchTools(query)` matches the query against tool names, descriptions and tags:
 
 ```typescript
-// Get tools with specific tags
-const mathTools = m.getToolsByTag('math');
-console.log(`Math tools: ${mathTools.map((t) => t.name).join(', ')}`);
-
-const emailTools = m.getToolsByTag('email');
-console.log(`Email tools: ${emailTools.map((t) => t.name).join(', ')}`);
+matimo.searchTools('email').map((t) => t.name);
+// ['gmail-create-draft', 'gmail-send-email', 'mailchimp-add-list-member', …, 'ms_get_email', …]
 ```
 
----
+```python
+[t.name for t in matimo.search_tools("email")]
+```
 
-## Search Tools
+## Filter by Tag
 
 ```typescript
-// Search by name or description
-const results = m.searchTools('email');
-
-results.forEach((tool) => {
-  console.log(`Found: ${tool.name}`);
-  console.log(`  Description: ${tool.description}`);
-  console.log(`  Tags: ${tool.tags?.join(', ') || 'none'}`);
-});
+matimo.getToolsByTag('math').map((t) => t.name); // ['calculator']
 ```
 
-**Output:**
+Python has no `get_tools_by_tag` yet; filter the list:
 
-```
-Found: gmail_send_email
-  Description: Send an email via Gmail API
-  Tags: email, gmail, http
-
-Found: gmail_list_messages
-  Description: List emails from Gmail
-  Tags: email, gmail, http
+```python
+math_tools = [t for t in matimo.list_tools() if "math" in (t.tags or [])]
 ```
 
----
+Both `searchTools` and `getToolsByTag` accept an optional `PolicyContext` as a second argument and then return only the tools that caller may run.
 
-## Filter Criteria
-
-### By Type
+## Filter by Definition
 
 ```typescript
-// Filter by execution type
-const httpTools = m.listTools().filter((t) => t.execution?.type === 'http');
-console.log(`HTTP tools: ${httpTools.length}`);
+const tools = matimo.listTools();
 
-const cmdTools = m.listTools().filter((t) => t.execution?.type === 'command');
-console.log(`Command tools: ${cmdTools.length}`);
+const httpTools = tools.filter((t) => t.execution.type === 'http');
+const functionTools = tools.filter((t) => t.execution.type === 'function');
+const oauth2Tools = tools.filter((t) => t.authentication?.type === 'oauth2');
+const noAuthTools = tools.filter((t) => !t.authentication);
+const needsApproval = tools.filter((t) => t.requires_approval === true);
+const githubTools = tools.filter((t) => t.name.startsWith('github'));
 ```
 
-### By Authentication
-
-```typescript
-// Tools requiring OAuth2
-const oauth2Tools = m.listTools().filter((t) => t.authentication?.type === 'oauth2');
-console.log(`OAuth2 tools: ${oauth2Tools.map((t) => t.name).join(', ')}`);
-```
-
-### By Provider
-
-```typescript
-// Gmail tools
-const gmailTools = m.listTools().filter((t) => t.name.startsWith('gmail_'));
-console.log(`Gmail tools: ${gmailTools.map((t) => t.name).join(', ')}`);
-
-// GitHub tools
-const githubTools = m.listTools().filter((t) => t.name.startsWith('github_'));
-console.log(`GitHub tools: ${githubTools.map((t) => t.name).join(', ')}`);
-```
-
----
+To list the credentials a tool needs (TypeScript): `matimo.getRequiredCredentials('github-create-issue')` → `['GITHUB_TOKEN']`.
 
 ## Tool Metadata
 
-Each tool has:
-
 ```typescript
-const tool = m.getTool('calculator');
+const tool = matimo.getTool('github-create-issue')!;
 
-// Basic info
-tool.name; // 'calculator'
-tool.description; // 'Perform basic math operations'
-tool.version; // '1.0.0'
-
-// Parameters
-tool.parameters; // { operation: {...}, a: {...}, b: {...} }
-Object.keys(tool.parameters); // ['operation', 'a', 'b']
-
-// Execution config
-tool.execution.type; // 'command' | 'http'
-tool.execution.command; // shell command (if type === 'command')
-tool.execution.url; // API endpoint (if type === 'http')
-
-// Authentication
-tool.authentication?.type; // 'oauth2' | 'api_key' | etc.
-tool.authentication?.provider; // 'google' | 'github' | 'slack'
-
-// Output
-tool.output_schema; // { type: 'object', properties: {...} }
-
-// Metadata
-tool.tags; // ['math', 'calculator']
-tool.author; // 'Matimo'
-tool.license; // 'MIT'
+tool.name;               // 'github-create-issue'
+tool.description;        // 'Create a new issue in a repository'
+tool.parameters;         // { owner, repo, title, body, … }
+tool.execution;          // { type: 'http', method: 'POST', url: …, headers: …, body: … }
+tool.authentication;     // { type: 'bearer', location: 'header' }
+tool.requires_approval;  // true
+tool.tags;               // tags from the YAML, if any
 ```
 
----
+## Giving an Agent the Right Tools
 
-## Common Use Cases
-
-### Find All Email Tools
+A model works best with a short list, and OpenAI rejects more than 128 tools. Pick by provider, tag or search before converting:
 
 ```typescript
-const emailTools = m.listTools().filter((t) => t.tags?.includes('email'));
-
-emailTools.forEach((tool) => {
-  console.log(`- ${tool.name}: ${tool.description}`);
-});
+const picked = matimo.searchTools('issue').slice(0, 20);
+const tools = await convertToolsToLangChain(picked, matimo);
 ```
 
-### Find Tools Without Authentication
-
-```typescript
-const publicTools = m.listTools().filter((t) => !t.authentication);
-
-console.log(`Public tools (no auth required):`);
-publicTools.forEach((t) => console.log(`  - ${t.name}`));
-```
-
-### Find Tools Requiring OAuth2
-
-```typescript
-const oauth2Tools = m.listTools().filter((t) => t.authentication?.type === 'oauth2');
-
-console.log(`Tools requiring OAuth2:`);
-oauth2Tools.forEach((t) => {
-  console.log(`  - ${t.name} (${t.authentication?.provider})`);
-});
-```
-
-### List All Providers
-
-```typescript
-const providers = new Set(
-  m
-    .listTools()
-    .filter((t) => t.authentication?.provider)
-    .map((t) => t.authentication?.provider)
-);
-
-console.log(`Available providers: ${Array.from(providers).join(', ')}`);
-```
-
----
+Agents can also search for themselves with the `matimo_search_tools` and `matimo_get_tool` meta-tools, and load guidance with the skill meta-tools; see [META_TOOLS.md](../api-reference/META_TOOLS.md).
 
 ## Next Steps
 
-- **Auto-Discovery**: [Installing Providers](#auto-discovery) — Learn how Matimo auto-discovers tools from npm packages
-- **Execute Tools**: [Your First Tool](../getting-started/YOUR_FIRST_TOOL.md)
-- **Learn Patterns**: [SDK Usage Patterns](./SDK_PATTERNS.md)
-- **Setup OAuth2**: [Authentication Guide](./AUTHENTICATION.md)
-- **Add Tools**: [Adding Tools to Matimo](../tool-development/ADDING_TOOLS.md) — Create and publish your own provider packages
+- [SDK Patterns](./SDK_PATTERNS.md) — factory, decorator and LangChain usage
+- [Tool Specification](../tool-development/TOOL_SPECIFICATION.md) — the fields you can filter on
+- [Authentication](./AUTHENTICATION.md) — credentials per provider

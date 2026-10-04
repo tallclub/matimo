@@ -1,6 +1,6 @@
 ---
 name: composio
-description: "Understand the @matimo/composio governance wrapper — how composio_* tools proxy Composio's 250+ integrations, what risk levels mean for approval, and how to handle missing connected accounts."
+description: "Understand the @matimo/composio governance wrapper — how composio_* tools route through Composio's 250+ integrations, what risk levels mean for approval, and how to handle missing connected accounts."
 version: "1.0.0"
 license: "MIT"
 metadata:
@@ -19,7 +19,7 @@ risk classification, or human-in-the-loop (HITL) approval flow.
 
 Every tool in this package is named `composio_<toolkit>_<action>`
 (e.g. `composio_jira_get_issue`, `composio_linear_create_linear_issue`)
-and proxies exactly one Composio action via Composio's REST execute endpoint.
+and calls exactly one Composio action through Composio's REST execute endpoint.
 **These tool definitions are generated** by `scripts/generate-tools.ts` — do
 not hand-edit `tools/composio_*/definition.yaml` files; adjust
 `scripts/risk-overrides.json` and re-run the generator instead.
@@ -34,9 +34,9 @@ Agent calls composio_jira_get_issue(
 )
         │
         ▼
-Matimo's standard policy checks run (canExecute: deprecation, draft
-status, requires_approval + role checks) — see "Risk Levels" below for
-what the explicit `risk:` field does and does not gate automatically.
+Matimo's policy checks run (canExecute: deprecation, draft status,
+role checks, and HITL quarantine if the host turned it on) — see
+"Risk Levels" below for what the `risk:` field does and does not gate.
         │
         ▼
 HTTP POST https://backend.composio.dev/api/v3/tools/execute/JIRA_GET_ISSUE
@@ -77,35 +77,26 @@ Every generated tool sets an explicit `risk: low | medium | high` field,
 derived from the Composio action name (e.g. `GET_ISSUE` → `low`,
 `CREATE_ISSUE` → `medium`, `DELETE_ISSUE` → `high`), with manual overrides in
 `scripts/risk-overrides.json` for actions the heuristic gets wrong.
-`classifyRisk(tool)` always honors this explicit field.
 
 - **`risk: low`** (read-only — list, get, search, fetch)
 - **`risk: medium`** (writes — create, update, send, upload, invite)
 - **`risk: high`** (destructive — delete, remove, archive, revoke, cancel)
 
-**With Matimo's default policy engine (`DefaultPolicyEngine`), `risk:`
-alone does not pause `execute()` calls** — `canExecute()` only checks
-deprecation/draft status and `requires_approval` + role. Medium/high-risk
-composio tools execute immediately unless the **embedding application**
-does one of:
+**`risk:` alone does not pause a call.** composio_* tools are HTTP POSTs to
+Composio and declare no `requires_approval`, so unless the host application
+turned on HITL quarantine, a write or delete runs as soon as you call it.
+Before a `medium` or `high` action, make sure the user actually asked for it,
+and confirm destructive ones with the user in the conversation.
 
-- Implements a custom `PolicyEngine` whose `canExecute()` calls
-  `classifyRisk(tool)` and returns `{ allowed: 'pending_approval', riskLevel, reason, toolName }`
-  for risk levels in its `quarantineRiskLevels` — `MatimoInstance.execute()`
-  will then invoke the configured `onHITL` callback before proceeding.
-- Registers composio tools under `untrustedPaths` with `requires_approval: true`
-  and runs `reloadTools()` in a `{ environment: 'prod' }` context —
-  `DefaultPolicyEngine.canCreate()` returns `pending_approval` for
-  medium/high-risk tools when `enableHITL: true` and the risk level is in
-  `quarantineRiskLevels`.
+When the host did turn on quarantine (for example `enableHITL` with
+`hitlMinRiskLevel: 'high'`, or a policy that pauses composio_* tools by
+their `risk:`), a quarantined call waits while a human reviews it:
 
-**If your `execute('composio_jira_create_issue', ...)` call ever does return
-`pending_approval` (because the host app wired up one of the above), treat it
-as the expected, successful outcome for a write/destructive action — it is
-not an error and should not be retried.** Tell the user the action is queued
-for human approval; do not attempt the call again or try to "work around" the
-pause. Once a human approves it out-of-band, the same call will proceed to
-Composio.
+- **Approved** — the call goes on to Composio and returns normally.
+- **Not approved** — the call fails with `POLICY_DENIED` and a message like
+  `Tool 'composio_jira_delete_issue' is quarantined and was not approved`.
+  Tell the user the reviewer declined it. Do not retry the same call or
+  look for another tool that does the same thing.
 
 ## Missing Connected Account
 

@@ -58,7 +58,6 @@ temp/
 
 # Personal scratch notes / working docs — not part of the shipped repo
 .local-notes/
-typescript/examples/mcp/matimo-tools/.matimo-approvals.json
 typescript/examples/mcp/matimo-tools/fetch-weather/definition.yaml
 typescript/examples/mcp/matimo-tools/npm_downloads/definition.yaml
 typescript/examples/mcp/matimo-tools/skills/ecosystem-health/SKILL.md
@@ -68,3 +67,6 @@ typescript/packages/cli/.matimo/certs/server.crt
 typescript/packages/cli/.matimo/certs/server.key
 typescript/examples/mcp/.matimo/certs/server.crt
 typescript/examples/mcp/.matimo/certs/server.key
+
+# HITL approval manifests are per-machine state (HMAC-signed approvals); never commit one
+**/.matimo-approvals.json

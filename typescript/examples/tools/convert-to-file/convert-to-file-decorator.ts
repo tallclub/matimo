@@ -1,10 +1,5 @@
-import {
-  MatimoInstance,
-  setGlobalMatimoInstance,
-  tool,
-  getGlobalApprovalHandler,
-  type ApprovalRequest,
-} from '@matimo/core';
+import { MatimoInstance, setGlobalMatimoInstance, tool, type ApprovalRequest } from '@matimo/core';
+import * as readline from 'readline';
 
 /**
  * Create an interactive approval callback for file conversion operations.
@@ -21,16 +16,26 @@ function createApprovalCallback() {
 
     if (!isInteractive) {
       console.info('\n❌ REJECTED - Non-interactive environment (no terminal)');
-      console.info('\n💡 To enable auto-approval in CI/scripts:');
-      console.info('   export MATIMO_AUTO_APPROVE=true');
+      console.info('\n💡 To pre-approve this tool in CI/scripts:');
+      console.info('   export MATIMO_APPROVED_PATTERNS="convert_to_file"');
       console.info('\n' + '='.repeat(70) + '\n');
       return false;
     }
 
-    // Non-interactive example environments should set MATIMO_AUTO_APPROVE=true.
-    console.info('   ✅ Auto-approved (see MATIMO_AUTO_APPROVE)');
-    console.info('='.repeat(70) + '\n');
-    return true;
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+
+    return new Promise((resolve) => {
+      console.info('\n❓ User Action Required');
+      rl.question('   Type "yes" to approve or "no" to reject: ', (answer) => {
+        const approved = answer.toLowerCase() === 'yes' || answer.toLowerCase() === 'y';
+        console.info(
+          approved ? '   ✅ Operation APPROVED by user' : '   ❌ Operation REJECTED by user'
+        );
+        console.info('='.repeat(70) + '\n');
+        rl.close();
+        resolve(approved);
+      });
+    });
   };
 }
 
@@ -46,11 +51,12 @@ class FileConverter {
 }
 
 async function decoratorExample() {
-  const matimo = await MatimoInstance.init({ autoDiscover: true });
+  const matimo = await MatimoInstance.init({
+    autoDiscover: true,
+    // Decides every call that needs approval, for this instance only.
+    onApproval: createApprovalCallback(),
+  });
   setGlobalMatimoInstance(matimo);
-
-  const approvalHandler = getGlobalApprovalHandler();
-  approvalHandler.setApprovalCallback(createApprovalCallback());
 
   console.info('\n' + '='.repeat(70));
   console.info('🚀 Convert To File Tool - Decorator Pattern Example');

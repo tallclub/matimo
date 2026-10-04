@@ -19,7 +19,7 @@ export async function listCommand(): Promise<void> {
     if (!fs.existsSync(matimoScope)) {
       console.info('⚠️  No Matimo tools installed yet');
       console.info('\nInstall some tools:');
-      console.info('  matimo install slack gmail stripe');
+      console.info('  matimo install slack gmail github');
       return;
     }
 

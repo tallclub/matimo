@@ -6,7 +6,7 @@ Complete reference for the Matimo SDK in **TypeScript** and **Python**. For a si
 
 ### TypeScript SDK (`MatimoInstance`)
 - [init()](#initoptions)
-- [execute()](#executetoolname-params)
+- [execute()](#executetoolname-params-options)
 - [getRequiredCredentials()](#getrequiredcredentialstoolname)
 - [listTools()](#listtools)
 - [getTool()](#gettoolname)
@@ -48,12 +48,29 @@ static async init(options?: InitOptions | string): Promise<MatimoInstance>
 
 **Parameters:**
 
-- `options` (InitOptions | string, optional) - Initialization configuration
-  - `InitOptions` object:
-    - `autoDiscover` (boolean, optional) - Automatically discover tools from `node_modules/@matimo/*` packages
-    - `toolPaths` (string[], optional) - Array of explicit tool directory paths
-    - `includeCore` (boolean, optional) - Include core built-in tools (default: true when using InitOptions)
-  - String: Backward-compatible single directory path (e.g., `'./tools'`)
+- `options` (InitOptions | string, optional) — a single directory path, or:
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `toolPaths` | `string[]` | Tool directories to load |
+| `autoDiscover` | `boolean` | Also load tools (and their skills) from installed `@matimo/*` packages |
+| `skillPaths` | `string[]` | Directories of `SKILL.md` skills. Matimo's core skills are always added |
+| `policy` | `PolicyEngine` | Custom policy engine; overrides `policyConfig` and `policyFile` |
+| `policyConfig` | `PolicyConfig` | Options for the built-in `DefaultPolicyEngine` |
+| `policyFile` | `string` | Path to a `policy.yaml` |
+| `trustedPaths` / `untrustedPaths` | `string[]` | Which directories hold developer tools and agent-written tools; untrusted tools must pass the content rules |
+| `governanceMode` | `'secure' \| 'legacy'` | `'secure'` (default): HTTP DELETE and command tools ask on every call. `'legacy'`: pre-0.2.0 defaults |
+| `onApproval` | `ApprovalCallback` | This instance's reviewer for calls that need approval ([Approval System](APPROVAL-SYSTEM.md)) |
+| `onHITL` | `HITLCallback` | Decides calls quarantined by `policyConfig.enableHITL` |
+| `hitlTimeoutMs` | `number` | Reject a quarantined call when `onHITL` takes longer |
+| `onEvent` | `MatimoEventHandler` | Receives every governance and execution event ([Types](TYPES.md)) |
+| `auditSink` | `AuditSink` | Durable destination for the same events, e.g. `new JsonlFileSink(path)` |
+| `approvalSecret` / `approvalDir` / `approvalTtlSeconds` | | Signing secret (else `MATIMO_APPROVAL_SECRET`, else ephemeral), location (default: cwd) and expiry of `matimo_approve_tool` approvals |
+| `defaultMaxResponseSize` | `number` | Response-size cap in bytes for tools that don't set `output_schema.max_response_size` (built-in default 262144 / 256 KB — see [Response Size Guardrail](../architecture/OVERVIEW.md#tool-execution-flow)) |
+| `defaultSkillWriteDir` | `string` | Where `matimo_create_skill` writes when the caller gives no `target_dir` |
+| `logLevel` / `logFormat` | | Logger settings |
+
+`includeCore` is accepted but has no effect.
 
 **Returns:** `Promise<MatimoInstance>` - Initialized instance ready to execute tools
 
@@ -75,7 +92,7 @@ const matimo = await MatimoInstance.init({
   toolPaths: ['./tools'],
 });
 
-// Backward compatibility - single directory
+// Backward compatibility - single directory (loads only ./tools, no built-in tools)
 const matimo = await MatimoInstance.init('./tools');
 
 console.log(`Loaded ${matimo.listTools().length} tools`);
@@ -106,6 +123,12 @@ interface ExecuteOptions {
    * Values are never logged and are held in memory only for the duration of the call.
    */
   credentials?: Record<string, string>;
+  /** Who is calling: checked by the policy engine (environment, roles, agentId). */
+  context?: PolicyContext;
+  /** Skip the approval prompt for this call only; policy denials and HITL still apply. */
+  approved?: boolean;
+  /** Reviewer for this call only; takes precedence over the instance's onApproval. */
+  onApproval?: ApprovalCallback;
 }
 ```
 
@@ -115,13 +138,18 @@ interface ExecuteOptions {
 - `params` (object, required) - Tool parameters (must match tool's parameter schema)
 - `options.timeout` (number, optional) - Execution timeout in milliseconds
 - `options.credentials` (object, optional) - Per-call credential overrides (see Multi-tenant Usage below)
+- `options.context` (PolicyContext, optional) - The caller's identity, environment and roles, e.g. `{ agentId: 'agent-7', environment: 'production', roles: ['operator'] }`. Function tools receive it as `context.policyContext`
+- `options.approved` (boolean, optional) - The host already confirmed this call; skips only the approval prompt
+- `options.onApproval` (ApprovalCallback, optional) - Reviewer for this one call
 
-**Returns:** `Promise<unknown>` - Tool result (validated against output schema)
+**Returns:** `Promise<unknown>` - Tool result (validated against output schema). If the raw result exceeds the effective response-size cap (`output_schema.max_response_size`, else `defaultMaxResponseSize`, else a built-in 256 KB), it is truncated rather than rejected — see [Response Size Guardrail](../architecture/OVERVIEW.md#tool-execution-flow).
 
 **Throws:**
 
 - `MatimoError(TOOL_NOT_FOUND)` - If tool name doesn't exist
-- `MatimoError(PARAMETER_VALIDATION)` - If params don't match tool schema
+- `MatimoError(INVALID_PARAMETER)` - If params don't match tool schema
+- `MatimoError(POLICY_DENIED)` - If the policy engine, a draft/production gate or a HITL reviewer refuses the call
+- `MatimoError(EXECUTION_FAILED)` - If the call needs approval and is declined or nobody can answer
 - `MatimoError(EXECUTION_FAILED)` - If tool execution fails
 - `MatimoError(AUTH_FAILED)` - If authentication fails
 - `MatimoError(TIMEOUT)` - If execution exceeds timeout
@@ -184,7 +212,7 @@ await matimo.execute(
   { repo: 'myorg/myrepo', title: 'Bug report' },
   {
     timeout: 10_000,
-    credentials: { GITHUB_ACCESS_TOKEN: 'ghp-tenant-c-token' },
+    credentials: { GITHUB_TOKEN: 'ghp-tenant-c-token' },
   }
 );
 ```
@@ -192,7 +220,7 @@ await matimo.execute(
 **Credential key naming convention:**
 
 Credential keys must match the env-var names the tool's YAML definition
-references (e.g. `SLACK_BOT_TOKEN`, `GITHUB_ACCESS_TOKEN`). The credential
+references (e.g. `SLACK_BOT_TOKEN`, `GITHUB_TOKEN`). The credential
 value is resolved in this order for each placeholder found in the tool YAML:
 
 1. `credentials[paramName]` — per-call override (highest priority)
@@ -264,7 +292,7 @@ const credentialManifest = Object.fromEntries(
 // credentialManifest looks like:
 // {
 //   'slack-send-message':   ['SLACK_BOT_TOKEN'],
-//   'github-create-issue':  ['GITHUB_ACCESS_TOKEN'],
+//   'github-create-issue':  ['GITHUB_TOKEN'],
 //   'twilio-send-sms':      ['TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN'],
 // }
 
@@ -378,6 +406,29 @@ emailTools.forEach((tool) => console.log(`  - ${tool.name}`));
 
 Use decorators for clean, declarative tool execution in class-based code.
 
+### Governance and skills methods
+
+| TypeScript | Python | Description |
+|------------|--------|-------------|
+| `setApprovalCallback(cb)` | `set_approval_callback(cb)` | Set or clear the instance's approval callback (`null`/`None` falls back to the process-wide handler) |
+| `getGovernanceMode()` | `get_governance_mode()` | `'secure'` or `'legacy'` |
+| `getApprovalManifest()` | `get_approval_manifest()` | The manifest `matimo_approve_tool` records approvals in |
+| `reloadTools()` | `reload()` | Re-read tool directories; returns `{ loaded, removed, revalidated, rejected }` |
+| `setHITLCallback(cb)` | — | Set or clear the HITL callback (Python: pass `on_hitl` to `init()`) |
+| `reloadPolicy(configOrFile?)` | — | Swap the policy engine and re-check tools |
+| `getToolsByTag(tag)` | — | Tools carrying a tag |
+| `registerSkill(skill)` / `registerSkills([...])` | `register_skill(skill)` / `register_skills([...])` | Add skills from your own storage (dropped by the next `reloadSkills()`) |
+| `addSkillPath(dir)` + `reloadSkills()` | `add_skill_path(dir)` + `reload_skills()` | Mount another skills directory at runtime; returns `{ loaded, removed }` |
+| `getSkillSections(name)` | `get_skill_sections(name)` | Section headings and token estimates |
+| `getSkillContent(name, { sections, maxTokens, includePreamble, maxDepth })` | `get_skill_content(name, SkillContentOptions(...))` | Load part of a skill |
+| `buildSkillPromptContext(query, { topK })` | `build_skill_prompt_context(query, top_k=...)` | Relevant skills (TF-IDF), formatted for a system prompt |
+| `getDefaultSkillWriteDir()` | `get_default_skill_write_dir()` | Where `matimo_create_skill` writes by default |
+| `getSkillResource(name, path)` | — | Read a file bundled with a skill |
+
+Runnable demos of these, needing no API keys: `typescript/examples/tools/policy/approval-modes-demo.ts`, `skills/skills-registry-demo.ts`, and the Python twins under `python/examples/native/`.
+
+---
+
 ### `@tool(toolName)`
 
 Class method decorator that automatically executes a tool when the method is called.
@@ -406,7 +457,7 @@ function tool(toolName: string): MethodDecorator;
 ```typescript
 import { tool, setGlobalMatimoInstance, MatimoInstance } from 'matimo';
 
-const matimo = await MatimoInstance.init('./tools');
+const matimo = await MatimoInstance.init({ autoDiscover: true });
 setGlobalMatimoInstance(matimo);
 
 class Calculator {
@@ -436,8 +487,8 @@ class SlackAgent {
     // Decorator handles execution
   }
 
-  @tool('slack-get-channel')
-  async getChannel(name: string) {
+  @tool('slack_get_channel_history')
+  async getHistory(channel: string, limit: number) {
     // Also handled by decorator
   }
 }
@@ -534,53 +585,54 @@ setGlobalMatimoInstance(matimo);
 
 Convert Matimo tools to LangChain tool format for AI agents.
 
-### `convertToolsToLangChain(tools, matimo, secrets)`
+### `convertToolsToLangChain(tools, matimo, secrets?, secretParamNames?)`
 
-Convert Matimo tools to LangChain tool schema with integrated execution.
+Convert Matimo tools to LangChain tools whose calls go through `matimo.execute()`, with the same policy and approval checks as a direct call.
 
 **Signature:**
 
 ```typescript
-function convertToolsToLangChain(
+async function convertToolsToLangChain(
   tools: ToolDefinition[],
   matimo: MatimoInstance,
-  secrets?: Record<string, string>
-): LanguageModelToolUse[];
+  secrets?: Record<string, string>,
+  secretParamNames?: Set<string>
+): Promise<LangChainTool[]>;
 ```
 
 **Parameters:**
 
-- `tools` (ToolDefinition[], required) - Tools from `matimo.listTools()`
-- `matimo` (MatimoInstance, required) - Initialized Matimo instance
-- `secrets` (object, optional) - Environment variables for authentication
-  - Automatically detects params ending in TOKEN, KEY, SECRET, PASSWORD
-  - Injects from env vars: `process.env.MATIMO_{TOOL_NAME}_{PARAM_NAME}`
+- `tools` (ToolDefinition[], required) - The tools to expose; keep the list small (OpenAI accepts at most 128)
+- `matimo` (MatimoInstance, required) - Initialized Matimo instance; its `onApproval` answers approval requests
+- `secrets` (object, optional) - Values for secret parameters, keyed by parameter name
+- `secretParamNames` (Set, optional) - Parameter names to treat as secrets, in place of the keys of `secrets`
 
-**Returns:** `LanguageModelToolUse[]` - LangChain-compatible tool definitions
+Parameters whose names contain `TOKEN`, `KEY`, `SECRET` or `PASSWORD` are treated as secrets too: they are left out of the schema the model sees, and filled from `secrets`. Credentials in `{PLACEHOLDERS}` that no parameter declares are filled by `execute()` from `MATIMO_<NAME>` or `<NAME>` in the environment.
+
+**Returns:** `Promise<LangChainTool[]>`
 
 **Example:**
 
 ```typescript
-import { MatimoInstance, convertToolsToLangChain } from 'matimo';
+import { MatimoInstance, convertToolsToLangChain } from '@matimo/core';
 import { ChatOpenAI } from '@langchain/openai';
-import { createAgent } from './agent-utils';
+import { createAgent } from 'langchain';
 
-const matimo = await MatimoInstance.init({ autoDiscover: true });
-
-const tools = matimo.listTools();
-const langchainTools = convertToolsToLangChain(tools, matimo);
-
-// Use with LangChain agent
-const model = new ChatOpenAI({ modelName: 'gpt-4o-mini' });
-const agent = await createAgent({
-  model,
-  tools: langchainTools,
-  instructions: 'You are a helpful Slack assistant',
+const matimo = await MatimoInstance.init({
+  autoDiscover: true,
+  onApproval: async (request) => askUser(request), // asked before writes that need approval
 });
 
-// Agent automatically selects and executes tools
+const tools = matimo.listTools().filter((t) => t.name.startsWith('slack_'));
+const langchainTools = await convertToolsToLangChain(tools, matimo);
+
+const agent = createAgent({
+  model: new ChatOpenAI({ model: 'gpt-4o-mini' }),
+  tools: langchainTools,
+});
+
 const response = await agent.invoke({
-  input: 'Send a message to #general saying hello',
+  messages: [{ role: 'user', content: 'Send a message to #general saying hello' }],
 });
 ```
 
@@ -604,13 +656,19 @@ All SDK errors are instances of `MatimoError` with structured error codes.
 
 ```typescript
 enum ErrorCode {
-  INVALID_SCHEMA = 'INVALID_SCHEMA', // Tool definition invalid
+  INVALID_SCHEMA = 'INVALID_SCHEMA', // Tool definition invalid, or a URL parameter is missing
+  INVALID_PARAMETER = 'INVALID_PARAMETER', // A parameter value cannot be encoded
+  VALIDATION_FAILED = 'VALIDATION_FAILED',
   TOOL_NOT_FOUND = 'TOOL_NOT_FOUND', // Tool name not found
-  PARAMETER_VALIDATION = 'PARAMETER_VALIDATION', // Params don't match schema
-  EXECUTION_FAILED = 'EXECUTION_FAILED', // Tool execution error
-  AUTH_FAILED = 'AUTH_FAILED', // Authentication error
-  TIMEOUT = 'TIMEOUT', // Execution timeout
   FILE_NOT_FOUND = 'FILE_NOT_FOUND', // Tool file not found
+  EXECUTION_FAILED = 'EXECUTION_FAILED', // Tool error, a non-2xx HTTP response, or approval refused
+  AUTH_FAILED = 'AUTH_FAILED', // Missing credentials, or HTTP 401/403
+  RATE_LIMIT_EXCEEDED = 'RATE_LIMIT_EXCEEDED', // HTTP 429
+  TIMEOUT = 'TIMEOUT', // Execution timeout
+  NETWORK_ERROR = 'NETWORK_ERROR', // DNS failure, connection refused
+  POLICY_DENIED = 'POLICY_DENIED', // Denied by policy, or quarantined and not approved
+  POLICY_TIER_BLOCKED = 'POLICY_TIER_BLOCKED',
+  UNKNOWN_ERROR = 'UNKNOWN_ERROR',
 }
 ```
 
@@ -657,7 +715,7 @@ interface ToolDefinition {
   version: string; // Semantic version
   description: string; // Tool description
   parameters?: Record<string, Parameter>; // Tool parameters
-  execution: ExecutionConfig; // How to execute
+  execution: HttpExecution | FunctionExecution | CommandExecution; // How to execute
   output_schema?: Record<string, unknown>; // Response schema (Zod)
   authentication?: AuthConfig; // Auth configuration
   examples?: Example[]; // Usage examples
@@ -682,27 +740,34 @@ interface Parameter {
 }
 ```
 
-### ExecutionConfig
+### Execution types
 
 ```typescript
-type ExecutionConfig =
+type Execution =
+  | {
+      type: 'http';
+      method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+      url: string;
+      headers?: Record<string, string>;
+      body?: unknown;
+      query_params?: Record<string, string>;
+      parameter_encoding?: ParameterEncodingConfig[];
+      timeout?: number; // ms
+    }
+  | {
+      type: 'function';
+      code: string; // module path, relative to the YAML file
+      timeout?: number;
+    }
   | {
       type: 'command';
       command: string;
       args?: string[];
-    }
-  | {
-      type: 'http';
-      method: string;
-      url: string;
-      headers?: Record<string, string>;
-      body?: Record<string, unknown>;
-    }
-  | {
-      type: 'function';
-      function: string; // Path to function
+      timeout?: number;
     };
 ```
+
+Exported as `HttpExecution`, `FunctionExecution` and `CommandExecution`. See [Types](TYPES.md#execution-types).
 
 ### AuthConfig
 
@@ -758,10 +823,15 @@ async def init(
     approval_dir: str | None = None,
     approval_ttl_seconds: int | None = None,
     on_event: MatimoEventHandler | None = None,
+    audit_sink: AuditSink | None = None,
     on_hitl: HITLCallback | None = None,
+    on_approval: ApprovalCallback | None = None,
+    governance_mode: GovernanceMode | None = None,
     hitl_timeout_ms: int | None = None,
     log_level: str | None = None,
     log_format: str | None = None,
+    default_max_response_size: int | None = None,
+    default_skill_write_dir: str | None = None,
 ) -> 'Matimo'
 ```
 
@@ -782,11 +852,16 @@ Every option is a direct keyword-only argument on `init()` itself — there is n
 | `approval_secret` | `str` | `None` | HMAC secret for the approval manifest. Overrides `MATIMO_APPROVAL_SECRET` env |
 | `approval_dir` | `str` | `None` | Directory for `.matimo-approvals.json`. Defaults to the current working directory |
 | `approval_ttl_seconds` | `int` | `None` | Approval expiry in seconds. `None` means approvals never expire |
-| `on_event` | `Callable` | `None` | Event callback for audit/lifecycle events |
-| `on_hitl` | `async Callable` | `None` | Human-in-the-loop callback for quarantined tools |
+| `on_event` | `Callable` | `None` | Event callback for audit/lifecycle events (dicts with snake_case keys) |
+| `audit_sink` | `AuditSink` | `None` | Durable destination for the same events, e.g. `JsonlFileSink(path)` |
+| `on_hitl` | `async Callable[[HITLRequest], bool]` | `None` | Decides calls quarantined by `policy_config.enable_hitl` |
+| `on_approval` | `async Callable[[ApprovalRequest], bool]` | `None` | This instance's reviewer for calls that need approval |
+| `governance_mode` | `'secure' \| 'legacy'` | `None` (secure) | `'legacy'` restores the pre-0.2.0 approval defaults |
 | `hitl_timeout_ms` | `int` | `None` | Timeout for the HITL callback; `None` waits indefinitely |
 | `log_level` | `str` | `None` | `'debug' \| 'info' \| 'warn' \| 'error' \| 'silent'` (resolved from env/defaults when unset) |
 | `log_format` | `str` | `None` | `'simple' \| 'json'` (resolved from env/defaults when unset) |
+| `default_skill_write_dir` | `str` | `None` | Where `matimo_create_skill` writes when the caller gives no `target_dir` |
+| `default_max_response_size` | `int` | `None` | Instance-wide response-size cap in bytes, applied to every tool call via `execute()` unless that tool's own `output_schema.max_response_size` overrides it (falls back to a built-in 262144 / 256 KB when unset — see [Response Size Guardrail](../architecture/OVERVIEW.md#tool-execution-flow)) |
 
 If no `policy`/`policy_config`/`policy_file` is given, `init()` always constructs a `DefaultPolicyEngine()` — a zero-config Python instance is never left ungated (this always was Python's behavior; the equivalent TypeScript `MatimoInstance.init()` was fixed to match it).
 
@@ -794,8 +869,7 @@ If no `policy`/`policy_config`/`policy_file` is given, `init()` always construct
 
 ```python
 import asyncio
-from matimo import Matimo
-from matimo.policy.types import PolicyConfig
+from matimo import ApprovalRequest, Matimo, PolicyConfig
 
 # Simplest — load from a directory
 matimo = await Matimo.init('./tools')
@@ -815,17 +889,15 @@ matimo = await Matimo.init(
     log_level='debug',
 )
 
-# With HITL callback + skills
-async def my_approval_callback(request):
-    print(f"Approve {request.tool_name}? (y/n): ", end='', flush=True)
-    answer = input()
-    return {'approved': answer.lower() == 'y', 'reason': 'manual review'}
+# With an approval callback + skills
+async def my_approval_callback(request: ApprovalRequest) -> bool:
+    return input(f"Approve {request.tool_name}? (y/n): ").lower() == 'y'
 
 matimo = await Matimo.init(
     './tools',
     auto_discover=True,
     skill_paths=['./skills'],
-    on_hitl=my_approval_callback,
+    on_approval=my_approval_callback,
 )
 ```
 
@@ -838,11 +910,17 @@ async def execute(
     self,
     tool_name: str,
     params: dict[str, object],
+    *,
     credentials: dict[str, str] | None = None,
+    context: PolicyContext | None = None,
+    approved: bool = False,
+    on_approval: ApprovalCallback | None = None,
 ) -> object
 ```
 
-Execute a tool by name. Raises `MatimoError` on failure.
+`context`, `approved` and `on_approval` behave as in TypeScript: the caller's identity and roles, skip-the-prompt for a call the host already confirmed, and a reviewer for this call only.
+
+Execute a tool by name. Raises `MatimoError` on failure. If the raw result exceeds the effective response-size cap (`output_schema.max_response_size`, else `default_max_response_size`, else a built-in 256 KB), it's truncated rather than rejected — see [Response Size Guardrail](../architecture/OVERVIEW.md#tool-execution-flow).
 
 ```python
 from matimo import Matimo, MatimoError
@@ -864,7 +942,7 @@ result = await matimo.execute(
 try:
     result = await matimo.execute('unknown_tool', {})
 except MatimoError as e:
-    print(f"[{e.code}] {e.message}")
+    print(f"[{e.code}] {e}")
     if e.details:
         print("Details:", e.details)
 ```
@@ -1103,7 +1181,7 @@ from matimo.errors import ErrorCode
 try:
     result = await matimo.execute('unknown_tool', {})
 except MatimoError as e:
-    print(f"[{e.code}] {e.message}")
+    print(f"[{e.code}] {e}")
     # e.code is a string matching ErrorCode enum values
     if e.code == ErrorCode.TOOL_NOT_FOUND:
         available = [t.name for t in matimo.list_tools()]

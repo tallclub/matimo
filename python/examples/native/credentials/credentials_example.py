@@ -108,7 +108,7 @@ async def main() -> None:
             print(f"{'─' * 60}")
 
             # Get tenant's credentials
-            tenant_creds = get_tenant_credentials(tenant_id)
+            get_tenant_credentials(tenant_id)
             print(f"🔐  Credentials loaded for {tenant_id}")
             print("    Bot token: [REDACTED]")
 

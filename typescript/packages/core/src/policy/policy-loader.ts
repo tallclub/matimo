@@ -62,7 +62,9 @@ const PolicyFileSchema = z.object({
   protectedNamespaces: z.array(z.string()).optional(),
   enableHITL: z.boolean().optional(),
   quarantineRiskLevels: z.array(z.enum(['low', 'medium', 'high', 'critical'])).optional(),
+  hitlMinRiskLevel: z.enum(['low', 'medium', 'high', 'critical']).optional(),
   approvalTtlSeconds: z.number().int().positive().optional(),
+  governanceMode: z.enum(['secure', 'legacy']).optional(),
 });
 
 type PolicyFile = z.infer<typeof PolicyFileSchema>;
@@ -191,6 +193,8 @@ function buildPolicyConfig(data: PolicyFile): PolicyConfig {
   if (data.enableHITL !== undefined) config.enableHITL = data.enableHITL;
   if (data.quarantineRiskLevels !== undefined)
     config.quarantineRiskLevels = data.quarantineRiskLevels;
+  if (data.hitlMinRiskLevel !== undefined) config.hitlMinRiskLevel = data.hitlMinRiskLevel;
   if (data.approvalTtlSeconds !== undefined) config.approvalTtlSeconds = data.approvalTtlSeconds;
+  if (data.governanceMode !== undefined) config.governanceMode = data.governanceMode;
   return config;
 }

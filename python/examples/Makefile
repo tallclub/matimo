@@ -16,10 +16,11 @@
   extract-from-file-factory extract-from-file-decorator extract-from-file-langchain extract-from-file-crewai \
   convert-to-file-factory convert-to-file-decorator convert-to-file-langchain convert-to-file-crewai \
   web-scraper-factory web-scraper-decorator web-scraper-langchain web-scraper-crewai \
-  credentials policy skills meta-flow \
+  credentials policy approval-modes audit-log response-size skills skills-registry skills-crewai meta-flow logger-example \
   mcp-server-stdio mcp-server-http \
   mcp-agent-stdio mcp-agent-http mcp-agent mcp-agent-http-mode mcp-agent-multi mcp-diagnose mcp-test \
-  agent-langchain agent-crewai multi-agent-crewai agent-langchain-skills-policy
+  agent-langchain agent-crewai multi-agent-crewai agent-langchain-skills-policy \
+  agent-agno agno-approval
 
 # ── Detect the right Python runner ──────────────────────────────────────────
 PYTHON := $(shell command -v uv >/dev/null 2>&1 && echo "uv run python" || echo "python")
@@ -35,6 +36,8 @@ help:
 	@echo "  make agent-langchain      LangChain ReAct agent"
 	@echo "  make agent-crewai         CrewAI single-agent (all tools)"
 	@echo "  make multi-agent-crewai   CrewAI multi-agent crew (role-based tools)"
+	@echo "  make agent-agno           Agno agent (all tools, governed)"
+	@echo "  make agno-approval        Agno agent with risk-driven confirmation"
 	@echo ""
 	@echo "  ─ Slack ───────────────────────────────────"
 	@echo "  make slack-factory        Direct tool execution (native)"
@@ -131,8 +134,14 @@ help:
 	@echo "  ─ Advanced Features ───────────────────────"
 	@echo "  make credentials          Credential management demo"
 	@echo "  make policy               Policy engine demo"
+	@echo "  make approval-modes       Who approves, secure vs legacy, HITL, policy context"
+	@echo "  make audit-log            Hash-chained JSONL audit log + verify_audit_log"
+	@echo "  make response-size        Response-size guardrail (truncation)"
 	@echo "  make skills               Skills knowledge layer demo"
+	@echo "  make skills-registry      register_skill, add_skill_path, sections, prompt context"
+	@echo "  make skills-crewai        CrewAI agent using skill helpers + skill meta-tools"
 	@echo "  make meta-flow            Meta-tools integration"
+	@echo "  make logger-example       Structured logging (no API key needed)"
 	@echo ""
 	@echo "  ─ MCP ──────────────────────────────────────"
 	@echo "  make mcp-server-stdio     Start MCP server (stdio transport)"
@@ -159,6 +168,10 @@ agent-crewai:
 	$(PYTHON) crewai/agents/crewai_agent.py
 multi-agent-crewai:
 	$(PYTHON) crewai/agents/multi_agent_crew.py
+agent-agno:
+	$(PYTHON) agno/agents/agno_agent.py
+agno-approval:
+	$(PYTHON) agno/agents/agno_with_approval.py
 
 # ── Slack ─────────────────────────────────────────────────────────────────────
 slack-factory:
@@ -354,10 +367,22 @@ credentials:
 	$(PYTHON) native/credentials/credentials_example.py
 policy:
 	$(PYTHON) native/policy/policy_demo.py
+approval-modes:
+	$(PYTHON) native/policy/approval_modes_demo.py
+audit-log:
+	$(PYTHON) native/policy/audit_log_demo.py
+response-size:
+	$(PYTHON) native/policy/response_size_demo.py
 skills:
 	$(PYTHON) native/skills/skills_demo.py
+skills-registry:
+	$(PYTHON) native/skills/skills_registry_demo.py
+skills-crewai:
+	$(PYTHON) crewai/skills/skills_crewai.py
 meta-flow:
 	$(PYTHON) native/meta_flow/meta_tools_integration.py
+logger-example:
+	$(PYTHON) native/logger_example.py
 
 # ── Advanced Agent ────────────────────────────────────────────────────────────
 agent-langchain-skills-policy:

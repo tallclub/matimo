@@ -22,17 +22,25 @@ SETUP:
 
 USAGE:
 ────────────────────────────────────────────────────────────────────────────
-  export MATIMO_AUTO_APPROVE=true
-  uv run python search/search_decorator.py
+  uv run python search/search_decorator.py        # asks before each search
+
+  search declares requires_approval: true. To run unattended, pre-approve it:
+  MATIMO_APPROVED_PATTERNS="search" uv run python search/search_decorator.py
+
+NOTE: @tool sends the method's own parameter names as the tool's parameters,
+so they must match the tool definition exactly (query, directory,
+filePattern, maxResults), and only the arguments you pass are sent —
+Python defaults are not.
 
 ============================================================================
 """
 
 import asyncio
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
 
-from matimo import Matimo
+from matimo import ApprovalRequest, Matimo
 from matimo.decorators import set_global_matimo_instance, tool
 
 load_dotenv(Path(__file__).parent.parent.parent / ".env")
@@ -42,39 +50,41 @@ load_dotenv(Path(__file__).parent.parent.parent / ".env")
 # Service class — each method is auto-routed to the matching Matimo tool
 # ───────────────────────────────────────────────────────────────────────────
 
+async def approve(request: ApprovalRequest) -> bool:
+    """Ask in the terminal before each call that needs approval."""
+    params = request.params
+    print(f"\n🔒 Approval required — {request.tool_name}: {params.get('query')!r} in {params.get('directory')}")
+    if not sys.stdin.isatty():
+        print('   ❌ Rejected: no terminal. Pre-approve with MATIMO_APPROVED_PATTERNS="search"')
+        return False
+    return input("   Approve? (y/n): ").strip().lower() in ("y", "yes")
+
+
 class FileSearcher:
     """High-level file search service using the @tool decorator pattern."""
 
     @tool("search")
-    async def search_pattern(
+    async def search_files(
         self,
         query: str,
         directory: str,
-        file_pattern: str = None,
-        max_results: int = 10
+        filePattern: str,  # noqa: N803
+        maxResults: int,  # noqa: N803
     ) -> dict:
         """
         Decorator auto-calls matimo.execute('search', {...}).
-        
+
         Args:
-            query: Pattern to search for
+            query: Text to search for
             directory: Directory to search in
-            file_pattern: File pattern filter (e.g., "*.py")
-            max_results: Maximum number of results
-            
-        Returns:
-            Search results with matches
+            filePattern: Glob filter such as "*.py"
+            maxResults: Maximum number of matches to return
         """
         ...
 
     @tool("search")
-    async def search_pythonfiles(self, query: str, directory: str) -> dict:
-        """Search for pattern in Python files."""
-        ...
-
-    @tool("search")
-    async def find_imports(self, module_name: str, directory: str) -> dict:
-        """Find import statements in files."""
+    async def search_everywhere(self, query: str, directory: str) -> dict:
+        """Search every file under a directory."""
         ...
 
 
@@ -90,7 +100,7 @@ async def main() -> None:
 
     # ── Initialize Matimo and register globally for the decorator ────────────
     print("🚀  Initializing Matimo…")
-    matimo = await Matimo.init(auto_discover=True)
+    matimo = await Matimo.init(auto_discover=True, on_approval=approve)
     set_global_matimo_instance(matimo)
     print("✅  Matimo initialized\n")
 
@@ -100,7 +110,7 @@ async def main() -> None:
     try:
         # Example 1: Search for "async def" in Python files
         print("1. Searching for 'async def' in Python files\n")
-        result1 = await searcher.search_pythonfiles("async def", examples_dir)
+        result1 = await searcher.search_files("async def", examples_dir, "*.py", 20)
         if result1.get("success"):
             print(f"Total matches: {result1.get('totalMatches', 0)}")
             matches = result1.get("matches", [])
@@ -115,7 +125,7 @@ async def main() -> None:
 
         # Example 2: Search for imports
         print("2. Searching for imports of 'langchain'\n")
-        result2 = await searcher.find_imports("langchain", examples_dir)
+        result2 = await searcher.search_everywhere("from langchain", examples_dir)
         if result2.get("success"):
             print(f"Total matches: {result2.get('totalMatches', 0)}")
             matches = result2.get("matches", [])
@@ -131,12 +141,7 @@ async def main() -> None:
         print("3. Searching for 'def main' in native/ Python files\n")
         native_dir = Path(examples_dir) / "native"
         if native_dir.exists():
-            result3 = await searcher.search_pattern(
-                "def main",
-                str(native_dir),
-                "*.py",
-                max_results=5
-            )
+            result3 = await searcher.search_files("def main", str(native_dir), "*.py", maxResults=5)
             if result3.get("success"):
                 print(f"Total matches: {result3.get('totalMatches', 0)}")
                 matches = result3.get("matches", [])

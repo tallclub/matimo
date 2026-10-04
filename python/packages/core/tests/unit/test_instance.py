@@ -8,10 +8,12 @@ import httpx
 import pytest
 import respx
 
+from matimo.approval.handler import ApprovalHandler
 from matimo.core.models import (
     HttpExecution,
     Parameter,
     ParameterType,
+    SkillDefinition,
     ToolDefinition,
 )
 from matimo.core.registry import ToolRegistry
@@ -55,6 +57,13 @@ def _make_delete_tool() -> ToolDefinition:
     )
 
 
+def _approving_handler() -> ApprovalHandler:
+    """A private ApprovalHandler that approves every per-call request."""
+    handler = ApprovalHandler()
+    handler.set_approval_callback(AsyncMock(return_value=True))
+    return handler
+
+
 class TestMatimoInit:
     @pytest.mark.asyncio
     async def test_init_from_directory(self, tmp_path: Path) -> None:
@@ -94,6 +103,55 @@ class TestMatimoExecute:
         )
         result = await matimo.execute("get_data", {"resource_id": "42"})
         assert result["id"] == 42
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_execute_truncates_oversized_result_via_default_max_response_size(self) -> None:
+        """The response-size guardrail (Fix 3) must fire inside execute() itself —
+        the single choke point every execution path funnels through — not just
+        in the MCP server layer."""
+        huge_items = [{"id": i, "blob": "x" * 80} for i in range(5000)]
+        respx.get("https://api.example.com/data/42").mock(
+            return_value=httpx.Response(200, json=huge_items)
+        )
+        reg = ToolRegistry()
+        reg.register(_make_get_tool())
+        matimo = Matimo(
+            registry=reg,
+            policy_engine=DefaultPolicyEngine(),
+            loader=MagicMock(),
+            tool_paths=[],
+            on_event=None,
+            on_hitl=None,
+            matimo_logger=MagicMock(),
+            default_max_response_size=2_000,
+        )
+        result = await matimo.execute("get_data", {"resource_id": "42"})
+        assert isinstance(result, list)
+        assert len(result) < len(huge_items) + 1
+        assert isinstance(result[-1], str)
+        assert "truncated" in result[-1]
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_execute_leaves_small_result_unchanged(self) -> None:
+        respx.get("https://api.example.com/data/42").mock(
+            return_value=httpx.Response(200, json={"id": 42, "name": "item"})
+        )
+        reg = ToolRegistry()
+        reg.register(_make_get_tool())
+        matimo = Matimo(
+            registry=reg,
+            policy_engine=DefaultPolicyEngine(),
+            loader=MagicMock(),
+            tool_paths=[],
+            on_event=None,
+            on_hitl=None,
+            matimo_logger=MagicMock(),
+            default_max_response_size=2_000,
+        )
+        result = await matimo.execute("get_data", {"resource_id": "42"})
+        assert result == {"id": 42, "name": "item"}
 
     @pytest.mark.asyncio
     async def test_execute_tool_not_found(self) -> None:
@@ -151,6 +209,7 @@ class TestMatimoExecute:
             on_event=None,
             on_hitl=approval_callback,
             matimo_logger=MagicMock(),
+            approval_handler=_approving_handler(),
         )
         with respx.mock:
             respx.delete("https://api.example.com/data/99").mock(
@@ -180,6 +239,36 @@ class TestMatimoExecute:
         with pytest.raises(MatimoError) as exc:
             await matimo.execute("delete_data", {"resource_id": "99"})
         assert exc.value.code in (ErrorCode.POLICY_DENIED, ErrorCode.EXECUTION_FAILED)
+
+    @pytest.mark.asyncio
+    async def test_hitl_approval_is_recorded_and_not_asked_again(self, tmp_path: Path) -> None:
+        """Mirrors #resolveHITL: an approved quarantined tool is recorded in the
+        manifest, so the reviewer is asked once per tool definition, not per call."""
+        from matimo.policy.approval_manifest import ApprovalManifest
+
+        reg = ToolRegistry()
+        reg.register(_make_delete_tool())
+        approval_callback = AsyncMock(return_value=True)
+        matimo = Matimo(
+            registry=reg,
+            policy_engine=DefaultPolicyEngine(
+                PolicyConfig(enable_hitl=True, quarantine_risk_levels=[RiskLevel.HIGH])
+            ),
+            loader=MagicMock(),
+            tool_paths=[],
+            on_event=None,
+            on_hitl=approval_callback,
+            matimo_logger=MagicMock(),
+            approval_manifest=ApprovalManifest(str(tmp_path), approval_secret="test-secret"),
+            approval_handler=_approving_handler(),
+        )
+        with respx.mock:
+            respx.delete("https://api.example.com/data/99").mock(
+                return_value=httpx.Response(200, json={"deleted": True})
+            )
+            await matimo.execute("delete_data", {"resource_id": "99"})
+            await matimo.execute("delete_data", {"resource_id": "99"})
+        assert approval_callback.await_count == 1
 
 
 class TestMatimoToolQuery:
@@ -374,32 +463,6 @@ class TestMatimoHitl:
         assert exc.value.code in (ErrorCode.POLICY_DENIED, ErrorCode.EXECUTION_FAILED)
 
     @pytest.mark.asyncio
-    async def test_execute_approved_skip_policy(self) -> None:
-        """approved=True bypasses policy check entirely."""
-        reg = ToolRegistry()
-        deprecated = ToolDefinition(
-            name="old_tool",
-            description="deprecated",
-            deprecated=True,
-            execution=HttpExecution(type="http", method="GET", url="https://x.com"),
-        )
-        reg.register(deprecated)
-        matimo = Matimo(
-            registry=reg,
-            policy_engine=DefaultPolicyEngine(),
-            loader=MagicMock(),
-            tool_paths=[],
-            on_event=None,
-            on_hitl=None,
-            matimo_logger=MagicMock(),
-        )
-        with respx.mock:
-            respx.get("https://x.com").mock(return_value=httpx.Response(200, json={"ok": True}))
-            # approved=True skips policy
-            result = await matimo.execute("old_tool", {}, approved=True)
-        assert result["ok"] is True
-
-    @pytest.mark.asyncio
     async def test_hitl_timeout_auto_rejects(self) -> None:
         """When hitl_timeout_ms is set and callback exceeds it, tool is auto-rejected."""
         import asyncio
@@ -459,6 +522,7 @@ class TestMatimoHitl:
             on_hitl=fast_callback,
             matimo_logger=MagicMock(),
             hitl_timeout_ms=5000,  # generous timeout
+            approval_handler=_approving_handler(),  # DELETE also needs per-call approval
         )
 
         with respx.mock:
@@ -697,7 +761,8 @@ class TestMatimoInstanceMissingLines:
             matimo_logger=MagicMock(),
         )
         with patch.object(matimo._command_executor, "execute", new=AsyncMock(return_value={"ok": True})):
-            result = await matimo.execute("cmd_tool", {})
+            # command tools need per-call approval by default; approve out of band
+            result = await matimo.execute("cmd_tool", {}, approved=True)
         assert result["ok"] is True
 
     @pytest.mark.asyncio
@@ -833,7 +898,7 @@ class TestInstanceSkillsAndCoverage:
         skills_root.mkdir()
 
         matimo = await Matimo.init([], skill_paths=[str(skills_root)])
-        assert matimo.list_skills() == []
+        assert not any(s.name == "new-skill" for s in matimo.list_skills())
 
         new_skill_dir = skills_root / "new-skill"
         new_skill_dir.mkdir()
@@ -845,6 +910,53 @@ class TestInstanceSkillsAndCoverage:
 
         assert result["loaded"] == 1
         assert any(s.name == "new-skill" for s in matimo.list_skills())
+
+    @pytest.mark.asyncio
+    async def test_core_skills_are_bundled_and_always_loaded(self) -> None:
+        matimo = await Matimo.init([])
+        names = {s.name for s in matimo.list_skills()}
+        assert {
+            "tool-creation",
+            "meta-tools-lifecycle",
+            "skills-catalog",
+            "policy-validation",
+            "skill-creator",
+            "tool-discovery",
+        } <= names
+
+    @pytest.mark.asyncio
+    async def test_auto_discover_loads_provider_skills_next_to_tools(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A discovered provider's skills/ directory (sibling of tools/) is loaded."""
+        from matimo.core.loader import ToolLoader
+
+        provider = tmp_path / "matimo_demo"
+        (provider / "tools").mkdir(parents=True)
+        (provider / "skills" / "demo").mkdir(parents=True)
+        (provider / "skills" / "demo" / "SKILL.md").write_text(
+            "---\nname: demo\ndescription: Demo provider skill\n---\n\nContent."
+        )
+        monkeypatch.setattr(
+            ToolLoader, "auto_discover_packages", lambda self: [str(provider / "tools")]
+        )
+
+        matimo = await Matimo.init([], auto_discover=True)
+
+        assert str(provider / "skills") in matimo.get_skill_paths()
+        assert any(s.name == "demo" for s in matimo.list_skills())
+
+    @pytest.mark.asyncio
+    async def test_explicit_tool_paths_do_not_load_sibling_skills(self, tmp_path: Path) -> None:
+        (tmp_path / "tools").mkdir()
+        (tmp_path / "skills" / "stray").mkdir(parents=True)
+        (tmp_path / "skills" / "stray" / "SKILL.md").write_text(
+            "---\nname: stray\ndescription: Not discovered\n---\n\nContent."
+        )
+
+        matimo = await Matimo.init([str(tmp_path / "tools")])
+
+        assert not any(s.name == "stray" for s in matimo.list_skills())
 
     @pytest.mark.asyncio
     async def test_reload_skills_removes_deleted_skill(self, tmp_path: Path) -> None:
@@ -867,6 +979,184 @@ class TestInstanceSkillsAndCoverage:
         assert not any(s.name == "temp-skill" for s in matimo.list_skills())
 
     # ------------------------------------------------------------------
+    # add_skill_path()
+    # ------------------------------------------------------------------
+
+    @pytest.mark.asyncio
+    async def test_add_skill_path_is_picked_up_by_reload_skills(self, tmp_path: Path) -> None:
+        skills_root = tmp_path / "skills"
+        skills_root.mkdir()
+        (skills_root / "added-skill").mkdir()
+        (skills_root / "added-skill" / "SKILL.md").write_text(
+            "---\nname: added-skill\ndescription: Added at runtime\n---\n\nContent."
+        )
+
+        matimo = await Matimo.init([])
+        assert str(skills_root) not in matimo.get_skill_paths()
+        assert not any(s.name == "added-skill" for s in matimo.list_skills())
+
+        matimo.add_skill_path(str(skills_root))
+        assert str(skills_root) in matimo.get_skill_paths()
+        # not read until reload_skills()
+        assert not any(s.name == "added-skill" for s in matimo.list_skills())
+
+        await matimo.reload_skills()
+        assert any(s.name == "added-skill" for s in matimo.list_skills())
+
+    @pytest.mark.asyncio
+    async def test_add_skill_path_dedups_existing_path(self, tmp_path: Path) -> None:
+        skills_root = tmp_path / "skills"
+        skills_root.mkdir()
+
+        matimo = await Matimo.init([], skill_paths=[str(skills_root)])
+        before = len(matimo.get_skill_paths())
+
+        matimo.add_skill_path(str(skills_root))
+
+        assert len(matimo.get_skill_paths()) == before
+
+    # ------------------------------------------------------------------
+    # register_skill() / register_skills()
+    # ------------------------------------------------------------------
+
+    def test_register_skill_makes_skill_visible_immediately(self) -> None:
+        matimo = self._make_matimo()
+        assert matimo.get_skill("external-skill") is None
+
+        matimo.register_skill(
+            SkillDefinition(
+                name="external-skill",
+                description="Pushed in directly, no filesystem involved",
+                body="# External\n\nFrom an external store.",
+            )
+        )
+
+        assert matimo.get_skill("external-skill") is not None
+        assert any(s.name == "external-skill" for s in matimo.list_skills())
+
+    def test_register_skills_registers_multiple_at_once(self) -> None:
+        matimo = self._make_matimo()
+
+        matimo.register_skills([
+            SkillDefinition(name="bulk-skill-a", description="A", body="# A"),
+            SkillDefinition(name="bulk-skill-b", description="B", body="# B"),
+        ])
+
+        names = {s.name for s in matimo.list_skills()}
+        assert {"bulk-skill-a", "bulk-skill-b"} <= names
+
+    # ------------------------------------------------------------------
+    # get_default_skill_write_dir()
+    # ------------------------------------------------------------------
+
+    def test_get_default_skill_write_dir_defaults_to_none(self) -> None:
+        matimo = self._make_matimo()
+        assert matimo.get_default_skill_write_dir() is None
+
+    @pytest.mark.asyncio
+    async def test_get_default_skill_write_dir_returns_configured_value(
+        self, tmp_path: Path
+    ) -> None:
+        custom_dir = str(tmp_path / "custom-skills")
+        matimo = await Matimo.init([], default_skill_write_dir=custom_dir)
+        assert matimo.get_default_skill_write_dir() == custom_dir
+
+    # ------------------------------------------------------------------
+    # notify_skill_created()
+    # ------------------------------------------------------------------
+
+    def test_notify_skill_created_emits_event_with_default_source(self) -> None:
+        events: list[dict] = []
+        matimo = Matimo(
+            registry=ToolRegistry(),
+            policy_engine=DefaultPolicyEngine(),
+            loader=MagicMock(),
+            tool_paths=[],
+            on_event=events.append,
+            on_hitl=None,
+            matimo_logger=MagicMock(),
+        )
+
+        matimo.notify_skill_created("agent-made-skill")
+
+        created = [e for e in events if e["type"] == "skill:created"]
+        assert len(created) == 1
+        assert created[0]["skill_name"] == "agent-made-skill"
+        assert created[0]["source"] == "user"
+
+    def test_notify_skill_created_accepts_explicit_source(self) -> None:
+        events: list[dict] = []
+        matimo = Matimo(
+            registry=ToolRegistry(),
+            policy_engine=DefaultPolicyEngine(),
+            loader=MagicMock(),
+            tool_paths=[],
+            on_event=events.append,
+            on_hitl=None,
+            matimo_logger=MagicMock(),
+        )
+
+        matimo.notify_skill_created("catalog-skill", "catalog")
+
+        created = [e for e in events if e["type"] == "skill:created"]
+        assert created[0]["source"] == "catalog"
+
+    # ------------------------------------------------------------------
+    # build_skill_prompt_context()
+    # ------------------------------------------------------------------
+
+    async def test_build_skill_prompt_context_returns_relevant_content(self) -> None:
+        matimo = self._make_matimo()
+        matimo.register_skill(
+            SkillDefinition(
+                name="postgres-locking",
+                description="Diagnosing Postgres row locking",
+                body="# Overview\n\nHow to diagnose and resolve Postgres row locking issues.",
+            )
+        )
+
+        context = await matimo.build_skill_prompt_context(
+            "Postgres locking issue", top_k=1, min_score=0
+        )
+
+        assert "postgres-locking" in context
+
+    async def test_build_skill_prompt_context_empty_when_nothing_matches(self) -> None:
+        matimo = self._make_matimo()
+        matimo.register_skill(
+            SkillDefinition(
+                name="unrelated-skill",
+                description="Completely unrelated",
+                body="# Overview\n\nCompletely unrelated content.",
+            )
+        )
+
+        context = await matimo.build_skill_prompt_context("xyzzy plugh quux", min_score=0.99)
+
+        assert context == ""
+
+    async def test_build_skill_prompt_context_matches_standalone_helper(self) -> None:
+        from matimo.integrations.langchain import build_relevant_skill_prompt
+
+        matimo = self._make_matimo()
+        matimo.register_skill(
+            SkillDefinition(
+                name="parity-skill",
+                description="Parity check",
+                body="# Overview\n\nParity check content for prompt context.",
+            )
+        )
+
+        standalone = await build_relevant_skill_prompt(
+            matimo, "parity check content", top_k=1, min_score=0
+        )
+        via_instance = await matimo.build_skill_prompt_context(
+            "parity check content", top_k=1, min_score=0
+        )
+
+        assert via_instance == standalone
+
+    # ------------------------------------------------------------------
     # Lines 299-306: matimo_reload_tools interception in execute()
     # ------------------------------------------------------------------
 
@@ -885,7 +1175,8 @@ class TestInstanceSkillsAndCoverage:
         instance = await Matimo.init(core_tools_dir)
         reload_result = ReloadResult(loaded=5, removed=1, revalidated=0, rejected=[])
         with patch.object(instance, "reload", new=AsyncMock(return_value=reload_result)):
-            result = await instance.execute("matimo_reload_tools", {})
+            # matimo_reload_tools declares requires_approval; approve out of band
+            result = await instance.execute("matimo_reload_tools", {}, approved=True)
         assert result["success"] is True
         assert result["loaded"] == 5
         assert result["removed"] == 1
@@ -942,6 +1233,29 @@ class TestInstanceSkillsAndCoverage:
         """Line 390: get_skill_content() returns None for unknown skill."""
         matimo = self._make_matimo()
         assert matimo.get_skill_content("nonexistent") is None
+
+    def test_get_skill_sections_returns_none_when_absent(self) -> None:
+        """get_skill_sections() returns None for unknown skill."""
+        matimo = self._make_matimo()
+        assert matimo.get_skill_sections("nonexistent") is None
+
+    @pytest.mark.asyncio
+    async def test_get_skill_sections_returns_section_inventory(self, tmp_path: Path) -> None:
+        """get_skill_sections() lists headings with token estimates for a loaded skill."""
+        skills_dir = tmp_path / "skills" / "slack-messaging"
+        skills_dir.mkdir(parents=True)
+        (skills_dir / "SKILL.md").write_text(
+            "---\nname: slack-messaging\ndescription: Sending Slack messages\n---\n\n"
+            "# Messaging\n\nSend a message via the Slack API.\n\n"
+            "# Error Handling\n\nRetry on rate limits."
+        )
+        matimo = await Matimo.init([], skill_paths=[str(tmp_path / "skills")])
+        sections = matimo.get_skill_sections("slack-messaging")
+        assert sections is not None
+        paths = [s["path"] for s in sections]
+        assert "Messaging" in paths
+        assert "Error Handling" in paths
+        assert all("token_estimate" in s for s in sections)
 
     # ------------------------------------------------------------------
     # Line 400: semantic_search_skills

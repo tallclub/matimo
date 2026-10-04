@@ -31,11 +31,11 @@ Output:
 
   📍 @matimo/slack
      Slack workspace tools
-     Tools: slack-send-message, slack-list-channels, slack-get-messages, ...
+     Tools: slack-send-message, slack-list-channels, slack_send_channel_message, ...
 
   📍 @matimo/github
      GitHub repository and issue management tools
-     Tools: github-create-issue, github-list-repos, github-get-issue, ...
+     Tools: github-create-issue, github-list-repositories, github-get-issue, ...
 
   📍 @matimo/gmail
      Gmail email tools
@@ -55,10 +55,10 @@ Install one or more tool packages from npm.
 matimo install slack
 
 # Install multiple packages
-matimo install github stripe notion
+matimo install github notion hubspot
 
 # Install specific version
-matimo install slack@1.2.0
+matimo install slack@0.2.0
 ```
 
 The CLI automatically resolves `{package}` to `@matimo/{package}` and installs from npm.
@@ -70,9 +70,9 @@ The CLI automatically resolves `{package}` to `@matimo/{package}` and installs f
 matimo install slack
 # → Installs @matimo/slack
 
-# Install GitHub and Stripe
-matimo install github stripe
-# → Installs @matimo/github and @matimo/stripe
+# Install GitHub and Notion
+matimo install github notion
+# → Installs @matimo/github and @matimo/notion
 
 # See what's available
 matimo search email
@@ -96,7 +96,7 @@ const result = await matimo.execute('slack-send-message', {
 
 ### `matimo search [query]`
 
-Search for tools or packages by name.
+Search the provider packages by name and description. Inside the Matimo repository it searches the workspace packages; elsewhere it searches the `@matimo/*` packages installed in `node_modules`, so install a package before searching its tools.
 
 ```bash
 # Search for email tools
@@ -122,7 +122,7 @@ Results for "email":
      Tools: mailchimp-send-campaign, mailchimp-add-list-member, ...
 ```
 
-**Use when:** You want to find tools before installing them, or discover what's available for a specific service.
+**Use when:** You want to find which installed package has a tool for a service. To see every package that exists, browse [npm](https://www.npmjs.com/org/matimo).
 
 ### `matimo mcp`
 
@@ -158,6 +158,13 @@ matimo review list
 matimo review approve my_tool
 matimo review reject my_tool
 ```
+
+`review` works on one directory that holds both the agent-created tools (`<dir>/<tool>/definition.yaml`) and the approval manifest (`<dir>/.matimo-approvals.json`): the current directory, or `MATIMO_TOOL_DIR`. For your app to see a CLI approval:
+
+- set `approvalDir` (`approval_dir`) in the app to that same directory, and
+- use the same `MATIMO_APPROVAL_SECRET` in the CLI and the app (`approve` refuses to run without it).
+
+`approve` sets `status: approved` in the YAML and signs it; reload the app's tools afterwards. `list` shows the tools the manifest records as approved, and those held as pending by HITL quarantine on reload. Inside a running agent, `matimo_approve_tool` does the same job with the app's own manifest.
 
 ## Auto-Discovery
 
@@ -320,7 +327,7 @@ const matimo = await MatimoInstance.init({ autoDiscover: true });
 ### Need specific version?
 
 ```bash
-matimo install slack@1.2.0
+matimo install slack@0.2.0
 npm install @matimo/slack@1.2.0
 ```
 

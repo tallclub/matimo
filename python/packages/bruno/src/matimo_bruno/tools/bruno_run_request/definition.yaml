@@ -2,6 +2,7 @@ name: bruno_run_request
 description: Execute a single request from a Bruno collection for targeted debugging and validation. Returns detailed request/response data and assertion results.
 version: '1.0.0'
 status: approved
+risk: high
 
 parameters:
   collection_path:

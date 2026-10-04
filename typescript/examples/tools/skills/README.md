@@ -10,6 +10,8 @@ Skills are SKILL.md files with YAML frontmatter that agents load on demand via *
 
 > **This is not a scripted demo.** The agent is given goals like "I need a code review checklist" and must independently discover how to create, list, validate, read, and apply skills.
 
+**`pnpm skills:registry`** (`skills-registry-demo.ts`) needs no API key and no LLM. It shows where skills can come from and how a host controls them: `registerSkill()` for skills fetched from your own storage, `addSkillPath()` + `reloadSkills()` to mount a directory at runtime, `getSkillSections()` / `getSkillContent({ sections })` to load only part of a skill, `buildSkillPromptContext()` to pick the relevant skills for a request, and `defaultSkillWriteDir` with the `skill:created` event for skills an agent writes.
+
 ## What It Proves
 
 | Mission | Agent's Goal (No Tool Names) | Expected Outcome |
@@ -135,6 +137,22 @@ echo -e "y\ny\ny\ny\ny" | pnpm skills:demo
 - Confirms all skills written to disk
 - Validates YAML frontmatter structure
 
+### Phase 4: Non-MCP Progressive Disclosure
+- `getSkillsMetadata()` — Level 1 metadata without an LLM
+- `semanticSearchSkills()` / `buildRelevantSkillPrompt()` — TF-IDF ranked Level 2 loading
+
+### Phase 5: New Meta-Tools — Factory & Decorator Patterns
+Demonstrates `matimo_search_skills`, `matimo_get_skill_sections`, and `matimo_get_skill_content` (the
+search → inventory → load workflow, see [docs/skills/SKILLS.md](../../../../docs/skills/SKILLS.md#searching-and-loading-skills-selectively))
+via the two non-LLM SDK integration patterns:
+- **5a. Factory pattern** — direct `matimo.execute('matimo_search_skills', {...})` calls
+- **5b. Decorator pattern** — a `SkillsMetaToolsService` class with `@tool(...)`-wrapped methods, mirroring `slack-decorator.ts`
+
+The third required pattern — a LangChain agent calling `matimo_search_skills` to pick a skill
+semantically before loading it — lives in
+[`examples/tools/agents/langchain-skills-policy-agent.ts`](../agents/langchain-skills-policy-agent.ts)'s
+"Semantic Skill Discovery" demo step.
+
 ## Skills Meta-Tools
 
 | Tool | Purpose | Approval? |
@@ -143,6 +161,9 @@ echo -e "y\ny\ny\ny\ny" | pnpm skills:demo
 | `matimo_list_skills` | Level 1: List skill metadata | ❌ No |
 | `matimo_get_skill` | Level 2/3: Read SKILL.md or bundled resource | ❌ No |
 | `matimo_validate_skill` | Validate skill against Agent Skills spec | ❌ No |
+| `matimo_search_skills` | Semantic search over skills (TF-IDF ranked) | ❌ No |
+| `matimo_get_skill_sections` | Inventory a skill's sections + token estimates | ❌ No |
+| `matimo_get_skill_content` | Load only specific sections of a skill | ❌ No |
 
 ## SKILL.md Format (Agent Skills Spec)
 

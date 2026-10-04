@@ -31,8 +31,8 @@ def inject_auth_parameters(
     Scan all placeholders in the tool's execution config (URL, headers, body,
     query_params). For any placeholder that looks auth-related and has no value
     in params, attempt to resolve it from:
-      1. per-call credentials dict
-      2. process environment (MATIMO_{TOOL_NAME}_{KEY} or just {KEY})
+      1. per-call credentials dict ({KEY}, then MATIMO_{KEY})
+      2. process environment (MATIMO_{KEY}, MATIMO_{TOOL_NAME}_{KEY}, then {KEY})
 
     SECURITY: injected values are never logged.
 
@@ -71,21 +71,20 @@ def extract_parameter_placeholders(tool: ToolDefinition) -> set[str]:
     """
     placeholders: set[str] = set()
     exec_cfg = tool.execution
-    exec_type = exec_cfg.type
 
-    if exec_type == "http":
-        _scan_string(exec_cfg.url, placeholders)  # type: ignore[attr-defined]
-        _scan_object(exec_cfg.headers, placeholders)  # type: ignore[attr-defined]
-        _scan_object(exec_cfg.body, placeholders)  # type: ignore[attr-defined]
-        _scan_object(exec_cfg.query_params, placeholders)  # type: ignore[attr-defined]
-        _scan_object(exec_cfg.params, placeholders)  # type: ignore[attr-defined]
+    if exec_cfg.type == "http":
+        _scan_string(exec_cfg.url, placeholders)
+        _scan_object(exec_cfg.headers, placeholders)
+        _scan_object(exec_cfg.body, placeholders)
+        _scan_object(exec_cfg.query_params, placeholders)
+        _scan_object(exec_cfg.params, placeholders)
 
-    elif exec_type == "command":
-        _scan_string(exec_cfg.command, placeholders)  # type: ignore[attr-defined]
-        for arg in exec_cfg.args or []:  # type: ignore[attr-defined]
+    elif exec_cfg.type == "command":
+        _scan_string(exec_cfg.command, placeholders)
+        for arg in exec_cfg.args or []:
             _scan_string(arg, placeholders)
 
-    elif exec_type == "function":
+    elif exec_cfg.type == "function":
         # Function tools may have params passed directly — nothing to scan
         pass
 
@@ -103,19 +102,27 @@ def _resolve_auth_value(
     credentials: dict[str, str] | None,
 ) -> str | None:
     """
-    Try to resolve an auth placeholder in priority order:
-    1. per-call credentials
-    2. env MATIMO_{TOOL_NAME_UPPER}_{PLACEHOLDER_UPPER}
-    3. env {PLACEHOLDER} directly
+    Try to resolve an auth placeholder in priority order, matching
+    injectAuthParameters() in matimo-instance.ts:
+    1. per-call credentials: {PLACEHOLDER}, then MATIMO_{PLACEHOLDER}
+    2. env MATIMO_{PLACEHOLDER}
+    3. env MATIMO_{TOOL_NAME_UPPER}_{PLACEHOLDER_UPPER} (Python-only, kept for
+       existing deployments)
+    4. env {PLACEHOLDER}
     """
-    if credentials and placeholder in credentials:
-        return credentials[placeholder]
+    if credentials:
+        for key in (placeholder, f"MATIMO_{placeholder}"):
+            if credentials.get(key):
+                return credentials[key]
 
-    # e.g. MATIMO_SLACK_SLACK_BOT_TOKEN
-    env_key_prefixed = f"MATIMO_{tool_name.upper()}_{placeholder.upper()}"
-    val = os.environ.get(env_key_prefixed)
-    if val:
-        return val
+    for env_key in (
+        f"MATIMO_{placeholder}",
+        # e.g. MATIMO_SLACK_SEND_CHANNEL_MESSAGE_SLACK_BOT_TOKEN
+        f"MATIMO_{tool_name.upper()}_{placeholder.upper()}",
+    ):
+        val = os.environ.get(env_key)
+        if val:
+            return val
 
     # env directly (e.g. SLACK_BOT_TOKEN)
     return os.environ.get(placeholder)

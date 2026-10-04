@@ -130,6 +130,14 @@ export default async function matimoValidateTool(
     return result;
   }
 
+  // Check the tool as matimo_create_tool will write it: creation forces these
+  // fields, so the rules about them must not fail a definition that omits them.
+  let declaredRequiresApproval: unknown;
+  if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+    declaredRequiresApproval = (parsed as Record<string, unknown>).requires_approval;
+    parsed = { ...(parsed as Record<string, unknown>), requires_approval: true, status: 'draft' };
+  }
+
   // Step 2: Validate against ToolDefinition schema
   let tool: ReturnType<typeof validateToolDefinition>;
   try {
@@ -151,18 +159,23 @@ export default async function matimoValidateTool(
   }
 
   // Step 3: Run content validator (as untrusted source)
+  // Like matimo_create_tool, only critical and high violations refuse the tool.
   const validation = validateToolContent(tool, { source: 'untrusted' });
-  if (!validation.valid) {
+  result.policyViolations = validation.violations.map((v: Violation) => ({
+    rule: v.rule,
+    severity: v.severity,
+    message: v.message,
+  }));
+  if (validation.violations.some((v: Violation) => v.severity === 'critical' || v.severity === 'high')) {
     result.valid = false;
-    result.policyViolations = validation.violations.map((v: Violation) => ({
-      rule: v.rule,
-      severity: v.severity,
-      message: v.message,
-    }));
   }
 
-  // Step 4: Classify risk
-  result.riskLevel = classifyRisk(tool);
+  // Step 4: Classify the risk of the definition as written, before the forced
+  // requires_approval raises it.
+  result.riskLevel = classifyRisk({
+    ...tool,
+    requires_approval: declaredRequiresApproval === true,
+  });
 
   return result;
 }

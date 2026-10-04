@@ -58,9 +58,37 @@
  */
 
 import 'dotenv/config';
-import { MatimoInstance, convertToolsToLangChain, ToolDefinition } from 'matimo';
+import * as readline from 'readline';
+import {
+  MatimoInstance,
+  convertToolsToLangChain,
+  ToolDefinition,
+  type ApprovalRequest,
+} from 'matimo';
 import { createAgent } from 'langchain';
 import { ChatOpenAI } from '@langchain/openai';
+
+/**
+ * Asks in the terminal before any call that needs approval (a tool that
+ * declares requires_approval, an HTTP DELETE or command tool, or SQL with a
+ * destructive keyword). Without a terminal it rejects; pre-approve trusted
+ * tools with MATIMO_APPROVED_PATTERNS instead.
+ */
+async function approveInTerminal(request: ApprovalRequest): Promise<boolean> {
+  console.info(`\n🔒 Approval required — ${request.toolName}: ${JSON.stringify(request.params)}`);
+  if (!process.stdin.isTTY) {
+    console.info(
+      `   ❌ Rejected: no terminal. Pre-approve with MATIMO_APPROVED_PATTERNS="${request.toolName}"`
+    );
+    return false;
+  }
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  const answer = await new Promise<string>((resolve) =>
+    rl.question('   Approve? (y/n): ', resolve)
+  );
+  rl.close();
+  return ['y', 'yes'].includes(answer.trim().toLowerCase());
+}
 
 /**
  * Run AI Agent with Postgres tools
@@ -105,7 +133,7 @@ async function runPostgresAIAgent() {
   try {
     // Initialize Matimo with auto-discovery
     console.info('🚀 Initializing Matimo...');
-    const matimo = await MatimoInstance.init({ autoDiscover: true });
+    const matimo = await MatimoInstance.init({ autoDiscover: true, onApproval: approveInTerminal });
 
     // Get Postgres tools and convert to LangChain format
     console.info('💬 Loading Postgres tools...');

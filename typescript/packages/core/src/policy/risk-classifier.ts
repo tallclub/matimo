@@ -76,3 +76,37 @@ export function classifyRisk(tool: ToolDefinition): RiskLevel {
   }
   return automaticRisk;
 }
+
+/**
+ * Classify the risk of *running* an already-registered tool.
+ *
+ * Identical to `classifyRisk` except for `type: function` tools, which
+ * `classifyRisk` always rates `critical` because an agent-proposed code tool
+ * is the worst case at creation time. Every function tool that reaches the
+ * registry is developer-authored (canCreate/canReload reject agent-created
+ * function tools unconditionally), so its declared `risk:` describes what the
+ * call actually does — `calculator` is low, `execute` is critical. An
+ * undeclared function tool is treated as `high`, and `requires_approval`
+ * raises it to at least `high`.
+ */
+export function classifyExecutionRisk(tool: ToolDefinition): RiskLevel {
+  if (tool.execution.type !== 'function') {
+    return classifyRisk(tool);
+  }
+  const declared = (tool.risk as RiskLevel | undefined) ?? 'high';
+  return tool.requires_approval === true ? maxRisk(declared, 'high') : declared;
+}
+
+/** True when `risk` is at or above `threshold` (low < medium < high < critical). */
+export function meetsRiskThreshold(risk: RiskLevel, threshold: RiskLevel): boolean {
+  return SEVERITY_RANK[risk] >= SEVERITY_RANK[threshold];
+}
+
+/** The least severe level in `levels`, or undefined when the list is empty. */
+export function lowestRisk(levels: RiskLevel[]): RiskLevel | undefined {
+  return levels.reduce<RiskLevel | undefined>(
+    (lowest, level) =>
+      lowest === undefined || SEVERITY_RANK[level] < SEVERITY_RANK[lowest] ? level : lowest,
+    undefined
+  );
+}

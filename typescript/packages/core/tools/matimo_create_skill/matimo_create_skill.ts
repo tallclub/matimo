@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { getGlobalMatimoLogger } from '@matimo/core';
+import { getGlobalMatimoLogger, getGlobalMatimoInstance } from '@matimo/core';
 import {
   validateSkillName,
   parseSkillContent,
@@ -29,10 +29,19 @@ interface CreateSkillResult {
  * @see https://agentskills.io/specification
  */
 export default async function matimoCreateSkill(
-  params: CreateSkillParams,
+  params: CreateSkillParams
 ): Promise<CreateSkillResult> {
   const logger = getGlobalMatimoLogger();
-  const targetDir = params.target_dir || './matimo-tools/skills';
+
+  let instance: ReturnType<typeof getGlobalMatimoInstance> | null = null;
+  try {
+    instance = getGlobalMatimoInstance();
+  } catch {
+    instance = null;
+  }
+
+  const targetDir =
+    params.target_dir || instance?.getDefaultSkillWriteDir() || './matimo-tools/skills';
 
   // Step 1: Validate the skill name against Agent Skills spec
   const nameResult = validateSkillName(params.name);
@@ -51,7 +60,7 @@ export default async function matimoCreateSkill(
   // Step 3: Validate frontmatter fields + name must match directory
   const fmResult = validateFrontmatter(frontmatter, params.name);
   if (!fmResult.valid) {
-    const firstError = fmResult.issues.find(i => i.severity === 'error');
+    const firstError = fmResult.issues.find((i) => i.severity === 'error');
     return { success: false, message: firstError!.message };
   }
 
@@ -66,6 +75,14 @@ export default async function matimoCreateSkill(
     name: params.name,
     path: filePath,
   });
+
+  try {
+    instance?.notifySkillCreated(params.name, 'user');
+  } catch (err) {
+    logger.debug('matimo_create_skill: failed to emit skill:created event', {
+      error: (err as Error).message,
+    });
+  }
 
   return {
     success: true,

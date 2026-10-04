@@ -220,7 +220,7 @@ export SLACK_BOT_TOKEN=xoxb-your-token-here
 ### Send Message (Factory Pattern)
 
 ```typescript
-const matimo = await MatimoInstance.init('./tools');
+const matimo = await MatimoInstance.init({ autoDiscover: true });
 
 const result = await matimo.execute('slack-send-message', {
   channel: 'C024BE91L',
@@ -255,7 +255,7 @@ const upload = await matimo.execute('slack_upload_file', {
 
 ## 📚 Documentation
 
-- **[Comprehensive Guide](/typescript/examples/tools/slack/README.md)** - Full guide with examples
+- **[Comprehensive Guide](../../examples/tools/slack/README.md)** - Full guide with examples
 - **[Official Slack Docs](https://docs.slack.dev/)** - Slack Web API reference
 
 ## 🔐 Authentication
@@ -279,7 +279,7 @@ The token is automatically injected into all API requests.
 
 ## 🔄 Versioning
 
-- **Version 0.1.8** - 16 tools implemented
+- **Version 0.2.0** - 16 tools implemented
 - **Modern APIs** - All tools use current Slack API (as of Feb 2026)
 - **No Deprecated Tools** - Replaced deprecated files.upload with modern API
 

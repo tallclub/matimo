@@ -39,6 +39,26 @@ execution:
     expect(result.found).toBe(true);
     expect(result.name).toBe('my-tool');
     expect(result.riskLevel).toBeDefined();
+    // A low-risk draft still waits for matimo_approve_tool.
+    expect(result.approvalState).toBe('pending');
+  });
+
+  it('reports a low-risk tool that is not a draft as auto-approved', async () => {
+    writeToolYaml(
+      'plain-get',
+      `
+name: plain-get
+version: '1.0.0'
+description: 'A tool'
+execution:
+  type: http
+  method: GET
+  url: 'https://api.example.com/data'
+`
+    );
+
+    const result = await matimoGetToolStatus({ name: 'plain-get', tool_dir: tmpDir });
+    expect(result.approvalState).toBe('auto-approved');
   });
 
   it('should return not-found for a missing tool', async () => {

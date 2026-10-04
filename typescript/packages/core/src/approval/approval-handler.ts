@@ -1,6 +1,39 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { MatimoError, ErrorCode } from '../errors/matimo-error.js';
+import type { ToolDefinition } from '../core/schema.js';
+import type { GovernanceMode } from '../policy/types.js';
+
+/**
+ * Tools whose approval prompt nothing may skip: neither MATIMO_AUTO_APPROVE
+ * nor an approved pattern (not even `*`). Approving a tool is the step that
+ * lets agent-written code run, so a human must always see it.
+ */
+export const NEVER_PRE_APPROVED_TOOLS: ReadonlySet<string> = new Set(['matimo_approve_tool']);
+
+/**
+ * Whether a tool's definition alone makes every call need approval.
+ * An explicit `requires_approval` in the YAML always wins, so a developer can
+ * opt a tool out with `requires_approval: false`. When it is absent, in
+ * `secure` mode the calls that can't be undone or can do anything need
+ * approval by default: HTTP DELETE and `type: command` (shell) tools. `legacy`
+ * mode has no such default.
+ */
+export function definitionRequiresApproval(
+  tool: ToolDefinition,
+  mode: GovernanceMode = 'secure'
+): boolean {
+  if (tool.requires_approval !== undefined) {
+    return tool.requires_approval;
+  }
+  if (mode === 'legacy') {
+    return false;
+  }
+  const exec = tool.execution;
+  return (
+    exec.type === 'command' || (exec.type === 'http' && exec.method.toUpperCase() === 'DELETE')
+  );
+}
 
 /**
  * Approval request for any tool operation
@@ -179,10 +212,30 @@ export class ApprovalHandler {
     return false;
   }
 
+  /** True when MATIMO_AUTO_APPROVE=true: every approval request is granted unseen. */
+  isAutoApproveEnabled(): boolean {
+    return this.autoApprove;
+  }
+
+  /**
+   * Pre-approve tools matching a glob, as an entry in MATIMO_APPROVED_PATTERNS
+   * would. Mirrors add_approved_pattern() in the Python SDK.
+   */
+  addApprovedPattern(pattern: string): void {
+    const trimmed = pattern.trim();
+    if (trimmed) {
+      this.approvedPatterns.add(trimmed);
+    }
+  }
+
   /**
    * Check if operation is pre-approved via env vars
    */
   isPreApproved(toolName: string): boolean {
+    if (NEVER_PRE_APPROVED_TOOLS.has(toolName)) {
+      return false;
+    }
+
     // Auto-approve everything
     if (this.autoApprove) {
       return true;
@@ -201,22 +254,27 @@ export class ApprovalHandler {
   /**
    * Request approval for an operation
    * Throws if not approved and no callback available
+   * @param callback - Overrides this handler's callback for this request
+   *   (a MatimoInstance passes its own `onApproval` here).
    */
-  async requestApproval(request: ApprovalRequest): Promise<void> {
+  async requestApproval(
+    request: ApprovalRequest,
+    callback: ApprovalCallback | null = this.approvalCallback
+  ): Promise<void> {
     // If no callback set, fail safely
-    if (!this.approvalCallback) {
+    if (!callback) {
       throw new MatimoError(
         `Destructive operation requires approval: ${request.toolName}`,
         ErrorCode.EXECUTION_FAILED,
         {
           toolName: request.toolName,
-          hint: 'Set MATIMO_AUTO_APPROVE=true or MATIMO_APPROVED_PATTERNS or install approval callback',
+          hint: 'Pass onApproval to MatimoInstance.init() (or matimo.setApprovalCallback()) to have a human decide, or pre-approve trusted tools with MATIMO_APPROVED_PATTERNS',
         }
       );
     }
 
     // Call callback to get approval
-    const approved = await this.approvalCallback(request);
+    const approved = await callback(request);
     if (!approved) {
       throw new MatimoError(
         `Operation rejected by approval handler: ${request.toolName}`,

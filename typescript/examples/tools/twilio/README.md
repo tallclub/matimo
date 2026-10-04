@@ -97,7 +97,7 @@ pnpm twilio:factory
 
 **Key Code:**
 ```typescript
-const matimo = await MatimoInstance.init('./tools');
+const matimo = await MatimoInstance.init({ autoDiscover: true });
 
 // Send SMS
 await matimo.execute('twilio-send-sms', {

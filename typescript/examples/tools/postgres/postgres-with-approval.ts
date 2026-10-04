@@ -5,13 +5,13 @@
  * 1. Connecting to a real Postgres database
  * 2. Executing non-destructive queries (SELECT) - no approval needed
  * 3. Executing destructive queries - approval required and handled
- * 4. Setting up a single generic approval callback
+ * 4. Passing one `onApproval` callback to MatimoInstance.init()
  *
- * Approval Flow (Generic for ALL tools):
- * - Tool declares requires_approval in YAML OR contains destructive keywords
- * - Check MATIMO_AUTO_APPROVE=true (approve all)
+ * Approval Flow (the same for every tool):
+ * - A call needs approval when the tool declares requires_approval in YAML
+ *   or its SQL contains a destructive keyword (DELETE, DROP, UPDATE, ...)
  * - Check MATIMO_APPROVED_PATTERNS="pattern*" (pre-approved patterns)
- * - Call single approval callback for user/policy approval
+ * - Otherwise the onApproval callback decides; with none the call is rejected
  * - No per-tool, per-provider custom logic needed
  *
  * Setup Instructions:
@@ -30,10 +30,10 @@
  */
 
 import 'dotenv/config';
-import { MatimoInstance, getGlobalApprovalHandler, type ApprovalRequest } from '@matimo/core';
+import { MatimoInstance, type ApprovalRequest } from '@matimo/core';
 import * as readline from 'readline';
 
-// Interactive approval callback - prompts user when MATIMO_AUTO_APPROVE is not set
+// Interactive approval callback - prompts the user for calls no pattern pre-approves
 function createApprovalCallback() {
   return async (request: ApprovalRequest): Promise<boolean> => {
     const isInteractive = process.stdin.isTTY;
@@ -52,9 +52,7 @@ function createApprovalCallback() {
 
     if (!isInteractive) {
       console.info('\n❌ REJECTED - Non-interactive environment (no terminal)');
-      console.info('\n💡 To enable auto-approval in CI/scripts:');
-      console.info('   export MATIMO_AUTO_APPROVE=true');
-      console.info('\n💡 Or approve specific patterns:');
+      console.info('\n💡 To pre-approve this tool in CI/scripts:');
       console.info('   export MATIMO_APPROVED_PATTERNS="postgres-execute-sql"');
       console.info('\n' + '='.repeat(70) + '\n');
       return false;
@@ -106,25 +104,21 @@ async function main() {
   }
 
   // Initialize Matimo with postgres tools
-  const matimo = await MatimoInstance.init({ autoDiscover: true });
+  const matimo = await MatimoInstance.init({
+    autoDiscover: true,
+    // Decides every call that needs approval, for this instance only.
+    onApproval: createApprovalCallback(),
+  });
 
   console.info('\n' + '='.repeat(70));
   console.info('🚀 Postgres Tool Example with Approval Flow');
   console.info('='.repeat(70));
 
-  // Configure centralized approval handler
-  const approvalHandler = getGlobalApprovalHandler();
-  approvalHandler.setApprovalCallback(createApprovalCallback());
-
   // Show current approval mode
-  const autoApproveEnabled = process.env.MATIMO_AUTO_APPROVE === 'true';
   const approvedPatterns = process.env.MATIMO_APPROVED_PATTERNS;
 
   console.info('\n🔐 APPROVAL CONFIGURATION:');
-  if (autoApproveEnabled) {
-    console.info('   ✅ MATIMO_AUTO_APPROVE=true');
-    console.info('   → All destructive operations will be AUTO-APPROVED');
-  } else if (approvedPatterns) {
+  if (approvedPatterns) {
     console.info(`   ✅ MATIMO_APPROVED_PATTERNS="${approvedPatterns}"`);
     console.info('   → Matching operations will be auto-approved');
   } else {
@@ -239,9 +233,7 @@ async function main() {
       console.info('⚠️  NOTE: This is a DESTRUCTIVE operation (DELETE keyword detected)');
       console.info('⚠️  NOTE: WHERE 1=0 matches no rows, so it is SAFE\n');
 
-      if (autoApproveEnabled) {
-        console.info('ℹ️  MATIMO_AUTO_APPROVE=true → Will auto-approve this operation\n');
-      } else if (approvedPatterns) {
+      if (approvedPatterns) {
         console.info(`ℹ️  MATIMO_APPROVED_PATTERNS set → Checking pattern matching...\n`);
       } else {
         console.info('ℹ️  INTERACTIVE MODE → You will be prompted to approve/reject\n');
@@ -282,7 +274,9 @@ async function main() {
         } else if (errorMsg.includes('approval') && errorMsg.includes('required')) {
           console.info('\n⚠️  DELETE REQUIRES APPROVAL');
           console.info(`   Error: ${errorMsg}`);
-          console.info('   Set MATIMO_AUTO_APPROVE=true to auto-approve, or run interactively\n');
+          console.info(
+            '   Set MATIMO_APPROVED_PATTERNS="postgres-execute-sql" to pre-approve, or run interactively\n'
+          );
         } else {
           console.error(`\n❌ Unexpected error: ${errorMsg}\n`);
         }
@@ -297,9 +291,7 @@ async function main() {
     console.info('='.repeat(70));
 
     console.info('\n📋 Current Settings:');
-    if (autoApproveEnabled) {
-      console.info('   ✅ MATIMO_AUTO_APPROVE=true → All destructive ops AUTO-APPROVED');
-    } else if (approvedPatterns) {
+    if (approvedPatterns) {
       console.info(`   ✅ MATIMO_APPROVED_PATTERNS="${approvedPatterns}"`);
       console.info('   → Matching patterns AUTO-APPROVED, others require user input');
     } else {
@@ -310,18 +302,14 @@ async function main() {
     console.info('\n💡 How to Use:');
     console.info('   1. Interactive (default):     pnpm postgres:approval');
     console.info(
-      '   2. Auto-approve in CI:         MATIMO_AUTO_APPROVE=true pnpm postgres:approval'
-    );
-    console.info(
-      '   3. Pre-approved patterns:      MATIMO_APPROVED_PATTERNS="postgres*" pnpm postgres:approval'
+      '   2. Pre-approved patterns:      MATIMO_APPROVED_PATTERNS="postgres*" pnpm postgres:approval'
     );
 
     console.info('\n🔐 Supported Approval Modes:');
-    console.info('   • MATIMO_AUTO_APPROVE=true     → Approve all destructive operations');
     console.info(
       '   • MATIMO_APPROVED_PATTERNS     → Approve only matching tool names (glob pattern)'
     );
-    console.info('   • Interactive (no env vars)    → Prompt user for each operation');
+    console.info('   • onApproval callback          → Prompt user for each other operation');
 
     console.info('\n✨ Workflow Complete! You tested:');
     console.info('   1. ✅ SELECT (non-destructive) → No approval needed');

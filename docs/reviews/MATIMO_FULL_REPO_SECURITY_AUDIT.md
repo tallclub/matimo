@@ -30,25 +30,25 @@ Limitations: heuristic/static grep is not a proof of exploitability. Some threat
 ## Key Findings (summary)
 
 1. Embedded-code RCE risk (`FunctionExecutor`) — critical
-   - Location: [typescript/packages/core/src/executors/function-executor.ts](typescript/packages/core/src/executors/function-executor.ts)
+   - Location: [typescript/packages/core/src/executors/function-executor.ts](../../typescript/packages/core/src/executors/function-executor.ts)
    - Symptom: The executor supports executing embedded code via `new Function(...)` when `MATIMO_ALLOW_EMBEDDED_CODE=true`. Embedded code has access to `fs`, `path`, `axios`, and can run arbitrary JS.
    - Impact: Remote code execution and secrets exfiltration if untrusted YAML/tool definitions are accepted.
    - Likelihood: Medium (feature is opt-in by env, but docs and examples show how it can be enabled).
 
 2. Global environment seeding of resolved secrets (`MCPServer.seedEnvironmentSecrets`) — high
-   - Location: [typescript/packages/core/src/mcp/mcp-server.ts](typescript/packages/core/src/mcp/mcp-server.ts)
+   - Location: [typescript/packages/core/src/mcp/mcp-server.ts](../../typescript/packages/core/src/mcp/mcp-server.ts)
    - Symptom: Resolved auth placeholders are written into `process.env` (and `MATIMO_` prefixed vars), making secrets globally available to the running process and any child processes.
    - Impact: Secrets leakage across unrelated modules and child processes; harder to implement least-privilege and secret lifecycle management.
    - Likelihood: High (this runs during MCP server start).
 
 3. Approval manifest ephemeral secret fallback (`ApprovalManifest`) — medium
-   - Location: [typescript/packages/core/src/policy/approval-manifest.ts](typescript/packages/core/src/policy/approval-manifest.ts)
+   - Location: [typescript/packages/core/src/policy/approval-manifest.ts](../../typescript/packages/core/src/policy/approval-manifest.ts)
    - Symptom: If `MATIMO_APPROVAL_SECRET` is not set, an ephemeral UUID is generated and used; approvals are HMAC-signed but ephemeral, and in some modes (stdio) logging is silent so users may not realize approvals are ephemeral.
    - Impact: Approvals may appear to succeed but will be invalid after restart; in stdio mode there's little visibility to warn operators.
    - Likelihood: High (common in local/dev without configured env).
 
 4. Templated command injection surface (`CommandExecutor.templateString`) — high
-   - Location: [typescript/packages/core/src/executors/command-executor.ts](typescript/packages/core/src/executors/command-executor.ts)
+   - Location: [typescript/packages/core/src/executors/command-executor.ts](../../typescript/packages/core/src/executors/command-executor.ts)
    - Symptom: `execution.command` and `args` are string-templated with `{param}` placeholders. The `command` itself is templated and then passed directly to `spawn()`, enabling arbitrary executable injection or argument injection if untrusted values are placed into placeholders.
    - Impact: Arbitrary command execution on the host.
    - Likelihood: Low→Medium (depends on tool YAML, but non-negligible for agent-generated tools).
@@ -60,7 +60,7 @@ Limitations: heuristic/static grep is not a proof of exploitability. Some threat
    - Likelihood: Medium.
 
 6. Documentation contains dangerous examples — informational risk
-   - Location: `SECURITY.md` and various docs (examples that call `execSync` with user input, `eval`, `new Function`). See [SECURITY.md](SECURITY.md).
+   - Location: `SECURITY.md` and various docs (examples that call `execSync` with user input, `eval`, `new Function`). See [SECURITY.md](../../SECURITY.md).
    - Symptom: Tutorials and examples include both unsafe and safe variants; unsafe examples may be copied by users.
    - Impact: Developer confusion; accidental unsafe deployments.
 
@@ -70,19 +70,19 @@ Limitations: heuristic/static grep is not a proof of exploitability. Some threat
    - Impact: Harder enforcement of least-privilege and secret scoping; risk of accidental leakage to child processes.
 
 8. Policy defences are conservative but rely on correct initialization and operator awareness — partial mitigation
-   - Locations: `DefaultPolicyEngine`, `content-validator` ([typescript/packages/core/src/policy/default-policy.ts](typescript/packages/core/src/policy/default-policy.ts), [typescript/packages/core/src/policy/content-validator.ts](typescript/packages/core/src/policy/content-validator.ts)).
+   - Locations: `DefaultPolicyEngine`, `content-validator` ([typescript/packages/core/src/policy/default-policy.ts](../../typescript/packages/core/src/policy/default-policy.ts), [typescript/packages/core/src/policy/content-validator.ts](../../typescript/packages/core/src/policy/content-validator.ts)).
    - Symptom: Untrusted function/command HTTP tools are blocked by default, and quarantine/HITL is available. However, certain runtime behaviors (seeding env, embedded code flag) can undermine guarantees if operators misconfigure or enable features in prod.
 
 ---
 
 ## Evidence / Where matches were found (representative)
 
-- `FunctionExecutor` (embedded code + dynamic import): [typescript/packages/core/src/executors/function-executor.ts](typescript/packages/core/src/executors/function-executor.ts)
-- `CommandExecutor` (spawn + templating): [typescript/packages/core/src/executors/command-executor.ts](typescript/packages/core/src/executors/command-executor.ts)
-- `MCPServer.seedEnvironmentSecrets()` (process.env writes): [typescript/packages/core/src/mcp/mcp-server.ts](typescript/packages/core/src/mcp/mcp-server.ts)
-- `ApprovalManifest` (ephemeral secret fallback): [typescript/packages/core/src/policy/approval-manifest.ts](typescript/packages/core/src/policy/approval-manifest.ts)
-- `DefaultPolicyEngine` & `ContentValidator` (policy rules): [typescript/packages/core/src/policy/default-policy.ts](typescript/packages/core/src/policy/default-policy.ts), [typescript/packages/core/src/policy/content-validator.ts](typescript/packages/core/src/policy/content-validator.ts)
-- Unsafe examples in docs: [SECURITY.md](SECURITY.md) (examples of `execSync`, `eval`, `new Function`)
+- `FunctionExecutor` (embedded code + dynamic import): [typescript/packages/core/src/executors/function-executor.ts](../../typescript/packages/core/src/executors/function-executor.ts)
+- `CommandExecutor` (spawn + templating): [typescript/packages/core/src/executors/command-executor.ts](../../typescript/packages/core/src/executors/command-executor.ts)
+- `MCPServer.seedEnvironmentSecrets()` (process.env writes): [typescript/packages/core/src/mcp/mcp-server.ts](../../typescript/packages/core/src/mcp/mcp-server.ts)
+- `ApprovalManifest` (ephemeral secret fallback): [typescript/packages/core/src/policy/approval-manifest.ts](../../typescript/packages/core/src/policy/approval-manifest.ts)
+- `DefaultPolicyEngine` & `ContentValidator` (policy rules): [typescript/packages/core/src/policy/default-policy.ts](../../typescript/packages/core/src/policy/default-policy.ts), [typescript/packages/core/src/policy/content-validator.ts](../../typescript/packages/core/src/policy/content-validator.ts)
+- Unsafe examples in docs: [SECURITY.md](../../SECURITY.md) (examples of `execSync`, `eval`, `new Function`)
 
 Note: many other hits were found across docs, tests, examples, and provider packages where `process.env` is referenced; these are expected usage points for configured secrets but amplify the importance of scoping secrets carefully.
 
@@ -251,4 +251,4 @@ args: ["--platform", "{platform}", "--data", "{data}"]
 
 ---
 
-Report generated by the review process; file saved at: [docs/reviews/MATIMO_FULL_REPO_SECURITY_AUDIT.md](docs/reviews/MATIMO_FULL_REPO_SECURITY_AUDIT.md)
+Report generated by the review process; file saved at: [docs/reviews/MATIMO_FULL_REPO_SECURITY_AUDIT.md](../../docs/reviews/MATIMO_FULL_REPO_SECURITY_AUDIT.md)

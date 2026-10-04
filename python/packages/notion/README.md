@@ -3,7 +3,7 @@
 > Notion tools for [Matimo](https://matimo.dev) - create pages, query databases, search, and manage content.
 
 [![PyPI](https://img.shields.io/pypi/v/matimo-notion)](https://pypi.org/project/matimo-notion/)
-[![Docs](https://img.shields.io/badge/docs-matimo.dev-blue)](https://matimo.dev/docs)
+[![Docs](https://img.shields.io/badge/docs-matimo.dev-blue)](https://docs.matimo.dev)
 
 ---
 

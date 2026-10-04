@@ -10,9 +10,9 @@
 
 **Matimo — Enable AI Agents To Build Themselves**
 
-> The First AI SDK with Meta-Tools, Policy Engine, and Human-in-the-Loop Control
+> Open-source tool governance for AI agents: every call risk-checked, every risky one approved by a human, every result on a log you can verify
 
-Give your agents **139+ production-ready tools** to start (plus a governed 449-tool Composio catalog). Then activate **12 meta-tools** that let them create, validate, and approve new capabilities at runtime — governed by your **policy engine** with **human approval workflows** for critical actions.
+Give your agents **129 production-ready tools** to start (plus a governed 449-tool Composio catalog). Then activate **15 meta-tools** that let them create, validate, and approve new capabilities at runtime — governed by your **policy engine** with **human approval workflows** for critical actions.
 
 **Self-extending agents with enterprise-grade control:**
 - 🔧 **Meta-Tools** — Agents write new tool definitions in YAML, validate schemas, approve for production, and hot-reload — all mid-conversation
@@ -20,7 +20,11 @@ Give your agents **139+ production-ready tools** to start (plus a governed 449-t
 - 🤝 **Human-in-the-Loop (HITL)** — Critical tools require human approval before execution with configurable timeouts and audit trails
 - 🌐 **Universal Integration** — One YAML definition works across TypeScript, Python, LangChain, CrewAI, Claude MCP, OpenAI
 
-Complete documentation for Matimo **v0.1.8** (TypeScript & Python).
+New here? Read [Why Matimo OSS](why-matimo) and [what changed in 0.2.0](blog/2026-10-01-matimo-0-2-0-tool-governance).
+
+Complete documentation for Matimo **0.2.0** (TypeScript `@matimo/core` 0.2.0 and Python `matimo` 0.2.0).
+
+> **New in 0.2.0 — secure by default.** HTTP DELETE and command tools ask a human before every call, each instance has its own approval callback (`onApproval`), MCP servers ask the client's user through elicitation, every call emits events you can keep in a tamper-evident audit log, and both SDKs enforce the same rules. Upgrading? Read the [migration guide](./api-reference/POLICY_AND_LIFECYCLE.md#upgrading-to-020).
 
 ---
 
@@ -29,13 +33,12 @@ Complete documentation for Matimo **v0.1.8** (TypeScript & Python).
 ### 🟦 **TypeScript / Node.js**
 - Node.js 18+, npm/pnpm
 - ESM, full type support
-- 2,001 tests, 95%+ coverage
+- Enforced coverage floors (95% lines)
 - **[Start with TypeScript](#typescript-getting-started)**
 
 ### 🐍 **Python** 🎉 *Stable Release*
 - Python 3.11+, pip/uv
-- Native asyncio, full type hints
-- 995 tests, 96.89% coverage
+- Native asyncio, full type hints (mypy strict)
 - LangChain, CrewAI, MCP support
 - **[Start with Python](#python-getting-started)**
 
@@ -45,16 +48,17 @@ Complete documentation for Matimo **v0.1.8** (TypeScript & Python).
 
 ### TypeScript Getting Started
 
-1. **[Quick Start](./getting-started/QUICK_START.md#typescript)** — 5-minute setup 
+1. **[Quick Start](./getting-started/QUICK_START.md#typescript-sdk)** — 5-minute setup 
 2. **[Your First Tool](./getting-started/YOUR_FIRST_TOOL.md)** — Create a basic YAML tool
-3. **[API Reference](./api-reference/SDK.md#typescript)** — SDK fundamentals
+3. **[API Reference](./api-reference/SDK.md#typescript-sdk--matimoinstance)** — SDK fundamentals
 
 ### Python Getting Started
 
-1. **[Quick Start](./getting-started/QUICK_START.md#python)** — 5-minute setup with `pip install matimo`
+1. **[Quick Start](./getting-started/QUICK_START.md#python-sdk)** — 5-minute setup with `pip install matimo`
 2. **[LangChain Integration](./framework-integrations/LANGCHAIN.md#python-langchain-integration)** — Build ReAct agents
 3. **[CrewAI Integration](./framework-integrations/CREWAI.md)** — Multi-agent orchestration
-4. **[API Reference](./api-reference/SDK.md#python)** — Python SDK documentation
+4. **[Agno Integration](./framework-integrations/AGNO.md)** — Governed Agno agents, teams and workflows
+5. **[API Reference](./api-reference/SDK.md#python-sdk--matimo-api)** — Python SDK documentation
 
 ### 📦 **Installation & Requirements**
 
@@ -98,11 +102,14 @@ Complete documentation for Matimo **v0.1.8** (TypeScript & Python).
 
 - **[Tool Specification](./tool-development/TOOL_SPECIFICATION.md)** — Write tools in YAML
   - Tool metadata and parameters
-  - Execution types (command, HTTP, script)
-  - Output validation schemas
-  - Authentication configuration
-  - Retry logic and error handling
-  - Real examples
+  - Execution types (`http`, `function`, `command`)
+  - Authentication and credential placeholders
+  - Risk, `requires_approval` and status fields
+  - Real definitions from the provider packages
+
+- **[Tool Workflow](./tool-development/TOOL_WORKFLOW.md)** — Checklist for adding a tool to both SDKs
+
+- **[Decorator Guide](./tool-development/DECORATOR_GUIDE.md)** — `@tool` methods backed by YAML tools
 
 - **[Adding Tools to Matimo](./tool-development/ADDING_TOOLS.md)** — Publish @matimo/* packages
   - 6-step guide for creating providers
@@ -114,7 +121,7 @@ Complete documentation for Matimo **v0.1.8** (TypeScript & Python).
 - **[Testing Tools](./tool-development/TESTING.md)** — Unit & integration testing
   - Testing patterns with Jest / pytest
   - Mocking external services
-  - Coverage requirements (95%+)
+  - TypeScript coverage floors (lines 95%, functions 97%, branches 87%)
   - Test fixtures
 
 - **[OAuth Setup](./architecture/OAUTH.md)** — OAuth2 authentication
@@ -136,6 +143,7 @@ Complete documentation for Matimo **v0.1.8** (TypeScript & Python).
   - Audit events
 
 - **[Meta-Tools Reference](./api-reference/META_TOOLS.md)** — Built-in tool management tools
+  - `matimo_search_tools` / `matimo_get_tool` / `matimo_get_tool_status` — Find tools and inspect their definition and status
   - `matimo_validate_tool` — Validate YAML against schema + policy
   - `matimo_create_tool` — Create tools with safety enforcement
   - `matimo_approve_tool` — Promote draft tools with HMAC signing
@@ -145,11 +153,20 @@ Complete documentation for Matimo **v0.1.8** (TypeScript & Python).
   - `matimo_list_skills` — List skills in a directory
   - `matimo_get_skill` — Read a skill's content by name
   - `matimo_validate_skill` — Validate a skill against the Agent Skills spec
+  - `matimo_search_skills` — Semantically rank skills by relevance (TF-IDF)
+  - `matimo_get_skill_sections` — Inventory a skill's sections and token costs
+  - `matimo_get_skill_content` — Load only specific sections of a skill
 
 - **[Approval System](./api-reference/APPROVAL-SYSTEM.md)** — Approval handler configuration
-  - Auto-approve and interactive approval
-  - Environment variables
-  - Callback patterns
+  - Per-instance `onApproval` callbacks
+  - Pre-approved patterns and environment variables
+  - MCP elicitation
+
+- **[Logging](./api-reference/LOGGING.md)** — Logger configuration and formats
+
+- **[MCP Server](./MCP.md)** — Serve Matimo tools to Claude Desktop, Cursor and other MCP clients ([setup guides](./mcp/INDEX.md))
+
+- **[Composio](./COMPOSIO.md)** — The governed Composio catalog (`@matimo/composio`)
 
 ### 🔴 **Advanced Topics**
 
@@ -170,10 +187,11 @@ Complete documentation for Matimo **v0.1.8** (TypeScript & Python).
   - Parameter and execution types
   - Response validation types
 
-- **[Framework Integrations](./framework-integrations/LANGCHAIN.md)** — LangChain & CrewAI
-  - LangChain agent patterns
-  - CrewAI tool composition
-  - Custom framework integration
+- **Framework Integrations** — [LangChain](./framework-integrations/LANGCHAIN.md) (TS + Python), [CrewAI](./framework-integrations/CREWAI.md), [Agno](./framework-integrations/AGNO.md), [Vercel AI SDK](./framework-integrations/VERCEL_AI.md), [Bruno](./framework-integrations/BRUNO.md)
+
+- **[Skills](./skills/SKILLS.md)** — SKILL.md knowledge documents and [TF-IDF search](./skills/TFIDF_SEMANTIC_SEARCH.md)
+
+- **[Notebooks](./notebooks/00_index.ipynb)** — Colab notebooks: quickstart, policy engine, meta-tools, skills, MCP server
 
 ## Project Information
 
@@ -200,7 +218,7 @@ Complete documentation for Matimo **v0.1.8** (TypeScript & Python).
 
 3. **[Development Standards](./user-guide/DEVELOPMENT_STANDARDS.md)** — Code quality requirements
    - TypeScript strictness
-   - Testing coverage (95%+ — TypeScript and Python)
+   - Testing coverage (TypeScript floors enforced; Python informational)
    - ESLint / ruff and Prettier
    - JSDoc documentation
 
@@ -270,11 +288,11 @@ Complete documentation for Matimo **v0.1.8** (TypeScript & Python).
 ### 🤖 For AI Agents (Quick Orientation)
 > If you are an AI agent (LangChain, CrewAI, MCP client) reading this to understand Matimo:
 
-1. **Read first**: [Meta-Tools Reference](./api-reference/META_TOOLS.md) — the 12 built-in tools you can call right now
+1. **Read first**: [Meta-Tools Reference](./api-reference/META_TOOLS.md) — the 15 built-in meta-tools you can call right now
 2. **Tool creation flow**: `matimo_validate_tool` → `matimo_create_tool` → `matimo_approve_tool` → `matimo_reload_tools`
 3. **Skills discovery**: `matimo_list_skills` → `matimo_get_skill` to load domain expertise on-demand
 4. **OpenAI 128-tool limit**: If using `auto_discover=True`, cap your bound tool list — prioritize `matimo_*` tools first
-5. **Policy rules**: Draft tools are blocked whenever the context `environment` string contains "prod" (case-insensitive substring match — `"prod"`, `"production"`, `"PRODUCTION-us-east"` all match). Command tools (`type: command`) require explicit approval. SSRF-blocked URL patterns are rejected by the content validator both at creation/approval time and again at execution time against the fully-resolved URL.
+5. **Policy rules**: Draft tools are blocked whenever the context `environment` string contains "prod" (case-insensitive substring match — `"prod"`, `"production"`, `"PRODUCTION-us-east"` all match), and in any other environment they run only for a caller with the `admin` role; approve a tool with `matimo_approve_tool` to use it normally. Command tools, HTTP DELETE tools and tools with `requires_approval: true` ask a human before every call. SSRF-blocked URL patterns are rejected by the content validator both at creation/approval time and again at execution time against the fully-resolved URL.
 6. **Errors**: All errors are `MatimoError` with typed `ErrorCode`. Check `error.code` for programmatic handling.
 7. **Examples to study**: [`python/examples/native/meta_flow/meta_tools_integration.py`](https://github.com/tallclub/matimo/tree/main/python/examples/native/meta_flow/meta_tools_integration.py) is the canonical end-to-end reference.
 
@@ -301,6 +319,9 @@ docs/
 ├── RELEASES.md                   # Release notes and changelog
 ├── ROADMAP.md                    # Project roadmap
 ├── MCP.md                        # MCP server setup and Claude Desktop
+├── COMPOSIO.md                   # Governed Composio catalog
+├── mcp/                          # MCP setup, quick reference, maintenance
+├── notebooks/                    # Colab notebooks (00_index … 05_mcp_server)
 ├── getting-started/
 │   ├── QUICK_START.md            # 5-minute setup (TypeScript + Python)
 │   ├── installation.md           # Detailed installation
@@ -309,7 +330,7 @@ docs/
 │   ├── SDK.md                    # Complete SDK API (TypeScript + Python)
 │   ├── ERRORS.md                 # Error handling and error codes
 │   ├── TYPES.md                  # TypeScript type definitions
-│   ├── META_TOOLS.md             # Built-in meta-tools reference (12 tools)
+│   ├── META_TOOLS.md             # Built-in meta-tools reference (15 tools)
 │   ├── POLICY_AND_LIFECYCLE.md   # Policy engine and tool lifecycle
 │   ├── APPROVAL-SYSTEM.md        # Approval handler configuration
 │   └── LOGGING.md                # Logger API and formats
@@ -319,11 +340,14 @@ docs/
 │   ├── ADDING_TOOLS.md           # Creating tool provider packages
 │   ├── DECORATOR_GUIDE.md        # TypeScript decorators
 │   ├── TESTING.md                # Testing tools
+│   ├── TOOL_WORKFLOW.md          # Step-by-step tool checklist
 │   ├── HTTP_PARAMETER_EMBEDDING.md # HTTP parameter encoding
 │   └── PROVIDER_CONFIGURATION.md # Multi-provider setup
 ├── framework-integrations/
 │   ├── LANGCHAIN.md              # LangChain (Python + TypeScript)
 │   ├── CREWAI.md                 # CrewAI multi-agent (Python)
+│   ├── AGNO.md                   # Agno agents/teams/workflows (Python)
+│   ├── BRUNO.md                  # Bruno API testing
 │   └── VERCEL_AI.md              # Vercel AI SDK (TypeScript)
 ├── skills/
 │   ├── SKILLS.md                 # Skills system guide
@@ -347,10 +371,14 @@ Python examples (python/examples/):
 │   ├── skills/skills_demo.py     # 6-mission skills lifecycle
 │   ├── meta_flow/meta_tools_integration.py  # 5-mission meta-tools lifecycle
 │   └── logger_example.py         # Logging demo (no API key needed)
-├── langchain/                    # LangChain ReAct examples (17 files)
-└── crewai/                       # CrewAI examples (10 files)
+├── langchain/                    # LangChain agents, per provider
+├── crewai/                       # CrewAI agents, per provider
+├── agno/                         # Agno agents
+├── bruno/                        # Bruno collections as governed tools
+└── mcp/                          # MCP server and client (own uv project)
 
 TypeScript examples (typescript/examples/tools/):
+├── <provider>/                   # factory, decorator, langchain, with-approval per provider
 ├── policy/policy-demo.ts         # 11-mission policy lifecycle
 ├── skills/skills-demo.ts         # Skills lifecycle + TF-IDF
 ├── meta-flow/meta-tools-integration.ts  # Meta-tools lifecycle
@@ -365,27 +393,35 @@ TypeScript examples (typescript/examples/tools/):
 
 Tools are the building blocks of Matimo. They define what can be executed, what parameters they accept, and how they run.
 
-- **YAML Tools** — Declarative tool definitions (see [Tool Specification](./TOOL_SPECIFICATION.md))
-- **Decorator Tools** — TypeScript-based tool definitions (see [Decorator Guide](./DECORATOR_GUIDE.md))
+- **YAML Tools** — Declarative tool definitions (see [Tool Specification](./tool-development/TOOL_SPECIFICATION.md))
+- **Decorators** — `@tool('name')` class methods that call a loaded YAML tool (see [Decorator Guide](./tool-development/DECORATOR_GUIDE.md))
 
 ### Executors
 
 Executors run tools with different backends:
 
-- **CommandExecutor** — Execute shell commands
-- **HttpExecutor** — Make HTTP requests
+- **HttpExecutor** — `type: http`, REST calls (the default)
+- **FunctionExecutor** — `type: function`, a co-located `.ts`/`.js` or `.py` file
+- **CommandExecutor** — `type: command`, shell CLIs (asks for approval on every call)
 
 See [API Reference](./api-reference/SDK.md) for details.
 
 ### SDK
 
-Use the Matimo SDK (TypeScript) to load and execute tools:
+Load tools and execute them:
 
 ```typescript
-import { MatimoInstance } from 'matimo';
+import { MatimoInstance } from '@matimo/core';
 
-const matimo = await MatimoInstance.init('./tools');
-const result = await matimo.execute('tool-name', { param: 'value' });
+const matimo = await MatimoInstance.init({ autoDiscover: true });
+const result = await matimo.execute('calculator', { operation: 'add', a: 2, b: 3 });
+```
+
+```python
+from matimo import Matimo
+
+matimo = await Matimo.init(auto_discover=True)
+result = await matimo.execute("calculator", {"operation": "add", "a": 2, "b": 3})
 ```
 
 See [Quick Start](./getting-started/QUICK_START.md) and [API Reference](./api-reference/SDK.md).
@@ -394,15 +430,17 @@ See [Quick Start](./getting-started/QUICK_START.md) and [API Reference](./api-re
 
 Matimo can run as an MCP server, allowing Claude and other clients to discover and use tools:
 
-```typescript
-// MCP Server - Coming in Phase 2
-// import { MCPServer } from 'matimo/mcp';
-
-const server = new MCPServer({ toolsPath: './tools', port: 3000 });
-await server.start();
+```bash
+npx matimo mcp                 # stdio, for Claude Desktop / Cursor
 ```
 
-See [Quick Start](./getting-started/QUICK_START.md) for setup.
+```typescript
+import { createMCPServer } from '@matimo/core/mcp';
+
+const server = await createMCPServer({ transport: 'http', port: 3000, autoDiscover: true });
+```
+
+See [MCP.md](./MCP.md) for client configuration, HTTP mode and Python.
 
 ---
 
@@ -411,16 +449,16 @@ See [Quick Start](./getting-started/QUICK_START.md) for setup.
 ### Code Quality
 
 - **TypeScript**: Strict mode enforced (no `any`)
-- **Testing**: 95%+ coverage (TypeScript + Python), TDD approach
+- **Testing**: TypeScript coverage floors enforced (lines 95%, functions 97%, branches 87%, statements 95%); Python coverage is reported, not enforced
 - **Linting**: ESLint with automatic formatting
 - **Documentation**: JSDoc comments for all public APIs
 
-See [Development Standards](./DEVELOPMENT_STANDARDS.md).
+See [Development Standards](./user-guide/DEVELOPMENT_STANDARDS.md).
 
 ### Commits
 
 - **Format**: Conventional Commits (type(scope): subject)
-- **Types**: feat, fix, docs, refactor, test, chore, perf, style, ci
+- **Types**: feat, fix, docs, refactor, test, chore, perf, style, ci, revert, example
 - **Examples**: "feat(executor): add HTTP support", "fix(schema): validate enums"
 
 See [Commit Guidelines](./community/COMMIT_GUIDELINES.md).
@@ -429,7 +467,7 @@ See [Commit Guidelines](./community/COMMIT_GUIDELINES.md).
 
 - Follow TDD approach (test first, implement after)
 - Keep PRs focused (one feature/fix per PR)
-- Ensure tests pass and coverage maintained (95%+)
+- Ensure tests pass and the coverage floors hold
 - Follow code standards and get code review
 
 See [Contributing Guidelines](https://github.com/tallclub/matimo/blob/main/CONTRIBUTING.md).
@@ -440,24 +478,23 @@ See [Contributing Guidelines](https://github.com/tallclub/matimo/blob/main/CONTR
 
 ### Write a YAML Tool
 
-1. Create `tools/provider/tool-name.yaml`
-2. Follow [Tool Specification](./tool-development/TOOL_SPECIFICATION.md) schema
-3. Include parameters, execution, output_schema
-4. Add authentication if needed
-5. Test with `pnpm test`
+1. Create `tools/<tool-name>/definition.yaml` (`name` matches the directory)
+2. Follow the [Tool Specification](./tool-development/TOOL_SPECIFICATION.md) schema
+3. Include parameters and execution; add authentication if needed
+4. Run `pnpm validate-tools`
+5. Follow the [Tool Workflow](./tool-development/TOOL_WORKFLOW.md) for tests and examples in both SDKs
 
 ### Write a Decorator Tool
 
-1. Create `src/tools/tool-name.tool.ts`
-2. Use @tool and @param decorators
-3. Implement execute() or async execute()
+1. Load the YAML tool with `MatimoInstance.init(...)` and call `setGlobalMatimoInstance(matimo)`
+2. Add a class method decorated with `@tool('tool-name')`
+3. Calling the method executes the tool through the policy engine
 4. Follow [Decorator Guide](./tool-development/DECORATOR_GUIDE.md) patterns
-5. Add unit tests
 
 ### Integrate with LangChain
 
 1. See [Framework Integrations](./framework-integrations/LANGCHAIN.md) for patterns
-2. Check `examples/tools/` for working examples
+2. Check `typescript/examples/tools/` and `python/examples/langchain/` for working examples
 3. Follow [Architecture Overview](./architecture/OVERVIEW.md) for design decisions
 
 ### Contribute Code
@@ -486,4 +523,4 @@ See [Contributing Guidelines](https://github.com/tallclub/matimo/blob/main/CONTR
 
 ---
 
-Last updated: June 2026
+Last updated: October 2026

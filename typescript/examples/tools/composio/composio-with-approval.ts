@@ -8,20 +8,23 @@
  * ─────────────────────────────────────────────────────────────────────────
  * This example shows how to enforce human approval for medium- and high-risk
  * Composio tools before they execute. It demonstrates the governance story
- * that makes @matimo/composio more than a thin Composio proxy.
+ * that makes @matimo/composio more than a pass-through to Composio.
  *
  * WHY A CUSTOM POLICY ENGINE?
  * ─────────────────────────────────────────────────────────────────────────
- * Matimo's DefaultPolicyEngine.canExecute() does not gate on the `risk:`
- * field — it only checks deprecation/draft status and requires_approval +
- * role. Since generated composio tools do not set `requires_approval: true`,
- * medium/high-risk tools (create, delete) execute immediately by default.
+ * DefaultPolicyEngine with `enableHITL: true` quarantines every tool whose
+ * classifyExecutionRisk() is at or above `hitlMinRiskLevel`. Every Composio
+ * action is sent to Composio as an HTTP POST, so that classification is at
+ * least `medium` for all of them — read-only tools such as
+ * composio_jira_get_current_user would pause for approval too.
  *
- * To quarantine those tools, supply a custom PolicyEngine whose canExecute()
- * checks classifyRisk() and returns { allowed: 'pending_approval' } for
- * unacceptable risk levels. Matimo's execute() then invokes onHITL before
- * proceeding — wiring it to an interactive prompt, a Slack message, an
- * approval queue, or any async mechanism you choose.
+ * The generated YAML declares `risk:` from the underlying action (read →
+ * low, write → medium, delete → high). This engine quarantines Composio
+ * tools by that declared risk instead, and returns
+ * { allowed: 'pending_approval' } for the levels in QUARANTINE_LEVELS.
+ * Matimo's execute() then invokes onHITL before proceeding — wire it to an
+ * interactive prompt, a Slack message, an approval queue, or any async
+ * mechanism you choose.
  *
  * WHAT THIS EXAMPLE SHOWS:
  * ─────────────────────────────────────────────────────────────────────────
@@ -43,8 +46,8 @@
  * 2. Run interactively (prompted for each write/delete):
  *    pnpm composio:approval
  *
- * 3. Or auto-approve for CI / scripts:
- *    MATIMO_AUTO_APPROVE=true pnpm composio:approval
+ * Without a terminal every quarantined call is rejected. In CI, wire
+ * createApprovalCallback() to your own approval service instead.
  *
  * ============================================================================
  */
@@ -56,7 +59,6 @@ import { fileURLToPath } from 'url';
 import {
   MatimoInstance,
   DefaultPolicyEngine,
-  classifyRisk,
   type PolicyEngine,
   type PolicyContext,
   type PolicyDecision,
@@ -76,8 +78,8 @@ const QUARANTINE_LEVELS: ReadonlySet<RiskLevel> = new Set(['medium', 'high']);
  * Risk-aware PolicyEngine for composio tools.
  *
  * Delegates all checks to DefaultPolicyEngine (deprecation, draft status,
- * requires_approval + role) and then additionally quarantines any tool whose
- * classifyRisk() result is in QUARANTINE_LEVELS.
+ * requires_approval + role) and then additionally quarantines any Composio
+ * tool whose declared `risk:` is in QUARANTINE_LEVELS.
  */
 class ComposioRiskPolicyEngine implements PolicyEngine {
   private readonly base: DefaultPolicyEngine;
@@ -91,10 +93,10 @@ class ComposioRiskPolicyEngine implements PolicyEngine {
     const base = this.base.canExecute(context, tool);
     if (base.allowed !== true) return base;
 
-    // For composio tools, additionally quarantine by risk level.
+    // For composio tools, additionally quarantine by the declared risk level.
     if (tool.name.startsWith('composio_')) {
-      const risk = classifyRisk(tool);
-      if (QUARANTINE_LEVELS.has(risk)) {
+      const risk = tool.risk;
+      if (risk && QUARANTINE_LEVELS.has(risk)) {
         return {
           allowed: 'pending_approval',
           riskLevel: risk,
@@ -117,8 +119,6 @@ class ComposioRiskPolicyEngine implements PolicyEngine {
 }
 
 function createApprovalCallback(): HITLCallback {
-  const autoApprove = process.env.MATIMO_AUTO_APPROVE === 'true';
-
   return async (request): Promise<boolean> => {
     const riskEmoji = request.riskLevel === 'high' ? '🔴' : '🟡';
 
@@ -131,15 +131,11 @@ function createApprovalCallback(): HITLCallback {
     console.info(`⚡ Risk:   ${request.riskLevel}`);
     console.info(`📝 Reason: ${request.reason}`);
 
-    if (autoApprove) {
-      console.info('\n✅ Auto-approved (MATIMO_AUTO_APPROVE=true)');
-      console.info('='.repeat(70) + '\n');
-      return true;
-    }
-
     if (!process.stdin.isTTY) {
       console.info('\n❌ Rejected — non-interactive terminal');
-      console.info('💡 Set MATIMO_AUTO_APPROVE=true for unattended runs');
+      console.info(
+        '💡 Run in a terminal to approve, or route this callback to an approval service'
+      );
       console.info('='.repeat(70) + '\n');
       return false;
     }

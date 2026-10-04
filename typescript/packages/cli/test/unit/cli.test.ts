@@ -5,6 +5,7 @@ jest.mock('../../src/commands/install.ts');
 jest.mock('../../src/commands/list.ts');
 jest.mock('../../src/commands/search.ts');
 jest.mock('../../src/commands/mcp.ts');
+jest.mock('../../src/version', () => ({ getPackageVersion: () => '9.9.9' }));
 
 const { installCommand } = require('../../src/commands/install.ts');
 const { listCommand } = require('../../src/commands/list.ts');
@@ -276,21 +277,6 @@ describe('CLI Main', () => {
 
     expect(mcpCommand).toHaveBeenCalledWith(['--transport', 'http']);
   });
-
-  it('should handle getPackageVersion returning "unknown" when package.json is unreadable', async () => {
-    const fsSpy = jest.spyOn(require('fs'), 'readFileSync').mockImplementationOnce(() => {
-      throw new Error('ENOENT: no such file');
-    });
-
-    try {
-      await main(['version']);
-    } catch {
-      // Expected if process.exit throws
-    }
-
-    expect(consoleInfoSpy).toHaveBeenCalledWith(expect.stringContaining('vunknown'));
-    fsSpy.mockRestore();
-  });
 });
 
 describe('showVersion', () => {
@@ -311,6 +297,6 @@ describe('showVersion', () => {
       // Expected
     }
 
-    expect(consoleInfoSpy).toHaveBeenCalledWith(expect.stringMatching(/matimo-cli v/));
+    expect(consoleInfoSpy).toHaveBeenCalledWith('matimo-cli v9.9.9');
   });
 });

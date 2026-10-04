@@ -1,0 +1,88 @@
+version: 2
+
+updates:
+  # Root toolchain (commitlint/husky) — single-project pnpm lockfile, no pnpm-workspace.yaml
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 15
+    groups:
+      root-npm-version-updates:
+        applies-to: version-updates
+        patterns:
+          - "*"
+      root-npm-security-updates:
+        applies-to: security-updates
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "chore(deps)"
+    labels:
+      - "dependencies"
+      - "npm"
+
+  # TypeScript SDK — pnpm workspace (typescript/pnpm-workspace.yaml)
+  - package-ecosystem: "npm"
+    directory: "/typescript"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 15
+    groups:
+      typescript-version-updates:
+        applies-to: version-updates
+        patterns:
+          - "*"
+      typescript-security-updates:
+        applies-to: security-updates
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "fix(deps)"
+    labels:
+      - "dependencies"
+      - "npm"
+      - "typescript"
+
+  # Python SDK — uv workspace (python/uv.lock)
+  - package-ecosystem: "pip"
+    directory: "/python"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 15
+    groups:
+      python-version-updates:
+        applies-to: version-updates
+        patterns:
+          - "*"
+      python-security-updates:
+        applies-to: security-updates
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "fix(deps)"
+    labels:
+      - "dependencies"
+      - "python"
+
+  # Python MCP example — separate uv project with its own pyproject.toml + uv.lock
+  - package-ecosystem: "pip"
+    directory: "/python/examples/mcp"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 15
+    groups:
+      python-mcp-example-version-updates:
+        applies-to: version-updates
+        patterns:
+          - "*"
+      python-mcp-example-security-updates:
+        applies-to: security-updates
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "chore(deps)"
+    labels:
+      - "dependencies"
+      - "python"
+      - "examples"

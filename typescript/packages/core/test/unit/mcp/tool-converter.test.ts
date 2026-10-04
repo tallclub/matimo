@@ -6,6 +6,8 @@ import {
   convertParametersToMcpSchema,
   toolToMcpRegistration,
   extractAuthPlaceholders,
+  deriveToolAnnotations,
+  humanizeToolName,
 } from '../../../src/mcp/tool-converter';
 
 describe('parameterToZod', () => {
@@ -36,6 +38,21 @@ describe('parameterToZod', () => {
       required: true,
       description: 'List of strings',
       items: { type: 'string', required: true, description: 'Item' },
+    };
+    const schema = parameterToZod(param);
+    expect(schema.parse(['a', 'b'])).toEqual(['a', 'b']);
+    expect(() => schema.parse([1, 2])).toThrow();
+  });
+
+  it('should default untyped array items to string, not unknown', () => {
+    // Regression: z.unknown() array items serialize to a JSON-schema `items`
+    // entry with no 'type' key, which OpenAI's function-calling schema
+    // validator rejects — most visibly once an optional array field's schema
+    // is wrapped in `anyOf`. Declared-items arrays are unaffected.
+    const param: Parameter = {
+      type: 'array',
+      required: false,
+      description: 'Undeclared item type',
     };
     const schema = parameterToZod(param);
     expect(schema.parse(['a', 'b'])).toEqual(['a', 'b']);
@@ -192,15 +209,22 @@ describe('toolToMcpRegistration', () => {
     } as unknown as ToolDefinition;
 
     const reg = toolToMcpRegistration(tool);
-    expect(reg.title).toBe('slack_send_message');
+    expect(reg.title).toBe('Slack Send Message');
     expect(reg.description).toBe('Send a message to Slack');
     expect(Object.keys(reg.inputSchema)).toEqual(['channel', 'text']);
+    expect(reg.annotations).toEqual({
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: false,
+      openWorldHint: true,
+    });
   });
 
   it('should use name as description fallback', () => {
     const tool = {
       name: 'echo',
       parameters: {},
+      execution: { type: 'command', command: 'echo' },
     } as unknown as ToolDefinition;
 
     const reg = toolToMcpRegistration(tool);
@@ -211,10 +235,38 @@ describe('toolToMcpRegistration', () => {
     const tool = {
       name: 'ping',
       description: 'Health check',
+      execution: { type: 'http', method: 'GET', url: 'https://api.example.com/ping' },
     } as unknown as ToolDefinition;
 
     const reg = toolToMcpRegistration(tool);
     expect(Object.keys(reg.inputSchema)).toHaveLength(0);
+  });
+});
+
+describe('toolToMcpRegistration — _matimo_approved', () => {
+  const deleteTool = {
+    name: 'wipe',
+    description: 'Delete',
+    parameters: {},
+    execution: { type: 'http', method: 'DELETE', url: 'https://api.example.com/x' },
+  } as unknown as ToolDefinition;
+  const getTool = {
+    ...deleteTool,
+    execution: { type: 'http', method: 'GET', url: 'https://api.example.com/x' },
+  } as unknown as ToolDefinition;
+
+  it('is never offered by default, so the model cannot approve itself', () => {
+    expect(toolToMcpRegistration(deleteTool).inputSchema).not.toHaveProperty('_matimo_approved');
+  });
+
+  it('is offered on approval-requiring tools when the server trusts client approval', () => {
+    const reg = toolToMcpRegistration(deleteTool, { clientApproval: true });
+    expect(reg.inputSchema).toHaveProperty('_matimo_approved');
+  });
+
+  it('is not offered on tools that need no approval', () => {
+    const reg = toolToMcpRegistration(getTool, { clientApproval: true });
+    expect(reg.inputSchema).not.toHaveProperty('_matimo_approved');
   });
 });
 
@@ -314,5 +366,138 @@ describe('extractAuthPlaceholders', () => {
 
     const placeholders = extractAuthPlaceholders(tool);
     expect(placeholders).toHaveLength(0);
+  });
+});
+
+describe('deriveToolAnnotations', () => {
+  function makeTool(
+    overrides: Partial<ToolDefinition> & { execution: ToolDefinition['execution'] }
+  ): ToolDefinition {
+    return {
+      name: 'test-tool',
+      description: 'Test',
+      version: '1.0.0',
+      ...overrides,
+    } as ToolDefinition;
+  }
+
+  it('should mark function execution as destructive and not read-only or idempotent', () => {
+    const tool = makeTool({ execution: { type: 'function', code: './fn.ts' } });
+    expect(deriveToolAnnotations(tool)).toEqual({
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: false,
+      openWorldHint: true,
+    });
+  });
+
+  it('should mark command execution as destructive and not read-only or idempotent', () => {
+    const tool = makeTool({ execution: { type: 'command', command: 'echo hello' } });
+    expect(deriveToolAnnotations(tool)).toEqual({
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: false,
+      openWorldHint: true,
+    });
+  });
+
+  it('should mark HTTP GET as read-only and idempotent', () => {
+    const tool = makeTool({
+      execution: { type: 'http', method: 'GET', url: 'https://api.example.com' },
+    });
+    expect(deriveToolAnnotations(tool)).toEqual({
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    });
+  });
+
+  it('should mark HTTP POST as non-idempotent, non-destructive, non-read-only', () => {
+    const tool = makeTool({
+      execution: { type: 'http', method: 'POST', url: 'https://api.example.com' },
+    });
+    expect(deriveToolAnnotations(tool)).toEqual({
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: true,
+    });
+  });
+
+  it('should mark HTTP PUT as idempotent but not destructive or read-only', () => {
+    const tool = makeTool({
+      execution: { type: 'http', method: 'PUT', url: 'https://api.example.com' },
+    });
+    expect(deriveToolAnnotations(tool)).toEqual({
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    });
+  });
+
+  it('should mark HTTP PATCH like POST (non-idempotent)', () => {
+    const tool = makeTool({
+      execution: { type: 'http', method: 'PATCH', url: 'https://api.example.com' },
+    });
+    expect(deriveToolAnnotations(tool)).toEqual({
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: true,
+    });
+  });
+
+  it('should mark HTTP DELETE as destructive and idempotent', () => {
+    const tool = makeTool({
+      execution: { type: 'http', method: 'DELETE', url: 'https://api.example.com/item' },
+    });
+    expect(deriveToolAnnotations(tool)).toEqual({
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: true,
+      openWorldHint: true,
+    });
+  });
+
+  it('should force destructiveHint true when requires_approval is set, even for GET', () => {
+    const tool = makeTool({
+      execution: { type: 'http', method: 'GET', url: 'https://api.example.com' },
+      requires_approval: true,
+    });
+    expect(deriveToolAnnotations(tool)).toEqual({
+      readOnlyHint: true,
+      destructiveHint: true,
+      idempotentHint: true,
+      openWorldHint: true,
+    });
+  });
+
+  it('should treat unknown execution type conservatively', () => {
+    const tool = makeTool({
+      execution: { type: 'http', method: 'GET', url: 'https://api.example.com' },
+    });
+    (tool as unknown as { execution: { type: string } }).execution.type = 'unknown';
+    expect(deriveToolAnnotations(tool)).toEqual({
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: false,
+      openWorldHint: true,
+    });
+  });
+});
+
+describe('humanizeToolName', () => {
+  it('should convert snake_case to Title Case', () => {
+    expect(humanizeToolName('slack_get_channel_history')).toBe('Slack Get Channel History');
+  });
+
+  it('should handle single-word names', () => {
+    expect(humanizeToolName('calculator')).toBe('Calculator');
+  });
+
+  it('should collapse consecutive underscores without producing empty words', () => {
+    expect(humanizeToolName('foo__bar')).toBe('Foo Bar');
   });
 });

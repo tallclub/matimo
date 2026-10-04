@@ -1,5 +1,6 @@
 name: matimo_list_skills
 version: '1.0.0'
+risk: low
 description: >-
   Level 1 metadata discovery — list all skills available to the system.
   

@@ -1,699 +1,135 @@
-# Security Guide — Matimo Security Standards
+# Security — Matimo
 
-Security is a critical aspect of Matimo. This guide covers security best practices, common vulnerabilities, and how to handle sensitive data safely.
+How to report a vulnerability, what Matimo's governance layer protects against today, what it does not, and the rules contributors follow. Applies to `@matimo/*` 0.2.x (TypeScript) and `matimo` 0.2.x (Python).
 
 ## Table of Contents
 
-- [Overview](#overview)
-- [Core Principles](#core-principles)
-- [Secret Management](#secret-management)
-- [Input Validation](#input-validation)
-- [Error Handling](#error-handling)
-- [Logging Security](#logging-security)
-- [Authentication](#authentication)
-- [Command Execution](#command-execution)
-- [Common Vulnerabilities](#common-vulnerabilities)
-- [Security Checklist](#security-checklist)
 - [Reporting Security Issues](#reporting-security-issues)
-
----
-
-## Overview
-
-Matimo runs untrusted code and handles user input across multiple integration points (SDK, MCP Server, REST API, CLI). Security must be enforced at every layer:
-
-1. **Input Validation** — Validate all user inputs against schemas
-2. **Secret Management** — Never hardcode secrets, use environment variables
-3. **Error Handling** — Don't leak sensitive info in error messages
-4. **Logging** — Never log secrets or sensitive data
-5. **Command Execution** — Safely escape shell commands
-6. **Authentication** — Use secure auth mechanisms (bearer, OAuth2, basic)
-
----
-
-## Core Principles
-
-### 1. Never Trust User Input
-
-**Rule:** All user input must be validated against expected types and values.
-
-```typescript
-// ❌ WRONG: Trust user input
-function executeCommand(userInput: string) {
-  return execSync(`echo ${userInput}`); // Dangerous!
-}
-
-// ✅ CORRECT: Validate input
-import { z } from 'zod';
-
-const inputSchema = z.object({
-  message: z.string().max(1000),
-});
-
-function executeCommand(userInput: unknown) {
-  const validated = inputSchema.parse(userInput); // Throws if invalid
-  return execSync(`echo "${validated.message}"`); // Escaped
-}
-```
-
-### 2. Never Hardcode Secrets
-
-**Rule:** Secrets must come from environment variables, never be in code.
-
-```typescript
-// ❌ WRONG: Hardcoded secret
-const API_KEY = 'sk_live_abc123xyz789';
-const token = 'ghp_xxxxxxxxxxxxxxxxxxxx';
-
-// ✅ CORRECT: Environment variable with MATIMO_ prefix
-const apiKey = process.env.MATIMO_API_KEY;
-if (!apiKey) {
-  throw new MatimoError('Missing API key', ErrorCode.AUTH_FAILED);
-}
-
-const githubToken = process.env.MATIMO_GITHUB_TOKEN;
-if (!githubToken || githubToken.trim().length === 0) {
-  throw new MatimoError('Invalid GitHub token', ErrorCode.AUTH_FAILED);
-}
-```
-
-### 3. Never Log Secrets
-
-**Rule:** Sanitize sensitive data before logging. Never include passwords, tokens, keys, or PII.
-
-```typescript
-// ❌ WRONG: Logging secrets
-logger.info('Authenticated with token:', apiKey);
-logger.info('User password:', password);
-logger.info('Request headers:', { Authorization: bearerToken });
-
-// ✅ CORRECT: Redact sensitive data
-logger.info('Authentication successful', { hasToken: !!apiKey });
-logger.info('User authenticated', { userId: user.id });
-logger.info('Request made', { endpoint: url, statusCode: 200 });
-
-// ✅ CORRECT: Sanitize error context
-const sanitized = {
-  ...errorContext,
-  password: '[REDACTED]',
-  token: '[REDACTED]',
-  apiKey: '[REDACTED]',
-};
-logger.error('Execution failed', sanitized);
-```
-
-### 4. Clear Error Messages
-
-**Rule:** Error messages should be helpful but not leak sensitive information.
-
-```typescript
-// ❌ WRONG: Leaks sensitive info
-throw new Error(`Failed to authenticate with API key: ${apiKey}`);
-throw new Error(`Connection failed: ${connectionString}`);
-
-// ✅ CORRECT: Safe error messages
-throw new MatimoError('Authentication failed: invalid credentials', ErrorCode.AUTH_FAILED);
-
-throw new MatimoError('Database connection failed', ErrorCode.EXECUTION_FAILED, {
-  service: 'database',
-  timeout: 5000,
-});
-```
-
----
-
-## Secret Management
-
-### Environment Variable Naming
-
-All Matimo secrets use the `MATIMO_` prefix:
-
-```bash
-# API Keys
-MATIMO_GITHUB_TOKEN=ghp_xxxx
-MATIMO_SLACK_API_KEY=xoxb-xxxx
-MATIMO_STRIPE_SECRET=sk_live_xxxx
-
-# OAuth Tokens
-MATIMO_OAUTH_TOKEN=access_token_xxxx
-MATIMO_OAUTH_REFRESH_TOKEN=refresh_token_xxxx
-
-# Database Credentials
-MATIMO_DATABASE_URL=postgres://user:pass@host/db
-MATIMO_DATABASE_PASSWORD=secure_password
-
-# API Credentials
-MATIMO_API_KEY=api_key_xxxx
-MATIMO_API_SECRET=api_secret_xxxx
-```
-
-### Retrieving Secrets Safely
-
-```typescript
-// ✅ Retrieve and validate
-function getSecret(name: string): string {
-  const secret = process.env[`MATIMO_${name.toUpperCase()}`];
-
-  if (!secret) {
-    throw new MatimoError(`Missing required secret: ${name}`, ErrorCode.AUTH_FAILED);
-  }
-
-  if (secret.trim().length === 0) {
-    throw new MatimoError(`Invalid secret: ${name} is empty`, ErrorCode.AUTH_FAILED);
-  }
-
-  return secret;
-}
-
-// Usage
-const githubToken = getSecret('github_token');
-const slackKey = getSecret('slack_api_key');
-```
-
-### Secrets in Tool YAML
-
-Never put secrets in YAML tool definitions:
-
-```yaml
-# ❌ WRONG: Hardcoded secret
-authentication:
-  type: bearer
-  token: "ghp_xxxxxxxxxxxxxxxxxxxx"
-
-# ✅ CORRECT: Reference environment variable
-authentication:
-  type: bearer
-  secret_env_var: MATIMO_GITHUB_TOKEN
-```
-
-Tool loaders will automatically resolve `secret_env_var` at execution time.
-
----
-
-## Input Validation
-
-### Parameter Validation
-
-Validate all parameters against the tool's parameter schema:
-
-```typescript
-// ✅ Always validate with Zod
-const toolSchema = z.object({
-  repo: z.string().regex(/^[^/]+\/[^/]+$/),
-  issue: z.number().min(1).max(10000),
-  labels: z.array(z.string()).optional(),
-  body: z.string().max(5000).optional(),
-});
-
-function execute(params: unknown) {
-  const validated = toolSchema.parse(params); // Throws if invalid
-  // Safe to use validated params
-  return api.createIssue(validated);
-}
-```
-
-### Type Validation in YAML
-
-Define validation rules in tool YAML:
-
-```yaml
-parameters:
-  repo:
-    type: string
-    description: Repository (owner/repo)
-    required: true
-    validation:
-      pattern: '^[a-zA-Z0-9_-]+/[a-zA-Z0-9_-]+$'
-      minLength: 3
-      maxLength: 100
-
-  count:
-    type: number
-    required: false
-    validation:
-      min: 1
-      max: 100
-    default: 10
-
-  email:
-    type: string
-    validation:
-      pattern: "^[^@]+@[^@]+\\.[^@]+$"
-      maxLength: 254
-```
-
-### Input Constraints
-
-```typescript
-// ✅ DO: Define and enforce constraints
-const stringConstraints = {
-  minLength: 1,
-  maxLength: 1000,
-  pattern: /^[a-zA-Z0-9_-]+$/, // Alphanumeric, underscore, hyphen only
-};
-
-const numberConstraints = {
-  min: 0,
-  max: 1000,
-  isInteger: true,
-};
-
-const arrayConstraints = {
-  minItems: 0,
-  maxItems: 100,
-  unique: true,
-};
-
-// ❌ DON'T: Accept unbounded input
-function process(data: unknown) {
-  // Could be huge array, deeply nested, etc.
-  return JSON.stringify(data);
-}
-```
-
----
-
-## Error Handling
-
-### Structured Error Responses
-
-Always use structured errors with codes and safe context:
-
-```typescript
-enum ErrorCode {
-  INVALID_SCHEMA = 'INVALID_SCHEMA',
-  EXECUTION_FAILED = 'EXECUTION_FAILED',
-  AUTH_FAILED = 'AUTH_FAILED',
-  TOOL_NOT_FOUND = 'TOOL_NOT_FOUND',
-  VALIDATION_FAILED = 'VALIDATION_FAILED',
-}
-
-// ✅ CORRECT: Include code but sanitize context
-try {
-  const result = await executor.execute(tool, params);
-} catch (error) {
-  throw new MatimoError('Tool execution failed', ErrorCode.EXECUTION_FAILED, {
-    toolName: tool.name,
-    parameterCount: Object.keys(params).length,
-    // DO NOT include: params, error details, stack traces
-  });
-}
-```
-
-### Never Expose Stack Traces
-
-```typescript
-// ❌ WRONG: Exposes implementation details
-throw new Error(error.stack);
-
-// ✅ CORRECT: Safe error message
-throw new MatimoError('Operation failed', ErrorCode.EXECUTION_FAILED);
-```
-
----
-
-## Logging Security
-
-### What to Log
-
-```typescript
-// ✅ SAFE to log:
-logger.info('tool_execution', {
-  traceId: 'trace-123',
-  toolName: 'calculator',
-  parameterCount: 2,
-  duration: 150,
-  statusCode: 200,
-  timestamp: '2026-01-30T12:00:00Z',
-});
-
-logger.info('authentication', {
-  provider: 'github',
-  userId: 'user-456',
-  hasToken: true, // Not the token itself
-  authenticated: true,
-});
-```
-
-### What NOT to Log
-
-```typescript
-// ❌ NEVER log:
-- Passwords
-- API keys or tokens
-- OAuth credentials
-- Database passwords
-- Personally identifiable information (PII)
-- Full request/response bodies with secrets
-- Environment variable values
-- SSH keys or certificates
-
-// Examples of BAD logging:
-logger.info('Token:', apiToken);                          // ❌
-logger.info('User:', { password: pwd });                  // ❌
-logger.info('DB:', { connectionString });                 // ❌
-logger.info('Response:', responseWithAuthHeader);          // ❌
-logger.info('Env:', process.env);                         // ❌
-```
-
-### Logging Pattern
-
-```typescript
-// ✅ Use structured logging with context
-logger.info('operation_name', {
-  traceId: context.traceId,
-  userId: context.userId,
-  action: 'description',
-  success: true,
-  duration: executionTime,
-  // Include safe metadata only
-  toolName: tool.name,
-  paramCount: Object.keys(params).length,
-  statusCode: response.status,
-});
-
-// ✅ Log errors safely
-logger.error('execution_failed', {
-  traceId: context.traceId,
-  toolName: tool.name,
-  errorCode: error.code,
-  errorMessage: error.message, // Should not contain secrets
-  duration: executionTime,
-});
-```
-
----
-
-## Authentication
-
-### Supported Methods
-
-#### 1. API Key (Bearer Token)
-
-```yaml
-authentication:
-  type: bearer
-  secret_env_var: MATIMO_GITHUB_TOKEN
-```
-
-Automatically adds: `Authorization: Bearer {token}`
-
-#### 2. API Key (Header)
-
-```yaml
-authentication:
-  type: api_key
-  location: header
-  name: X-API-Key
-  secret_env_var: MATIMO_API_KEY
-```
-
-Automatically adds: `X-API-Key: {key}`
-
-#### 3. Basic Auth
-
-```yaml
-authentication:
-  type: basic
-  secret_env_var: MATIMO_CREDENTIALS
-```
-
-Environment variable format: `username:password`
-
-#### 4. OAuth2 (Phase 2+)
-
-```yaml
-authentication:
-  type: oauth2
-  secret_env_var: MATIMO_OAUTH_TOKEN
-```
-
-### Third-Party Credentials — Always BYOK
-
-All four methods above share one rule: the credential value always comes
-from the deploying application's own environment (`secret_env_var`), never
-from a value baked into a tool definition or shipped in a Matimo package.
-This isn't only a secrets-hygiene rule — it's also how Matimo keeps every
-provider connector on a bring-your-own-key model, so the compliance
-relationship with that provider (their Terms of Service, Fair Usage Policy,
-data handling) stays directly between the end user and the provider, not
-routed through any Matimo-operated account or infrastructure.
-
-`@matimo/composio` is the clearest example: every `composio_*` tool requires
-a caller-supplied `COMPOSIO_API_KEY` plus a `composio_connected_account_id`
-obtained through Composio's own OAuth flow — see
-[`docs/COMPOSIO.md`](./docs/COMPOSIO.md) and
-[`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md). Before adding a new
-third-party connector, see
-[CONTRIBUTING.md § Third-Party Connectors — Credential Policy](./CONTRIBUTING.md#third-party-connectors--credential-policy-byok).
-
----
-
-## Command Execution
-
-### Shell Command Escaping
-
-**CRITICAL:** Always escape shell commands to prevent injection:
-
-```typescript
-import { execSync } from 'child_process';
-import shellEscape from 'shell-escape';
-
-// ❌ DANGEROUS: Command injection vulnerability
-function dangerous(userInput: string) {
-  return execSync(`git clone ${userInput}`);
-}
-
-dangerous('https://repo.git; rm -rf /'); // DISASTER!
-
-// ✅ SAFE: Properly escaped
-function safe(userInput: string) {
-  const escaped = shellEscape(['git', 'clone', userInput]);
-  return execSync(escaped);
-}
-
-safe('https://repo.git; rm -rf /'); // Safe - treated as single argument
-```
-
-### Template Substitution
-
-```typescript
-// ✅ Safe parameter templating
-const command = 'curl {url} -H "Authorization: Bearer {token}"';
-const escaped = {
-  url: shellEscape([userUrl]),
-  token: shellEscape([userToken]),
-};
-
-const final = command.replace('{url}', escaped.url).replace('{token}', escaped.token);
-```
-
-### Environment Variables in Commands
-
-```typescript
-// ✅ SAFE: Use environment variables
-const env = {
-  ...process.env,
-  MATIMO_API_KEY: apiKey, // Retrieved from process.env.MATIMO_API_KEY
-  MATIMO_TIMEOUT: '5000',
-};
-
-execSync('tool-command', { env });
-
-// ❌ WRONG: Don't pass secrets as command arguments
-execSync(`tool-command --key=${apiKey}`); // Visible in process list!
-```
-
----
-
-## Common Vulnerabilities
-
-### 1. Command Injection
-
-**Risk:** User input executed as shell command.
-
-```typescript
-// ❌ VULNERABLE
-execSync(`echo ${userInput}`);
-
-// ✅ FIXED
-execSync(`echo "${shellEscape([userInput])}"`);
-```
-
-### 2. Secret Leakage
-
-**Risk:** Secrets exposed in logs, errors, or responses.
-
-```typescript
-// ❌ VULNERABLE
-logger.info('API Key:', apiKey);
-throw new Error(`Failed with key: ${apiKey}`);
-return { success: true, token: userToken };
-
-// ✅ FIXED
-logger.info('API authentication successful');
-throw new MatimoError('Authentication failed', ErrorCode.AUTH_FAILED);
-return { success: true }; // No token in response
-```
-
-### 3. Insecure Deserialization
-
-**Risk:** Executing arbitrary code from untrusted data.
-
-```typescript
-// ❌ VULNERABLE: Can execute arbitrary code
-eval(userCode);
-new Function(userInput)();
-
-// ✅ SAFE: Validate against schema
-const validated = toolSchema.parse(userInput);
-```
-
-### 4. Missing Input Validation
-
-**Risk:** Invalid data causes unexpected behavior.
-
-```typescript
-// ❌ VULNERABLE
-function processUser(user: any) {
-  return database.save(user); // No validation!
-}
-
-// ✅ SAFE
-function processUser(user: unknown) {
-  const validated = userSchema.parse(user); // Validate with Zod
-  return database.save(validated);
-}
-```
-
-### 5. Timing Attacks
-
-**Risk:** Different response times reveal information.
-
-```typescript
-// ❌ VULNERABLE: Early return on wrong char
-function checkPassword(input: string, actual: string) {
-  for (let i = 0; i < input.length; i++) {
-    if (input[i] !== actual[i]) return false; // Fast fail
-  }
-  return true;
-}
-
-// ✅ FIXED: Constant-time comparison (use crypto library)
-import { timingSafeEqual } from 'crypto';
-
-function checkPassword(input: string, actual: string) {
-  return timingSafeEqual(Buffer.from(input), Buffer.from(actual));
-}
-```
-
----
-
-## Security Checklist
-
-### Before Deploying
-
-- [ ] No hardcoded secrets (search for passwords, tokens, keys)
-- [ ] All user input validated against schema
-- [ ] Sensitive data never logged
-- [ ] Error messages don't leak implementation details
-- [ ] Shell commands properly escaped
-- [ ] Authentication configured (not default credentials)
-- [ ] HTTPS enabled for API endpoints
-- [ ] Rate limiting configured
-- [ ] CORS properly configured
-- [ ] Dependencies audited (`npm audit`)
-
-### Before Release
-
-- [ ] Security audit completed
-- [ ] No known vulnerabilities in dependencies
-- [ ] All tests passing
-- [ ] Code reviewed by security-aware reviewer
-- [ ] Security documentation updated
-- [ ] Incident response plan in place
-- [ ] Monitoring and logging configured
-
-### Code Review Questions
-
-- [ ] Are all external inputs validated?
-- [ ] Are secrets handled correctly (env vars, not hardcoded)?
-- [ ] Are error messages safe (no implementation details)?
-- [ ] Is sensitive data protected in logs?
-- [ ] Are shell commands properly escaped?
-- [ ] Is authentication secure?
-- [ ] Are there any obvious vulnerabilities?
+- [What Matimo Enforces](#what-matimo-enforces)
+- [Known Limitations](#known-limitations)
+- [Deployment Checklist](#deployment-checklist)
+- [Rules for Contributors](#rules-for-contributors)
+- [Third-Party Credentials — Always BYOK](#third-party-credentials--always-byok)
 
 ---
 
 ## Reporting Security Issues
 
-**DO NOT** open a public GitHub issue for security vulnerabilities.
+**Do not** open a public GitHub issue for a vulnerability.
 
-### Responsible Disclosure
+1. **Report privately** through a [GitHub security advisory](https://github.com/tallclub/matimo/security/advisories/new) or by email to security@matimo.dev.
+2. **Include** the type of vulnerability, steps to reproduce, affected package and version, potential impact, and a suggested fix if you have one.
+3. **Response timeline:** acknowledgment within 48 hours, an initial fix within 7 days, a release within 14 days.
 
-1. **Email:** security@matimo.dev (or GitHub security advisory)
-2. **Information to Include:**
-   - Type of vulnerability
-   - Steps to reproduce
-   - Potential impact
-   - Suggested fix (if you have one)
-
-3. **Response Timeline:**
-   - Acknowledgment: 48 hours
-   - Initial fix: 7 days
-   - Release: 14 days
-
-### Security Updates
-
-Security fixes are released as patch versions (MAJOR.MINOR.PATCH) and announced in:
-
-- GitHub releases
-- npm advisories
-- Security mailing list
+Security fixes ship as patch releases of the affected SDK and are noted in the [CHANGELOG](./CHANGELOG.md) and GitHub releases.
 
 ---
 
-## Phase 1 vs Phase 2+ Security
+## What Matimo Enforces
 
-### Phase 1 (Current - Foundation)
+Every tool call — built-in, provider package, or agent-created — goes through `execute()`, which applies these checks in both SDKs. Details: [POLICY_AND_LIFECYCLE.md](./docs/api-reference/POLICY_AND_LIFECYCLE.md).
 
-✅ **Implemented:**
+| Control | What it does |
+|---------|--------------|
+| **Risk classification** | Every tool is `low`, `medium`, `high` or `critical`, from its method, execution type and declared `risk` |
+| **Content rules** | Nine deterministic rules check agent-created and untrusted tools: no function or command execution, no SSRF targets, no unauthorized credential placeholders, no reserved `matimo_` namespace, forced approval, blocked HTTP methods, blocked domains, forced draft status |
+| **SSRF check at execution** | The fully resolved URL is checked against private, loopback, link-local and metadata addresses before the request is sent |
+| **Approval** | HTTP `DELETE`, `type: command` and `requires_approval: true` tools, and SQL with destructive keywords, ask the instance's `onApproval` / `on_approval` callback before running. With no callback, the call is rejected |
+| **HITL quarantine** | Tools at or above `hitlMinRiskLevel` can be held for a human decision (`onHITL`) |
+| **Draft gate** | Draft tools never run in an environment containing `prod`, and elsewhere only for an `admin` caller; `matimo_approve_tool` requires `admin` and refuses the tool's creator |
+| **Approval manifest** | Approvals are HMAC-signed with `MATIMO_APPROVAL_SECRET`; an edited tool file loses its approval |
+| **Credentials outside parameters** | Secrets come from `credentials` or the environment and are filled into credential placeholders at call time; they never reach the model, approval callbacks or events |
+| **Audit trail** | Every call emits events; `JsonlFileSink` writes a hash-chained log with secret-looking fields redacted, and `verifyAuditLog` finds the first altered line |
+| **MCP** | HTTP servers accept an optional bearer token (compared in constant time); approvals are asked of the client's user through elicitation, and the model cannot approve its own call |
+| **Embedded code** | Inline `code` in YAML is off unless `MATIMO_ALLOW_EMBEDDED_CODE=true` (TypeScript) |
+| **Response size** | Large responses are truncated before they reach the model |
 
-- Input validation with Zod
-- Secret management (env vars, no hardcoding)
-- Error handling with safe messages
-- Command execution with proper escaping
-- Structured logging without secrets
-- TypeScript strict mode (no `any`)
+---
 
-### Phase 2+ (Coming)
+## Known Limitations
 
-⏳ **Planned:**
+Plan around these; they are tracked on the [roadmap](./docs/ROADMAP.md).
 
-- OAuth2 authentication flow
-- Rate limiting and quota tracking
-- Request signing and verification
-- Encryption at rest
-- Audit logging and compliance
-- Security scanning in CI/CD
-- Penetration testing
+- **No parameter validation.** Parameters are not checked against the YAML types, `enum` or `required` before execution. Validate in your app or in function-tool code.
+- **Function tools run in-process.** `type: function` code runs with the host's permissions; the static code check is not a sandbox. Load function tools only from sources you trust, and keep agent-written tools in `untrustedPaths`.
+- **Command tools inherit the environment.** A `type: command` tool sees the process environment (plus per-call credentials). Every call asks for approval, but run them only where that environment holds nothing the command shouldn't read.
+- **SSRF via redirects and DNS.** The SSRF check covers the URL Matimo builds; it does not re-check redirect targets or the address a hostname resolves to.
+- **Composio and Bruno write tools** don't declare `requires_approval`; use `hitlMinRiskLevel: 'high'` or approval patterns to gate them.
+- **The example MCP HTTP server** (`python/examples/mcp/src/server_http.py`) sets no token and listens on all interfaces. Set `mcpToken` / `mcp_token` and use HTTPS before exposing any MCP server.
+
+---
+
+## Deployment Checklist
+
+- [ ] Secrets come from the environment, a secret manager, or per-call `credentials` — never from YAML, code or tool parameters
+- [ ] `MATIMO_APPROVAL_SECRET` is set to a stable random value
+- [ ] An `onApproval` / `on_approval` callback reaches a human; `MATIMO_AUTO_APPROVE` is not set
+- [ ] Agent-created tool directories are listed in `untrustedPaths`
+- [ ] The policy's `environment` names production as such (it contains `prod`)
+- [ ] MCP over HTTP uses a bearer token and HTTPS
+- [ ] An `auditSink` is configured and the log is kept where agents can't write
+- [ ] Dependencies audited (`pnpm audit`, `pip-audit`)
+
+---
+
+## Rules for Contributors
+
+### 1. Validate Untrusted Input
+
+Function-tool code receives parameters as the model wrote them. Check types and ranges before use, and throw `MatimoError` with `ErrorCode.INVALID_PARAMETER`.
+
+```typescript
+if (typeof params.limit !== 'number' || params.limit < 1 || params.limit > 100) {
+  throw new MatimoError('limit must be 1-100', ErrorCode.INVALID_PARAMETER);
+}
+```
+
+### 2. Never Hardcode Secrets
+
+A tool's YAML names its credential as a placeholder; Matimo fills it at call time from the call's `credentials`, then `MATIMO_<NAME>`, then `<NAME>` in the environment.
+
+```yaml
+# ❌ WRONG: hardcoded secret
+headers:
+  Authorization: 'Bearer ghp_xxxxxxxxxxxxxxxxxxxx'
+
+# ✅ CORRECT: credential placeholder
+headers:
+  Authorization: 'Bearer {GITHUB_TOKEN}'
+notes:
+  env: GITHUB_TOKEN
+```
+
+A placeholder is treated as a credential only when its name contains `TOKEN`, `KEY`, `SECRET`, `PASSWORD`, `CREDENTIAL`, `AUTH`, `BEARER` or `API_KEY`. For basic auth, use `authentication.username_env` / `password_env`. See [AUTHENTICATION.md](./docs/user-guide/AUTHENTICATION.md).
+
+### 3. Never Log Secrets
+
+Use the Matimo logger, log tool names and outcomes, and never log tokens, credentials, or raw parameters that may contain them.
+
+### 4. Safe Errors
+
+Throw `MatimoError` with an `ErrorCode` and a message that helps the caller without exposing internals, stack traces or secrets. See [ERRORS.md](./docs/api-reference/ERRORS.md).
+
+### 5. Shell Commands
+
+Prefer `type: http` or `type: function` over `type: command`. If a command tool is necessary, pass parameters as separate `args` entries rather than interpolating them into one shell string, and never pass a secret as a command-line argument (it is visible in the process list).
+
+### 6. Risk and Approval
+
+Every tool needs a risk classification. HTTP `DELETE` tools must declare `requires_approval: true` and function tools must declare `risk:`; `pnpm validate-tools` enforces both.
+
+---
+
+## Third-Party Credentials — Always BYOK
+
+Credentials always come from the deploying application — its environment or per-call `credentials` — never from a value baked into a tool definition or shipped in a Matimo package. This is also how Matimo keeps every provider connector on a bring-your-own-key model, so the compliance relationship with that provider (its Terms of Service, usage policy, data handling) stays directly between the end user and the provider, not routed through any Matimo-operated account or infrastructure.
+
+`@matimo/composio` is the clearest example: every `composio_*` tool requires a caller-supplied `COMPOSIO_API_KEY` plus a `composio_connected_account_id` obtained through Composio's own OAuth flow — see [`docs/COMPOSIO.md`](./docs/COMPOSIO.md) and [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md). Before adding a new third-party connector, see [CONTRIBUTING.md § Third-Party Connectors — Credential Policy](./CONTRIBUTING.md#third-party-connectors--credential-policy-byok).
 
 ---
 
 ## Resources
 
+- [OWASP Top 10 for LLM Applications](https://owasp.org/www-project-top-10-for-large-language-model-applications/)
 - [OWASP Top 10](https://owasp.org/www-project-top-ten/)
-- [Node.js Security Checklist](https://nodejs.org/en/docs/guides/security/)
-- [npm Security Guidelines](https://docs.npmjs.com/cli/v7/using-npm/security)
-- [CWE/SANS Top 25](https://cwe.mitre.org/top25/)
-
----
-
-## Questions?
-
-- **Security issue?** Report privately to security@matimo.dev
-- **Question about security?** Open a [GitHub Discussion](https://github.com/tallclub/matimo/discussions)
-- **Found a vulnerability?** Follow responsible disclosure above
-
-**Remember:** Security is everyone's responsibility. When in doubt, ask! 🔒
+- Questions about security that aren't vulnerabilities: [GitHub Discussions](https://github.com/tallclub/matimo/discussions)

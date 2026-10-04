@@ -26,7 +26,6 @@ async def main():
     # (server script is in src/, but tools are in parent mcp/)
     script_dir = Path(__file__).parent
     examples_mcp_dir = script_dir.parent
-    import os
     os.chdir(examples_mcp_dir)
     
     # ── Tool paths: discover matimo provider packages efficiently ──────────────

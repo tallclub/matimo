@@ -1,11 +1,12 @@
 {
   "name": "@matimo/microsoft",
-  "version": "0.1.8",
+  "version": "0.2.0",
   "description": "Microsoft Graph tools for Matimo (search, files, mail, Teams, calendar, SharePoint)",
   "license": "MIT",
   "type": "module",
   "files": [
     "tools",
+    "skills",
     "README.md",
     "definition.yaml"
   ],
@@ -14,7 +15,7 @@
   },
   "dependencies": {
     "@matimo/core": "workspace:*",
-    "axios": "^1.18.0"
+    "axios": "^1.20.0"
   },
   "peerDependencies": {
     "matimo": "workspace:*"

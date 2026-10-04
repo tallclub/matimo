@@ -15,14 +15,21 @@ interface ToolDefinition {
   version: string;
 
   parameters?: Record<string, Parameter>;
-  execution: ExecutionConfig;
+  execution: HttpExecution | CommandExecution | FunctionExecution;
   output_schema?: OutputSchema;
   authentication?: AuthConfig;
-  error_handling?: ErrorHandling;
+  rate_limiting?: RateLimitConfig;
+  error_handling?: ErrorHandlingConfig;
+  examples?: ToolExample[];
+
+  // Governance
+  requires_approval?: boolean;                        // ask a human before every call
+  risk?: 'low' | 'medium' | 'high' | 'critical';      // can raise, never lower, the computed risk
+  status?: 'draft' | 'approved' | 'deprecated';
+  deprecated?: boolean;
+  deprecation_message?: string;
 
   tags?: string[];
-  author?: string;
-  license?: string;
 }
 ```
 
@@ -116,57 +123,62 @@ const tags: Parameter = {
 
 ---
 
-### ExecutionConfig
+### Execution types
 
-Defines how a tool executes.
+`ToolDefinition.execution` is one of three shapes, chosen by `type`.
 
 ```typescript
-type ExecutionConfig = CommandExecution | HttpExecution;
+interface HttpExecution {
+  type: 'http';
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+  url: string;
+  headers?: Record<string, string>;
+  body?: unknown;
+  params?: Record<string, string>;
+  query_params?: Record<string, string>;
+  parameter_encoding?: ParameterEncodingConfig[];
+  timeout?: number; // ms
+}
+
+interface FunctionExecution {
+  type: 'function';
+  code: string; // module path, relative to the YAML file
+  timeout?: number; // ms
+}
 
 interface CommandExecution {
   type: 'command';
   command: string;
   args?: string[];
-  working_directory?: string;
-  timeout_ms?: number;
+  cwd?: string;
+  shell?: boolean;
+  timeout?: number; // ms
   env?: Record<string, string>;
-}
-
-interface HttpExecution {
-  type: 'http';
-  url: string;
-  method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
-  headers?: Record<string, string>;
-  query_params?: Record<string, string>;
-  request_body?: unknown;
-  timeout_ms?: number;
-  parameter_encoding?: ParameterEncoding;
 }
 ```
 
 **Examples:**
 
 ```typescript
-// Command execution
-const cmdExecution: CommandExecution = {
-  type: 'command',
-  command: 'python script.py',
-  args: ['--param', '{param}'],
-  timeout_ms: 30000,
-};
+import type { HttpExecution, FunctionExecution } from '@matimo/core';
 
 // HTTP execution
 const httpExecution: HttpExecution = {
   type: 'http',
-  url: 'https://api.gmail.com/v1/users/me/messages/send',
   method: 'POST',
+  url: 'https://gmail.googleapis.com/gmail/v1/users/me/messages/send',
   headers: {
     Authorization: 'Bearer {GMAIL_ACCESS_TOKEN}',
     'Content-Type': 'application/json',
   },
-  request_body: {
-    raw: '{emailData}',
-  },
+  body: { raw: '{raw}' },
+  timeout: 15000,
+};
+
+// Function execution
+const functionExecution: FunctionExecution = {
+  type: 'function',
+  code: './calculator.ts',
 };
 ```
 
@@ -224,6 +236,7 @@ interface OutputSchema {
   properties?: Record<string, OutputSchema>;
   items?: OutputSchema;
   required?: string[];
+  max_response_size?: number; // Bytes. Overrides the instance/default response-size cap for this tool.
 }
 ```
 
@@ -243,28 +256,17 @@ const schema: OutputSchema = {
 
 ---
 
-### ErrorHandling
+### ErrorHandlingConfig
 
-Error recovery configuration.
+Retry settings a tool can declare. The schema accepts them, but neither SDK applies them yet: a failed call is not retried.
 
 ```typescript
-interface ErrorHandling {
+interface ErrorHandlingConfig {
   retry?: number;
-  backoff_type?: 'linear' | 'exponential';
+  backoff_type?: 'exponential' | 'linear' | 'fixed';
   initial_delay_ms?: number;
   max_delay_ms?: number;
 }
-```
-
-**Example:**
-
-```typescript
-const errorHandling: ErrorHandling = {
-  retry: 3,
-  backoff_type: 'exponential',
-  initial_delay_ms: 1000,
-  max_delay_ms: 30000,
-};
 ```
 
 ---
@@ -277,21 +279,53 @@ Main SDK class for tool execution.
 
 ```typescript
 class MatimoInstance {
-  // List all tools
-  listTools(): ToolDefinition[];
+  static init(options?: InitOptions | string): Promise<MatimoInstance>;
 
-  // Get specific tool
-  getTool(name: string): ToolDefinition | null;
-
-  // Find tools by tag
+  listTools(context?: PolicyContext): ToolDefinition[];
+  getTool(name: string): ToolDefinition | undefined;
   getToolsByTag(tag: string): ToolDefinition[];
-
-  // Search tools
   searchTools(query: string): ToolDefinition[];
 
-  // Execute tool
-  execute(toolName: string, params: Record<string, unknown>): Promise<unknown>;
+  execute(toolName: string, params: Record<string, unknown>, options?: ExecuteOptions): Promise<unknown>;
 }
+```
+
+See the [SDK reference](SDK.md) for every option and method.
+
+---
+
+### MatimoEvent
+
+Every governance decision and tool run is emitted to `onEvent` (and to `auditSink`, if set). Python emits the same events as dicts with snake_case keys (`tool_name`, `duration_ms`, `risk_level`, ...).
+
+| `type` | Extra fields | When |
+|--------|--------------|------|
+| `tool:executed` | `toolName`, `traceId`, `durationMs`, `success`, `riskLevel`, `agentId?` | A tool ran to completion. `success` is `false` when it returned `{ success: false }` |
+| `tool:execution_failed` | `toolName`, `traceId`, `durationMs`, `riskLevel`, `errorCode`, `error`, `agentId?` | A tool that passed every gate threw (for example an HTTP 4xx/5xx) |
+| `tool:execution_denied` | `toolName`, `reason`, `agentId?` | The policy engine refused the call |
+| `tool:quarantined` | `toolName`, `riskLevel`, `reason`, `environment?` | A call is waiting for `onHITL`, or a reload quarantined an untrusted tool |
+| `tool:quarantine_approved` | `toolName` | A quarantined call was let through (by `onHITL` or a stored approval) |
+| `tool:quarantine_rejected` | `toolName` | A quarantined call was refused (including when there is no `onHITL`) |
+| `tool:approval_granted` | `toolName`, `agentId?` | A call that needed approval was approved |
+| `tool:approval_denied` | `toolName`, `reason`, `agentId?` | A call that needed approval was refused, or nobody could answer |
+| `tool:rejected` | `toolName`, `violations` | A reload refused an untrusted tool |
+| `tools:reloaded` | `loaded`, `removed`, `rejected` | Tools were reloaded |
+| `skills:reloaded` | `loaded`, `removed` | Skills were reloaded |
+| `skill:created` | `skillName`, `source` | `matimo_create_skill` wrote a skill |
+| `policy:reloaded` | — | `reloadPolicy()` swapped the policy engine (TypeScript only) |
+
+Every event also has an ISO-8601 `timestamp`. `tool:created`, `tool:approved` and `tool:revoked` are declared in the type but not emitted yet.
+
+```typescript
+const matimo = await MatimoInstance.init({
+  autoDiscover: true,
+  onEvent: (event) => {
+    if (event.type === 'tool:execution_failed') {
+      console.error(`${event.toolName} failed [${event.errorCode}] after ${event.durationMs}ms`);
+    }
+  },
+  auditSink: new JsonlFileSink('./matimo-audit.jsonl'), // hash-chained; check with verifyAuditLog()
+});
 ```
 
 ---
@@ -349,10 +383,10 @@ interface ValidationError {
 import {
   ToolDefinition,
   Parameter,
-  ExecutionConfig,
+  HttpExecution,
   AuthConfig,
   OutputSchema,
-  ErrorHandling,
+  ErrorHandlingConfig,
   MatimoInstance,
   MatimoError,
 } from 'matimo';
@@ -370,11 +404,11 @@ const params: Record<string, unknown> = {
 // Execute with types
 try {
   const result = await matimo.execute('calculator', params);
-  console.log(result);
+  console.log(result); // { result: 8 }, or { success: false, error, code } for bad input (TypeScript)
 } catch (error) {
   const matimoError = error as MatimoError;
-  if (matimoError.code === 'INVALID_PARAMETERS') {
-    console.error('Bad params:', matimoError.details);
+  if (matimoError.code === 'POLICY_DENIED') {
+    console.error('Blocked:', matimoError.details);
   }
 }
 ```

@@ -6,12 +6,7 @@
 
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import {
-  MatimoError,
-  ErrorCode,
-  getGlobalMatimoLogger,
-  getGlobalApprovalHandler,
-} from '@matimo/core/runtime';
+import { MatimoError, ErrorCode, getGlobalMatimoLogger } from '@matimo/core/runtime';
 
 const execAsync = promisify(exec);
 
@@ -110,24 +105,11 @@ export default async function executeCommand(
     });
   }
 
-  // Check if command appears to be destructive and request approval if needed
-  // ApprovalHandler checks against centralized destructive keywords from YAML
-  const approvalHandler = getGlobalApprovalHandler();
-  
-  if (approvalHandler.requiresApproval(false, command)) {
-    logger.info('Execute tool: Destructive command detected - requesting approval', {
-      command: command.substring(0, 100),
-    });
-
-    // Request user approval before executing destructive command
-    if (!approvalHandler.isPreApproved('execute')) {
-      await approvalHandler.requestApproval({
-        toolName: 'execute',
-        description: `Execute shell command: ${command.substring(0, 100)}${command.length > 100 ? '...' : ''}`,
-        params: { command, cwd },
-      });
-    }
-  }
+  // Approval is enforced before this executor runs: the tool declares
+  // `requires_approval: true`, so MatimoInstance.execute() asks the
+  // instance's onApproval callback (or the global approval handler's) for
+  // every call. Asking again here would prompt twice and bypass a
+  // per-instance callback.
 
   try {
     // SECURITY WARNING: This tool executes arbitrary shell commands directly.

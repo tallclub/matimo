@@ -32,19 +32,33 @@ NOTE ON CROSS-PLATFORM COMMANDS:
 
 USAGE:
 ────────────────────────────────────────────────────────────────────────────
-  uv run python execute/execute_decorator.py
+  uv run python execute/execute_decorator.py                  # asks before each call
+  MATIMO_APPROVED_PATTERNS="execute" uv run python execute/execute_decorator.py   # unattended
 
 ============================================================================
 """
 
 import asyncio
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
 
-from matimo import Matimo
+from matimo import ApprovalRequest, Matimo
 from matimo.decorators import set_global_matimo_instance, tool
 
 load_dotenv(Path(__file__).parent.parent.parent / ".env")
+
+
+async def approve(request: ApprovalRequest) -> bool:
+    """
+    execute declares requires_approval: true, so every call is shown to a human
+    first. Pre-approve it for scripts and CI with MATIMO_APPROVED_PATTERNS="execute".
+    """
+    print(f"\n🔒 Approval required — {request.tool_name}: {request.params.get('command')} {' '.join(request.params.get('args') or [])}")
+    if not sys.stdin.isatty():
+        print('   ❌ Rejected: no terminal. Pre-approve with MATIMO_APPROVED_PATTERNS="execute"')
+        return False
+    return input("   Approve? (y/n): ").strip().lower() in ("y", "yes")
 
 
 # ───────────────────────────────────────────────────────────────────────────
@@ -98,7 +112,7 @@ async def main() -> None:
 
     # ── Initialize Matimo and register globally for the decorator ────────────
     print("🚀  Initializing Matimo…")
-    matimo = await Matimo.init(auto_discover=True)
+    matimo = await Matimo.init(auto_discover=True, on_approval=approve)
     set_global_matimo_instance(matimo)
     print("✅  Matimo initialized\n")
 

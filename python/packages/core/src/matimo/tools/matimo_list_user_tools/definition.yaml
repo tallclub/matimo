@@ -1,5 +1,6 @@
 name: matimo_list_user_tools
 version: '1.0.0'
+risk: low
 description: List all user-created tools in a directory with risk classification, approval status, and metadata.
 requires_approval: false
 tags:

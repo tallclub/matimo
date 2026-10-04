@@ -1,5 +1,6 @@
 name: matimo_reload_tools
 version: '1.0.0'
+risk: medium
 description: >-
   Hot-reload all tools from configured toolPaths. Clears the registry, re-reads
   YAML definitions from disk, re-validates untrusted tools against the active

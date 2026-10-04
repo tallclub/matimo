@@ -29,13 +29,13 @@
 
 ## Governance First - Then Tools, Meta-Tools, and Universal Integration
 
-Every tool call - built-in, third-party, or agent-created - passes through Matimo's **policy engine** before it executes. On top of that governance layer, agents get **139+ production-ready tools** (plus a governed 449-tool Composio catalog), **12 meta-tools** to create/validate/approve new capabilities at runtime, and **one YAML definition** that runs across every framework you use.
+Every tool call - built-in, third-party, or agent-created - passes through Matimo's **policy engine** before it executes. On top of that governance layer, agents get **129 production-ready tools** (plus a governed 449-tool Composio catalog), **15 meta-tools** to create/validate/approve new capabilities at runtime, and **one YAML definition** that runs across every framework you use.
 
 **Why this matters:**
 
-- 🛡️ **Policy Engine (Governance)**: Every execution - not just agent-created tools - is classified by risk level (low/medium/high/critical), checked against deterministic security rules, and logged to an audit trail. This is the layer everything else sits on top of.
+- 🛡️ **Policy Engine (Governance)**: Every execution - not just agent-created tools - is classified by risk level (low/medium/high/critical), checked against deterministic security rules, and reported as an audit event. Add an audit sink and every event is written to a hash-chained log that shows any edit or deletion. This is the layer everything else sits on top of.
 
-- 🤝 **Human-in-the-Loop (HITL)**: Critical or high-risk actions pause for human approval before execution. Configurable timeouts, HMAC-signed approval manifests, full audit trails. You stay in control even as agents gain autonomy.
+- 🤝 **Human-in-the-Loop (HITL)**: With HITL on, every call at or above your risk threshold pauses for human approval before it runs. HTTP DELETE and shell-command tools ask before every call. Configurable timeouts, HMAC-signed approval manifests, and an audit event for every decision. You stay in control even as agents gain autonomy.
 
 - 🔧 **Meta-Tools & Self-Extension**: Agents write new tool definitions in YAML, submit them for policy validation, get human approval when required, and hot-reload - all mid-conversation. No restart. No redeployment. Every agent-created tool is governed the same way as your built-in ones.
 
@@ -48,27 +48,36 @@ Want a hosted runtime on top of this governance layer, with a visual builder and
 ### See It In Action
 
 ```python
-# Agent encounters a new API mid-task
-result = await agent.execute('matimo_create_tool', {
+matimo = await Matimo.init(
+    './agent-tools',
+    auto_discover=True,
+    untrusted_paths=['./agent-tools'],  # agent-written tools must pass the content rules
+    on_approval=ask_reviewer,           # a human answers every call that needs approval
+)
+set_global_matimo_instance(matimo)
+
+# The agent meets a new API mid-task and writes a tool for it (a draft)
+await matimo.execute('matimo_create_tool', {
     'name': 'stripe_create_payment',
-    'definition': yaml_content  # Agent generates this
+    'yaml_content': yaml_content,  # agent-generated YAML
+    'target_dir': './agent-tools',
 })
 
-# Policy engine classifies risk → requires approval
-# HITL callback triggers → human reviews and approves
+# A human reviews the draft and approves it
+await matimo.execute(
+    'matimo_approve_tool',
+    {'name': 'stripe_create_payment', 'tool_dir': './agent-tools'},
+    context=PolicyContext(agent_id='reviewer', roles=['admin']),
+)
+await matimo.execute('matimo_reload_tools', {})
 
-await agent.execute('matimo_reload_tools')
-
-# Tool is now live and production-ready
-payment = await agent.execute('stripe_create_payment', {
-    'amount': 5000,
-    'currency': 'usd'
-})
+# Live - and every call still asks the reviewer
+payment = await matimo.execute('stripe_create_payment', {'amount': 5000, 'currency': 'usd'})
 ```
 
 **Other SDKs give agents a toolbox. Matimo gives them a workshop - with safety guardrails.**
 
-🎯 **Production-ready** - 3,700+ tests across TypeScript and Python · 95%+ coverage · see [CHANGELOG](./CHANGELOG.md) for release history
+🎯 **0.2.0 - secure by default** - DELETE and command tools ask a human, per-instance approval callbacks, MCP elicitation, a hash-chained audit log, and one set of rules enforced identically by both SDKs · 4,400+ tests across TypeScript and Python · see [CHANGELOG](./CHANGELOG.md) and the [migration guide](./docs/api-reference/POLICY_AND_LIFECYCLE.md#upgrading-to-020)
 
 [📖 Documentation](./docs) · [🚀 Quick Start](./docs/getting-started/QUICK_START.md) · [📚 API Reference](./docs/api-reference/SDK.md) · [🛠️ Add Tools](./docs/tool-development/ADDING_TOOLS.md) · [🤖 Examples](./typescript/examples) ([Python](./python/examples))
 
@@ -88,6 +97,7 @@ npm install matimo @matimo/slack @matimo/gmail
 pip install matimo
 pip install "matimo[langchain]"   # with LangChain support
 pip install "matimo[crewai]"      # with CrewAI support
+pip install "matimo[agno]"        # with Agno support
 pip install "matimo[all]"         # all extras
 ```
 
@@ -144,9 +154,9 @@ Matimo ships with built-in support for:
 - **Auto-Discovery**: Automatic detection of `@matimo/*` providers from npm
 - **Matimo CLI**: Tool discovery, setup wizard, MCP config generation
 - **OAuth2 Support**: Provider-agnostic authorization for Slack, Gmail, GitHub, etc.
-- **Framework Support**: Factory pattern, Decorator pattern, LangChain, CrewAI
+- **Framework Support**: Factory pattern, Decorator pattern, LangChain, CrewAI, Agno
 - **TypeScript SDK**: Full type safety and IDE support
-- **Python SDK**: Full feature parity with TypeScript - factory pattern, decorator, LangChain, CrewAI, MCP, policy engine
+- **Python SDK**: The same policy engine, approval rules and YAML tools as TypeScript - factory pattern, decorator, LangChain, CrewAI, Agno, MCP (the Composio catalog and a few instance methods are TypeScript-only; see [SDK.md](./docs/api-reference/SDK.md))
 - **Agent Skills System**: [SKILL.md](https://agentskills.io) knowledge files with semantic search, content chunking, and progressive disclosure
 - **Policy Engine**: 9 security rules, HITL quarantine, hot-reload, SHA-256 integrity tracking, HMAC approvals, audit events
 
@@ -159,16 +169,16 @@ Matimo ships with built-in support for:
 1. **Governance by Default** - Every tool execution is classified by risk (low/medium/high/critical), checked against deterministic security rules (SSRF detection, namespace protection, credential allowlists), and can require human approval before running. This applies uniformly to built-in tools, third-party providers, and anything an agent creates itself.
 2. **Write Once, Use Everywhere** - Define tools in clean YAML, deploy to SDK, LangChain, MCP, or custom agents without duplication - with the same policy enforcement in every context.
 3. **Agent Self-Extension, Safely** - Agents autonomously build new tools and skills at runtime without restarting, and every new capability is policy-gated:
-   - **Tool Creation**: `matimo_create_tool` - agents write YAML definitions, submit for approval, and use instantly
+   - **Tool Creation**: `matimo_create_tool` - agents write YAML definitions as drafts; a human approves them with `matimo_approve_tool`
    - **Skill Creation**: `matimo_create_skill` - agents author domain knowledge (SKILL.md) directly into the system
    - **Hot-Reload**: `matimo_reload_tools` - updated capabilities live immediately without server restart
-   - **Policy-Gated**: All agent-created tools validated against security rules; HITL approval for high-risk changes
+   - **Policy-Gated**: All agent-created tools are validated against security rules, run only once a human approves them, and ask again on every call
 4. **Pre-built Ecosystem** - 10 providers (Slack, Gmail, GitHub, Notion, HubSpot, Postgres, Twilio, Mailchimp, Microsoft, Bruno) ready to go, all governed by the same policy engine, plus a governed 449-tool Composio catalog for broader coverage.
 
 Included:
-- **Policy Engine** - 9 security rules, risk classification, HITL quarantine, HMAC approval manifests, audit events
+- **Policy Engine** - 9 content rules, risk classification, per-call approval, HITL quarantine, HMAC approval manifests, events and a hash-chained audit log
 - TypeScript SDK (factory & decorator patterns)
-- **Python SDK** (factory, decorator, LangChain, CrewAI, MCP - full parity)
+- **Python SDK** (factory, decorator, LangChain, CrewAI, Agno, MCP - same policy engine and YAML tools as TypeScript)
 - LangChain integration (with examples)
 - Matimo CLI (tool discovery & setup)
 - MCP Server (Claude Desktop, Cursor, Windsurf, any MCP client)
@@ -198,10 +208,13 @@ async sendMessage(channel: string, text: string) { /* Auto-executed */ }
 ### 3️⃣ LangChain Integration
 
 ```typescript
-const tools = matimo.listTools().map(tool => ({
-  type: 'function',
-  function: { name: tool.name, description: tool.description, ... }
-}));
+import { convertToolsToLangChain } from '@matimo/core';
+
+const tools = await convertToolsToLangChain(
+  matimo.listTools().filter((t) => t.name.startsWith('slack')),
+  matimo,
+  { SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN! }
+);
 ```
 
 ### 4️⃣ MCP Server (Claude Desktop, Cursor, Windsurf, any MCP client)
@@ -225,36 +238,7 @@ See [SDK Usage Patterns](./docs/user-guide/SDK_PATTERNS.md), [LangChain Integrat
 
 ## Installation
 
-### TypeScript / Node.js
-
-```bash
-npm install matimo
-
-# Install tool providers
-npm install @matimo/slack @matimo/gmail
-```
-
-Then use with auto-discovery:
-
-```typescript
-const matimo = await MatimoInstance.init({ autoDiscover: true });
-```
-
-### Python
-
-```bash
-pip install matimo
-pip install "matimo[langchain]"   # LangChain support
-pip install "matimo[crewai]"      # CrewAI support
-pip install "matimo[all]"         # all extras
-```
-
-Then use with auto-discovery:
-
-```python
-from matimo import Matimo
-matimo = await Matimo.init(auto_discover=True)
-```
+TypeScript and Python install commands are under [Quick Start](#installation) above. Use `autoDiscover: true` (TypeScript) or `auto_discover=True` (Python) to load every installed `@matimo/*` provider.
 
 See [python/README.md](./python/README.md) for the full Python SDK reference.
 
@@ -268,7 +252,7 @@ matimo search email  # Find tools
 matimo install slack # Install tools
 ```
 
-See [CLI Docs](./packages/cli/README.md) for full reference.
+See [CLI Docs](./typescript/packages/cli/README.md) for full reference.
 
 ### From Source (Contributors)
 
@@ -276,7 +260,7 @@ See [CLI Docs](./packages/cli/README.md) for full reference.
 git clone https://github.com/tallclub/matimo
 cd matimo/typescript && pnpm install && pnpm build
 pnpm test
-cd examples/tools && pnpm install && pnpm agent:factory
+cd examples/tools && pnpm install && pnpm agent:factory   # needs provider credentials, see the example README
 ```
 
 ---
@@ -321,6 +305,7 @@ const matimo = await MatimoInstance.init({
     return promptUser();
   },
   onEvent: (event) => auditLog.push(event),
+  auditSink: new JsonlFileSink('./logs/matimo-audit.jsonl'), // hash-chained audit log
 });
 
 // Hot-reload policy at runtime (no restart needed)
@@ -330,19 +315,22 @@ await matimo.reloadPolicy('./policy-prod.yaml');
 **Key features:**
 
 - 9 deterministic security rules (SSRF detection, namespace protection, credential allowlists)
-- HITL quarantine - medium-risk tools pause for human approval instead of auto-rejecting
+- HITL quarantine - every tool at or above the risk threshold (`hitlMinRiskLevel`) pauses for human approval
 - Policy hot-reload - swap policies at runtime with automatic tool re-validation
 - SHA-256 integrity tracking + HMAC approval manifest
-- Full audit trail via structured events
+- Audit events for every call (`tool:executed`, `tool:execution_failed`, denials, approvals), identical in both SDKs
+- `JsonlFileSink` writes them to a hash-chained log; `verifyAuditLog` finds the first edited or deleted line
 
 See [Policy & Lifecycle Docs](./docs/api-reference/POLICY_AND_LIFECYCLE.md) for the complete reference.
 
 ---
 
-## Features **Coming Soon:**
+## Coming Soon
 
-- More tool providers (Stripe, Jira, Linear, etc.)
+- More native tool providers (Google Calendar/Drive/Sheets, Jira, Linear, Stripe)
 - Custom Tool Marketplace
+
+See the [Roadmap](./docs/ROADMAP.md).
 
 ---
 
@@ -353,33 +341,41 @@ If you build @matimo/<provider> following this pattern, we’ll list it in the o
 Create tool providers as independent npm packages:
 
 ```bash
-mkdir packages/github
-cd packages/github && cat > package.json << 'EOF'
-{ "name": "@matimo/github", "type": "module", ... }
+cd typescript
+mkdir packages/acme
+cd packages/acme && cat > package.json << 'EOF'
+{ "name": "@matimo/acme", "type": "module", ... }
 EOF
 
-mkdir tools/github-create-issue
-cat > tools/github-create-issue/definition.yaml << 'EOF'
-name: github-create-issue
+mkdir -p tools/acme_create_ticket
+cat > tools/acme_create_ticket/definition.yaml << 'EOF'
+name: acme_create_ticket
+description: Create a ticket in Acme
+version: '1.0.0'
+requires_approval: true
 parameters:
-  owner: { type: string, required: true }
-  repo: { type: string, required: true }
   title: { type: string, required: true }
+  body: { type: string, required: false }
 execution:
   type: http
   method: POST
-  url: https://api.github.com/repos/{owner}/{repo}/issues
+  url: https://api.acme.example/v1/tickets
   headers:
-    Authorization: "Bearer {GITHUB_TOKEN}"
+    Authorization: "Bearer {ACME_TOKEN}"
+  body:
+    title: "{title}"
+    body: "{body}"
 EOF
 ```
 
-Then publish to npm as `@matimo/github`. Users install and auto-discover:
+Then publish to npm as `@matimo/acme`. Users install and auto-discover:
 
 ```bash
-npm install @matimo/github
-# New tools automatically available!
-const matimo = await MatimoInstance.init({ autoDiscover: true });
+npm install @matimo/acme
+```
+
+```typescript
+const matimo = await MatimoInstance.init({ autoDiscover: true }); // acme_* tools are now loaded
 ```
 
 See [Adding Tools to Matimo](./docs/tool-development/ADDING_TOOLS.md) for the complete 6-step guide.
@@ -416,7 +412,7 @@ for the full rationale.
 
 ## License
 
-MIT © 2026 Matimo Contributors
+MIT © 2026 ROAIQ TECHNOLOGIES PRIVATE LIMITED
 
 ---
 
@@ -425,7 +421,7 @@ MIT © 2026 Matimo Contributors
 - ⭐ Star the repo
 - 🐛 Open issues for bugs or features
 - 🔀 Submit PRs (see [Contributing](./CONTRIBUTING.md))
-  Best way to help: add a new provider (Notion, Jira, Stripe, Twilio…) or expand existing toolsets.
+  Best way to help: add a new provider (Google Calendar/Drive/Sheets, Jira, Linear, Stripe…) or expand existing toolsets.
 - 📢 Share on Twitter, Reddit, Discord
 
 ---
@@ -439,6 +435,7 @@ MIT © 2026 Matimo Contributors
 <div align="left">
   <a href="https://github.com/tallclub"><img src="https://avatars.githubusercontent.com/u/112923179?v=4&s=60" width="60" height="60" style="border-radius:50%;margin:0 10px;" alt="tallclub" title="tallclub - Code 💻 Documentation 📖 Design 🎨 Review 👀 Ideas 🤔 Maintenance 🚧"/></a>
   <a href="https://github.com/Genmin"><img src="https://avatars.githubusercontent.com/u/90125084?v=4&s=60" width="60" height="60" style="border-radius:50%;margin:0 10px;" alt="Genmin" title="Genmin - Code 💻 Security 🛡️"/></a>
+  <a href="https://github.com/marketcalls"><img src="https://avatars.githubusercontent.com/u/8728989?v=4&s=60" width="60" height="60" style="border-radius:50%;margin:0 10px;" alt="marketcalls" title="marketcalls - Code 💻 Documentation 📖"/></a>
 </div>
 
 <!-- markdownlint-enable -->
