@@ -15,12 +15,12 @@
   },
   "dependencies": {
     "@matimo/core": "workspace:*",
-    "pg": "^8.18.0"
+    "pg": "^8.23.1"
   },
   "peerDependencies": {
     "matimo": "workspace:*"
   },
   "devDependencies": {
-    "@types/pg": "^8.6.6"
+    "@types/pg": "^8.23.1"
   }
 }

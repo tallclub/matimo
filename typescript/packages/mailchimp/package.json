@@ -1,7 +1,7 @@
 {
   "name": "@matimo/mailchimp",
   "version": "0.2.0",
-  "description": "Mailchimp email marketing tools for Matimo \u2014 manage audiences, subscribers, and campaigns",
+  "description": "Mailchimp email marketing tools for Matimo — manage audiences, subscribers, and campaigns",
   "license": "MIT",
   "type": "module",
   "files": [

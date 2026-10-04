@@ -26,10 +26,10 @@
   ],
   "dependencies": {
     "@matimo/core": "workspace:*",
-    "tsx": "^4.21.0"
+    "tsx": "^4.23.15"
   },
   "devDependencies": {
-    "@types/node": "^25.1.0",
+    "@types/node": "^25.9.9",
     "typescript": "^5.9.3"
   },
   "peerDependencies": {

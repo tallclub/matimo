@@ -1,7 +1,7 @@
 {
   "name": "@matimo/twilio",
   "version": "0.2.0",
-  "description": "Twilio messaging tools for Matimo \u2014 send SMS, MMS, and manage messages",
+  "description": "Twilio messaging tools for Matimo — send SMS, MMS, and manage messages",
   "license": "MIT",
   "type": "module",
   "files": [

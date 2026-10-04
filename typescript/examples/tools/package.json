@@ -85,8 +85,8 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@langchain/core": "^1.1.18",
-    "@langchain/openai": "^1.2.4",
+    "@langchain/core": "^1.2.14",
+    "@langchain/openai": "^1.6.2",
     "@matimo/bruno": "workspace:*",
     "@matimo/core": "workspace:*",
     "@matimo/github": "workspace:*",
@@ -98,15 +98,15 @@
     "@matimo/postgres": "workspace:*",
     "@matimo/slack": "workspace:*",
     "@matimo/twilio": "workspace:*",
-    "dotenv": "^17.2.3",
-    "langchain": "^1.2.16",
+    "dotenv": "^17.4.2",
+    "langchain": "^1.5.15",
     "matimo": "workspace:*",
-    "zod": "^4.3.6"
+    "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@types/node": "^25.1.0",
-    "better-sqlite3": "^12.6.2",
-    "tsx": "^4.21.0",
+    "@types/node": "^25.9.9",
+    "better-sqlite3": "^12.11.1",
+    "tsx": "^4.23.15",
     "typescript": "^5.9.3"
   },
   "engines": {

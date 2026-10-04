@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@matimo/core": "workspace:*",
-    "axios": "^1.18.0"
+    "axios": "^1.20.0"
   },
   "peerDependencies": {
     "matimo": "workspace:*"
