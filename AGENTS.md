@@ -12,9 +12,9 @@ Full narrative and API surface: [README.md](./README.md). Deep architecture: [do
 
 ```
 typescript/     pnpm workspace — packages/{core,cli,slack,github,gmail,notion,hubspot,postgres,twilio,mailchimp,microsoft,bruno,composio}
-python/         uv workspace  — packages/{core,cli,matimo,<same providers>} — mirrors typescript/ 1:1
+python/         uv workspace  — packages/{core,cli,matimo,<same providers except composio>} — mirrors typescript/
 docs/           getting-started, api-reference, architecture, tool-development, framework-integrations, mcp, skills
-examples/       usage examples per integration pattern (factory, decorator, LangChain, MCP)
+typescript/examples/, python/examples/   usage examples per integration pattern (factory, decorator, LangChain, CrewAI, MCP)
 ```
 
 ## Setup, build, test
@@ -45,7 +45,7 @@ Never run `npm install` inside `typescript/` (it uses `pnpm-lock.yaml`) or `pnpm
 - Python: version pinned in `python/.python-version`; ruff for lint/format; mypy strict on `packages/core/src`.
 - Every tool (built-in or agent-created) needs an explicit risk classification (`low`/`medium`/`high`/`critical`) in its YAML definition — see [docs/api-reference/POLICY_AND_LIFECYCLE.md](./docs/api-reference/POLICY_AND_LIFECYCLE.md).
 - New provider package → mirror an existing one exactly (`slack` or `github` are the reference implementations) in **both** languages. Don't let TS and Python drift — ship new features to both unless told otherwise.
-- 3,700+ tests, 95%+ coverage target across TS + Python — don't drop coverage on new code.
+- 4,400+ tests, 95%+ coverage target across TS + Python — don't drop coverage on new code.
 - Don't hand-edit `pnpm-lock.yaml` / `uv.lock` — regenerate via the package manager.
 
 ## CLI commands available to an agent (`@matimo/cli`, bin name `matimo`)
