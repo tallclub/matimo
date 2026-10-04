@@ -71,6 +71,7 @@
   "files": [
     "dist",
     "tools",
+    "skills",
     "destructive-keywords.yaml",
     "README.md",
     "LICENSE"

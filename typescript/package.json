@@ -2,18 +2,18 @@
   "name": "matimo",
   "version": "0.2.0",
   "description": "A framework-agnostic SDK with pre-built providers, a skills knowledge layer, MCP out of the box, and agents that autonomously build new capabilities — governed by a policy engine you control.",
-  "main": "packages/core/dist/index.js",
-  "types": "packages/core/dist/index.d.ts",
+  "main": "index.js",
+  "types": "index.d.ts",
   "bin": {
-    "matimo": "packages/cli/dist/bin.js"
+    "matimo": "bin.js"
   },
   "type": "module",
   "packageManager": "pnpm@8.15.0",
   "private": false,
   "exports": {
     ".": {
-      "types": "./packages/core/dist/index.d.ts",
-      "default": "./packages/core/dist/index.js"
+      "types": "./index.d.ts",
+      "default": "./index.js"
     }
   },
   "engines": {
@@ -68,8 +68,9 @@
     "url": "https://github.com/tallclub/matimo/issues"
   },
   "files": [
-    "packages/core/dist",
-    "packages/cli/dist",
+    "index.js",
+    "index.d.ts",
+    "bin.js",
     "README.md",
     "LICENSE"
   ],

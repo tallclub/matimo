@@ -6,6 +6,7 @@
   "type": "module",
   "files": [
     "tools",
+    "skills",
     "README.md",
     "definition.yaml",
     "assets"
