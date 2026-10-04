@@ -39,7 +39,7 @@ const mockGetClientCapabilities = jest.fn().mockReturnValue(undefined);
 const mockElicitInput = jest.fn();
 
 jest.mock(
-  '@modelcontextprotocol/sdk/server/mcp',
+  '@modelcontextprotocol/sdk/server/mcp.js',
   () => ({
     McpServer: jest.fn().mockImplementation(() => ({
       registerTool: mockRegisterTool,
@@ -58,7 +58,7 @@ jest.mock(
 );
 
 jest.mock(
-  '@modelcontextprotocol/sdk/server/stdio',
+  '@modelcontextprotocol/sdk/server/stdio.js',
   () => ({
     StdioServerTransport: jest.fn().mockImplementation(() => ({})),
   }),
@@ -76,7 +76,7 @@ const mockHttpTransport = {
   sessionId: 'test-session-id',
 };
 jest.mock(
-  '@modelcontextprotocol/sdk/server/streamableHttp',
+  '@modelcontextprotocol/sdk/server/streamableHttp.js',
   () => ({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     StreamableHTTPServerTransport: jest.fn().mockImplementation((opts: any) => {
@@ -93,7 +93,7 @@ jest.mock(
 
 const mockIsInitializeRequest = jest.fn().mockReturnValue(false);
 jest.mock(
-  '@modelcontextprotocol/sdk/types',
+  '@modelcontextprotocol/sdk/types.js',
   () => ({
     isInitializeRequest: (...args: unknown[]) => mockIsInitializeRequest(...args),
   }),

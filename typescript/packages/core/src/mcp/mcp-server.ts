@@ -444,7 +444,7 @@ export class MCPServer {
   private async createMcpServerWithTools(): Promise<any> {
     const { McpServer } = await import(
       // @ts-ignore — TS2307: module not found at compile time, resolves at runtime
-      '@modelcontextprotocol/sdk/server/mcp'
+      '@modelcontextprotocol/sdk/server/mcp.js'
     );
     const logger = getGlobalMatimoLogger();
     const matimo = this.matimo!;
@@ -563,7 +563,7 @@ export class MCPServer {
   private async connectStdio(): Promise<void> {
     const { StdioServerTransport } = await import(
       // @ts-ignore — TS2307: module not found at compile time, resolves at runtime
-      '@modelcontextprotocol/sdk/server/stdio'
+      '@modelcontextprotocol/sdk/server/stdio.js'
     );
 
     const server = await this.createMcpServerWithTools();
@@ -588,13 +588,13 @@ export class MCPServer {
     const http = await import('http');
     const { StreamableHTTPServerTransport } = (await import(
       // @ts-ignore — TS2307: module not found at compile time, resolves at runtime
-      '@modelcontextprotocol/sdk/server/streamableHttp'
+      '@modelcontextprotocol/sdk/server/streamableHttp.js'
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     )) as any;
     const { randomUUID } = await import('crypto');
     const { isInitializeRequest } = (await import(
       // @ts-ignore — TS2307: module not found at compile time, resolves at runtime
-      '@modelcontextprotocol/sdk/types'
+      '@modelcontextprotocol/sdk/types.js'
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     )) as any;
 
