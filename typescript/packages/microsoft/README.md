@@ -17,7 +17,7 @@ pnpm add @matimo/microsoft
 ```typescript
 import { MatimoInstance } from '@matimo/core';
 
-const matimo = await MatimoInstance.init('./packages/microsoft/tools');
+const matimo = await MatimoInstance.init({ autoDiscover: true }); // loads @matimo/microsoft from node_modules
 
 // Search across SharePoint and OneDrive
 const search = await matimo.execute('ms_search_knowledge', {

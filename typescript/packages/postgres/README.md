@@ -142,46 +142,31 @@ The tool automatically detects destructive operations:
 ### Approval Methods
 
 #### 1. **Interactive Approval (CLI)**
-For interactive terminal environments:
+Give the instance a reviewer with `onApproval`; without one, destructive queries are refused:
 
 ```typescript
-import { MatimoInstance, getGlobalApprovalHandler } from '@matimo/core';
+import { MatimoInstance, type ApprovalRequest } from '@matimo/core';
 import * as readline from 'readline';
 
-const matimo = await MatimoInstance.init({ autoDiscover: true });
-const handler = getGlobalApprovalHandler();
+async function askInTerminal(request: ApprovalRequest): Promise<boolean> {
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  const answer = await new Promise<string>((resolve) =>
+    rl.question(`\nApprove ${request.toolName}?\nSQL: ${request.params.sql}\n(yes/no): `, resolve)
+  );
+  rl.close();
+  return answer.toLowerCase() === 'yes';
+}
 
-// Set interactive callback
-handler.setApprovalCallback(async (request) => {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-  });
-  
-  return new Promise(resolve => {
-    rl.question(
-      `\nApprove ${request.toolName}?\nSQL: ${request.params.sql}\n(yes/no): `,
-      answer => {
-        rl.close();
-        resolve(answer.toLowerCase() === 'yes');
-      }
-    );
-  });
-});
+const matimo = await MatimoInstance.init({ autoDiscover: true, onApproval: askInTerminal });
 
-// Approve write operations
+// Asks before running
 await matimo.execute('postgres-execute-sql', {
   sql: 'UPDATE users SET active = true'
 });
 ```
 
-#### 2. **Automatic Approval (CI/CD)**
-For automated environments:
-
-```bash
-# Enable auto-approval for all operations requiring approval
-export MATIMO_AUTO_APPROVE=true
-```
+#### 2. **Tests and CI**
+Give the test an `onApproval` that encodes what it may run, or pre-approve the tools it uses (below). `MATIMO_AUTO_APPROVE=true` also works, but approves every call unseen and logs a warning; keep it to throwaway databases.
 
 #### 3. **Pattern-Based Approval**
 Pre-approve specific patterns:
@@ -366,8 +351,8 @@ postgresql://user@localhost                      # Without port
 
 | Variable | Values | Description |
 |----------|--------|-------------|
-| `MATIMO_AUTO_APPROVE` | `true` / `false` | Auto-approve all destructive operations (for CI/CD) |
 | `MATIMO_APPROVED_PATTERNS` | Comma-separated patterns | Pre-approved tool name patterns |
+| `MATIMO_AUTO_APPROVE` | `true` / `false` | Approves every call unseen, with a warning — throwaway environments only |
 
 ---
 
@@ -417,12 +402,11 @@ pnpm postgres:approval
 - Reset password: `ALTER USER postgres WITH PASSWORD 'newpassword';`
 
 ### Approval Required Error
-**Error:** `Destructive SQL requires approval`
+**Error:** `Destructive operation requires approval: postgres-execute-sql`
 
 **Solution:**
-- Set `MATIMO_AUTO_APPROVE=true` in CI/CD
-- Or use interactive approval: `pnpm postgres:approval`
-- Or pre-approve patterns: `export MATIMO_APPROVED_PATTERNS="postgres-*"`
+- Pass `onApproval` to `MatimoInstance.init()` (see `pnpm postgres:approval` in the examples)
+- Or pre-approve the tool: `export MATIMO_APPROVED_PATTERNS="postgres-*"`
 
 ### Parameter Binding Error
 **Error:** `bind message supplies X parameters, but prepared statement requires Y`
@@ -445,6 +429,6 @@ Found a bug or want to request a feature?
 ## Part of the Matimo Ecosystem
 
 Learn more about Matimo:
-- 📖 [Documentation](https://matimo.dev/docs)
+- 📖 [Documentation](https://docs.matimo.dev)
 - 🔗 [GitHub Repository](https://github.com/tallclub/matimo)
 - ⭐ [Star the project](https://github.com/tallclub/matimo)

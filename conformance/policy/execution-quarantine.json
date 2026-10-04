@@ -1,0 +1,327 @@
+{
+  "description": "Execution-time quarantine matrix. Both SDKs load this file and must produce identical outcomes from DefaultPolicyEngine.canExecute with an empty (non-production) context. Config keys are the TypeScript PolicyConfig names; the Python test maps them to snake_case.",
+  "configs": {
+    "hitl_off": {},
+    "hitl_on_defaults": {
+      "enableHITL": true
+    },
+    "hitl_on_high_only_listed": {
+      "enableHITL": true,
+      "quarantineRiskLevels": [
+        "high"
+      ]
+    },
+    "hitl_on_min_critical": {
+      "enableHITL": true,
+      "hitlMinRiskLevel": "critical"
+    },
+    "hitl_on_min_overrides_list": {
+      "enableHITL": true,
+      "quarantineRiskLevels": [
+        "medium"
+      ],
+      "hitlMinRiskLevel": "high"
+    },
+    "hitl_on_empty_list": {
+      "enableHITL": true,
+      "quarantineRiskLevels": []
+    },
+    "hitl_on_unordered_list": {
+      "enableHITL": true,
+      "quarantineRiskLevels": [
+        "critical",
+        "low"
+      ]
+    }
+  },
+  "cases": [
+    {
+      "tool": {
+        "version": "1.0.0",
+        "description": "conformance fixture",
+        "name": "http_get",
+        "execution": {
+          "type": "http",
+          "method": "GET",
+          "url": "https://api.example.com/x"
+        }
+      },
+      "executionRisk": "low",
+      "expected": {
+        "hitl_off": "allowed",
+        "hitl_on_defaults": "allowed",
+        "hitl_on_high_only_listed": "allowed",
+        "hitl_on_min_critical": "allowed",
+        "hitl_on_min_overrides_list": "allowed",
+        "hitl_on_empty_list": "allowed",
+        "hitl_on_unordered_list": "pending_approval"
+      }
+    },
+    {
+      "tool": {
+        "version": "1.0.0",
+        "description": "conformance fixture",
+        "name": "http_post",
+        "execution": {
+          "type": "http",
+          "method": "POST",
+          "url": "https://api.example.com/x"
+        }
+      },
+      "executionRisk": "medium",
+      "expected": {
+        "hitl_off": "allowed",
+        "hitl_on_defaults": "pending_approval",
+        "hitl_on_high_only_listed": "allowed",
+        "hitl_on_min_critical": "allowed",
+        "hitl_on_min_overrides_list": "allowed",
+        "hitl_on_empty_list": "allowed",
+        "hitl_on_unordered_list": "pending_approval"
+      }
+    },
+    {
+      "tool": {
+        "version": "1.0.0",
+        "description": "conformance fixture",
+        "name": "http_put",
+        "execution": {
+          "type": "http",
+          "method": "PUT",
+          "url": "https://api.example.com/x"
+        }
+      },
+      "executionRisk": "medium",
+      "expected": {
+        "hitl_off": "allowed",
+        "hitl_on_defaults": "pending_approval",
+        "hitl_on_high_only_listed": "allowed",
+        "hitl_on_min_critical": "allowed",
+        "hitl_on_min_overrides_list": "allowed",
+        "hitl_on_empty_list": "allowed",
+        "hitl_on_unordered_list": "pending_approval"
+      }
+    },
+    {
+      "tool": {
+        "version": "1.0.0",
+        "description": "conformance fixture",
+        "name": "http_patch",
+        "execution": {
+          "type": "http",
+          "method": "PATCH",
+          "url": "https://api.example.com/x"
+        }
+      },
+      "executionRisk": "medium",
+      "expected": {
+        "hitl_off": "allowed",
+        "hitl_on_defaults": "pending_approval",
+        "hitl_on_high_only_listed": "allowed",
+        "hitl_on_min_critical": "allowed",
+        "hitl_on_min_overrides_list": "allowed",
+        "hitl_on_empty_list": "allowed",
+        "hitl_on_unordered_list": "pending_approval"
+      }
+    },
+    {
+      "tool": {
+        "version": "1.0.0",
+        "description": "conformance fixture",
+        "name": "http_delete",
+        "execution": {
+          "type": "http",
+          "method": "DELETE",
+          "url": "https://api.example.com/x"
+        }
+      },
+      "executionRisk": "high",
+      "expected": {
+        "hitl_off": "allowed",
+        "hitl_on_defaults": "pending_approval",
+        "hitl_on_high_only_listed": "pending_approval",
+        "hitl_on_min_critical": "allowed",
+        "hitl_on_min_overrides_list": "pending_approval",
+        "hitl_on_empty_list": "allowed",
+        "hitl_on_unordered_list": "pending_approval"
+      }
+    },
+    {
+      "tool": {
+        "version": "1.0.0",
+        "description": "conformance fixture",
+        "name": "http_post_requires_approval",
+        "execution": {
+          "type": "http",
+          "method": "POST",
+          "url": "https://api.example.com/x"
+        },
+        "requires_approval": true
+      },
+      "executionRisk": "high",
+      "expected": {
+        "hitl_off": "allowed",
+        "hitl_on_defaults": "pending_approval",
+        "hitl_on_high_only_listed": "pending_approval",
+        "hitl_on_min_critical": "allowed",
+        "hitl_on_min_overrides_list": "pending_approval",
+        "hitl_on_empty_list": "allowed",
+        "hitl_on_unordered_list": "pending_approval"
+      }
+    },
+    {
+      "tool": {
+        "version": "1.0.0",
+        "description": "conformance fixture",
+        "name": "http_get_declared_critical",
+        "execution": {
+          "type": "http",
+          "method": "GET",
+          "url": "https://api.example.com/x"
+        },
+        "risk": "critical"
+      },
+      "executionRisk": "critical",
+      "expected": {
+        "hitl_off": "allowed",
+        "hitl_on_defaults": "pending_approval",
+        "hitl_on_high_only_listed": "pending_approval",
+        "hitl_on_min_critical": "pending_approval",
+        "hitl_on_min_overrides_list": "pending_approval",
+        "hitl_on_empty_list": "allowed",
+        "hitl_on_unordered_list": "pending_approval"
+      }
+    },
+    {
+      "tool": {
+        "version": "1.0.0",
+        "description": "conformance fixture",
+        "name": "http_delete_declared_low",
+        "execution": {
+          "type": "http",
+          "method": "DELETE",
+          "url": "https://api.example.com/x"
+        },
+        "risk": "low"
+      },
+      "executionRisk": "high",
+      "expected": {
+        "hitl_off": "allowed",
+        "hitl_on_defaults": "pending_approval",
+        "hitl_on_high_only_listed": "pending_approval",
+        "hitl_on_min_critical": "allowed",
+        "hitl_on_min_overrides_list": "pending_approval",
+        "hitl_on_empty_list": "allowed",
+        "hitl_on_unordered_list": "pending_approval"
+      }
+    },
+    {
+      "tool": {
+        "version": "1.0.0",
+        "description": "conformance fixture",
+        "name": "command_echo",
+        "execution": {
+          "type": "command",
+          "command": "echo"
+        }
+      },
+      "executionRisk": "high",
+      "expected": {
+        "hitl_off": "allowed",
+        "hitl_on_defaults": "pending_approval",
+        "hitl_on_high_only_listed": "pending_approval",
+        "hitl_on_min_critical": "allowed",
+        "hitl_on_min_overrides_list": "pending_approval",
+        "hitl_on_empty_list": "allowed",
+        "hitl_on_unordered_list": "pending_approval"
+      }
+    },
+    {
+      "tool": {
+        "version": "1.0.0",
+        "description": "conformance fixture",
+        "name": "function_undeclared",
+        "execution": {
+          "type": "function",
+          "code": "./fn.js"
+        }
+      },
+      "executionRisk": "high",
+      "expected": {
+        "hitl_off": "allowed",
+        "hitl_on_defaults": "pending_approval",
+        "hitl_on_high_only_listed": "pending_approval",
+        "hitl_on_min_critical": "allowed",
+        "hitl_on_min_overrides_list": "pending_approval",
+        "hitl_on_empty_list": "allowed",
+        "hitl_on_unordered_list": "pending_approval"
+      }
+    },
+    {
+      "tool": {
+        "version": "1.0.0",
+        "description": "conformance fixture",
+        "name": "function_declared_low",
+        "risk": "low",
+        "execution": {
+          "type": "function",
+          "code": "./fn.js"
+        }
+      },
+      "executionRisk": "low",
+      "expected": {
+        "hitl_off": "allowed",
+        "hitl_on_defaults": "allowed",
+        "hitl_on_high_only_listed": "allowed",
+        "hitl_on_min_critical": "allowed",
+        "hitl_on_min_overrides_list": "allowed",
+        "hitl_on_empty_list": "allowed",
+        "hitl_on_unordered_list": "pending_approval"
+      }
+    },
+    {
+      "tool": {
+        "version": "1.0.0",
+        "description": "conformance fixture",
+        "name": "function_declared_low_requires_approval",
+        "risk": "low",
+        "requires_approval": true,
+        "execution": {
+          "type": "function",
+          "code": "./fn.js"
+        }
+      },
+      "executionRisk": "high",
+      "expected": {
+        "hitl_off": "allowed",
+        "hitl_on_defaults": "pending_approval",
+        "hitl_on_high_only_listed": "pending_approval",
+        "hitl_on_min_critical": "allowed",
+        "hitl_on_min_overrides_list": "pending_approval",
+        "hitl_on_empty_list": "allowed",
+        "hitl_on_unordered_list": "pending_approval"
+      }
+    },
+    {
+      "tool": {
+        "version": "1.0.0",
+        "description": "conformance fixture",
+        "name": "function_declared_critical",
+        "risk": "critical",
+        "execution": {
+          "type": "function",
+          "code": "./fn.js"
+        }
+      },
+      "executionRisk": "critical",
+      "expected": {
+        "hitl_off": "allowed",
+        "hitl_on_defaults": "pending_approval",
+        "hitl_on_high_only_listed": "pending_approval",
+        "hitl_on_min_critical": "pending_approval",
+        "hitl_on_min_overrides_list": "pending_approval",
+        "hitl_on_empty_list": "allowed",
+        "hitl_on_unordered_list": "pending_approval"
+      }
+    }
+  ]
+}

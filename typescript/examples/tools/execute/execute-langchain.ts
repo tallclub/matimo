@@ -37,7 +37,6 @@ import {
   MatimoInstance,
   convertToolsToLangChain,
   ToolDefinition,
-  getGlobalApprovalHandler,
   type ApprovalRequest,
 } from '@matimo/core';
 
@@ -62,9 +61,7 @@ function createApprovalCallback() {
 
     if (!isInteractive) {
       console.info('\n❌ REJECTED - Non-interactive environment (stdin not available)');
-      console.info('\n💡 To auto-approve in non-interactive environments:');
-      console.info('   export MATIMO_AUTO_APPROVE=true');
-      console.info('\n💡 Or pre-approve specific patterns:');
+      console.info('\n💡 To pre-approve this tool in non-interactive environments:');
       console.info('   export MATIMO_APPROVED_PATTERNS="execute"');
       console.info('\n💡 To test interactively, run from command line:');
       console.info('   npm run execute:langchain');
@@ -123,7 +120,11 @@ async function runExecuteAIAgent() {
   try {
     // Initialize Matimo with auto-discovery
     console.info('🚀 Initializing Matimo...');
-    const matimo = await MatimoInstance.init({ autoDiscover: true });
+    const matimo = await MatimoInstance.init({
+      autoDiscover: true,
+      // Decides every call that needs approval, for this instance only.
+      onApproval: createApprovalCallback(),
+    });
 
     // Get execute tool
     console.info('💬 Loading execute tool...');
@@ -138,10 +139,6 @@ async function runExecuteAIAgent() {
 
     // Convert to LangChain tools using the built-in converter
     const langchainTools = await convertToolsToLangChain(executeTools as ToolDefinition[], matimo);
-
-    // Set up approval callback for destructive commands
-    const approvalHandler = getGlobalApprovalHandler();
-    approvalHandler.setApprovalCallback(createApprovalCallback());
 
     // Initialize OpenAI LLM
     console.info('🤖 Initializing OpenAI (GPT-4o-mini) LLM...');

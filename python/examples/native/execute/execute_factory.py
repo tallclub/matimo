@@ -22,7 +22,8 @@ SETUP:
 
 USAGE:
 ────────────────────────────────────────────────────────────────────────────
-  uv run python execute/execute_factory.py
+  uv run python execute/execute_factory.py                  # asks before each call
+  MATIMO_APPROVED_PATTERNS="execute" uv run python execute/execute_factory.py   # unattended
 
 AVAILABLE EXECUTE TOOL PARAMETERS:
 ────────────────────────────────────────────────────────────────────────────
@@ -44,13 +45,26 @@ NOTE ON CROSS-PLATFORM COMMANDS:
 """
 
 import asyncio
+import sys
 from pathlib import Path
 from typing import Any, Dict
 from dotenv import load_dotenv
 
-from matimo import Matimo
+from matimo import ApprovalRequest, Matimo
 
 load_dotenv(Path(__file__).parent.parent.parent / ".env")
+
+
+async def approve(request: ApprovalRequest) -> bool:
+    """
+    execute declares requires_approval: true, so every call is shown to a human
+    first. Pre-approve it for scripts and CI with MATIMO_APPROVED_PATTERNS="execute".
+    """
+    print(f"\n🔒 Approval required — {request.tool_name}: {request.params.get('command')} {' '.join(request.params.get('args') or [])}")
+    if not sys.stdin.isatty():
+        print('   ❌ Rejected: no terminal. Pre-approve with MATIMO_APPROVED_PATTERNS="execute"')
+        return False
+    return input("   Approve? (y/n): ").strip().lower() in ("y", "yes")
 
 
 async def main() -> None:
@@ -61,7 +75,7 @@ async def main() -> None:
 
     # ── Initialize Matimo with autoDiscover to find all tools ─────────────────
     print("🚀  Initializing Matimo…")
-    matimo = await Matimo.init(auto_discover=True)
+    matimo = await Matimo.init(auto_discover=True, on_approval=approve)
     all_tools = matimo.list_tools()
     print(f"✅  Loaded {len(all_tools)} tools\n")
 

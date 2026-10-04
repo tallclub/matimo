@@ -168,6 +168,29 @@ describe('matimo_list_skills', () => {
     expect(Array.isArray(result.skills)).toBe(true);
   });
 
+  it('adds the skills in skills_dir to the instance skills', async () => {
+    const fs = await import('fs');
+    const os = await import('os');
+    const path = await import('path');
+    const skillsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'matimo-list-skills-'));
+    fs.mkdirSync(path.join(skillsDir, 'from-disk'));
+    fs.writeFileSync(
+      path.join(skillsDir, 'from-disk', 'SKILL.md'),
+      '---\nname: from-disk\ndescription: A skill on disk\n---\n# From disk\n'
+    );
+    mockGetInstance.mockReturnValue({
+      listSkills: () => [{ name: 'loaded', description: 'In the instance', source: 'builtin' }],
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any);
+
+    try {
+      const result = await matimoListSkills({ skills_dir: skillsDir });
+      expect(result.skills.map((s) => s.name).sort()).toEqual(['from-disk', 'loaded']);
+    } finally {
+      fs.rmSync(skillsDir, { recursive: true, force: true });
+    }
+  });
+
   it('should return empty list when skills_dir does not exist', async () => {
     // When skills_dir doesn't exist, but auto-discovery finds nothing
     mockGetInstance.mockReturnValue(null as unknown as ReturnType<typeof getGlobalMatimoInstance>);

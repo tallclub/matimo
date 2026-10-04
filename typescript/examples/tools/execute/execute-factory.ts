@@ -1,4 +1,5 @@
-import { MatimoInstance } from '@matimo/core';
+import { MatimoInstance, type ApprovalRequest } from '@matimo/core';
+import * as readline from 'readline';
 
 /**
  * Example: Execute tool using factory pattern
@@ -11,9 +12,30 @@ import { MatimoInstance } from '@matimo/core';
  */
 const isWindows = process.platform === 'win32';
 
+/**
+ * `execute` declares `requires_approval: true`: every command it runs is
+ * shown to a human first. Pre-approve it for scripts and CI with
+ * MATIMO_APPROVED_PATTERNS="execute" instead.
+ */
+async function approveCommand(request: ApprovalRequest): Promise<boolean> {
+  console.info(`🔒 Approval required — ${request.toolName}: ${String(request.params.command)}`);
+  if (!process.stdin.isTTY) {
+    console.info(
+      '   ❌ Rejected: no terminal. Pre-approve with MATIMO_APPROVED_PATTERNS="execute"'
+    );
+    return false;
+  }
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  const answer = await new Promise<string>((resolve) =>
+    rl.question('   Approve? (y/n): ', resolve)
+  );
+  rl.close();
+  return ['y', 'yes'].includes(answer.trim().toLowerCase());
+}
+
 async function executeExample() {
   // Initialize Matimo with autoDiscover to find all tools (core + providers)
-  const matimo = await MatimoInstance.init({ autoDiscover: true });
+  const matimo = await MatimoInstance.init({ autoDiscover: true, onApproval: approveCommand });
 
   console.info('=== Execute Tool - Factory Pattern ===\n');
 

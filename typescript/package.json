@@ -1,19 +1,19 @@
 {
   "name": "matimo",
-  "version": "0.1.8",
+  "version": "0.2.0",
   "description": "A framework-agnostic SDK with pre-built providers, a skills knowledge layer, MCP out of the box, and agents that autonomously build new capabilities — governed by a policy engine you control.",
-  "main": "packages/core/dist/index.js",
-  "types": "packages/core/dist/index.d.ts",
+  "main": "index.js",
+  "types": "index.d.ts",
   "bin": {
-    "matimo": "packages/cli/dist/bin.js"
+    "matimo": "bin.js"
   },
   "type": "module",
   "packageManager": "pnpm@8.15.0",
   "private": false,
   "exports": {
     ".": {
-      "types": "./packages/core/dist/index.d.ts",
-      "default": "./packages/core/dist/index.js"
+      "types": "./index.d.ts",
+      "default": "./index.js"
     }
   },
   "engines": {
@@ -68,8 +68,9 @@
     "url": "https://github.com/tallclub/matimo/issues"
   },
   "files": [
-    "packages/core/dist",
-    "packages/cli/dist",
+    "index.js",
+    "index.d.ts",
+    "bin.js",
     "README.md",
     "LICENSE"
   ],
@@ -87,7 +88,7 @@
       "fast-xml-parser": "^5.7.0",
       "form-data": ">=4.0.6",
       "ws": ">=8.21.0",
-      "undici": "7.28.0",
+      "undici": "7.29.0",
       "tmp": ">=0.2.6",
       "protobufjs@^7.2.5": "^7.6.4",
       "protobufjs@^8.0.1": "^8.7.1",
@@ -96,7 +97,9 @@
       "qs": ">=6.15.2",
       "js-yaml@^4.1.0": "^4.3.0",
       "esbuild": ">=0.28.1",
-      "@babel/core": ">=7.29.6"
+      "@babel/core": ">=7.29.6",
+      "nanoid@3.3.8": "^3.3.18",
+      "@faker-js/faker@^9.7.0": "^10.5.0"
     }
   },
   "devDependencies": {

@@ -5,27 +5,38 @@
 ## Table of Contents
 
 - [When to Use the Policy Engine](#when-to-use-the-policy-engine)
+  - [Decision Guide](#decision-guide)
+  - [Use Cases by Policy Feature](#use-cases-by-policy-feature)
+  - [Benefits: Policy vs No Policy](#benefits-policy-vs-no-policy)
 - [Overview](#overview)
 - [Quick Start](#quick-start)
+  - [Option 1: Load Policy from YAML File (Recommended for Teams)](#option-1-load-policy-from-yaml-file-recommended-for-teams)
+  - [Option 2: Inline Policy Config (Development)](#option-2-inline-policy-config-development)
+  - [Option 3: Custom PolicyEngine (Advanced)](#option-3-custom-policyengine-advanced)
+  - [Policy Loading & Initialization](#policy-loading--initialization)
 - [Policy Configuration](#policy-configuration)
-  - [PolicyConfig Options](#policyconfig-options)
-  - [Initialization](#initialization)
+  - [PolicyConfig YAML File Format](#policyconfig-yaml-file-format)
+  - [PolicyConfig Options (TypeScript)](#policyconfig-options-typescript)
+  - [InitOptions (Full Configuration)](#initoptions-full-configuration)
+  - [Execution Events](#execution-events)
+  - [Audit Sink](#audit-sink)
   - [Immutability](#immutability)
 - [Content Validator](#content-validator)
+  - [How It Integrates with Policy](#how-it-integrates-with-policy)
   - [9 Security Rules](#9-security-rules)
   - [Violation Severities](#violation-severities)
   - [Using validateToolContent()](#using-validatetoolcontent)
 - [Risk Classification](#risk-classification)
 - [Tool Lifecycle](#tool-lifecycle)
-  - [Step 1: Create a Tool (matimo_create_tool)](#step-1-create-a-tool)
-  - [Step 2: Approve a Tool (matimo_approve_tool)](#step-2-approve-a-tool)
-  - [Step 3: Reload Tools (matimo_reload_tools)](#step-3-reload-tools)
+  - [Step 1: Create a Tool](#step-1-create-a-tool)
+  - [Step 2: Approve a Tool](#step-2-approve-a-tool)
+  - [Step 3: Reload Tools](#step-3-reload-tools)
   - [Step 4: Use the Tool](#step-4-use-the-tool)
   - [Full Lifecycle Example](#full-lifecycle-example)
 - [Approval System](#approval-system)
   - [How Approval Works](#how-approval-works)
   - [Interactive Terminal Approval](#interactive-terminal-approval)
-  - [Auto-Approve (CI/CD)](#auto-approve-cicd)
+  - [Tests and CI](#tests-and-ci)
   - [Pre-Approved Patterns](#pre-approved-patterns)
   - [Session Whitelisting](#session-whitelisting)
   - [MCP Approval Flow](#mcp-approval-flow)
@@ -35,7 +46,7 @@
   - [HITLCallback & HITLRequest](#hitlcallback--hitlrequest)
   - [Resolution Flow](#resolution-flow)
   - [Quarantine Events](#quarantine-events)
-  - [Quarantine Risk Level Configuration](#quarantine-risk-level-configuration)
+  - [Quarantine Risk Levels](#quarantine-risk-levels)
 - [Policy Hot-Reload](#policy-hot-reload)
   - [reloadPolicy()](#reloadpolicy)
   - [parsePolicyFile()](#parsepolicyfile)
@@ -49,10 +60,32 @@
   - [MCP + Policy Engine](#mcp--policy-engine)
   - [MCP + Tool Lifecycle](#mcp--tool-lifecycle)
 - [LangChain Agent Integration](#langchain-agent-integration)
+  - [Setup](#setup)
+  - [Full Lifecycle from LangChain Agent](#full-lifecycle-from-langchain-agent)
 - [API Reference](#api-reference)
+  - [MatimoInstance](#matimoinstance)
+  - [ReloadResult](#reloadresult)
+  - [Policy Exports](#policy-exports)
 - [Examples](#examples)
-
----
+  - [Policy Demo (Full 11-Mission Autonomous Agent)](#policy-demo-full-11-mission-autonomous-agent)
+  - [Minimal Policy Setup](#minimal-policy-setup)
+  - [Interactive Approval with Whitelist](#interactive-approval-with-whitelist)
+  - [MCP Server with Policy](#mcp-server-with-policy)
+- [Python SDK — Policy & Lifecycle](#python-sdk--policy--lifecycle)
+  - [Quick Start (Python)](#quick-start-python)
+  - [Approval and HITL Callbacks](#approval-and-hitl-callbacks)
+  - [Policy Events (Python)](#policy-events-python)
+  - [Risk Classification (Python)](#risk-classification-python)
+  - [Custom PolicyEngine (Python)](#custom-policyengine-python)
+  - [Tool Lifecycle (Python)](#tool-lifecycle-python)
+- [Upgrading to 0.2.0](#upgrading-to-020)
+  - [Quick path](#quick-path)
+  - [New default: DELETE and command tools ask before every call](#new-default-delete-and-command-tools-ask-before-every-call)
+  - [Fixes that change behaviour (both modes)](#fixes-that-change-behaviour-both-modes)
+  - [Events](#events)
+  - [Tool authoring (validators)](#tool-authoring-validators)
+  - [New, additive](#new-additive)
+- [See Also](#see-also)
 
 ## When to Use the Policy Engine
 
@@ -328,6 +361,13 @@ protectedNamespaces:
   - matimo_
   # - internal_     # Uncomment to add your own
   # - company_prod_ # Can add as many as needed
+
+# Governance mode
+# Default approval behaviour for tools whose YAML doesn't set requires_approval.
+#   secure: HTTP DELETE and command tools ask before every call (default)
+#   legacy: the pre-0.2.0 behaviour, where they don't ask
+# See "Upgrading to 0.2.0" below.
+governanceMode: secure
 ```
 
 **Notes:**
@@ -361,17 +401,31 @@ interface PolicyConfig {
   allowedCredentials?: string[];
 
   /**
-   * Enable quarantine/HITL for medium-risk tools in production. When true,
-   * `canCreate()`/`canExecute()` return `pending_approval` instead of `allowed: false`
-   * for tools whose risk level is in `quarantineRiskLevels`. Default: false.
+   * Enable quarantine/HITL. When true, `canCreate()` quarantines agent-proposed tools
+   * whose risk is listed in `quarantineRiskLevels`, and `canExecute()` quarantines every
+   * tool whose execution risk is at or above `hitlMinRiskLevel`. Default: false.
    */
   enableHITL?: boolean;
 
-  /** Risk levels eligible for HITL quarantine instead of outright rejection. Default: ['medium'] */
+  /**
+   * Risk levels quarantined (instead of rejected) when an agent creates a tool. Its least
+   * severe entry is also the execution threshold unless `hitlMinRiskLevel` is set.
+   * Default: ['medium']
+   */
   quarantineRiskLevels?: RiskLevel[];
+
+  /** Execution-time quarantine threshold. Default: least severe entry of quarantineRiskLevels. */
+  hitlMinRiskLevel?: RiskLevel;
 
   /** Seconds after which an approval expires and the tool must be re-approved. Default: never expires. */
   approvalTtlSeconds?: number;
+
+  /**
+   * 'secure': HTTP DELETE and command tools without `requires_approval` ask before
+   * every call. 'legacy': pre-0.2.0 defaults. InitOptions.governanceMode overrides it.
+   * Default: 'secure'.
+   */
+  governanceMode?: 'secure' | 'legacy';
 }
 ```
 
@@ -414,6 +468,7 @@ const matimo = await MatimoInstance.init({
   onEvent: (event) => {                               // Audit trail handler
     console.log(`[${event.type}]`, event);
   },
+  auditSink: new JsonlFileSink('./logs/matimo-audit.jsonl'), // Hash-chained audit log
 
   // HITL Quarantine
   onHITL: async (request) => {                         // Human-in-the-loop callback
@@ -448,7 +503,71 @@ policyFile: process.env.POLICY_FILE || './policy.yaml'
 ```
 
 > **Tip:** You can also pass a custom `PolicyEngine` implementation via the `policy` option instead of `policyConfig`.
+
+### Execution Events
+
+Every call that passes the gates (policy, quarantine, approval) ends in exactly
+one of two events. A call a gate refuses gets that gate's event instead
+(`tool:execution_denied`, `tool:quarantine_rejected`, `tool:approval_denied`).
+
+| Event | When | Fields |
+|---|---|---|
+| `tool:executed` | the tool returned | `toolName`, `agentId`?, `traceId`, `durationMs`, `success`, `riskLevel`, `timestamp` |
+| `tool:execution_failed` | the tool threw | `toolName`, `agentId`?, `traceId`, `durationMs`, `riskLevel`, `errorCode`, `error`, `timestamp` |
+
+- `success` is `false` when the tool returned `{ success: false }` rather than throwing.
+- `durationMs` is time in the tool itself; approval waits are not counted.
+- `riskLevel` is the execution risk (`classifyExecutionRisk`).
+- The Python SDK emits the same events as dicts with snake_case keys
+  (`tool_name`, `trace_id`, `duration_ms`, ...). Both SDKs are tested against
+  [`conformance/events/execution-events.json`](../../conformance/events/execution-events.json).
+
+### Audit Sink
+
+`onEvent` hands events to your code. To keep a durable record of the same
+events, pass an `AuditSink`. It runs alongside `onEvent`, and a sink that
+throws is logged but never fails the tool call.
+
+```typescript
+import { MatimoInstance, JsonlFileSink, verifyAuditLog } from '@matimo/core';
+
+const matimo = await MatimoInstance.init({
+  autoDiscover: true,
+  auditSink: new JsonlFileSink('./logs/matimo-audit.jsonl'),
+});
+
+verifyAuditLog('./logs/matimo-audit.jsonl'); // { valid: true, entries: 42 }
 ```
+
+```python
+from matimo import Matimo, JsonlFileSink, verify_audit_log
+
+matimo = await Matimo.init(auto_discover=True, audit_sink=JsonlFileSink("./logs/matimo-audit.jsonl"))
+verify_audit_log("./logs/matimo-audit.jsonl")  # AuditLogVerification(valid=True, entries=42)
+```
+
+`JsonlFileSink` writes one line per event:
+
+```json
+{"event":{...},"hash":"<sha256>","prevHash":"<previous line's hash>","seq":7}
+```
+
+- `hash` is `sha256(prevHash + canonicalJson({seq, event}))`. Canonical JSON sorts
+  keys at every level and has no whitespace. The first line's `prevHash` is 64 zeros.
+- Editing, deleting or reordering a line makes `verifyAuditLog` / `verify_audit_log`
+  report the first bad line. Anyone who can write the file can also rewrite the
+  whole chain, so ship the file (or its latest hash) somewhere append-only if you
+  need tamper evidence against the host itself.
+- Opening an existing log continues its chain from the last line.
+- Values under secret-named keys (`password`, `token`, `apiKey`, `authorization`,
+  `client_secret`, `cookie`, ...) are written as `[REDACTED]`.
+- A log written by either SDK verifies in the other. Both are tested against
+  [`conformance/audit/hash-chain.json`](../../conformance/audit/hash-chain.json).
+- One `JsonlFileSink` per file per process. Two processes appending to the same
+  file will fork the chain.
+
+For another destination (a database, a SIEM, a queue), implement
+`write(event)`. It may return a promise in TypeScript.
 
 ### Immutability
 
@@ -678,10 +797,11 @@ await matimo.execute('matimo_create_tool', {
 Use `matimo_approve_tool` to promote a draft tool to approved status.
 
 ```typescript
-const result = await matimo.execute('matimo_approve_tool', {
-  name: 'city_lookup',
-  tool_dir: './agent-tools',
-});
+const result = await matimo.execute(
+  'matimo_approve_tool',
+  { name: 'city_lookup', tool_dir: './agent-tools' },
+  { context: { agentId: 'reviewer', roles: ['admin'] } } // approving needs the admin role
+);
 
 console.log(result);
 // {
@@ -777,12 +897,12 @@ console.log(tools.map(t => t.name));
 const result = await matimo.execute('city_lookup', { query: 'London' });
 ```
 
-Note: Agent-created tools always have `requires_approval: true`, so the first execution will trigger an approval prompt (or require `_matimo_approved: true` via MCP).
+Note: Agent-created tools always have `requires_approval: true`, so every execution triggers an approval prompt (over MCP, an elicitation request to the client's user).
 
 ### Full Lifecycle Example
 
 ```typescript
-import { MatimoInstance, getGlobalApprovalHandler } from 'matimo';
+import { MatimoInstance, setGlobalMatimoInstance } from 'matimo';
 import type { PolicyConfig } from 'matimo';
 
 // 1. Configure
@@ -793,17 +913,18 @@ const policyConfig: PolicyConfig = {
   allowFunctionTools: false,
 };
 
+// 2. Give the instance a reviewer: creating, approving, reloading and
+//    calling the new tool all need approval.
 const matimo = await MatimoInstance.init({
   toolPaths: ['./core-tools', './agent-tools'],
   untrustedPaths: ['./agent-tools'],
   policyConfig,
+  onApproval: async (request) => {
+    console.log(`Approve ${request.toolName}? [y/n]`);
+    return true; // or prompt user
+  },
 });
-
-// 2. Set up approval handler
-getGlobalApprovalHandler().setApprovalCallback(async (request) => {
-  console.log(`Approve ${request.toolName}? [y/n]`);
-  return true; // or prompt user
-});
+setGlobalMatimoInstance(matimo); // meta-tools act on this instance
 
 // 3. Create
 await matimo.execute('matimo_create_tool', {
@@ -823,10 +944,11 @@ execution:
 });
 
 // 4. Approve
-await matimo.execute('matimo_approve_tool', {
-  name: 'city_lookup',
-  tool_dir: './agent-tools',
-});
+await matimo.execute(
+  'matimo_approve_tool',
+  { name: 'city_lookup', tool_dir: './agent-tools' },
+  { context: { agentId: 'reviewer', roles: ['admin'] } } // approving needs the admin role
+);
 
 // 5. Reload
 await matimo.execute('matimo_reload_tools', {});
@@ -847,59 +969,52 @@ console.log(user);
 matimo.execute('tool_name', params)
          │
          ▼
-   tool.requires_approval === true    ──── OR ────   content has destructive keywords?
-         │ yes                                        (DELETE, DROP, TRUNCATE, etc.)
+   needs approval?
+   • requires_approval: true in the YAML
+   • HTTP DELETE or command tool without requires_approval (secure mode)
+   • destructive keyword in the sql / command argument
+         │ yes
          ▼
-   Is tool pre-approved?
-   • MATIMO_AUTO_APPROVE=true?         → yes → execute
-   • matches MATIMO_APPROVED_PATTERNS? → yes → execute
+   pre-approved?  (MATIMO_APPROVED_PATTERNS, or MATIMO_AUTO_APPROVE;
+                   never for matimo_approve_tool)        → yes → execute
          │ no
          ▼
-   Call approval callback
-   • interactiveApproval(request)
-   • Shows: toolName, description, params
-   • Returns: boolean (approved or rejected)
+   ask, first one that is set:
+   1. execute(..., { onApproval })      per call
+   2. init({ onApproval })              per instance
+   3. getGlobalApprovalHandler()        process-wide (older code)
+   4. none                              → rejected
          │
     ┌────┴────┐
     │approved │rejected
     ▼         ▼
   Execute   Throw MatimoError
-            (EXECUTION_FAILED)
 ```
+
+Full reference: [Approval System](APPROVAL-SYSTEM.md).
 
 ### Interactive Terminal Approval
 
 ```typescript
-import { getGlobalApprovalHandler } from 'matimo';
+import { MatimoInstance, type ApprovalRequest } from 'matimo';
 import readline from 'readline';
 
-const handler = getGlobalApprovalHandler();
+async function askInTerminal(request: ApprovalRequest): Promise<boolean> {
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  console.log(`\nTool: ${request.toolName}`);
+  console.log(`Description: ${request.description}`);
+  console.log(`Params: ${JSON.stringify(request.params)}`);
+  const answer = await new Promise<string>((resolve) => rl.question('Approve? (y/n): ', resolve));
+  rl.close();
+  return answer.toLowerCase() === 'y';
+}
 
-handler.setApprovalCallback(async (request) => {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-
-  return new Promise<boolean>((resolve) => {
-    console.log(`\nTool: ${request.toolName}`);
-    console.log(`Description: ${request.description}`);
-    console.log(`Params: ${JSON.stringify(request.params)}`);
-
-    rl.question('Approve? (y/n): ', (answer) => {
-      rl.close();
-      resolve(answer.toLowerCase() === 'y');
-    });
-  });
-});
+const matimo = await MatimoInstance.init({ autoDiscover: true, onApproval: askInTerminal });
 ```
 
-### Auto-Approve (CI/CD)
+### Tests and CI
 
-```bash
-# Approve ALL tools (use in trusted CI/CD only)
-export MATIMO_AUTO_APPROVE=true
-```
+Prefer an `onApproval` that encodes what the test allows, or `MATIMO_APPROVED_PATTERNS` listing the tools it may run. `MATIMO_AUTO_APPROVE=true` approves everything unseen (except `matimo_approve_tool`) and logs a warning; keep it to throwaway environments.
 
 ### Pre-Approved Patterns
 
@@ -910,7 +1025,7 @@ export MATIMO_APPROVED_PATTERNS="calculator,weather_*,search"
 # Supports wildcards:
 #   calculator      → exact match
 #   weather_*       → matches weather_get, weather_forecast, etc.
-#   *               → matches everything (same as AUTO_APPROVE)
+#   *               → matches everything except matimo_approve_tool
 ```
 
 ### Session Whitelisting
@@ -920,61 +1035,64 @@ In interactive mode, approved tools can be added to a session whitelist so subse
 ```typescript
 const whitelist = new Set<string>();
 
-handler.setApprovalCallback(async (request) => {
-  // Skip prompt if already approved this session
-  if (whitelist.has(request.toolName)) {
-    return true;
-  }
-
-  const approved = await promptUser(request);
-
-  if (approved) {
-    whitelist.add(request.toolName);
-  }
-
-  return approved;
+const matimo = await MatimoInstance.init({
+  autoDiscover: true,
+  onApproval: async (request) => {
+    // Skip prompt if already approved this session
+    if (whitelist.has(request.toolName)) {
+      return true;
+    }
+    const approved = await promptUser(request);
+    if (approved) {
+      whitelist.add(request.toolName);
+    }
+    return approved;
+  },
 });
 ```
 
 ### MCP Approval Flow
 
-When tools are called via MCP, approval works differently — there's no terminal to prompt:
+When tools are called via MCP there is no terminal to prompt, so the server asks
+the human behind the MCP client with an [elicitation](https://modelcontextprotocol.io/specification/draft/client/elicitation)
+request — a yes/no form the client shows its user:
 
 ```
 MCP Client → tools/call { name: 'tool_name', arguments: { ... } }
                 │
                 ▼
-          tool.requires_approval === true?
-                │ yes
-                ▼
-          args._matimo_approved === true?
-          ├─ no  → Return error: "Re-invoke with _matimo_approved: true"
-          └─ yes → Strip _matimo_approved from args, execute tool
+          matimo.execute(..., { onApproval: <ask this session's user> })
+                │  call needs approval? (requires_approval, DELETE/command,
+                │  destructive keyword — see APPROVAL-SYSTEM.md)
+                ▼ yes
+          client supports elicitation?
+          ├─ yes → elicitation/create "Allow the agent to run 'tool_name'? …"
+          │        accept + approve → run   ·   anything else → rejected
+          └─ no  → error: "needs human approval, but this MCP client does not
+                   support elicitation" (with how to configure the server)
 ```
 
-**MCP client pattern:**
+The model is never told how to approve its own call. `_matimo_approved` exists
+only for clients that confirm every call with their user themselves: start the
+server with `trustClientApproval: true` (`trust_client_approval=True` in
+Python) and approval-requiring tools gain an optional `_matimo_approved`
+boolean, which then counts as approval. Without that option the parameter is
+not advertised and is ignored. Pre-approved tools
+(`MATIMO_APPROVED_PATTERNS`) run without asking either way.
 
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "method": "tools/call",
-  "params": {
-    "name": "matimo_reload_tools",
-    "arguments": {
-      "_matimo_approved": true
-    }
-  }
-}
-```
+MCP calls run with no roles unless the operator grants some with the server's
+`context` option (`MCPServerOptions.context` in both SDKs), e.g.
+`{ agentId: 'claude-desktop', roles: ['admin'] }` for a single-user local
+server. Role-gated tools refuse a context without their role — e.g.
+`matimo_approve_tool` requires `admin` whenever a context is supplied. The model cannot set this context: it comes from the server's options, not from the tool arguments.
 
-The `_matimo_approved` parameter is automatically added to the MCP schema for any tool with `requires_approval: true`. It appears in `tools/list` as an optional boolean parameter.
-
----
+**Beyond policy gating**, each MCP tool registration also carries the protocol's standard `readOnlyHint`/`destructiveHint`/`idempotentHint`/`openWorldHint` annotations, derived directly from `execution.type`/HTTP method rather than from the aggregate risk tier above (the two signals can diverge — a GET and a DELETE tool can share a risk tier while having opposite hints). A denied or failed call returns `isError: true` with a `structuredContent` field (`code`/`statusCode`/`retryable`/`message`) instead of only a text string, and every successful result passes through the response-size guardrail before being returned. See [MCP Server docs — Tool Metadata & Error Responses](../MCP.md#tool-metadata--error-responses).
 
 ## HITL Quarantine
 
-Traditional policy engines are binary — a tool is either allowed or blocked. HITL (Human-in-the-Loop) quarantine adds a third state: **pending_approval**. Medium-risk tools pause for human review instead of being auto-rejected.
+Traditional policy engines are binary — a tool is either allowed or blocked. HITL (human-in-the-loop) quarantine adds a third state, **pending_approval**: with `enableHITL` on, a call at or above `hitlMinRiskLevel` pauses until a person approves it.
+
+HITL quarantine is separate from per-call approval (`onApproval`, see [APPROVAL-SYSTEM.md](APPROVAL-SYSTEM.md)). Quarantine is decided by the policy engine from the tool's risk; approval by the tool's `requires_approval`, DELETE/command type, or destructive keywords. When both apply, quarantine is resolved first.
 
 ### How Quarantine Works
 
@@ -989,15 +1107,16 @@ matimo.execute('tool_name', params)
   allowed  pending_approval  false
     │         │               │
     ▼         ▼               ▼
-  Execute  #resolveHITL()   Throw error
+  Execute  approval manifest  Throw POLICY_DENIED
+           or onHITL callback
               │
          ┌────┼────┐
          │         │
-     Approved   Rejected
+     Approved   Rejected / no callback
          │         │
          ▼         ▼
-      Execute   Throw error
-              (quarantine_rejected)
+      Execute   Throw POLICY_DENIED
+                (tool:quarantine_rejected)
 ```
 
 ### Enabling HITL
@@ -1005,17 +1124,16 @@ matimo.execute('tool_name', params)
 Pass `enableHITL: true` in your policy config and provide an `onHITL` callback:
 
 ```typescript
-import { MatimoInstance } from 'matimo';
-import type { PolicyConfig, HITLCallback, HITLRequest } from 'matimo';
+import { MatimoInstance } from '@matimo/core';
+import type { HITLRequest } from '@matimo/core';
 
 const matimo = await MatimoInstance.init({
   toolPaths: ['./tools', './agent-tools'],
   untrustedPaths: ['./agent-tools'],
   policyConfig: {
     allowedDomains: ['api.example.com'],
-    allowCommandTools: false,
     enableHITL: true,
-    quarantineRiskLevels: ['medium', 'high'],
+    hitlMinRiskLevel: 'medium', // pause every POST/PUT/PATCH, DELETE and other high-risk call
   },
   onHITL: async (request: HITLRequest) => {
     console.log(`Tool: ${request.toolName}`);
@@ -1027,17 +1145,26 @@ const matimo = await MatimoInstance.init({
 });
 ```
 
+```python
+matimo = await Matimo.init(
+    "./tools",
+    untrusted_paths=["./agent-tools"],
+    policy_config=PolicyConfig(enable_hitl=True, hitl_min_risk_level="medium"),
+    on_hitl=ask_human_operator,
+)
+```
+
 ### HITLCallback & HITLRequest
 
 ```typescript
-/** Called when a tool enters quarantine. Return true to approve, false to reject. */
+/** Called when a call is quarantined. Return true to approve, false to reject. */
 type HITLCallback = (request: HITLRequest) => Promise<boolean>;
 
 interface HITLRequest {
   toolName: string;
   riskLevel: RiskLevel;       // 'low' | 'medium' | 'high' | 'critical'
-  reason: string;             // Why the tool was quarantined
-  environment?: string;       // 'dev' | 'staging' | 'prod'
+  reason: string;             // Why the call was quarantined
+  environment?: string;       // From the caller's PolicyContext
   agentId?: string;           // Calling agent identifier
   toolDefinition?: unknown;   // Full tool definition for admin review
 }
@@ -1045,71 +1172,70 @@ interface HITLRequest {
 
 ### Resolution Flow
 
-When a tool enters `pending_approval`, Matimo resolves it in order:
+When a call is `pending_approval`, Matimo resolves it in order:
 
-1. **Check approval manifest** — if the tool was previously approved and its YAML hash hasn't changed, auto-approve
-2. **Invoke HITL callback** — if set, call `onHITL(request)` and wait for the human response
-3. **Fail closed** — if no callback is set, reject the tool (safe default)
+1. **Check the approval manifest** — if this tool definition was approved before and its YAML hash hasn't changed, the call runs
+2. **Invoke the HITL callback** — call `onHITL(request)` and wait for the answer
+3. **Fail closed** — with no callback, the call is rejected
 
-If the human approves, the tool is also recorded in the approval manifest for future calls (no repeated prompts for the same unchanged tool).
+An approval is recorded in the signed approval manifest against the definition's hash, so the reviewer is asked once per tool definition, and again if the YAML changes.
 
 ### Quarantine Events
 
-Four audit events are emitted during the HITL flow:
-
 | Event Type | When Emitted |
 |-----------|-------------|
-| `tool:quarantined` | Tool enters `pending_approval` state, before callback is invoked |
-| `tool:quarantine_approved` | Human approved the quarantined tool |
-| `tool:quarantine_rejected` | Human rejected the quarantined tool |
+| `tool:quarantined` | A quarantined call is about to be sent to `onHITL`, or an untrusted tool is held as pending when it loads |
+| `tool:quarantine_approved` | A quarantined call was approved (manifest or callback) |
+| `tool:quarantine_rejected` | A quarantined call was refused, or nobody could approve it |
 
 ```typescript
 const matimo = await MatimoInstance.init({
   // ...
   onEvent: (event) => {
-    if (event.type === 'tool:quarantined') {
-      console.log(`⏸️  ${event.toolName} quarantined (${event.riskLevel}): ${event.reason}`);
-    }
     if (event.type === 'tool:quarantine_approved') {
-      console.log(`✅ ${event.toolName} approved by human`);
+      console.log(`✅ ${event.toolName} approved`);
     }
     if (event.type === 'tool:quarantine_rejected') {
-      console.log(`❌ ${event.toolName} rejected by human`);
+      console.log(`❌ ${event.toolName} rejected`);
     }
   },
 });
 ```
 
-### Quarantine Risk Level Configuration
+### Quarantine Risk Levels
 
-By default, `quarantineRiskLevels` is `['medium']`. However, note that the content validator forces `requires_approval: true` on untrusted tools, and `classifyRisk()` escalates `requires_approval: true` to `high` risk. This means:
+The two settings act at different times.
 
-| `quarantineRiskLevels` | Effect |
-|------------------------|--------|
-| `['medium']` (default) | Most untrusted tools are escalated to `high` and blocked, not quarantined |
-| `['medium', 'high']` | **Recommended** — untrusted tools with HTTP POST/PUT or `requires_approval` are quarantined |
-| `['high']` | Only `high`-risk tools are quarantined, `medium` is auto-approved |
+**When a call runs**, `canExecute()` quarantines it when its **execution risk** is at or above `hitlMinRiskLevel` (default: the least severe entry of `quarantineRiskLevels`, so `'medium'` out of the box). A policy that reviews POSTs therefore also reviews DELETEs.
 
-> **Recommendation:** Use `quarantineRiskLevels: ['medium', 'high']` for production deployments where you want human review of agent-created tools.
+Execution risk is `classifyRisk()` with one difference: a `type: function` tool uses its declared `risk:` (default `high`, raised to `high` by `requires_approval: true`) instead of always rating `critical`. Function tools in the registry are always developer-authored — agent-created function tools are rejected at creation — so `calculator` (`risk: low`) is not quarantined while `execute` (`risk: critical`) is.
 
-You can also update quarantine levels at runtime via `setHITLCallback()`:
+| Tool | Execution risk | `enableHITL: true` (defaults) |
+|------|----------------|-------------------------------|
+| HTTP GET | low | runs |
+| HTTP POST / PUT / PATCH | medium | quarantined |
+| HTTP DELETE, `requires_approval: true`, `type: command` | high | quarantined |
+| `type: function` with `risk: low` | low | runs |
+| `type: function` with no `risk:` | high | quarantined |
+
+The full matrix both SDKs are tested against is `conformance/policy/execution-quarantine.json`.
+
+**When an untrusted tool loads** (`untrustedPaths`, or a reload after `matimo_create_tool`), `canCreate()` uses `quarantineRiskLevels` as a list: a tool whose most severe content violation, or (in production) whose risk, is *listed* is held as pending instead of rejected. Agent-created tools carry `requires_approval: true`, which `classifyRisk()` rates `high`, so with the default `['medium']` they are rejected in production rather than held. Use `quarantineRiskLevels: ['medium', 'high']` if you want them held for review there.
+
+You can change the HITL callback at runtime (TypeScript):
 
 ```typescript
-// Set or change the HITL callback at any time
-matimo.setHITLCallback(async (request) => {
-  // New approval logic
-  return request.riskLevel === 'medium'; // Auto-approve medium, prompt for high
-});
-
-// Remove HITL callback (revert to fail-closed)
-matimo.setHITLCallback(null);
+matimo.setHITLCallback(async (request) => request.riskLevel === 'medium');
+matimo.setHITLCallback(null); // back to fail-closed
 ```
+
+Python sets `on_hitl` at `init()` only.
 
 ---
 
 ## Policy Hot-Reload
 
-The policy engine can be swapped at runtime without restarting the process. After the swap, all tools are automatically re-validated against the new policy.
+TypeScript can swap the policy at runtime without restarting the process; all tools are re-validated against the new policy. (Python has no `reload_policy()` yet; create a new `Matimo` instance.)
 
 ### reloadPolicy()
 
@@ -1120,9 +1246,8 @@ await matimo.reloadPolicy('./policy-prod.yaml');
 // Option 2: Reload with an inline PolicyConfig
 await matimo.reloadPolicy({
   allowedDomains: ['api.production.example.com'],
-  allowCommandTools: false,
   enableHITL: true,
-  quarantineRiskLevels: ['medium', 'high'],
+  hitlMinRiskLevel: 'medium',
 });
 
 // Option 3: Re-read the original policyFile (if MatimoInstance was initialized with one)
@@ -1131,19 +1256,18 @@ await matimo.reloadPolicy();
 
 **What happens internally:**
 
-1. New policy is validated (Zod schema for YAML files)
-2. Old policy reference is atomically replaced
-3. New policy is `Object.freeze()`'d
-4. `policy:reloaded` event is emitted
-5. `reloadTools()` runs — all tools are re-validated against the new policy
-6. Tools that no longer pass the new policy are rejected from the registry
+1. The new policy is validated (Zod schema for YAML files)
+2. The old policy is replaced and the new one frozen
+3. A `policy:reloaded` event is emitted
+4. `reloadTools()` runs, re-validating every tool against the new policy
+5. Tools that no longer pass are left out of the registry
 
-**Return value:** `ReloadResult` from the subsequent tool re-validation:
+**Return value:** the `ReloadResult` of that re-validation:
 
 ```typescript
 const result = await matimo.reloadPolicy('./policy-strict.yaml');
-console.log(result.loaded);     // Total tools loaded
-console.log(result.rejected);   // Tools rejected by the new policy
+console.log(result.loaded);     // Tools registered
+console.log(result.rejected);   // Tools the new policy rejected
 ```
 
 ### parsePolicyFile()
@@ -1151,17 +1275,15 @@ console.log(result.rejected);   // Tools rejected by the new policy
 Parse a YAML policy file without applying it — useful for validation:
 
 ```typescript
-import { parsePolicyFile } from 'matimo';
+import { parsePolicyFile } from '@matimo/core';
 
 const config = parsePolicyFile('./policy.yaml');
-// Returns a validated PolicyConfig object
-// Throws if YAML syntax is invalid or schema validation fails
+// Returns a validated PolicyConfig; throws if the YAML or schema is invalid
 ```
 
 ### Hot-Reload Events
 
 ```typescript
-// The policy:reloaded event fires on every successful reload
 const matimo = await MatimoInstance.init({
   onEvent: (event) => {
     if (event.type === 'policy:reloaded') {
@@ -1171,18 +1293,17 @@ const matimo = await MatimoInstance.init({
 });
 ```
 
-**Use case: File watcher for continuous policy updates:**
+**Use case: reload when the file changes:**
 
 ```typescript
 import fs from 'fs';
 
-// Watch for policy file changes (e.g., updated via git pull)
 fs.watch('./policy.yaml', async () => {
   try {
     const result = await matimo.reloadPolicy('./policy.yaml');
     console.log(`Policy reloaded: ${result.loaded} tools, ${result.rejected.length} rejected`);
   } catch (err) {
-    console.error('Policy reload failed — keeping previous policy:', err.message);
+    console.error('Policy reload failed — keeping previous policy:', (err as Error).message);
   }
 });
 ```
@@ -1193,99 +1314,106 @@ fs.watch('./policy.yaml', async () => {
 
 ### SHA-256 Integrity Tracking
 
-The `ToolIntegrityTracker` computes SHA-256 hashes of tool definitions and detects changes between reloads:
+`ToolIntegrityTracker` hashes tool definitions so a reload can tell new, unchanged and modified tools apart:
 
 ```typescript
-import { ToolIntegrityTracker } from 'matimo';
+import { ToolIntegrityTracker } from '@matimo/core';
 
 const tracker = new ToolIntegrityTracker();
 
-// Record a tool's hash
+// After a tool is validated and loaded
 tracker.record('my_tool', yamlContent, 'untrusted');
 
-// On reload, check if content changed
-const action = tracker.check('my_tool', yamlContent);
-// Returns:
-//   'keep'       — hash matches, skip re-validation
-//   'revalidate' — hash changed, must re-run policy checks
-//   'validate'   — new tool, first-time validation needed
+// On the next load
+const { action, reason } = tracker.onToolLoaded('my_tool', yamlContent, 'untrusted');
 ```
 
-| Action | Meaning |
-|--------|---------|
-| `validate` | New tool — never seen before, must validate |
-| `keep` | Same hash — content unchanged, safe to skip |
-| `revalidate` | Different hash — content was modified, must re-validate |
+| `action` | `reason` | Meaning |
+|----------|----------|---------|
+| `validate` | `new-tool` | Never seen before; validate it |
+| `keep` | `unchanged` | Same hash and source; safe to skip |
+| `revalidate` | `content-modified` / `source-changed` | The YAML changed, or it moved between trusted and untrusted paths |
 
 ### HMAC Approval Manifest
 
-The `ApprovalManifest` stores cryptographic approvals:
+`ApprovalManifest` stores signed approvals in `<approvalDir>/.matimo-approvals.json`:
 
 ```typescript
-import { ApprovalManifest } from 'matimo';
+import { ApprovalManifest } from '@matimo/core';
 
-const manifest = new ApprovalManifest('./tools', process.env.MATIMO_APPROVAL_SECRET);
+const manifest = new ApprovalManifest('./', process.env.MATIMO_APPROVAL_SECRET);
 
-// Approve a tool
 const hash = manifest.computeHash(yamlContent);
-manifest.approve('my_tool', hash);
+manifest.approve('my_tool', hash, 'alice');
 
-// Verify approval
-const isValid = manifest.verify('my_tool', hash);
-// true — hash matches, HMAC valid
-
-// Modify the YAML, then re-check
-const newHash = manifest.computeHash(modifiedYaml);
-const stillValid = manifest.verify('my_tool', newHash);
-// false — hash changed, approval auto-revoked
+manifest.isApproved('my_tool', hash);                          // true
+manifest.isApproved('my_tool', manifest.computeHash(edited));  // false — the YAML changed
 ```
+
+Inside an app, use the instance's own manifest (`matimo.getApprovalManifest()`, `get_approval_manifest()` in Python) so approvals are signed with the instance's secret and directory.
 
 **Approval secret:**
 
 ```bash
-# Set a persistent secret for HMAC signing
+# A persistent secret for HMAC signing
 export MATIMO_APPROVAL_SECRET=your-secret-key
 
-# If not set, Matimo generates a random UUID (approvals don't persist across restarts)
+# If unset, each process generates its own, so approvals do not survive a restart
 ```
+
+Never commit `.matimo-approvals.json`.
 
 ---
 
 ## RBAC & Access Control
 
-The `DefaultPolicyEngine.canExecute()` method enforces role-based access control:
+`DefaultPolicyEngine.canExecute()` applies these gates by the caller's `PolicyContext` (pinned for both SDKs by `conformance/policy/execution-gates.json`):
 
-| Tool Status | Who Can Execute | Notes |
-|-------------|----------------|-------|
-| `approved` | Everyone | Normal production tools |
-| `draft` | `admin` role only | Agent-created tools before approval |
-| `deprecated` | Nobody | Always blocked |
-| `requires_approval` in prod | `admin` role only | Draft tools in production environment |
+| Tool | Denied when |
+|------|-------------|
+| `status: deprecated` | Always |
+| `status: draft` | In production (an environment name containing "prod"), and elsewhere when the caller lacks the `admin` role |
+| `requires_approval: true` | In production, when the caller has neither `admin` nor `operator` |
 
-> **Note:** RBAC uses `roles: string[]` (array), not a single role string. A user with `roles: ['admin', 'reader']` gets the highest-privilege match.
+Other tools pass these gates; quarantine and per-call approval may still apply. `roles` is an array, and any listed role counts.
 
 ```typescript
-import { DefaultPolicyEngine } from 'matimo';
+import { DefaultPolicyEngine } from '@matimo/core';
 
 const policy = new DefaultPolicyEngine(policyConfig);
 
-// Check if a caller can execute a tool
 const decision = policy.canExecute(
-  { roles: ['reader'], environment: 'production' }, // PolicyContext
-  toolDefinition
+  { roles: ['reader'], environment: 'staging' }, // PolicyContext
+  draftTool
 );
 
-console.log(decision.allowed); // true or false
-console.log(decision.reason);  // 'Draft tool requires admin role'
+console.log(decision.allowed); // false
+console.log(decision.reason);  // 'Draft tool "my_tool" requires admin role'
 ```
+
+The context reaches the engine through `execute(name, params, { context })` (`context=` in Python) and the MCP server's `context` option. Framework adapters such as `convertToolsToLangChain` pass none.
+
+### Where roles come from
+
+Matimo has no user accounts and does not authenticate anyone. A role such as `admin` is just a string in `PolicyContext.roles`, and **your application** (the code that runs Matimo) decides what to put there. Matimo never reads roles from anything an agent writes, so an agent cannot give itself a role by saying "I am an admin". Think of your app as a guard and the agent as a visitor: the guard hands out the badges.
+
+What stops an agent from approving its own tool depends on the context your app passes:
+
+| Your setup | What stops the agent |
+|------------|----------------------|
+| A context with the agent's `agentId` and roles without `admin` | The role check, and the rule that an agent can't approve a tool it created |
+| No context | Only the human approval prompt (`matimo_approve_tool` requires approval and nothing can pre-approve it) |
+| No context, and an approval callback that always answers yes | Nothing. Don't do this |
+
+In production, give each agent a context with an `agentId` and no `admin` role, and send approval prompts to a real person. The `agentId` check that blocks self-approval only runs when a context with an `agentId` is supplied.
 
 **PolicyContext:**
 
 ```typescript
 interface PolicyContext {
   agentId?: string;                    // Identifier for the calling agent
-  environment?: string;                // 'dev' | 'staging' | 'prod'
-  roles?: string[];                    // ['reader', 'writer', 'admin']
+  environment?: string;                // e.g. 'dev' | 'staging' | 'production'
+  roles?: string[];                    // e.g. ['reader', 'operator', 'admin']
   metadata?: Record<string, unknown>;  // Custom metadata for policy rules
 }
 ```
@@ -1294,54 +1422,7 @@ interface PolicyContext {
 
 ## Audit Events
 
-Every policy decision emits a structured event via the `onEvent` callback:
-
-```typescript
-const auditLog: MatimoEvent[] = [];
-
-const matimo = await MatimoInstance.init({
-  // ...
-  onEvent: (event) => auditLog.push(event),
-});
-
-// After operations, inspect the log:
-auditLog.forEach(event => {
-  console.log(`[${event.type}] ${event.toolName} at ${event.timestamp}`);
-});
-```
-
-**Event types:**
-
-| Event Type | When Emitted | Key Fields |
-|-----------|-------------|------------|
-| `tool:created` | New tool loaded into registry | `toolName`, `source`, `riskLevel` |
-| `tool:approved` | Tool approved via manifest | `toolName`, `approvedBy`, `hash` |
-| `tool:rejected` | Tool failed content validation | `toolName`, `violations[]` |
-| `tool:revoked` | Approval revoked (YAML changed) | `toolName`, `reason` |
-| `tool:executed` | Tool executed successfully or not | `toolName`, `agentId`, `duration`, `success` |
-| `tool:execution_denied` | Policy blocked an execute() call | `toolName`, `reason`, `agentId` |
-| `tool:quarantined` | Tool entered HITL pending_approval state | `toolName`, `riskLevel`, `reason`, `environment` |
-| `tool:quarantine_approved` | Human approved a quarantined tool | `toolName` |
-| `tool:quarantine_rejected` | Human rejected a quarantined tool | `toolName` |
-| `tools:reloaded` | reloadTools() completed | `loaded`, `removed`, `rejected[]` |
-| `policy:reloaded` | reloadPolicy() completed | `timestamp` |
-
-**Event structure (discriminated union):**
-
-`MatimoEvent` is a discriminated union — each event type has its own shape:
-
-```typescript
-type MatimoEvent =
-  | { type: 'tool:created'; toolName: string; source: 'trusted' | 'untrusted'; riskLevel: RiskLevel; timestamp: string }
-  | { type: 'tool:approved'; toolName: string; approvedBy?: string; hash: string; timestamp: string }
-  | { type: 'tool:rejected'; toolName: string; violations: Violation[]; timestamp: string }
-  | { type: 'tool:revoked'; toolName: string; reason: string; timestamp: string }
-  | { type: 'tool:executed'; toolName: string; agentId?: string; duration: number; success: boolean; timestamp: string }
-  | { type: 'tool:execution_denied'; toolName: string; reason: string; agentId?: string; timestamp: string }
-  | { type: 'tools:reloaded'; loaded: number; removed: number; rejected: string[]; timestamp: string };
-
-type MatimoEventHandler = (event: MatimoEvent) => void;
-```
+Every policy decision and every run emits a structured event to `onEvent` and to the `auditSink`. The execution events are described in [Execution Events](#execution-events); the full list with fields is in [TYPES.md](TYPES.md). `tool:created`, `tool:approved` and `tool:revoked` are declared in the type but not emitted yet.
 
 ---
 
@@ -1349,10 +1430,10 @@ type MatimoEventHandler = (event: MatimoEvent) => void;
 
 ### MCP + Policy Engine
 
-When tools are served via MCP, the same policy engine applies:
+When tools are served over MCP, the same policy engine applies:
 
 ```typescript
-import { MCPServer } from 'matimo';
+import { MCPServer } from '@matimo/core';
 
 const mcpServer = new MCPServer({
   transport: 'http',
@@ -1361,14 +1442,12 @@ const mcpServer = new MCPServer({
   untrustedPaths: ['./agent-tools'],
   policyConfig: {
     allowedDomains: ['api.example.com'],
-    allowCommandTools: false,
   },
   mcpToken: 'your-bearer-token',
 });
 
 await mcpServer.start();
-// All tools validated on startup
-// Policy enforced on every tools/call
+// Untrusted tools validated on startup; policy enforced on every tools/call
 ```
 
 **MCP execution flow:**
@@ -1378,21 +1457,26 @@ MCP Client → POST /mcp (tools/call)
   │
   ▼ MCPServer handler
   │
-  ├─ requires_approval? → check _matimo_approved
+  ▼ matimo.execute(toolName, params, { onApproval: <elicitation for this session> })
   │
-  ▼ matimo.execute(toolName, params)
-  │
-  ├─ Policy check (canExecute)
-  ├─ Approval check (auto-approved in MCP context)
-  ├─ Auth injection
+  ├─ Policy check (canExecute): gates, HITL quarantine
+  ├─ Approval, if the call needs it: elicitation prompt to the client's user
+  │    (_matimo_approved counts only with trustClientApproval)
+  ├─ Credential injection
   ├─ Executor routing
   │
   ▼ Result → MCP response
 ```
 
+Each MCP tool registration also carries the protocol's standard `readOnlyHint`/`destructiveHint`/`idempotentHint`/`openWorldHint` annotations, derived from `execution.type` and the HTTP method rather than from the risk tier (the two can diverge). A denied or failed call returns `isError: true` with a `structuredContent` field (`code`/`statusCode`/`retryable`/`message`), and every successful result passes through the response-size guardrail. See [MCP Server docs — Tool Metadata & Error Responses](../MCP.md#tool-metadata--error-responses).
+
 ### MCP + Tool Lifecycle
 
-The complete create→approve→reload→use lifecycle works via MCP:
+The complete create→approve→reload→use lifecycle works via MCP. `curl` cannot
+answer elicitation requests, so this walkthrough assumes a server started with
+`trustClientApproval: true`, where `_matimo_approved: true` counts as the
+approval. With an elicitation-capable client, leave the flag out and answer the
+prompts instead.
 
 ```bash
 # 1. Create a tool via MCP
@@ -1468,7 +1552,7 @@ curl -X POST http://localhost:3000/mcp \
 ### Setup
 
 ```typescript
-import { MatimoInstance, convertToolsToLangChain, getGlobalApprovalHandler } from 'matimo';
+import { MatimoInstance, convertToolsToLangChain, setGlobalMatimoInstance } from 'matimo';
 import { ChatOpenAI } from '@langchain/openai';
 import type { ToolDefinition, PolicyConfig } from 'matimo';
 
@@ -1476,7 +1560,13 @@ const matimo = await MatimoInstance.init({
   toolPaths: ['./tools', './agent-tools'],
   untrustedPaths: ['./agent-tools'],
   policyConfig: { /* ... */ },
+  // Human-in-the-loop approval for every call that needs it
+  onApproval: async (request) => {
+    console.log(`Agent wants to call: ${request.toolName}`);
+    return true; // or prompt user
+  },
 });
+setGlobalMatimoInstance(matimo); // meta-tools act on this instance
 
 // Convert Matimo tools to LangChain format
 const tools = matimo.listTools();
@@ -1485,12 +1575,6 @@ const langchainTools = await convertToolsToLangChain(tools as ToolDefinition[], 
 // Create LLM with tools bound
 const llm = new ChatOpenAI({ model: 'gpt-4o-mini', temperature: 0 });
 let llmWithTools = llm.bindTools(langchainTools);
-
-// Set up human-in-the-loop approval
-getGlobalApprovalHandler().setApprovalCallback(async (request) => {
-  console.log(`Agent wants to call: ${request.toolName}`);
-  return true; // or prompt user
-});
 ```
 
 ### Full Lifecycle from LangChain Agent
@@ -1505,11 +1589,12 @@ const createResult = await matimo.execute('matimo_create_tool', {
   yaml_content: '...',
 });
 
-// 2. Agent calls matimo_approve_tool
-await matimo.execute('matimo_approve_tool', {
-  name: 'city_lookup',
-  tool_dir: './agent-tools',
-});
+// 2. A reviewer approves it (the agent cannot approve its own tool)
+await matimo.execute(
+  'matimo_approve_tool',
+  { name: 'city_lookup', tool_dir: './agent-tools' },
+  { context: { agentId: 'reviewer', roles: ['admin'] } } // approving needs the admin role
+);
 
 // 3. Agent calls matimo_reload_tools
 await matimo.execute('matimo_reload_tools', {});
@@ -1545,13 +1630,16 @@ const result = await matimo.execute('city_lookup', { id: '1' });
 | `matimo.hasPolicy()` | `boolean` | Always `true` — `init()` always constructs a `DefaultPolicyEngine()` when no `policy`/`policyFile`/`policyConfig` is given, so every instance is policy-gated by default |
 | `matimo.reloadPolicy(configOrFile?)` | `Promise<ReloadResult>` | Hot-reload policy engine + re-validate tools |
 | `matimo.setHITLCallback(callback)` | `void` | Set or clear the HITL quarantine callback |
+| `matimo.setApprovalCallback(callback)` | `void` | Set or clear the instance's approval callback (`null` falls back to the process-wide handler) |
+| `matimo.getGovernanceMode()` | `'secure' \| 'legacy'` | The governance mode in effect |
+| `matimo.getApprovalManifest()` | `ApprovalManifest \| null` | The manifest `matimo_approve_tool` records approvals in |
 
 ### ReloadResult
 
 ```typescript
 interface ReloadResult {
-  loaded: number;       // Total tools loaded
-  removed: number;      // Tools no longer on disk
+  loaded: number;       // Tools registered by this reload
+  removed: number;      // Tools no longer loaded
   revalidated: number;  // Untrusted tools re-checked
   rejected: string[];   // Tool names that failed policy
 }
@@ -1627,12 +1715,14 @@ const matimo = await MatimoInstance.init({
 ```typescript
 const whitelist = new Set<string>();
 
-getGlobalApprovalHandler().setApprovalCallback(async (req) => {
-  if (whitelist.has(req.toolName)) return true;
-
-  const approved = await askUser(`Approve ${req.toolName}?`);
-  if (approved) whitelist.add(req.toolName);
-  return approved;
+const matimo = await MatimoInstance.init({
+  toolPaths: ['./tools'],
+  onApproval: async (req) => {
+    if (whitelist.has(req.toolName)) return true;
+    const approved = await askUser(`Approve ${req.toolName}?`);
+    if (approved) whitelist.add(req.toolName);
+    return approved;
+  },
 });
 ```
 
@@ -1660,18 +1750,18 @@ The Python SDK exposes the same policy engine, risk classifier, and lifecycle co
 ### Quick Start (Python)
 
 ```python
-from matimo import Matimo, InitOptions
+from matimo import Matimo, PolicyConfig
 
 # Load policy from file
-matimo = await Matimo.init('./tools', InitOptions(
+matimo = await Matimo.init(
+    ['./tools', './agent-tools'],
     policy_file='./policy.yaml',
     untrusted_paths=['./agent-tools'],
-))
+)
 
 # Inline policy config
-from matimo.policy.types import PolicyConfig
-
-matimo = await Matimo.init('./tools', InitOptions(
+matimo = await Matimo.init(
+    './tools',
     policy_config=PolicyConfig(
         allowed_domains=['api.github.com', 'api.slack.com'],
         allowed_http_methods=['GET', 'POST'],
@@ -1679,65 +1769,84 @@ matimo = await Matimo.init('./tools', InitOptions(
         allow_function_tools=False,
         protected_namespaces=['matimo_'],
     ),
-))
+)
 ```
 
-### HITL (Human-in-the-Loop) Callback
+`Matimo.init()` takes keyword arguments after the tool paths.
+
+### Approval and HITL Callbacks
 
 ```python
-async def my_approval_callback(request):
-    print(f"Approve {request.tool_name}? (y/n)")
-    answer = input()
-    return {'approved': answer == 'y', 'reason': 'manual review'}
+from matimo import ApprovalRequest, HITLRequest, Matimo, PolicyConfig
 
-matimo = await Matimo.init('./tools', InitOptions(
-    policy_file='./policy.yaml',
-    on_hitl=my_approval_callback,
-))
+
+# Per-call approval (requires_approval, DELETE/command tools, destructive keywords)
+async def on_approval(request: ApprovalRequest) -> bool:
+    return input(f"Approve {request.tool_name} {request.params}? (y/n) ") == 'y'
+
+
+# Risk-based quarantine (enable_hitl): every call at or above hitl_min_risk_level
+async def on_hitl(request: HITLRequest) -> bool:
+    return input(f"Run {request.tool_name} ({request.risk_level})? (y/n) ") == 'y'
+
+
+matimo = await Matimo.init(
+    './tools',
+    policy_config=PolicyConfig(enable_hitl=True, hitl_min_risk_level='high'),
+    on_approval=on_approval,
+    on_hitl=on_hitl,
+)
 ```
+
+Both callbacks return `True` to allow the call and `False` to refuse it.
 
 ### Policy Events (Python)
 
 ```python
-def on_event(event) -> None:
-    print(f"[{event.type}] {event.tool_name}")
+def on_event(event: dict) -> None:
+    print(f"[{event['type']}] {event.get('tool_name')}")
 
-matimo = await Matimo.init('./tools', InitOptions(
-    policy_file='./policy.yaml',
-    on_event=on_event,
-))
+matimo = await Matimo.init('./tools', policy_file='./policy.yaml', on_event=on_event)
 ```
+
+Events are dicts with snake_case keys; see [Execution Events](#execution-events)
+for `tool:executed` / `tool:execution_failed`.
 
 ### Risk Classification (Python)
 
 ```python
-from matimo.policy.risk_classifier import classify_risk
+from matimo import classify_execution_risk, classify_risk
 
 tool = matimo.get_tool('my_api_tool')
-risk = classify_risk(tool)
-print(risk)  # 'low' | 'medium' | 'high' | 'critical'
+print(classify_risk(tool).value)            # risk as an untrusted proposal
+print(classify_execution_risk(tool).value)  # risk of running it: 'low' | 'medium' | 'high' | 'critical'
 ```
 
 ### Custom PolicyEngine (Python)
 
 ```python
-from matimo.policy.default_policy import PolicyEngine
-from matimo.policy.types import PolicyDecision
+from matimo import Matimo, PolicyAllowed, PolicyDecision, PolicyDenied
 
-class MyPolicy(PolicyEngine):
-    def can_create(self, context, tool) -> PolicyDecision:
-        return PolicyDecision(allowed=True)
+
+class MyPolicy:
+    """Any object with these three methods satisfies the PolicyEngine protocol."""
+
+    def can_create(self, context, tool_def) -> PolicyDecision:
+        return PolicyAllowed()
 
     def can_execute(self, context, tool) -> PolicyDecision:
         if tool.name.startswith('delete_'):
-            return PolicyDecision(allowed=False, reason='Delete ops require manual approval')
-        return PolicyDecision(allowed=True)
+            return PolicyDenied(reason='Delete operations are not allowed for agents')
+        return PolicyAllowed()
 
-    def filter_for_agent(self, tools, context):
-        return [t for t in tools if t.status == 'approved']
+    def filter_for_agent(self, context, tools):
+        return [t for t in tools if not t.name.startswith('delete_')]
 
-matimo = await Matimo.init('./tools', InitOptions(policy=MyPolicy()))
+
+matimo = await Matimo.init('./tools', policy=MyPolicy())
 ```
+
+Return `PolicyPendingApproval(reason=..., risk_level=...)` from `can_execute` to quarantine a call for `on_hitl`.
 
 ### Tool Lifecycle (Python)
 
@@ -1745,7 +1854,7 @@ matimo = await Matimo.init('./tools', InitOptions(policy=MyPolicy()))
 # 1. Validate
 result = await matimo.execute('matimo_validate_tool', {'yaml_content': yaml_str})
 
-# 2. Create (triggers HITL if on_hitl is set)
+# 2. Create (asks on_approval: matimo_create_tool requires approval)
 result = await matimo.execute('matimo_create_tool', {
     'name': 'my_tool',
     'yaml_content': yaml_str,
@@ -1755,7 +1864,8 @@ result = await matimo.execute('matimo_create_tool', {
 })
 
 # 3. Approve
-result = await matimo.execute('matimo_approve_tool', {'name': 'my_tool', 'tool_dir': './agent-tools'})
+result = await matimo.execute('matimo_approve_tool', {'name': 'my_tool', 'tool_dir': './agent-tools'},
+                              context=PolicyContext(agent_id='reviewer', roles=['admin']))
 
 # 4. Reload
 result = await matimo.execute('matimo_reload_tools', {})
@@ -1766,6 +1876,80 @@ result = await matimo.execute('my_tool', {'query': 'hello'})
 
 > See [`python/examples/native/policy/policy_demo.py`](../../python/examples/native/policy/policy_demo.py) for a complete 11-mission Python policy demo.
 > Run with: `cd python && make policy-demo`
+
+## Upgrading to 0.2.0
+
+0.2.0 (TypeScript and Python) makes the governance described in this guide the default. Most
+of the changes fix places where a tool call wasn't governed the way these docs said. Those
+fixes apply to everyone. One new default, approval for DELETE and shell tools, can be switched
+off with `governanceMode: 'legacy'`.
+
+### Quick path
+
+1. Upgrade, then run your test suite or agent once.
+2. If a DELETE or command tool now fails with `requires approval`, decide per tool:
+   - Wire a reviewer: `onApproval` / `on_approval` at init (see [Approval System](#approval-system)).
+   - Pre-approve it: `MATIMO_APPROVED_PATTERNS=my_delete_tool`.
+   - Opt the tool out in its YAML: `requires_approval: false`.
+   - Or restore the old default everywhere: `governanceMode: 'legacy'` in `InitOptions` or
+     `policy.yaml` (`governance_mode="legacy"` in Python).
+3. If you run `validate-tools` on your own tools, add `requires_approval` to each DELETE tool and
+   `risk` to each function tool (see below).
+
+### New default: DELETE and command tools ask before every call
+
+A tool whose YAML doesn't set `requires_approval` now needs per-call approval when it is an HTTP
+`DELETE` or a `type: command` tool. An explicit `requires_approval` always wins. The destructive
+keyword scan of `command` / `sql` parameters is unchanged. `governanceMode: 'legacy'` restores
+the old default, and nothing else. Both SDKs assert the same table,
+[`conformance/approval/definition-requires-approval.json`](../../conformance/approval/definition-requires-approval.json).
+
+### Fixes that change behaviour (both modes)
+
+| Area | Before 0.2.0 | 0.2.0 |
+|---|---|---|
+| HITL quarantine at execution | Quarantined a tool only when its risk was *listed* in `quarantineRiskLevels`, so with the default `['medium']` a high-risk DELETE ran unquarantined | Quarantines every tool whose risk is **at or above** `hitlMinRiskLevel` (default: least severe entry of `quarantineRiskLevels`) |
+| Function tool risk at execution | Always `critical` | The tool's declared `risk:`, or `high` if it declares none. `requires_approval: true` raises it to at least `high` |
+| HITL approvals for tools loaded at init | TypeScript wrote the approval but never read it back. Python never used the manifest. Either way the reviewer was asked again on every call | Read from and recorded in the signed approval manifest, in both SDKs |
+| Python `requires_approval` | Ignored; only HITL quarantine ran | Enforced per call, as in TypeScript |
+| Python `execute(..., approved=True)` | Skipped policy denials too | Skips only the approval prompt; policy denials still apply |
+| Approval callback scope | One process-wide callback | Per call (`execute(..., { onApproval })`), then per instance (`InitOptions.onApproval`), then the global handler. With none, the call fails closed |
+| MCP approval | The error told the model to retry with `_matimo_approved: true`, and the server trusted it | The server asks the human through MCP elicitation. `_matimo_approved` is offered and honoured only with `trustClientApproval` / `trust_client_approval` |
+| MCP HTTP bearer check | String comparison | Constant-time comparison |
+| `matimo_approve_tool` | Any caller could approve any tool, including one it had just created; `MATIMO_AUTO_APPROVE` and patterns applied | Refuses when the caller's `agentId` created the tool. Requires the `admin` role when a policy context is supplied. Never pre-approved |
+| `MATIMO_AUTO_APPROVE=true` | Silent, and recommended in the approval error hint | Logs a warning at init. The hint recommends `onApproval` or `MATIMO_APPROVED_PATTERNS` |
+| `matimo_approve_tool` + reload | Without `MATIMO_APPROVAL_SECRET` (or with a different `approvalDir`) the tool signed with its own key, so the next reload rejected the tool it had just approved | Approvals are recorded with the owning instance and survive the reload |
+| `matimo_create_tool` / `matimo_get_tool_status` | Called a low-risk draft "auto-approved … ready for use" | Report `pending` until a human approves the draft |
+| `matimo_validate_tool` | TypeScript flagged the `requires_approval`/`status` fields creation sets itself; Python said `valid: true` despite critical violations | `valid` is true exactly when `matimo_create_tool` would accept the definition |
+| Python draft tools | Ran for anyone outside production, and for admins in production | Never in production; elsewhere only for the `admin` role, as in TypeScript |
+| Python untrusted tools | High-severity violations (disallowed domain, method or credential) rejected only in production; a tool with no `status` was always rejected | Critical and high violations reject in every environment; an unset `status` is accepted, as in TypeScript |
+| Python `no-ssrf` | Missed `*.internal`, `*.local`, `*.localhost` and `0.0.0.0` | Blocks them, as in TypeScript |
+| Python `ReloadResult` | `loaded` counted new names; `revalidated` counted replaced tools | `loaded` counts every registered tool; `revalidated` the untrusted tools re-checked, as in TypeScript |
+| Python LangChain tools | A failed call raised; LangGraph re-raises it, so a refused approval ended the agent run | The tool returns `"Error: <message>"` to the model, as in TypeScript |
+| Python credential lookup | Read `MATIMO_<TOOL_NAME>_<NAME>` and `<NAME>`, not the documented `MATIMO_<NAME>` | Reads `MATIMO_<NAME>` first (also from `credentials`); the older names still work |
+
+### Events
+
+- TypeScript now emits `tool:executed` (it never did before) and the new `tool:execution_failed`.
+- Python renamed `duration` (seconds) to `duration_ms` (milliseconds). `trace_id` is a full UUID,
+  no longer 8 characters. Python also emits the new `tool:execution_failed`.
+- The fields are the same in both SDKs; see [Execution Events](#execution-events).
+
+### Tool authoring (validators)
+
+`pnpm validate-tools` and `make validate-tools` now reject:
+
+- An HTTP `DELETE` tool without an explicit `requires_approval` (set `true`, or `false` to opt out).
+- A `type: function` tool without a `risk:` level.
+
+### New, additive
+
+- `auditSink` / `audit_sink` with `JsonlFileSink`, a hash-chained audit log ([Audit Sink](#audit-sink)).
+- `governanceMode` / `governance_mode` and `getGovernanceMode()` / `get_governance_mode()`.
+- `hitlMinRiskLevel` / `hitl_min_risk_level` in `PolicyConfig` and `policy.yaml`.
+- Function tools receive the caller's policy context: `(params, { credentials, policyContext })`
+  in TypeScript, `run(params, context)` in Python.
+- The MCP server's `context` option sets the policy context for every MCP call.
 
 ---
 

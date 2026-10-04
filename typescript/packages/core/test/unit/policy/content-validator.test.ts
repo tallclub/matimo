@@ -286,6 +286,16 @@ describe('validateToolContent', () => {
       );
     });
 
+    it('should pass tools that leave status unset', () => {
+      const tool = makeTool({
+        execution: { type: 'http', method: 'GET', url: 'https://api.example.com' },
+      });
+      delete tool.status;
+      const result = validateToolContent(tool, makeContext());
+      const statusViolation = result.violations.find((v) => v.rule === 'forced-draft-status');
+      expect(statusViolation).toBeUndefined();
+    });
+
     it('should pass tools with draft status', () => {
       const tool = makeTool({
         execution: { type: 'http', method: 'GET', url: 'https://api.example.com' },

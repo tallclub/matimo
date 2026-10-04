@@ -3,6 +3,7 @@ import path from 'path';
 import os from 'os';
 import axios from 'axios';
 import { MatimoInstance } from '../../src/matimo-instance';
+import { setGlobalMatimoInstance } from '../../src/decorators/tool-decorator';
 import matimoApproveTool from '../../tools/matimo_approve_tool/matimo_approve_tool';
 
 jest.mock('axios');
@@ -74,7 +75,7 @@ execution:
     // hash must be computed from the file's final, post-mutation on-disk content).
     const approval = await matimoApproveTool(
       { name: 'my-tool', tool_dir: untrustedDir },
-      { credentials: { MATIMO_APPROVAL_SECRET: SECRET } }
+      { credentials: { MATIMO_APPROVAL_SECRET: SECRET }, policyContext: { roles: ['admin'] } }
     );
     expect(approval.success).toBe(true);
 
@@ -100,6 +101,52 @@ execution:
     expect(result).toBeDefined();
     expect(result.success).toBe(true);
     expect(mockedAxios.request).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps an approval made without a configured secret, recorded in the owning instance', async () => {
+    // The default setup: no MATIMO_APPROVAL_SECRET (each manifest would sign with
+    // its own ephemeral key) and an approval directory that is not the tool's.
+    const savedSecret = process.env.MATIMO_APPROVAL_SECRET;
+    delete process.env.MATIMO_APPROVAL_SECRET;
+    const approvalDir = path.join(tmpDir, 'approvals');
+    fs.mkdirSync(approvalDir);
+    try {
+      const matimo = await MatimoInstance.init({
+        toolPaths: [untrustedDir],
+        untrustedPaths: [untrustedDir],
+        approvalDir,
+        logLevel: 'silent',
+      });
+      setGlobalMatimoInstance(matimo);
+      writeToolYaml(
+        'my-tool',
+        `
+name: my-tool
+version: '1.0.0'
+description: 'A benign agent-created tool'
+status: draft
+requires_approval: true
+execution:
+  type: http
+  method: GET
+  url: 'https://api.example.com/data'
+`
+      );
+      await matimo.reloadTools();
+
+      const approval = await matimoApproveTool(
+        { name: 'my-tool', tool_dir: untrustedDir },
+        { policyContext: { agentId: 'reviewer', roles: ['admin'] } }
+      );
+      expect(approval.success).toBe(true);
+
+      const reload = await matimo.reloadTools();
+      expect(reload.rejected).not.toContain('my-tool');
+      expect(matimo.getTool('my-tool')?.status).toBe('approved');
+    } finally {
+      setGlobalMatimoInstance(null);
+      if (savedSecret !== undefined) process.env.MATIMO_APPROVAL_SECRET = savedSecret;
+    }
   });
 
   it('still rejects a tool hand-edited to status: approved without going through matimo_approve_tool', async () => {

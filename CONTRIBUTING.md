@@ -1,6 +1,6 @@
 # Contributing to Matimo
 
-Welcome to Matimo! We're building a universal, configuration-driven AI tools ecosystem where tools are defined once in YAML and accessed everywhere.
+Welcome to Matimo! Matimo is a policy-governed tool-execution SDK for AI agents: a tool is defined once in YAML and runs from TypeScript, Python, LangChain, CrewAI and MCP, with every call passing through the policy engine. The repo holds two SDKs that must stay in step: `typescript/` (a pnpm workspace) and `python/` (a uv workspace).
 
 ## Quick Links
 
@@ -39,22 +39,22 @@ feat(docs): clarify QUICK_START OAuth examples with real Slack credentials flow
 
 ### Level 2: Add a Simple Tool (30-60 mins)
 
-**Create a new core tool with no external dependencies**
+**Add a tool to an existing provider package**
 
-- See: [packages/core/tools/calculator/](./packages/core/tools/) for template
-- Examples: `timestamp`, `uuid-generator`, `hash`, `base64-encode`
+- Template: any tool under `typescript/packages/<provider>/tools/` (for example `typescript/packages/github/tools/`)
+- Follow the [Tool Workflow](./docs/tool-development/TOOL_WORKFLOW.md) checklist
 
 **Steps:**
 
-1. Create `packages/core/tools/{tool-name}/definition.yaml`
-2. Implement the tool logic
-3. Add test fixture: `packages/core/test/fixtures/{tool-name}-fixture.yaml`
-4. Run `pnpm validate-tools && pnpm test`
+1. Create `typescript/packages/<provider>/tools/<tool-name>/definition.yaml` and the same file under `python/packages/<provider>/src/matimo_<provider>/tools/<tool-name>/`
+2. Prefer `type: http`; a `type: function` tool also needs `<tool-name>.ts` and `<tool-name>.py` beside the YAML
+3. Add unit tests in both SDKs (mocked HTTP) and the examples listed in the workflow
+4. Run `cd typescript && pnpm validate-tools && pnpm test`, and `cd python && make test`
 
 **Example PR:**
 
 ```
-feat(core): add uuid-generator tool for random ID creation
+feat(github): add github-list-releases tool
 ```
 
 ### Level 3: Fix a Bug (1-2 hours)
@@ -77,7 +77,7 @@ fix(core): handle empty input in calculator division operation
 
 - Look for tools with low coverage in `pnpm test:coverage`
 - Add edge cases, error scenarios, validation tests
-- See test patterns: [packages/core/test/unit/](./packages/core/test/unit/)
+- See test patterns: [typescript/packages/core/test/unit/](./typescript/packages/core/test/unit/) and [Testing Tools](./docs/tool-development/TESTING.md)
 
 **Example PR:**
 
@@ -108,9 +108,8 @@ feat(weather): add OpenWeatherMap tools (get-forecast, get-current-temp)
    - Example: `docs/quick-start-clarity`, `feat/uuid-tool`, `fix/calc-division`
 3. **Make changes** and test locally:
    ```bash
-   pnpm build
-   pnpm lint:fix && pnpm format
-   pnpm test
+   cd typescript && pnpm build && pnpm lint:fix && pnpm format && pnpm test
+   cd ../python && make lint && make typecheck && make test
    ```
 4. **Write clear PR title:**
    - ✅ `feat(core): add timestamp tool`
@@ -125,15 +124,16 @@ feat(weather): add OpenWeatherMap tools (get-forecast, get-current-temp)
 
 - 🐦 Ask in [GitHub Discussions](https://github.com/tallclub/matimo/discussions)
 - 💬 Join [Discord](https://discord.gg/3JPt4mxWDV) for real-time chat
-- 📖 Read [docs/](/docs/) for detailed guides
+- 📖 Read the [documentation index](./docs/index.md) for detailed guides
 
 ---
 
 ## Before You PR
 
-- Test locally with `pnpm test`
-- Run linter: `pnpm lint`
-- Run formatter: `pnpm format`
+- Test both SDKs: `cd typescript && pnpm test`, `cd python && make test`
+- Run linters: `pnpm lint` (from `typescript/`), `make lint && make typecheck` (from `python/`)
+- Run the formatter: `pnpm format`
+- Change TypeScript and Python together; a feature that ships in one SDK only needs a reason in the PR
 - Keep PRs focused (one thing per PR)
 - Describe **what** and **why** in the description
 
@@ -141,15 +141,18 @@ feat(weather): add OpenWeatherMap tools (get-forecast, get-current-temp)
 
 1. Fork the repository
 2. Clone your fork: `git clone https://github.com/YOUR_USERNAME/matimo.git`
-3. Install dependencies: `pnpm install`
+3. Install dependencies: `cd typescript && pnpm install`, then `cd ../python && make install`
 4. Create a feature branch: `git checkout -b feature/short-description`
+
+Run every `pnpm` command from `typescript/` and every `make`/`uv` command from `python/`. The root `packages/` and `examples/` directories are untracked leftovers; don't add files there.
 
 ## Development Setup
 
 ### Prerequisites
 
 - Node.js v18+ installed
-- pnpm installed globally: `npm install -g pnpm`
+- pnpm 8: `npm install -g pnpm@8`
+- Python 3.11 and [uv](https://docs.astral.sh/uv/)
 - Git configured
 - VS Code (or preferred IDE)
 
@@ -176,8 +179,8 @@ chmod +x .husky/pre-commit .husky/pre-push .husky/commit-msg
 
 | Hook         | Stage        | Checks               | Purpose                                 |
 | ------------ | ------------ | -------------------- | --------------------------------------- |
-| `pre-commit` | `git commit` | Lint + Format        | Fast feedback before committing         |
-| `pre-push`   | `git push`   | Tests + Coverage     | Comprehensive validation before pushing |
+| `pre-commit` | `git commit` | Lint + Format (TS), ruff (Python) | Fast feedback before committing |
+| `pre-push`   | `git push`   | TS tests + coverage, Python core tests (≥95% coverage) | Comprehensive validation before pushing |
 | `commit-msg` | `git commit` | Conventional commits | Enforce commit message format           |
 
 **What runs at each stage:**
@@ -185,17 +188,15 @@ chmod +x .husky/pre-commit .husky/pre-push .husky/commit-msg
 **Pre-commit (fast):**
 
 ```bash
-pnpm lint         # ESLint checks
-pnpm format:check # Prettier formatting check (no modifications)
+cd typescript && pnpm lint && pnpm format:check   # ESLint + Prettier check (no modifications)
+cd python && uv run ruff check packages/          # skipped if uv isn't installed
 ```
 
 **Pre-push (comprehensive):**
 
 ```bash
-pnpm test:coverage  # Run all tests with coverage report
-
-# Optional faster local check before pushing (runs unit + integration quickly)
-# pnpm test
+cd typescript && pnpm test:coverage   # fails below the floors in jest.config.cjs
+cd python && uv run pytest packages/core/tests/ --cov=packages/core/src/matimo --cov-fail-under=95
 ```
 
 **Note:** The pre-commit hook uses `format:check` to validate formatting without modifying files. If formatting issues are found, run `pnpm format` to fix them and then commit again.
@@ -225,15 +226,25 @@ git push --no-verify    # Skip pre-push hook
 ### Build & Test Commands
 
 ```bash
+# TypeScript (from typescript/)
 pnpm install            # Install dependencies
 pnpm build              # Compile TypeScript
 pnpm test               # Run all tests
 pnpm test:watch         # Watch mode for TDD
-pnpm test:coverage      # Coverage report
+pnpm test:coverage      # Coverage report (enforces the floors)
 pnpm lint               # Check for linting issues
 pnpm lint:fix           # Auto-fix linting issues
 pnpm format             # Format with Prettier
+pnpm validate-tools     # Validate every tool YAML
 pnpm clean              # Remove build artifacts
+
+# Python (from python/)
+make install            # uv sync --all-extras --dev
+make test               # All tests
+make test-coverage      # HTML coverage report
+make lint               # ruff
+make typecheck          # mypy strict on packages/core/src
+make validate-tools     # Validate every tool YAML
 ```
 
 ## Code Standards
@@ -255,7 +266,7 @@ interface ToolDefinition {
 }
 
 // Use const for immutable data
-const EXECUTION_TYPES = ['command', 'http', 'script'] as const;
+const EXECUTION_TYPES = ['http', 'function', 'command'] as const;
 
 // Include JSDoc comments explaining WHY, not WHAT
 /**
@@ -314,15 +325,8 @@ const DEFAULT_TIMEOUT = 5000;
 ### Error Handling
 
 ```typescript
-// Use custom error classes with standard codes
-enum ErrorCode {
-  INVALID_SCHEMA = 'INVALID_SCHEMA',
-  EXECUTION_FAILED = 'EXECUTION_FAILED',
-  AUTH_FAILED = 'AUTH_FAILED',
-  TOOL_NOT_FOUND = 'TOOL_NOT_FOUND',
-  FILE_NOT_FOUND = 'FILE_NOT_FOUND',
-  VALIDATION_FAILED = 'VALIDATION_FAILED',
-}
+// Throw MatimoError with an existing ErrorCode (see docs/api-reference/ERRORS.md for all 13)
+import { MatimoError, ErrorCode } from '@matimo/core';
 
 // Always include context in error logs
 try {
@@ -342,14 +346,13 @@ try {
 **DO:**
 
 ```typescript
-// Validate all inputs against schema
-const validated = toolSchema.parameters.parse(params);
-
-// Use environment variables for secrets (prefix: MATIMO_)
-const apiKey = process.env.MATIMO_SLACK_API_KEY;
-if (!apiKey) {
-  throw new MatimoError('Missing Slack API key', ErrorCode.AUTH_FAILED);
+// Validate inputs before using them
+if (typeof params.channel !== 'string' || params.channel.length === 0) {
+  throw new MatimoError('channel is required', ErrorCode.INVALID_PARAMETER);
 }
+
+// Take secrets from credential placeholders in the YAML ('Bearer {SLACK_BOT_TOKEN}');
+// Matimo fills them from the call's credentials or MATIMO_<NAME> / <NAME> in the environment
 
 // Redact sensitive data in logs
 logger.info('Tool auth', { userId: user.id, hasToken: !!token });
@@ -433,12 +436,12 @@ function loadToolFromFile(path: string): ToolDefinition {
 
 ### Test Quality
 
-- **Coverage Target:** 80%+ minimum, 90%+ for critical paths
+- **Coverage:** TypeScript must stay at or above the floors in `typescript/jest.config.cjs` (lines 95%, functions 97%, branches 87%, statements 95%); new tools aim for 100% in both SDKs
 - **Naming:** Describe behavior - "should X when Y"
 - **Organization:** Use `describe` and `it` blocks
 - **Pattern:** AAA - Arrange, Act, Assert
 - **Fixtures:** Use test data files in `test/fixtures/`
-- **Mocks:** Clean up mocks after each test with `afterEach(() => jest.clearAllMocks())`
+- **Mocks:** Never call live APIs in unit tests; mock HTTP with `jest.mock('axios')` (TypeScript) or `respx` (Python)
 
 ## Commits & Pull Requests
 
@@ -452,7 +455,7 @@ function loadToolFromFile(path: string): ToolDefinition {
 Closes #<issue>
 ```
 
-**Types:** `feat`, `fix`, `docs`, `refactor`, `test`, `chore`
+**Types** (enforced by commitlint): `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`, `ci`, `revert`, `example`. See [Commit Guidelines](./docs/community/COMMIT_GUIDELINES.md).
 
 **Examples:**
 
@@ -468,51 +471,49 @@ refactor(loader): simplify YAML parsing logic
 
 - [ ] **Title:** Descriptive, concise summary
 - [ ] **Description:** What changed and why
-- [ ] **Tests:** All passing, coverage maintained (>80%)
+- [ ] **Tests:** All passing in both SDKs; TypeScript coverage floors hold
 - [ ] **Code:** Formatted (`pnpm format`) and linted (`pnpm lint`)
 - [ ] **Build:** TypeScript compiles without errors (`pnpm build`)
 - [ ] **Docs:** Updated if behavior changes
 
 ## Adding a Tool
 
-1. Create `tools/{provider}/{tool-name}.yaml` with full YAML schema
-2. Include all required fields:
-   - `name`, `description`, `version`
-   - `parameters` with types and validation
-   - `execution` with proper command/HTTP config
-   - `output_schema` for response validation
-   - `authentication` if required
-3. Add test fixture in `test/fixtures/{provider}/`
-4. Add examples in tool YAML showing actual usage
-5. Test locally: `pnpm test`
-6. Create PR with tool definition
+Follow the [Tool Workflow](./docs/tool-development/TOOL_WORKFLOW.md) checklist; [Adding Tools](./docs/tool-development/ADDING_TOOLS.md) has the detail. In short:
 
-**Example tool structure:**
+1. Read the provider's official API reference
+2. Write `definition.yaml` for both SDKs (prefer `type: http`; leave `status` unset)
+3. `pnpm validate-tools` (it also requires `requires_approval: true` on HTTP DELETE tools and `risk:` on function tools)
+4. Unit tests in both SDKs with mocked HTTP
+5. Examples: TypeScript factory, decorator, LangChain and (for writes) with-approval; Python native, LangChain and CrewAI
+6. Run the full gate in both SDKs
+
+**Example tool structure** (a GitHub HTTP tool):
 
 ```yaml
-name: calculator
-description: Perform basic math operations
+name: github-get-repository
+description: Get repository details
 version: '1.0.0'
 parameters:
-  operation:
+  owner:
     type: string
-    enum: [add, subtract, multiply, divide]
     required: true
-  a:
-    type: number
+    description: Repository owner
+  repo:
+    type: string
     required: true
-  b:
-    type: number
-    required: true
+    description: Repository name
 execution:
-  type: command
-  command: node calculator.js
-  args: ['--op', '{operation}', '{a}', '{b}']
-output_schema:
-  type: object
-  properties:
-    result:
-      type: number
+  type: http
+  method: GET
+  url: 'https://api.github.com/repos/{owner}/{repo}'
+  headers:
+    Authorization: 'Bearer {GITHUB_TOKEN}'
+    Accept: application/vnd.github+json
+authentication:
+  type: bearer
+  location: header
+notes:
+  env: GITHUB_TOKEN
 ```
 
 ## Third-Party Connectors — Credential Policy (BYOK)
@@ -558,77 +559,24 @@ AI PRs are first-class citizens here. We just want transparency so reviewers kno
 
 ## Current Focus
 
-We are currently prioritizing:
-
-- **Foundation:** Core tool loading, execution, and validation
-- **SDK:** TypeScript SDK with factory and decorator patterns
-- **Integration:** MCP server for Claude integration
-- **Tools:** Building 1000+ pre-configured tools
-- **Testing:** Comprehensive test coverage (80%+)
-
-Check [GitHub Issues](https://github.com/tallclub/matimo/issues) for "good first issue" labels!
-
-## Performance & Quality Targets
-
-### Execution Time
-
-- Simple tools (echo, time): <100ms
-- API tools (GitHub, Slack): <2 seconds
-- Data processing (CSV, JSON): <1 second
-
-### Test Coverage
-
-- **Overall:** 80%+ (currently 112 tests across 11 suites)
-- **Critical paths:** 90%+
-- **Branch coverage:** All if/else paths tested
+See the [Roadmap](./docs/ROADMAP.md) for what is planned and [GitHub Issues](https://github.com/tallclub/matimo/issues) for "good first issue" labels.
 
 ### Build Quality
 
-- **Zero TypeScript errors** (strict mode)
-- **Zero ESLint warnings**
-- **All tests passing** before merge
-- **No `any` types** in codebase
-
-## Roadmap
-
-### Foundation (Complete)
-
-- Core tool types and schema validation
-- Tool loader (YAML/JSON parsing)
-- Command and HTTP executors
-- Error handling and logging
-- 10+ example tools
-- 112+ comprehensive tests
-
-### Reliability (Coming)
-
-- OAuth2 authentication
-- Rate limiting and quota tracking
-- API schema health monitoring
-- Advanced error recovery
-
-### Ecosystem (Coming)
-
-- Distributed tool registry
-- Automated schema translation (OpenAPI → Matimo)
-- Skills/workflows (multi-tool composition)
-- Python SDK
-
-### Intelligence (Coming)
-
-- LLM-powered tool recommendations
-- Automatic parameter inference
-- Schema generation from API docs
+- **Zero TypeScript errors** (strict mode) and mypy strict on `python/packages/core/src`
+- **Zero ESLint and ruff errors**
+- **All tests passing** in both SDKs before merge
+- **No `any` types** in TypeScript source
 
 ## Troubleshooting
 
 ### Tests Failing
 
 ```bash
-# Clean and reinstall
-rm -rf node_modules pnpm-lock.yaml
-pnpm install
-pnpm test
+# Clean and reinstall (keep pnpm-lock.yaml)
+cd typescript
+pnpm clean && rm -rf node_modules
+pnpm install && pnpm test
 ```
 
 ### TypeScript Errors
@@ -655,6 +603,6 @@ pnpm format
 
 ## License
 
-By contributing to Matimo, you agree that your contributions will be licensed under the same license as the project (check LICENSE file).
+By contributing to Matimo, you agree that your contributions will be licensed under the project's [MIT License](./LICENSE).
 
 Thank you for contributing to Matimo! 🙏

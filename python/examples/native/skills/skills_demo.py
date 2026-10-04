@@ -50,12 +50,13 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent.parent.parent / ".env")
 
 from matimo import (  # noqa: E402
+    ApprovalRequest,
     Matimo,
     build_relevant_skill_prompt,
     convert_tools_to_langchain,
-    get_global_approval_handler,
     get_skills_metadata,
     set_global_matimo_instance,
+    tool,
 )
 
 # ── Formatting helpers ───────────────────────────────────────────────────────
@@ -117,10 +118,10 @@ async def _next_stdin_line(prompt: str) -> str:
         return "n"
 
 
-async def interactive_approval(request: dict[str, Any]) -> bool:
-    tool_name = request.get("tool_name", "")
-    description = str(request.get("description", "N/A") or "N/A")
-    params = request.get("params", {}) or {}
+async def interactive_approval(request: ApprovalRequest) -> bool:
+    tool_name = request.tool_name
+    description = request.description or "N/A"
+    params = request.params or {}
 
     if tool_name in approved_whitelist:
         print(f"    {PASS}  Auto-approved (whitelisted): {tool_name}")
@@ -306,10 +307,11 @@ async def main() -> None:
 
         header("PHASE 1: Initialize Matimo with Skills Meta-Tools")
 
-        approval_handler = get_global_approval_handler()
-        approval_handler.set_approval_callback(interactive_approval)
-
-        matimo = await Matimo.init(auto_discover=True, log_level="silent")
+        matimo = await Matimo.init(
+            auto_discover=True,
+            log_level="silent",
+            on_approval=interactive_approval,  # Prompts before calls that need approval
+        )
         set_global_matimo_instance(matimo)
 
         tools = matimo.list_tools()
@@ -519,8 +521,10 @@ async def main() -> None:
         header("PHASE 4: Non-MCP Progressive Disclosure (agentskills.io spec)")
 
         matimo_with_skills = await Matimo.init(
+            auto_discover=True,
             skill_paths=[str(skills_dir)],
             log_level="silent",
+            on_approval=interactive_approval,  # Each instance has its own approval callback
         )
 
         # Level 1 -- metadata only
@@ -572,6 +576,127 @@ async def main() -> None:
             print(f"\n  {INFO} Injected prompt preview (first 300 chars):")
             print(f'  "{preview}..."\n')
 
+        # ── PHASE 5: New Meta-Tools -- Search, Sections, Content ─────────────
+        #
+        # matimo_search_skills / matimo_get_skill_sections / matimo_get_skill_content
+        # wrap semantic_search_skills() / get_skill_sections() / get_skill_content() as
+        # agent-callable meta-tools (see "Searching and Loading Skills Selectively" in
+        # docs/skills/SKILLS.md). Demonstrated here via the two SDK integration patterns
+        # that don't require an LLM call: factory (direct execute) and decorator
+        # (@tool-wrapped service class). The third required pattern -- a LangChain agent
+        # calling matimo_search_skills to pick a skill semantically before loading it --
+        # lives in typescript/examples/tools/agents/langchain-skills-policy-agent.ts
+        # (the Python examples tree has no LangChain-agents equivalent yet).
+
+        header("PHASE 5: New Meta-Tools -- Factory & Decorator Patterns")
+
+        # matimo_search_skills / matimo_get_skill_sections / matimo_get_skill_content are
+        # 'type: function' tools that reach their owning instance via
+        # get_global_matimo_instance() rather than the instance execute() was called on --
+        # route the global at matimo_with_skills (the instance with the agent-created
+        # skills loaded) before either the factory or decorator pattern calls them.
+        set_global_matimo_instance(matimo_with_skills)
+
+        subheader("5a. Factory pattern -- direct matimo.execute()")
+
+        search_exec = await matimo_with_skills.execute(
+            "matimo_search_skills",
+            {"query": test_query, "limit": 5, "min_score": 0.1},
+        )
+        show_result(
+            f"matimo.execute('matimo_search_skills', query='{test_query}') -- "
+            f"{search_exec['total']} result(s)",
+            PASS if search_exec["success"] else FAIL,
+        )
+
+        top_skill_name = (
+            search_exec["results"][0]["name"] if search_exec["results"] else None
+        )
+
+        sections_exec = (
+            await matimo_with_skills.execute(
+                "matimo_get_skill_sections", {"name": top_skill_name}
+            )
+            if top_skill_name
+            else None
+        )
+        show_result(
+            f"matimo.execute('matimo_get_skill_sections', name='{top_skill_name}') -- "
+            f"{sections_exec['total'] if sections_exec else 0} section(s)",
+            PASS if sections_exec and sections_exec["success"] else WARN,
+        )
+
+        content_exec = (
+            await matimo_with_skills.execute(
+                "matimo_get_skill_content",
+                {"name": top_skill_name, "max_tokens": 200},
+            )
+            if top_skill_name
+            else None
+        )
+        show_result(
+            f"matimo.execute('matimo_get_skill_content', name='{top_skill_name}') -- "
+            f"{content_exec.get('tokensUsed', 0) if content_exec else 0} tokens",
+            PASS if content_exec and content_exec["success"] else WARN,
+        )
+
+        subheader("5b. Decorator pattern -- @tool-wrapped service class")
+
+        class SkillsMetaToolsService:
+            """Wraps the 3 new meta-tools as strongly-typed methods, mirroring slack_decorator.py."""
+
+            @tool("matimo_search_skills")
+            async def search(self, query: str, limit: int = 10, min_score: float = 0.1):
+                """Decorator auto-calls matimo.execute('matimo_search_skills', {...})."""
+                ...
+
+            @tool("matimo_get_skill_sections")
+            async def sections(self, name: str):
+                """Decorator auto-calls matimo.execute('matimo_get_skill_sections', {...})."""
+                ...
+
+            @tool("matimo_get_skill_content")
+            async def content(self, name: str, max_tokens: int | None = None):
+                """Decorator auto-calls matimo.execute('matimo_get_skill_content', {...})."""
+                ...
+
+        # @tool resolves the target instance via the same global set above.
+        skills_meta_service = SkillsMetaToolsService()
+
+        decorator_search = await skills_meta_service.search(
+            query=test_query, limit=5, min_score=0.1
+        )
+        show_result(
+            f"service.search() via @tool('matimo_search_skills') -- "
+            f"{decorator_search['total']} result(s)",
+            PASS if decorator_search["success"] else FAIL,
+        )
+
+        decorator_sections = (
+            await skills_meta_service.sections(name=top_skill_name)
+            if top_skill_name
+            else None
+        )
+        show_result(
+            f"service.sections() via @tool('matimo_get_skill_sections') -- "
+            f"{decorator_sections['total'] if decorator_sections else 0} section(s)",
+            PASS if decorator_sections and decorator_sections["success"] else WARN,
+        )
+
+        decorator_content = (
+            await skills_meta_service.content(name=top_skill_name, max_tokens=200)
+            if top_skill_name
+            else None
+        )
+        show_result(
+            f"service.content() via @tool('matimo_get_skill_content') -- "
+            f"{decorator_content.get('tokensUsed', 0) if decorator_content else 0} tokens",
+            PASS if decorator_content and decorator_content["success"] else WARN,
+        )
+
+        # Restore the global instance used earlier in the demo.
+        set_global_matimo_instance(matimo)
+
         # ── Summary ─────────────────────────────────────────────────────────
 
         header("SUMMARY")
@@ -622,6 +747,19 @@ async def main() -> None:
         print(
             f"    {PASS if relevant_prompt else WARN}  "
             f"build_relevant_skill_prompt(query) -> Level 2: {len(relevant_prompt)} chars loaded"
+        )
+        print()
+        print(
+            "  New Meta-Tools -- matimo_search_skills / matimo_get_skill_sections / "
+            "matimo_get_skill_content:"
+        )
+        print(
+            f"    {PASS if search_exec['success'] else FAIL}  "
+            f"Factory pattern   -- matimo.execute(...) for all 3 tools"
+        )
+        print(
+            f"    {PASS if decorator_search['success'] else FAIL}  "
+            f"Decorator pattern -- @tool-wrapped service class for all 3 tools"
         )
         print()
         print("  Skills on Disk:")

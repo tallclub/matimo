@@ -9,7 +9,10 @@ import { ParameterEncodingConfig } from '../encodings/parameter-encoding.js';
  */
 export interface Parameter {
   type: 'string' | 'number' | 'boolean' | 'array' | 'object';
-  description: string;
+  // Required on top-level tool parameters by convention; optional here so nested
+  // items/properties sub-schemas (e.g. `items: { type: string }`) don't need one —
+  // the parent array/object parameter's description already documents the field.
+  description?: string;
   required?: boolean;
   enum?: (string | number | boolean)[];
   default?: unknown;
@@ -141,6 +144,11 @@ export interface ToolDefinition {
    */
   requires_approval?: boolean;
   /**
+   * Declared risk level. It can only raise the automatically computed risk,
+   * never lower it; a function tool is classified by it (and must declare it).
+   */
+  risk?: 'low' | 'medium' | 'high' | 'critical';
+  /**
    * Tool lifecycle status. Tools without a status are treated as 'approved'.
    * - draft: Agent-created, not yet human-reviewed
    * - approved: Human-reviewed and ready for use
@@ -216,7 +224,7 @@ export interface ExecuteOptions {
   timeout?: number;
   /**
    * Per-call credential overrides. Keys must match the env-var names that the
-   * tool's YAML references (e.g. `SLACK_BOT_TOKEN`, `GITHUB_ACCESS_TOKEN`).
+   * tool's YAML references (e.g. `SLACK_BOT_TOKEN`, `GITHUB_TOKEN`).
    *
    * When provided:
    * - **HttpExecutor**: used for Authorization headers / query params / Basic Auth
@@ -244,6 +252,13 @@ export interface ExecuteOptions {
    * Default: false
    */
   approved?: boolean;
+  /**
+   * Approval callback for this call only. Takes precedence over the
+   * instance's `onApproval` and the global approval handler's callback.
+   * Used where one instance serves many users, e.g. the MCP server asks the
+   * human behind the current MCP session.
+   */
+  onApproval?: import('../approval/approval-handler').ApprovalCallback;
 }
 
 /**
@@ -328,7 +343,12 @@ export interface SkillDefinition {
   source: 'builtin' | 'user' | 'catalog';
   _path?: string; // Internal: path to skill directory
   catalogInfo?: SkillCatalogInfo;
-  // Skill composition (Phase 4)
+  /**
+   * Names of other skills this one depends on. Unscheduled placeholder for
+   * future skill composition (a skill declaring it needs another loaded
+   * first) — nothing in the loader, registry, or meta-tools reads or
+   * enforces this field today. Left in place intentionally; not active work.
+   */
   dependsOn?: string[];
 }
 

@@ -86,6 +86,7 @@ export default async function matimoListSkills(
 
   try {
     // Try global MatimoInstance first
+    let fromInstance = false;
     try {
       const matimo = getGlobalMatimoInstance();
       if (matimo) {
@@ -93,7 +94,7 @@ export default async function matimoListSkills(
         if (matimoSkills?.length > 0) {
           logger.debug('matimo_list_skills: from MatimoInstance', { count: matimoSkills.length });
           matimoSkills.forEach((s) => allSkills.set(s.name, s));
-          return { skills: Array.from(allSkills.values()), total: allSkills.size };
+          fromInstance = true;
         }
       }
     } catch (err) {
@@ -102,21 +103,23 @@ export default async function matimoListSkills(
       });
     }
 
-    // Auto-discover from @matimo/* packages
-    try {
-      const toolLoader = new ToolLoader();
-      const discoveredPaths = toolLoader.autoDiscoverPackages();
+    // Auto-discover from @matimo/* packages; an instance's skills already include them
+    if (!fromInstance) {
+      try {
+        const toolLoader = new ToolLoader();
+        const discoveredPaths = toolLoader.autoDiscoverPackages();
 
-      for (const toolPath of discoveredPaths) {
-        const pkgDir = path.dirname(toolPath);
-        const skillsPath = path.join(pkgDir, 'skills');
-        const discovered = loadSkillsFromPath(skillsPath, 'builtin', logger);
-        discovered.forEach((s) => allSkills.set(s.name, s));
+        for (const toolPath of discoveredPaths) {
+          const pkgDir = path.dirname(toolPath);
+          const skillsPath = path.join(pkgDir, 'skills');
+          const discovered = loadSkillsFromPath(skillsPath, 'builtin', logger);
+          discovered.forEach((s) => allSkills.set(s.name, s));
+        }
+      } catch (err) {
+        logger.debug('matimo_list_skills: auto-discovery failed', {
+          error: (err as Error).message,
+        });
       }
-    } catch (err) {
-      logger.debug('matimo_list_skills: auto-discovery failed', {
-        error: (err as Error).message,
-      });
     }
 
     // Load from explicit skills_dir if provided

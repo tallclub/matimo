@@ -3,6 +3,8 @@ import path from 'path';
 import os from 'os';
 import matimoApproveTool from '../../../tools/matimo_approve_tool/matimo_approve_tool';
 
+const ADMIN = { policyContext: { roles: ['admin'] } };
+
 describe('matimo_approve_tool', () => {
   let tmpDir: string;
 
@@ -36,10 +38,13 @@ execution:
 `
     );
 
-    const result = await matimoApproveTool({
-      name: 'my-tool',
-      tool_dir: tmpDir,
-    });
+    const result = await matimoApproveTool(
+      {
+        name: 'my-tool',
+        tool_dir: tmpDir,
+      },
+      ADMIN
+    );
 
     expect(result.success).toBe(true);
     expect(result.name).toBe('my-tool');
@@ -67,10 +72,13 @@ execution:
 `
     );
 
-    await matimoApproveTool({
-      name: 'my-tool',
-      tool_dir: tmpDir,
-    });
+    await matimoApproveTool(
+      {
+        name: 'my-tool',
+        tool_dir: tmpDir,
+      },
+      ADMIN
+    );
 
     const manifestPath = path.join(tmpDir, '.matimo-approvals.json');
     expect(fs.existsSync(manifestPath)).toBe(true);
@@ -84,10 +92,13 @@ execution:
   });
 
   it('should return error for non-existent tool', async () => {
-    const result = await matimoApproveTool({
-      name: 'nonexistent',
-      tool_dir: tmpDir,
-    });
+    const result = await matimoApproveTool(
+      {
+        name: 'nonexistent',
+        tool_dir: tmpDir,
+      },
+      ADMIN
+    );
 
     expect(result.success).toBe(false);
     expect(result.message).toContain('not found');
@@ -109,36 +120,48 @@ execution:
 `
     );
 
-    const result = await matimoApproveTool({
-      name: 'ssrf-tool',
-      tool_dir: tmpDir,
-    });
+    const result = await matimoApproveTool(
+      {
+        name: 'ssrf-tool',
+        tool_dir: tmpDir,
+      },
+      ADMIN
+    );
 
     expect(result.success).toBe(false);
     expect(result.message).toContain('policy violations');
   });
 
   it('should reject names with path traversal and never reach the approval manifest', async () => {
-    const result = await matimoApproveTool({
-      name: '../../../etc/passwd',
-      tool_dir: tmpDir,
-    });
+    const result = await matimoApproveTool(
+      {
+        name: '../../../etc/passwd',
+        tool_dir: tmpDir,
+      },
+      ADMIN
+    );
     expect(result.success).toBe(false);
     expect(result.message).toContain('invalid characters');
     // No manifest write should have happened — approve() was never reached.
     expect(fs.existsSync(path.join(tmpDir, '.matimo-approvals.json'))).toBe(false);
 
-    const backslashResult = await matimoApproveTool({
-      name: '..\\..\\secrets',
-      tool_dir: tmpDir,
-    });
+    const backslashResult = await matimoApproveTool(
+      {
+        name: '..\\..\\secrets',
+        tool_dir: tmpDir,
+      },
+      ADMIN
+    );
     expect(backslashResult.success).toBe(false);
     expect(backslashResult.message).toContain('invalid characters');
 
-    const controlCharResult = await matimoApproveTool({
-      name: 'tool\x00name',
-      tool_dir: tmpDir,
-    });
+    const controlCharResult = await matimoApproveTool(
+      {
+        name: 'tool\x00name',
+        tool_dir: tmpDir,
+      },
+      ADMIN
+    );
     expect(controlCharResult.success).toBe(false);
     expect(controlCharResult.message).toContain('invalid characters');
   });
@@ -164,9 +187,64 @@ execution:
         name: 'my-tool',
         tool_dir: tmpDir,
       },
-      { credentials: { MATIMO_APPROVAL_SECRET: 'test-secret-123' } }
+      { ...ADMIN, credentials: { MATIMO_APPROVAL_SECRET: 'test-secret-123' } }
     );
 
     expect(result.success).toBe(true);
+  });
+
+  describe('who may approve', () => {
+    const draft = (createdBy?: string) => `
+name: my-tool
+version: '1.0.0'
+description: 'A tool'
+status: draft
+requires_approval: true
+${createdBy ? `created_by: ${createdBy}\n` : ''}execution:
+  type: http
+  method: GET
+  url: 'https://api.example.com/data'
+`;
+
+    it('leaves the decision to the confirming human when the host supplies no identity', async () => {
+      writeToolYaml('my-tool', draft('agent-a'));
+      const result = await matimoApproveTool({ name: 'my-tool', tool_dir: tmpDir });
+      expect(result.success).toBe(true);
+    });
+
+    it.each([
+      ['no roles', { policyContext: {} }],
+      ['a non-admin role', { policyContext: { roles: ['operator'] } }],
+    ])('refuses a caller with %s and leaves the tool untouched', async (_label, context) => {
+      writeToolYaml('my-tool', draft());
+      const result = await matimoApproveTool({ name: 'my-tool', tool_dir: tmpDir }, context);
+
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('requires the admin role');
+      const content = fs.readFileSync(path.join(tmpDir, 'my-tool', 'definition.yaml'), 'utf-8');
+      expect(content).toContain('status: draft');
+      expect(fs.existsSync(path.join(tmpDir, '.matimo-approvals.json'))).toBe(false);
+    });
+
+    it('refuses to let the creating agent approve its own tool', async () => {
+      writeToolYaml('my-tool', draft('agent-a'));
+      const result = await matimoApproveTool(
+        { name: 'my-tool', tool_dir: tmpDir },
+        { policyContext: { agentId: 'agent-a', roles: ['admin'] } }
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('someone other than its creator');
+    });
+
+    it('lets a different admin approve it', async () => {
+      writeToolYaml('my-tool', draft('agent-a'));
+      const result = await matimoApproveTool(
+        { name: 'my-tool', tool_dir: tmpDir },
+        { policyContext: { agentId: 'reviewer', roles: ['admin'] } }
+      );
+
+      expect(result.success).toBe(true);
+    });
   });
 });

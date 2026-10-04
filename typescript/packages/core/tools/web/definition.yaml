@@ -1,5 +1,6 @@
 name: web
 version: '1.0.0'
+risk: medium
 description: Fetch and parse web content from URLs. Supports redirects, headers, timeouts, and content extraction.
 
 parameters:

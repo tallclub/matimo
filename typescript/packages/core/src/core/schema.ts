@@ -1,22 +1,39 @@
 import { z } from 'zod';
 import { MatimoError, ErrorCode } from '../errors/matimo-error.js';
+import type { Parameter, ToolDefinition as PublicToolDefinition } from './types.js';
 
 /**
  * Core Zod validation schemas for all Matimo tool properties.
  * These schemas ensure YAML tools conform to the spec on load.
  */
 
-// Parameter types that tools can define
-export const ParameterSchema = z.object({
-  type: z.enum(['string', 'number', 'boolean', 'array', 'object']),
-  description: z.string(),
-  required: z.boolean().optional(),
-  enum: z.array(z.any()).optional(),
-  default: z.any().optional(),
-  examples: z.array(z.any()).optional(),
-});
+// Recursive parameter shape, used for items/properties sub-schemas where a
+// description is optional — the parent array/object parameter's own
+// description already documents the field.
+// Recursive (items/properties reference this schema itself), so it needs
+// z.lazy() plus an explicit type annotation — see Zod's recursive-schema pattern.
+const ParameterShapeSchema: z.ZodType<Parameter> = z.lazy(() =>
+  z.object({
+    type: z.enum(['string', 'number', 'boolean', 'array', 'object']),
+    description: z.string().optional(),
+    required: z.boolean().optional(),
+    enum: z.array(z.any()).optional(),
+    default: z.any().optional(),
+    examples: z.array(z.any()).optional(),
+    items: ParameterShapeSchema.optional(),
+    properties: z.record(z.string(), ParameterShapeSchema).optional(),
+  })
+);
 
-export type Parameter = z.infer<typeof ParameterSchema>;
+// Top-level tool parameters (the values of a tool's `parameters:` map) must
+// carry their own description; nested items/properties may omit theirs (see
+// ParameterShapeSchema above).
+export const ParameterSchema: z.ZodType<Parameter> = ParameterShapeSchema.refine(
+  (param) => typeof param.description === 'string' && param.description.length > 0,
+  { message: 'description is required', path: ['description'] }
+);
+
+export type { Parameter };
 
 // Authentication configuration
 export const AuthConfigSchema = z.object({
@@ -111,6 +128,13 @@ export const OutputSchemaSchema = z.object({
   properties: z.record(z.string(), OutputPropertySchema).optional(),
   required: z.array(z.string()).optional(),
   description: z.string().optional(),
+  /**
+   * Opt-in per-tool cap (in UTF-8 bytes) on a tool's serialized response
+   * size, enforced by applyResponseSizeGuardrail() in matimo-instance.ts.
+   * Overrides the instance-level `defaultMaxResponseSize` option and the
+   * built-in DEFAULT_MAX_RESPONSE_SIZE_BYTES fallback for this tool only.
+   */
+  max_response_size: z.number().positive().optional(),
 });
 
 export type OutputSchema = z.infer<typeof OutputSchemaSchema>;
@@ -174,6 +198,16 @@ export type ToolDefinition = z.infer<typeof ToolDefinitionSchema> & {
 
 // export type ToolDefinition = z.infer<typeof ToolDefinitionSchema>;
 
+/**
+ * Build-time guard: every field this schema accepts must also be on the
+ * public `ToolDefinition` interface in core/types.ts. When one is missing,
+ * `pnpm build` fails here naming it.
+ */
+type AssertNoMissingFields<Missing extends never> = Missing;
+export type ToolDefinitionFieldsInSync = AssertNoMissingFields<
+  Exclude<keyof ToolDefinition, keyof PublicToolDefinition>
+>;
+
 // OAuth2 provider endpoints schema
 export const OAuth2EndpointsSchema = z.object({
   authorizationUrl: z.string().url(),
@@ -200,6 +234,26 @@ export const ProviderDefinitionSchema = z.object({
 });
 
 export type ProviderDefinition = z.infer<typeof ProviderDefinitionSchema>;
+
+/**
+ * YAML frontmatter for a SKILL.md file. Runtime counterpart to the
+ * `SkillFrontmatter` interface in `core/types.ts` — used by `SkillLoader` to
+ * validate frontmatter on load, and exported here (rather than kept private
+ * inside `skill-loader.ts`) so external validation — a host platform checking
+ * a `SkillDefinition` before calling `registerSkill()`, for example — can
+ * reuse the exact same rules tool definitions get via `ToolDefinitionSchema`.
+ */
+export const SkillFrontmatterSchema = z.object({
+  name: z.string().min(1, 'name is required'),
+  description: z.string().min(1, 'description is required').max(1024),
+  version: z.string().optional(),
+  license: z.string().optional(),
+  compatibility: z.string().max(500).optional(),
+  'allowed-tools': z.union([z.string(), z.array(z.string())]).optional(),
+  metadata: z.record(z.string(), z.string()).optional(),
+});
+
+export type SkillFrontmatterZod = z.infer<typeof SkillFrontmatterSchema>;
 
 /**
  * Validate a tool definition against the schema

@@ -54,7 +54,6 @@ import {
   classifyRisk,
   ToolIntegrityTracker,
   ApprovalManifest,
-  getGlobalApprovalHandler,
   setGlobalMatimoInstance,
   MCPServer,
 } from 'matimo';
@@ -431,19 +430,20 @@ async function main(): Promise<void> {
       logLevel: 'silent',
       untrustedPaths: [tempDir], // Agent-created tools are untrusted until approved
       onEvent: (event: MatimoEvent) => auditLog.push(event),
+      // Human-in-the-loop: calls to tools with `requires_approval: true`
+      // prompt in the terminal before they run.
+      onApproval: interactiveApproval,
     });
     setGlobalMatimoInstance(matimo);
     console.info(`    ${INFO} untrustedPaths: [${tempDir}]`);
     console.info(`    ${INFO} Agent-created tools in this dir will be picked up on reload.`);
 
-    // ── Set up interactive terminal approval (human-in-the-loop) ────
+    // ── Interactive terminal approval (human-in-the-loop) ────────────
     //
-    // When a tool with `requires_approval: true` is called by the agent,
-    // the approval handler prompts the human in the terminal. If approved,
-    // the tool name is added to a session whitelist.
-    const approvalHandler = getGlobalApprovalHandler();
-    approvalHandler.setApprovalCallback(interactiveApproval);
-    result('Interactive terminal approval callback installed', PASS);
+    // onApproval above is this instance's approval callback: when the agent
+    // calls a tool with `requires_approval: true`, it prompts the human in
+    // the terminal. If approved, the tool name is added to a session whitelist.
+    result('Interactive terminal approval callback installed (onApproval)', PASS);
     console.info(`    ${INFO} Tools with requires_approval will prompt for human consent.`);
 
     const tools = matimo.listTools();
@@ -682,6 +682,11 @@ async function main(): Promise<void> {
       untrustedPaths: [tempDir],
       mcpToken: mcpToken,
       policyConfig,
+      // This script is the MCP client and cannot answer an elicitation
+      // request, so it confirms calls itself with `_matimo_approved: true`.
+      // Only trust that flag from a client that asks its own user first,
+      // never from one driven by a model.
+      trustClientApproval: true,
     });
 
     try {
@@ -818,7 +823,8 @@ async function main(): Promise<void> {
 
         // 11f: Execute matimo_reload_tools via MCP tools/call
         // This proves an MCP client can trigger hot-reload without SDK access.
-        // The tool requires approval, so we pass _matimo_approved: true (MCP pattern).
+        // The tool requires approval. The server trusts this client's
+        // `_matimo_approved: true` because it runs with trustClientApproval.
         const reloadRes = await fetch(`http://localhost:${mcpPort}/mcp`, {
           method: 'POST',
           headers: {

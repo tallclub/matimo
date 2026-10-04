@@ -1,11 +1,12 @@
 {
   "name": "@matimo/postgres",
-  "version": "0.1.8",
+  "version": "0.2.0",
   "description": "Postgres tools for Matimo",
   "license": "MIT",
   "type": "module",
   "files": [
     "tools",
+    "skills",
     "README.md",
     "definition.yaml"
   ],

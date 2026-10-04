@@ -1,4 +1,4 @@
-import { MatimoInstance, getGlobalApprovalHandler, type ApprovalRequest } from '@matimo/core';
+import { MatimoInstance, type ApprovalRequest } from '@matimo/core';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -29,9 +29,7 @@ function createApprovalCallback() {
 
     if (!isInteractive) {
       console.info('\n❌ REJECTED - Non-interactive environment (no terminal)');
-      console.info('\n💡 To enable auto-approval in CI/scripts:');
-      console.info('   export MATIMO_AUTO_APPROVE=true');
-      console.info('\n💡 Or approve specific patterns:');
+      console.info('\n💡 To pre-approve this tool in CI/scripts:');
       console.info('   export MATIMO_APPROVED_PATTERNS="edit"');
       console.info('\n' + '='.repeat(70) + '\n');
       return false;
@@ -70,11 +68,11 @@ function createApprovalCallback() {
  */
 async function editExample() {
   // Initialize Matimo with autoDiscover to find all tools (core + providers)
-  const matimo = await MatimoInstance.init({ autoDiscover: true });
-
-  // Configure centralized approval handler
-  const approvalHandler = getGlobalApprovalHandler();
-  approvalHandler.setApprovalCallback(createApprovalCallback());
+  const matimo = await MatimoInstance.init({
+    autoDiscover: true,
+    // Decides every call that needs approval, for this instance only.
+    onApproval: createApprovalCallback(),
+  });
 
   console.info('=== Edit Tool - Factory Pattern (Interactive Approval) ===\n');
 
@@ -128,9 +126,9 @@ async function editExample() {
   } catch (error: any) {
     console.error('Error editing file:', error.message);
   } finally {
-    // Clean up temp file
-    if (fs.existsSync(tempFile)) {
-      fs.unlinkSync(tempFile);
+    // Clean up the temp file and the <file>.backup the edit tool writes before each edit
+    for (const file of [tempFile, `${tempFile}.backup`]) {
+      if (fs.existsSync(file)) fs.unlinkSync(file);
     }
   }
 }

@@ -171,6 +171,50 @@ class TestHttpExecutorErrors:
         # Should return raw text if JSON parsing fails
         assert result == "OK" or isinstance(result, str)
 
+    @respx.mock
+    async def test_declared_content_length_over_limit_raises_network_error(
+        self, executor: HttpExecutor
+    ) -> None:
+        """A Content-Length header alone announcing an oversized body aborts before download."""
+        from matimo.executors.http_executor import HTTP_MAX_CONTENT_LENGTH_BYTES
+
+        respx.get("https://api.example.com/test").mock(
+            return_value=httpx.Response(
+                200,
+                headers={"content-length": str(HTTP_MAX_CONTENT_LENGTH_BYTES + 1)},
+                text="ignored",
+            )
+        )
+        tool = _make_http_tool()
+        with pytest.raises(MatimoError) as exc:
+            await executor.execute(tool, {})
+        assert exc.value.code == ErrorCode.NETWORK_ERROR
+        assert exc.value.details["retryable"] is True
+
+    @respx.mock
+    async def test_actual_body_over_limit_raises_network_error(self, executor: HttpExecutor) -> None:
+        """Even without a Content-Length header, streaming aborts once the byte budget is exceeded."""
+        from matimo.executors.http_executor import HTTP_MAX_CONTENT_LENGTH_BYTES
+
+        oversized_body = "x" * (HTTP_MAX_CONTENT_LENGTH_BYTES + 1)
+        respx.get("https://api.example.com/test").mock(
+            return_value=httpx.Response(200, text=oversized_body)
+        )
+        tool = _make_http_tool()
+        with pytest.raises(MatimoError) as exc:
+            await executor.execute(tool, {})
+        assert exc.value.code == ErrorCode.NETWORK_ERROR
+        assert exc.value.details["retryable"] is True
+
+    @respx.mock
+    async def test_body_within_limit_is_returned_normally(self, executor: HttpExecutor) -> None:
+        respx.get("https://api.example.com/test").mock(
+            return_value=httpx.Response(200, json={"ok": True})
+        )
+        tool = _make_http_tool()
+        result = await executor.execute(tool, {})
+        assert result == {"ok": True}
+
 
 class TestHttpExecutorEdgeCases:
     async def test_non_http_tool_raises(self, executor: HttpExecutor) -> None:

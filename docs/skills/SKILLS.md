@@ -18,52 +18,21 @@
   - [getSkillContent() — Selective Loading](#getskillcontent--selective-loading)
   - [getSkillSections() — Section Inventory](#getskillsections--section-inventory)
 - [Semantic Search](#semantic-search)
-  - [Built-in TF-IDF Search](#built-in-tf-idf-search)
+  - [Built-in TF-IDF Search](#built-in-tf-idf-term-frequency---inverse-document-frequency-search)
   - [Custom Embedding Provider](#custom-embedding-provider)
 - [Agent Skill Lifecycle](#agent-skill-lifecycle)
   - [Creating a Skill](#creating-a-skill)
   - [Listing Skills](#listing-skills)
   - [Reading a Skill](#reading-a-skill)
   - [Validating a Skill](#validating-a-skill)
+  - [Searching and Loading Skills Selectively](#searching-and-loading-skills-selectively)
+- [Pluggable Skill Storage — Bring Your Own Backend](#pluggable-skill-storage--bring-your-own-backend)
 - [MCP Server — Skills as Resources](#mcp-server--skills-as-resources)
 - [LangChain Agent with Skills](#langchain-agent-with-skills)
+- [CrewAI Agent with Skills](#crewai-agent-with-skills)
 - [Storage Paths](#storage-paths)
 - [Name Rules](#name-rules)
 - [Examples Demo](#examples-demo)
-- [Future: Skills Meta-Tools (v0.1.1)](#future-skills-meta-tools-v011)
-
----
-
-## Future: Skills Meta-Tools (v0.1.1)
-
-> **Theme: Skills SDK as Agent-Callable Tools** — Promote programmatic SDK APIs to first-class agent-callable meta-tools, closing the gap between what the SDK can do and what agents can call from their tool loop.
->
-> **Status:** Planned for v0.1.1. See [ROADMAP.md](../ROADMAP.md) for details.
-
-### Planned Meta-Tools (v0.1.1)
-
-| Meta-Tool | Wraps SDK API | What agents gain |
-|-----------|--------------|-----------------|
-| `matimo_search_skills` | `semanticSearchSkills()` | Natural language semantic search across all skills (TF-IDF or custom embeddings) |
-| `matimo_get_skill_sections` | `getSkillSections()` | Inventory a skill's sections and token costs before loading (progressive disclosure Level 2.5) |
-| `matimo_get_skill_content` | `getSkillContent()` | Load only specific sections of a skill — token-efficient context loading |
-
-**Why this matters:** In v0.1.0, `semanticSearchSkills`, `getSkillSections`, and `getSkillContent` are **SDK-only** APIs. LangChain agents and MCP clients (Claude) cannot call them from their tool loop. v0.1.1 will wrap each as a registered meta-tool in `packages/core/tools/`, making them callable like any other Matimo tool.
-
-### Current (v0.1.0) vs Planned (v0.1.1) Agent Workflow
-
-```typescript
-// Current (v0.1.0) — agents discover by exact name or description
-matimo_list_skills()              // → all skill names + descriptions
-matimo_get_skill('slack')         // → full content
-
-// Planned (v0.1.1) — agents can search by meaning and load selectively
-matimo_search_skills('rate limiting and retries')  // → ranked TF-IDF results with scores
-matimo_get_skill_sections('slack')                 // → section inventory with token estimates
-matimo_get_skill_content('slack', { sections: ['Messaging'] })  // → targeted section content
-```
-
-**Today's workaround** for LangChain agents (non-MCP): use the SDK-level `buildRelevantSkillPrompt()` helper before starting the agent loop — it runs TF-IDF search and injects the top-K skill content into your system prompt. See [LangChain Agent with Skills](#langchain-agent-with-skills) for the full pattern.
 
 ---
 
@@ -205,7 +174,7 @@ difficulty: intermediate     # ❌ not a spec field
 ---
 ```
 
-### Matimo's Progressive Disclosure Levels
+### Progressive Disclosure Levels
 
 The spec defines three levels of detail an agent loads:
 
@@ -219,7 +188,7 @@ Agents should use Level 1 first to survey available skills, then Level 2 to load
 
 ### Minimal Valid Example
 
-```markdown
+````markdown
 ---
 name: api-error-handling
 description: Patterns for handling API errors gracefully in TypeScript services.
@@ -250,7 +219,7 @@ if (!response.ok) {
   );
 }
 ```
-```
+````
 
 ---
 
@@ -268,10 +237,12 @@ Every Matimo provider package ships **one consolidated skill** containing domain
 | **Notion** | `notion` | `packages/notion/skills/notion/SKILL.md` | Pages, databases, blocks, search |
 | **Postgres** | `postgres` | `packages/postgres/skills/postgres/SKILL.md` | Parameterized queries, schema discovery, write operations |
 | **Twilio** | `twilio` | `packages/twilio/skills/twilio/SKILL.md` | SMS/MMS sending, message tracking, E.164 formatting |
+| **Microsoft** | `microsoft` | `packages/microsoft/skills/microsoft/SKILL.md` | 9 Graph API tools — search, OneDrive/SharePoint files, Outlook mail, Teams messaging, calendar, SharePoint publishing |
+| **Composio** | `composio` | `packages/composio/skills/composio/SKILL.md` | `composio_*` tools — how they route through Composio's 250+ third-party integrations, what risk levels mean for approval, handling missing connected accounts |
 
 **Why one skill per provider?**
 - Agents load one skill to get comprehensive knowledge for all tools in that provider
-- Reduces registry noise — 8 skills instead of 24+ individual tool skills
+- Reduces registry noise — 10 skills instead of dozens of individual tool skills
 - Content chunking lets agents load only the sections they need (see below)
 
 ---
@@ -293,7 +264,7 @@ Matimo ships six SDK-level skills in `packages/core/skills/`. These are designed
 
 - **Never use placeholder API keys** (`YOUR_API_KEY`, `replace_me`) — use `{VAR_NAME}` templating
 - **`command` and `function` types are blocked by default** (`allowCommandTools: false`, `allowFunctionTools: false`) — always use `type: http` unless policy explicitly allows otherwise
-- **Always include `requires_approval: true`** in agent-generated YAML
+- **Agent-created tools always get `requires_approval: true` and `status: draft`** — `matimo_create_tool` sets both, whatever the YAML says
 - **Query-param API keys** need `query_params: { key: '{VAR_NAME}' }` + `authentication: { type: api_key, location: query }`
 
 ---
@@ -349,6 +320,8 @@ This enables a two-step agent workflow:
 1. `getSkillSections('slack')` — see what's available and token costs
 2. `getSkillContent('slack', { sections: ['Messaging'] })` — load only what's needed
 
+Both are also agent-callable via the `matimo_get_skill_sections` and `matimo_get_skill_content` meta-tools — see [Searching and Loading Skills Selectively](#searching-and-loading-skills-selectively).
+
 ---
 
 ## Semantic Search
@@ -377,7 +350,7 @@ const results = await matimo.semanticSearchSkills('rate limiting and retries', {
 
 Embeddings are cached per skill — the first search builds the index, subsequent searches are fast.
 
-> **Agent availability:** `semanticSearchSkills` is a **programmatic SDK API** — it is not yet exposed as an agent-callable meta-tool. Agents using LangChain or MCP cannot call TF-IDF search directly during their tool loop in v0.1.0. Use `buildRelevantSkillPrompt()` (non-MCP LangChain helper) or the [`matimo_list_skills` + `matimo_get_skill` meta-tools](#agent-skill-lifecycle) instead. A `matimo_search_skills` meta-tool is planned for **v0.1.1**.
+> **Agent availability:** `semanticSearchSkills` is also exposed as the agent-callable `matimo_search_skills` meta-tool, so LangChain agents and MCP clients (Claude) can run TF-IDF (or custom-embedding) search directly from their tool loop, not just via the SDK. See [Searching and Loading Skills Selectively](#searching-and-loading-skills-selectively).
 
 ### Custom Embedding Provider
 
@@ -477,6 +450,133 @@ Validation checks:
 - `name` field present and matches directory name
 - `description` field present
 - Name follows spec rules (lowercase, hyphens, 1–64 chars, no leading/trailing hyphens)
+
+### Searching and Loading Skills Selectively
+
+Three meta-tools wrap the programmatic [`semanticSearchSkills()`](#semantic-search), [`getSkillSections()`](#getskillsections--section-inventory), and [`getSkillContent()`](#getskillcontent--selective-loading) SDK APIs as agent-callable tools, so LangChain agents and MCP clients (Claude) can search and selectively load skills from their tool loop, not just from SDK code:
+
+```typescript
+// Rank skills by meaning instead of exact name/keyword match
+const search = await matimo.execute('matimo_search_skills', {
+  query: 'rate limiting and retries',
+  limit: 5,        // optional, default 10
+  min_score: 0.1,  // optional, default 0.1
+});
+// search.results → [{ name, description, relevanceScore }, ...]
+
+// Inventory a skill's sections and token costs before loading anything
+const sections = await matimo.execute('matimo_get_skill_sections', { name: 'slack' });
+// sections.sections → [{ path, level, tokenEstimate }, ...]
+
+// Load only the sections that matter, once you know which ones do
+const content = await matimo.execute('matimo_get_skill_content', {
+  name: 'slack',
+  sections: ['Messaging'],   // optional — omit to return the whole body
+  max_tokens: 500,           // optional
+});
+// content.content → targeted section content
+// content.tokensUsed → approximate token count of what was returned
+```
+
+This gives agents a search → inventory → load workflow that costs far less context than `matimo_get_skill` alone:
+
+```typescript
+matimo_list_skills()              // → all skill names + descriptions
+matimo_get_skill('slack')         // → full content
+
+matimo_search_skills('rate limiting and retries')  // → ranked results with scores
+matimo_get_skill_sections('slack')                 // → section inventory with token estimates
+matimo_get_skill_content('slack', { sections: ['Messaging'] })  // → targeted section content
+```
+
+For LangChain agents outside the meta-tool loop, the SDK-level `buildRelevantSkillPrompt()` helper remains the simplest option — it runs TF-IDF search and injects the top-K skill content into your system prompt before the agent loop even starts. See [LangChain Agent with Skills](#langchain-agent-with-skills) for that pattern.
+
+---
+
+## Pluggable Skill Storage — Bring Your Own Backend
+
+Matimo OSS doesn't own skill storage — the same way it doesn't ship a database for Tools. A host platform (Matimo Workbench or your own) decides where skills actually live; Matimo OSS only needs two things from you: **a location to read from**, and **a direct way to push content in**.
+
+| Your skills live in... | Use |
+|---|---|
+| A filesystem — local disk, NFS/EFS/SMB, a synced git checkout, a FUSE-mounted bucket | `skillPaths` (init-time) or `matimo.addSkillPath(path)` (runtime), then `matimo.reloadSkills()` |
+| Anything else — Postgres, MongoDB, S3's API, an internal service | `matimo.registerSkill(skill)` / `matimo.registerSkills(skills)` |
+
+`addSkillPath()` only adds a directory to the list Matimo will scan — call `reloadSkills()` afterward to actually read its `SKILL.md` files. `registerSkill()`/`registerSkills()` take effect immediately with no filesystem round-trip; they accept plain `SkillDefinition` objects (`{ name, description, body, ... }`) fetched however you like.
+
+### Recipe: loading skills from S3
+
+```typescript
+import { MatimoInstance } from 'matimo';
+import { S3Client, ListObjectsV2Command, GetObjectCommand } from '@aws-sdk/client-s3';
+
+const s3 = new S3Client({});
+const matimo = await MatimoInstance.init({ autoDiscover: true });
+
+const { Contents } = await s3.send(
+  new ListObjectsV2Command({ Bucket: 'my-skills', Prefix: 'skills/' })
+);
+const skills = await Promise.all(
+  (Contents ?? [])
+    .filter((o) => o.Key?.endsWith('SKILL.md'))
+    .map(async (o) => {
+      const obj = await s3.send(new GetObjectCommand({ Bucket: 'my-skills', Key: o.Key! }));
+      const body = await obj.Body!.transformToString();
+      const name = o.Key!.split('/').at(-2)!; // skills/{name}/SKILL.md
+      const description = /^description:\s*(.+)$/m.exec(body)?.[1] ?? '';
+      return { name, description, body };
+    })
+);
+
+matimo.registerSkills(skills);
+```
+
+### Recipe: loading skills from Postgres
+
+```typescript
+import { MatimoInstance } from 'matimo';
+import { Pool } from 'pg';
+
+const pool = new Pool();
+const matimo = await MatimoInstance.init({ autoDiscover: true });
+
+const { rows } = await pool.query(
+  'SELECT name, description, body FROM tenant_skills WHERE tenant_id = $1',
+  [tenantId]
+);
+matimo.registerSkills(rows.map((r) => ({ name: r.name, description: r.description, body: r.body })));
+```
+
+Matimo OSS ships no S3 or Postgres client in either recipe — bring whatever library you already use. `registerSkills()` has no opinion on where the rows came from.
+
+### Observing agent-created skills
+
+When an agent calls `matimo_create_skill`, Matimo emits a `skill:created` event through the same `onEvent` handler used for tool/policy events, so a host can mirror an agent-created skill into its own storage the moment it happens instead of polling the filesystem:
+
+```typescript
+const matimo = await MatimoInstance.init({
+  autoDiscover: true,
+  onEvent: (event) => {
+    if (event.type === 'skill:created') {
+      // event.skillName, event.source ('user' | 'catalog'), event.timestamp
+      // e.g. read the file matimo_create_skill just wrote and push it into your DB
+    }
+  },
+});
+```
+
+### Configuring where agent-created skills get written
+
+By default, `matimo_create_skill` writes to `./matimo-tools/skills` unless the caller passes `target_dir` explicitly. Set `defaultSkillWriteDir` once at startup instead of relying on every agent call to pass `target_dir` correctly:
+
+```typescript
+const matimo = await MatimoInstance.init({
+  autoDiscover: true,
+  defaultSkillWriteDir: '/var/matimo/tenant-42/skills',
+});
+```
+
+**Python:** the same API exists under snake_case — `matimo.add_skill_path(path)`, `await matimo.reload_skills()`, `matimo.register_skill(skill)` / `register_skills(skills)`, `Matimo.init(default_skill_write_dir=...)`, and an `on_event` handler that receives a `{"type": "skill:created", "skill_name": ..., "source": ..., "timestamp": ...}` dict.
 
 ---
 
@@ -633,7 +733,76 @@ const messages = [
 `getSkillsMetadata` returns `Array<{ name, description }>` — no file I/O, always cheap.  
 `buildRelevantSkillPrompt` runs TF-IDF cosine similarity ranking and loads full content only for top-K matches above `minScore`. Returns an empty string when no skills are relevant, so it's safe to spread into the messages array unconditionally.
 
+**Standalone function vs. instance method — same result, two call styles:**
+
+`buildRelevantSkillPrompt(matimo, query, options)` is a free function that takes a `MatimoInstance` as its first argument. If you already hold that instance and would rather call a method on it than import a helper, `matimo.buildSkillPromptContext(query, options)` does exactly the same thing:
+
+```typescript
+// Standalone function — import buildRelevantSkillPrompt from 'matimo'
+const skillContext = await buildRelevantSkillPrompt(matimo, userMessage, { topK: 2 });
+
+// Instance method — nothing extra to import
+const skillContext = await matimo.buildSkillPromptContext(userMessage, { topK: 2 });
+```
+
+Both call `SkillRegistry.semanticSearch()` under the hood and produce byte-identical output for the same inputs — pick whichever reads better at the call site. This is the ergonomic gap Workbench's own `SkillsService` hit (it guessed at `matimo.buildRelevantSkillPrompt(...)` as an instance method before this existed) — see [Pluggable Skill Storage](#pluggable-skill-storage--bring-your-own-backend) below for the general "host platform, own storage" story this API is part of.
+
 See the [LangChain integration guide](../framework-integrations/LANGCHAIN.md#skills-integration-non-mcp) for the full API reference and examples.
+
+---
+
+## CrewAI Agent with Skills
+
+CrewAI has no MCP client, so skills reach a CrewAI agent the same way they reach a non-MCP LangChain agent: `get_skills_metadata()` and `build_relevant_skill_prompt()` — mirrored 1:1 in `matimo.integrations.crewai` (Python only; CrewAI has no TypeScript SDK) — inject skill context directly into an `Agent`'s `backstory` or a `Task`'s `description` instead of a system prompt. Here's a complete CrewAI agent that uses skills as context:
+
+```python
+from crewai import Agent, Crew, Process, Task
+from matimo import Matimo
+from matimo.integrations.crewai import (
+    build_relevant_skill_prompt,
+    convert_tools_to_crewai,
+)
+
+# Initialize Matimo with skills auto-loaded from providers
+matimo = await Matimo.init(auto_discover=True)
+
+# Level 2 — inject the skill(s) relevant to this agent's job into its backstory
+task_description = "Send a message to #general in Slack saying 'Hello from Matimo'"
+skill_context = await build_relevant_skill_prompt(matimo, task_description, top_k=2)
+
+# Convert tools to CrewAI format (includes skill meta-tools)
+tools = [t for t in matimo.list_tools() if t.name.startswith("slack") or "skill" in t.name]
+crewai_tools = convert_tools_to_crewai(tools, matimo)
+
+agent = Agent(
+    role="Slack Assistant",
+    goal="Send accurate, well-formed Slack messages.",
+    backstory=f"You are a Slack operations assistant.\n\n{skill_context}",
+    llm="gpt-4o-mini",
+    tools=crewai_tools,
+)
+
+task = Task(
+    description=task_description,
+    agent=agent,
+    expected_output="Confirmation the message was sent.",
+)
+
+crew = Crew(agents=[agent], tasks=[task], process=Process.sequential)
+result = crew.kickoff()
+```
+
+**The agent workflow:**
+1. `build_relevant_skill_prompt()` runs TF-IDF semantic search over all loaded skills *before* the crew starts, and injects the top-K matches straight into the agent's `backstory` — CrewAI agents don't see a system prompt the way a LangChain ReAct loop does, so injection happens once, up front, rather than per-turn.
+2. The agent now has the Slack domain knowledge (channels, messages, threads, etc.) needed to correctly call `slack_send_channel_message`.
+3. The agent can still call `matimo_search_skills` / `matimo_get_skill_sections` / `matimo_get_skill_content` mid-task (if bound via `convert_tools_to_crewai()`) to look up *other* skills the backstory injection didn't cover — the two approaches are complementary, not exclusive.
+
+`get_skills_metadata` returns `list[{"name": ..., "description": ...}]` — no file I/O, always cheap; use it to list every available skill in a `Task` description without loading full content.
+`build_relevant_skill_prompt` runs TF-IDF cosine similarity ranking and loads full content only for top-K matches above `min_score`. Returns an empty string when no skills are relevant, so it's safe to concatenate into a backstory unconditionally.
+
+See [`python/examples/crewai/skills/skills_crewai.py`](../../python/examples/crewai/skills/skills_crewai.py) for a full runnable example that combines backstory injection with the 3 skill meta-tools bound as CrewAI tools.
+
+Like the LangChain section above, `matimo.integrations.crewai.build_relevant_skill_prompt(matimo, task_description, top_k=2)` also has an instance-method equivalent: `await matimo.build_skill_prompt_context(task_description, top_k=2)`. The instance method always calls through `matimo.integrations.langchain`'s implementation (not the CrewAI one) — `matimo.integrations.crewai`'s version is a byte-for-byte duplicate kept dependency-free of `langchain-core`, not a re-export — but the two produce identical output for identical inputs, so either call style works from a CrewAI agent.
 
 ---
 
@@ -696,7 +865,7 @@ cd python/examples/native && uv run -w ../.. python skills/skills_demo.py
 - `semanticSearchSkills(query)` / `semantic_search_skills(query)` — raw TF-IDF ranked results with scores per skill
 - `buildRelevantSkillPrompt(query)` / `build_relevant_skill_prompt(query)` — Level 2: TF-IDF search loads only relevant skill content
 
-> ⚠️ **Note:** `semanticSearchSkills` / `semantic_search_skills` is a **programmatic SDK API only** in v0.1.0 — no agent-callable meta-tool wraps it yet. Agents (LangChain, MCP/Claude) cannot call TF-IDF search directly in their tool loop; they can only discover skills with `matimo_list_skills` and `matimo_get_skill`. A `matimo_search_skills` meta-tool is planned for **v0.1.1**.
+> **Note:** `semanticSearchSkills` / `semantic_search_skills` is also agent-callable via the `matimo_search_skills` meta-tool (alongside `matimo_get_skill_sections` and `matimo_get_skill_content`) — see [Searching and Loading Skills Selectively](#searching-and-loading-skills-selectively). Agents are no longer limited to `matimo_list_skills` + `matimo_get_skill` for discovery.
 
 **Docs:**
 - TypeScript: [`typescript/examples/tools/skills/README.md`](../../typescript/examples/tools/skills/)

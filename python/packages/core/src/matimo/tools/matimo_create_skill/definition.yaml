@@ -1,5 +1,6 @@
 name: matimo_create_skill
 version: '1.0.0'
+risk: medium
 description: >-
   Create a new skill following the Agent Skills specification
   (https://agentskills.io/specification). Validates name (lowercase, hyphens,

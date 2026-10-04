@@ -3,6 +3,17 @@ import { pathToFileURL } from 'node:url';
 import { ToolDefinition } from '../core/schema.js';
 import { MatimoError, ErrorCode } from '../errors/matimo-error.js';
 import { getGlobalMatimoLogger } from '../logging/index.js';
+import type { PolicyContext } from '../policy/types.js';
+
+/**
+ * Second argument passed to a function tool: per-call credentials and the
+ * caller's policy context (agent id, roles, environment) as supplied by the
+ * host via `execute(..., { context })`. Agents cannot set either.
+ */
+export interface FunctionToolContext {
+  credentials?: Record<string, string>;
+  policyContext?: PolicyContext;
+}
 
 /**
  * FunctionExecutor - Executes async functions
@@ -32,11 +43,14 @@ export class FunctionExecutor {
    *   to the tool function. The function can use them with:
    *   `const token = context?.credentials?.MY_TOKEN ?? process.env.MY_TOKEN;`
    *   Values are never logged. Falls back to undefined when not provided.
+   * @param policyContext - The caller's PolicyContext, passed as `context.policyContext`
+   *   so tools such as matimo_approve_tool can check who is calling.
    */
   async execute(
     tool: ToolDefinition,
     params: Record<string, unknown>,
-    credentials?: Record<string, string>
+    credentials?: Record<string, string>,
+    policyContext?: PolicyContext
   ): Promise<unknown> {
     if (tool.execution.type !== 'function') {
       throw new MatimoError('Tool execution type is not function', ErrorCode.EXECUTION_FAILED, {
@@ -150,9 +164,13 @@ export class FunctionExecutor {
             .then((module) => {
               const fn = (module.default || module) as (
                 input: Record<string, unknown>,
-                context?: { credentials?: Record<string, string> }
+                context?: FunctionToolContext
               ) => Promise<unknown>;
-              const result = fn(params, credentials ? { credentials } : undefined);
+              const context: FunctionToolContext = {
+                ...(credentials ? { credentials } : {}),
+                ...(policyContext ? { policyContext } : {}),
+              };
+              const result = fn(params, Object.keys(context).length > 0 ? context : undefined);
 
               // Handle both Promise and non-Promise returns
               if (result instanceof Promise) {

@@ -65,7 +65,7 @@ on `localhost:3555`. This is the recommended setup for local development - no TL
 
 > **Want HTTPS locally?** Run `matimo mcp --transport http --port 3555 --self-signed` and
 > set `MCP_SERVER_URL=https://localhost:3555/mcp` in `.env`. You'll need to trust the generated
-> cert (`mkcert -install`) - see the [TLS troubleshooting guide](../../docs/MCP.md#https-client-cant-connect-self-signed-cert).
+> cert (`mkcert -install`) - see the [TLS troubleshooting guide](../../../docs/MCP.md#https-client-cant-connect-self-signed-cert).
 
 **Step 2 - Run the agent:**
 
@@ -287,7 +287,7 @@ Command Palette (Cmd+Shift+P) → `MCP: Restart Server`
 
 **Self-signed certificate errors**
 - Use [`mkcert`](https://github.com/FiloSottile/mkcert) to generate a locally trusted certificate
-  instead of a self-signed one. See the [MCP TLS troubleshooting guide](../../docs/MCP.md#https-client-cant-connect-self-signed-cert)
+  instead of a self-signed one. See the [MCP TLS troubleshooting guide](../../../docs/MCP.md#https-client-cant-connect-self-signed-cert)
   for step-by-step instructions.
 
 **`slack_create_channel` / `slack_add_reaction` / `slack_get_user_info` fail**

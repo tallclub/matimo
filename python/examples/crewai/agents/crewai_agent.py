@@ -38,10 +38,23 @@ from pathlib import Path
 from crewai import Agent, Crew, Process, Task
 from dotenv import load_dotenv
 
-from matimo import Matimo
+from matimo import ApprovalRequest, Matimo
 from matimo.integrations.crewai import convert_tools_to_crewai
 
 load_dotenv(Path(__file__).parent.parent.parent / ".env")
+
+
+async def approve(request: ApprovalRequest) -> bool:
+    """Ask in the terminal before any tool call that needs approval."""
+    print(f"\n🔒  Approval required — {request.tool_name}: {request.params}")
+    if not sys.stdin.isatty():
+        print(
+            "    ❌  Rejected: no terminal. Pre-approve with "
+            f'MATIMO_APPROVED_PATTERNS="{request.tool_name}"'
+        )
+        return False
+    return input("    Approve? [y/N] ").strip().lower() in ("y", "yes")
+
 
 DEFAULT_TASK = (
     "Use the available tools to list the public Slack channels "
@@ -60,7 +73,7 @@ async def run(task: str) -> None:
 
     # ── 1. Auto-discover all installed Matimo providers ───────────────────────
     print("🚀  Initialising Matimo (auto-discover)…")
-    matimo = await Matimo.init(auto_discover=True)
+    matimo = await Matimo.init(auto_discover=True, on_approval=approve)
     all_tools = matimo.list_tools()
     print(f"✅  Loaded {len(all_tools)} tools from all providers")
 

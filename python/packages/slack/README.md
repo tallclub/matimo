@@ -3,7 +3,7 @@
 > Slack tools for [Matimo](https://matimo.dev) - send messages, manage channels, upload files, and more.
 
 [![PyPI](https://img.shields.io/pypi/v/matimo-slack)](https://pypi.org/project/matimo-slack/)
-[![Docs](https://img.shields.io/badge/docs-matimo.dev-blue)](https://matimo.dev/docs)
+[![Docs](https://img.shields.io/badge/docs-matimo.dev-blue)](https://docs.matimo.dev)
 
 ---
 
@@ -146,7 +146,7 @@ result = await executor.ainvoke({'input': 'List all public channels'})
 
 ## Documentation
 
-- [Slack Integration Guide](https://matimo.dev/docs) 
+- [Slack Integration Guide](https://docs.matimo.dev) 
 - [Slack Web API Reference](https://api.slack.com/methods)
 - [Python Examples](https://github.com/tallclub/matimo/tree/main/python/examples/native/slack)
 

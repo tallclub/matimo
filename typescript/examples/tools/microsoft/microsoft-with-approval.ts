@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import 'dotenv/config';
-import { MatimoInstance, getGlobalApprovalHandler, type ApprovalRequest } from 'matimo';
+import { MatimoInstance, type ApprovalRequest } from 'matimo';
 import * as readline from 'readline';
 
 /**
@@ -17,9 +17,8 @@ import * as readline from 'readline';
  * the executor (and its own input validation) ever runs.
  *
  * Approval Flow:
- * - Check MATIMO_AUTO_APPROVE=true        → approve everything automatically
  * - Check MATIMO_APPROVED_PATTERNS        → approve only matching tool-name patterns
- * - Otherwise                             → call the interactive callback below
+ * - Otherwise                             → call the `onApproval` callback below
  *
  * Setup:
  * ------
@@ -29,10 +28,7 @@ import * as readline from 'readline';
  * 2. Run interactively (you'll be prompted to approve/reject each operation):
  *      pnpm microsoft:approval
  *
- * 3. Or auto-approve for unattended/CI runs:
- *      MATIMO_AUTO_APPROVE=true pnpm microsoft:approval
- *
- * 4. Or pre-approve just these two tools:
+ * 3. Or pre-approve just these two tools for unattended/CI runs:
  *      MATIMO_APPROVED_PATTERNS="ms_send_email,ms_publish_to_sharepoint" pnpm microsoft:approval
  */
 
@@ -61,9 +57,7 @@ function createApprovalCallback() {
 
     if (!isInteractive) {
       console.info('\n❌ REJECTED - Non-interactive environment (no terminal)');
-      console.info('\n💡 To enable auto-approval in CI/scripts:');
-      console.info('   export MATIMO_AUTO_APPROVE=true');
-      console.info('\n💡 Or approve specific patterns:');
+      console.info('\n💡 To pre-approve this tool in CI/scripts:');
       console.info('   export MATIMO_APPROVED_PATTERNS="ms_send_email,ms_publish_to_sharepoint"');
       console.info('\n' + '='.repeat(70) + '\n');
       return false;
@@ -106,20 +100,16 @@ async function main() {
   const userEmail = process.env.TEST_EMAIL || '<signed-in-user>@example.com';
   const siteId = process.env.TEST_SITE_ID || '';
 
-  const matimo = await MatimoInstance.init({ autoDiscover: true });
+  const matimo = await MatimoInstance.init({
+    autoDiscover: true,
+    // Decides every call that needs approval, for this instance only.
+    onApproval: createApprovalCallback(),
+  });
 
-  // Configure approval handler
-  const approvalHandler = getGlobalApprovalHandler();
-  approvalHandler.setApprovalCallback(createApprovalCallback());
-
-  const autoApproveEnabled = process.env.MATIMO_AUTO_APPROVE === 'true';
   const approvedPatterns = process.env.MATIMO_APPROVED_PATTERNS;
 
   console.info('\n🔐 APPROVAL CONFIGURATION:');
-  if (autoApproveEnabled) {
-    console.info('   ✅ MATIMO_AUTO_APPROVE=true');
-    console.info('   → All high-risk operations will be AUTO-APPROVED');
-  } else if (approvedPatterns) {
+  if (approvedPatterns) {
     console.info(`   ✅ MATIMO_APPROVED_PATTERNS="${approvedPatterns}"`);
     console.info('   → Matching operations will be auto-approved');
   } else {
@@ -234,18 +224,14 @@ async function main() {
     console.info('   2. High-risk operations (ms_send_email, ms_publish_to_sharepoint) are');
     console.info('      gated by requires_approval: true and pause for approval BEFORE the');
     console.info('      executor — and its own input validation — ever runs');
-    console.info('   3. Approval is controlled by environment or interactive callback:');
+    console.info('   3. Approval comes from pre-approved patterns or the onApproval callback:');
     console.info('\n🔐 Supported Approval Modes:');
-    console.info('   • MATIMO_AUTO_APPROVE=true     → Approve all high-risk operations');
     console.info('   • MATIMO_APPROVED_PATTERNS     → Approve only matching tool names');
-    console.info('   • Interactive (no env vars)    → Prompt user for each operation\n');
+    console.info('   • onApproval callback          → Prompt user for each other operation\n');
     console.info('💡 How to Use:');
     console.info('   1. Interactive (default):     pnpm microsoft:approval');
     console.info(
-      '   2. Auto-approve in CI:         MATIMO_AUTO_APPROVE=true pnpm microsoft:approval'
-    );
-    console.info(
-      '   3. Pre-approved patterns:      MATIMO_APPROVED_PATTERNS="ms_send_email,ms_publish_to_sharepoint" pnpm microsoft:approval\n'
+      '   2. Pre-approved patterns:      MATIMO_APPROVED_PATTERNS="ms_send_email,ms_publish_to_sharepoint" pnpm microsoft:approval\n'
     );
     console.info('='.repeat(70) + '\n');
   } catch (error: any) {

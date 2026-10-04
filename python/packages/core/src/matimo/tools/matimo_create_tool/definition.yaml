@@ -1,5 +1,6 @@
 name: matimo_create_tool
 version: '1.0.0'
+risk: high
 description: Create a new tool definition on disk. Validates the YAML, forces draft status and requires_approval, and writes the tool to the target directory.
 requires_approval: true
 tags:

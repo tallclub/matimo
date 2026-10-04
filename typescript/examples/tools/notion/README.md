@@ -246,8 +246,8 @@ const pages = result.data.results;
 
 - **Notion API Documentation:** [developers.notion.com](https://developers.notion.com)
 - **Create Integration:** [notion.com/my-integrations](https://www.notion.com/my-integrations)
-- **Matimo Notion Tools:** [packages/notion](../../packages/notion)
-- **Matimo Documentation:** [docs/](../../docs)
+- **Matimo Notion Tools:** [packages/notion](../../../packages/notion)
+- **Matimo Documentation:** [docs/](../../../../docs/index.md)
 
 ## ⚠️ Important Notes
 
@@ -288,6 +288,6 @@ Notion API has rate limits. Long-running operations may need to retry. See [rate
 ## 📞 Support
 
 For issues with:
-- **Matimo tools:** See [packages/notion/README.md](../../packages/notion/README.md)
+- **Matimo tools:** See [packages/notion/README.md](../../../packages/notion/README.md)
 - **Notion API:** Visit [developers.notion.com/reference](https://developers.notion.com/reference)
 - **LangChain:** Check [langchain.com/docs](https://docs.langchain.com)

@@ -1,11 +1,12 @@
 {
   "name": "@matimo/hubspot",
-  "version": "0.1.8",
+  "version": "0.2.0",
   "description": "HubSpot tools for Matimo - universal CRM, marketing, and automation integration.",
   "license": "MIT",
   "type": "module",
   "files": [
     "tools",
+    "skills",
     "README.md",
     "definition.yaml"
   ],

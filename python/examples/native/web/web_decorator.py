@@ -24,6 +24,10 @@ USAGE:
 ────────────────────────────────────────────────────────────────────────────
   uv run python web/web_decorator.py
 
+NOTE: @tool sends the method's own parameter names as the tool's parameters,
+so they must match the tool definition exactly (url, method, body, headers,
+timeout), and only the arguments you pass are sent — Python defaults are not.
+
 ============================================================================
 """
 
@@ -46,38 +50,22 @@ class APIClient:
     """High-level API client service using the @tool decorator pattern."""
 
     @tool("web")
-    async def get_json(self, url: str, timeout: int = 30000) -> dict:
+    async def get(self, url: str, timeout: int) -> dict:
         """
-        Decorator auto-calls matimo.execute('web', {...}).
-        
+        Decorator auto-calls matimo.execute('web', {'url': ..., 'timeout': ...}).
+
         Args:
             url: URL to fetch
             timeout: Request timeout in milliseconds
-            
+
         Returns:
-            Parsed JSON response
+            Response content (parsed when JSON) and metadata
         """
         ...
 
     @tool("web")
-    async def post_json(
-        self,
-        url: str,
-        body: str,
-        headers: dict = None,
-        timeout: int = 30000
-    ) -> dict:
-        """Make a POST request with JSON body."""
-        ...
-
-    @tool("web")
-    async def fetch_html(self, url: str, timeout: int = 30000) -> dict:
-        """Fetch HTML content from URL."""
-        ...
-
-    @tool("web")
-    async def github_api(self, endpoint: str) -> dict:
-        """Fetch from GitHub API."""
+    async def send(self, url: str, method: str, body: str, headers: dict) -> dict:
+        """Send a request with a method and body, e.g. a JSON POST."""
         ...
 
 
@@ -102,7 +90,7 @@ async def main() -> None:
     try:
         # Example 1: GET JSON from public API
         print("1. Fetching user data from JSONPlaceholder\n")
-        result1 = await client.get_json("https://jsonplaceholder.typicode.com/users/1")
+        result1 = await client.get("https://jsonplaceholder.typicode.com/users/1", 30000)
         if result1.get("success"):
             content = result1.get("content", {})
             if isinstance(content, dict):
@@ -118,10 +106,11 @@ async def main() -> None:
         # Example 2: POST request
         print("2. Making a POST request to echo service\n")
         body = json.dumps({"test": "data", "timestamp": "now"})
-        result2 = await client.post_json(
+        result2 = await client.send(
             "https://httpbin.org/post",
+            method="POST",
             body=body,
-            headers={"Content-Type": "application/json"}
+            headers={"Content-Type": "application/json"},
         )
         if result2.get("success"):
             print(f"Status: {result2.get('statusCode')}")
@@ -137,7 +126,7 @@ async def main() -> None:
 
         # Example 3: GitHub API call
         print("3. Fetching GitHub repository info\n")
-        result3 = await client.github_api("repos/tallclub/matimo")
+        result3 = await client.get("https://api.github.com/repos/tallclub/matimo", 30000)
         if result3.get("success"):
             print(f"Status: {result3.get('statusCode')}")
             content = result3.get("content", {})
@@ -152,7 +141,7 @@ async def main() -> None:
 
         # Example 4: Fetch HTML
         print("4. Fetching HTML content\n")
-        result4 = await client.fetch_html("https://www.example.com")
+        result4 = await client.get("https://www.example.com", 30000)
         if result4.get("success"):
             print(f"Status: {result4.get('statusCode')}")
             print(f"Content Type: {result4.get('contentType')}")

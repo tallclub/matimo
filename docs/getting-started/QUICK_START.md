@@ -47,45 +47,33 @@ asyncio.run(main())
 
 **Build your own Python tool (5 min):**
 
-**1. Create `tools/calculator/definition.yaml`:**
+Most tools are a single YAML file that describes an HTTP call — no code. This one calls the public JSONPlaceholder test API.
+
+**1. Create `tools/get_user/definition.yaml`:**
 
 ```yaml
-name: calculator
-description: Perform basic math operations
+name: get_user
+description: Look up a user by id on the JSONPlaceholder test API
 version: '1.0.0'
 
 parameters:
-  operation:
-    type: string
-    enum: [add, subtract, multiply, divide]
-    required: true
-  a:
+  id:
     type: number
     required: true
-  b:
-    type: number
-    required: true
+    description: User id (1-10)
 
 execution:
-  type: command
-  command: python
-  args:
-    - -c
-    - |
-      import sys, json, operator
-      op, a, b = sys.argv[1], float(sys.argv[2]), float(sys.argv[3])
-      ops = {'add': a+b, 'subtract': a-b, 'multiply': a*b, 'divide': a/b}
-      print(json.dumps({'result': ops[op]}))
-    - '{operation}'
-    - '{a}'
-    - '{b}'
+  type: http
+  method: GET
+  url: 'https://jsonplaceholder.typicode.com/users/{id}'
 
 output_schema:
   type: object
   properties:
-    result:
-      type: number
-  required: [result]
+    name:
+      type: string
+    email:
+      type: string
 ```
 
 **2. Create `main.py`:**
@@ -95,16 +83,11 @@ import asyncio
 from matimo import Matimo
 
 async def main():
-    matimo = await Matimo.init('./tools')
-    tools = matimo.list_tools()
-    print(f"📦 Loaded {len(tools)} tools")
+    matimo = await Matimo.init('./tools', log_level='warn')
+    print(f"📦 Loaded {len(matimo.list_tools())} tools")
 
-    result = await matimo.execute('calculator', {
-        'operation': 'add',
-        'a': 10,
-        'b': 5,
-    })
-    print('✅ Result:', result)  # {'result': 15.0}
+    user = await matimo.execute('get_user', {'id': 1})
+    print('✅', user['name'], '-', user['email'])
 
 asyncio.run(main())
 ```
@@ -113,12 +96,14 @@ asyncio.run(main())
 
 ```bash
 python main.py
-# or
-uv run python main.py
+# 📦 Loaded 1 tools
+# ✅ Leanne Graham - Sincere@april.biz
 ```
 
+A Python HTTP tool returns the parsed response body.
+
 **Python next steps:**
-- [SDK Patterns (Python)](#python-sdk-patterns) — factory, decorator, LangChain
+- [SDK Patterns (Python)](../user-guide/SDK_PATTERNS.md#python-sdk) — factory, decorator, LangChain
 - [LangChain Integration](../framework-integrations/LANGCHAIN.md)
 - [Examples →](../../python/examples/)
 
@@ -169,7 +154,7 @@ console.log('Message sent!', result);
 
 You want to understand how to create and execute custom tools.
 
-**[Continue below to create a calculator tool →](#1-installation-1-min)**
+**[Continue below to create your first tool →](#1-installation-1-min)**
 
 ✅ Great for: Learning how Matimo works
 📖 **[Build Your First Tool →](./YOUR_FIRST_TOOL.md)**
@@ -211,13 +196,11 @@ async function main() {
   console.log(`📦 Loaded ${tools.length} tools`);
 
   // Execute a tool
-  const result = await matimo.execute('calculator', {
-    operation: 'add',
-    a: 10,
-    b: 5,
-  });
+  const result = (await matimo.execute('get_user', { id: 1 })) as {
+    data: { name: string; email: string };
+  };
 
-  console.log('✅ Result:', result);
+  console.log('✅', result.data.name, '-', result.data.email);
 }
 
 main().catch(console.error);
@@ -225,55 +208,31 @@ main().catch(console.error);
 
 ## 3. Create Your First Tool (1 min)
 
-Create `tools/calculator/definition.yaml`:
+Create `tools/get_user/definition.yaml` — an HTTP tool, Matimo's default kind, which needs no code:
 
 ```yaml
-name: calculator
-description: Perform basic math operations
+name: get_user
+description: Look up a user by id on the JSONPlaceholder test API
 version: '1.0.0'
 
 parameters:
-  operation:
-    type: string
-    enum: [add, subtract, multiply, divide]
-    required: true
-    description: Mathematical operation to perform
-  a:
+  id:
     type: number
     required: true
-    description: First operand
-  b:
-    type: number
-    required: true
-    description: Second operand
+    description: User id (1-10)
 
 execution:
-  type: command
-  command: node
-  args:
-    - -e
-    - |
-      const op = process.argv[1];
-      const a = parseFloat(process.argv[2]);
-      const b = parseFloat(process.argv[3]);
-      const ops = { add: a + b, subtract: a - b, multiply: a * b, divide: a / b };
-      console.log(JSON.stringify({ result: ops[op] }));
-    - '{operation}'
-    - '{a}'
-    - '{b}'
+  type: http
+  method: GET
+  url: 'https://jsonplaceholder.typicode.com/users/{id}'
 
 output_schema:
   type: object
   properties:
-    result:
-      type: number
-      description: Result of the operation
-  required: [result]
-
-error_handling:
-  retry: 2
-  backoff_type: exponential
-  initial_delay_ms: 100
+    name:
+      type: string
+    email:
+      type: string
 ```
 
 ## 4. Run It (< 1 min)
@@ -287,17 +246,31 @@ node demo.js
 
 # Output:
 # 📦 Loaded 1 tools
-# ✅ Result: { result: 15 }
+# ✅ Leanne Graham - Sincere@april.biz
 ```
+
+A TypeScript HTTP tool returns `{ success, data, statusCode, headers }`, with the response body in `data`.
 
 ---
 
 ## What Just Happened?
 
-1. **MatimoInstance.init('./tools')** — Loaded all YAML files from `./tools/**/*.yaml`
+1. **MatimoInstance.init('./tools')** — Loaded every `definition.yaml` under `./tools`
 2. **matimo.listTools()** — Listed discovered tools
-3. **matimo.execute('calculator', {...})** — Executed the tool with parameters
-4. Matimo **validated parameters**, **spawned process**, **validated output**, **returned result**
+3. **matimo.execute('get_user', { id: 1 })** — The policy engine classified the call (a GET is low risk, so it runs without asking), Matimo filled `{id}` into the URL, made the request and returned the result
+
+### Tools that ask first
+
+In 0.2.0 some calls wait for a person: tools whose YAML says `requires_approval: true`, HTTP `DELETE` tools, and `type: command` tools (unless they say `requires_approval: false`). Give the instance a reviewer, or those calls are refused:
+
+```typescript
+const matimo = await MatimoInstance.init({
+  toolPaths: ['./tools'],
+  onApproval: async (request) => confirmWithUser(request.toolName, request.params),
+});
+```
+
+See [Approval System](../api-reference/APPROVAL-SYSTEM.md).
 
 ---
 
@@ -317,7 +290,7 @@ Create more YAML files in `tools/`:
 
 ```
 tools/
-├── calculator/
+├── get_user/
 │   └── definition.yaml      # Done ✅
 ├── my-api/
 │   └── definition.yaml      # Create more
@@ -373,7 +346,7 @@ tools.forEach((tool) => {
 ### Get Tool by Name
 
 ```typescript
-const tool = matimo.getTool('calculator');
+const tool = matimo.getTool('get_user');
 if (tool) {
   console.log('Parameters:', tool.parameters);
 }
@@ -382,7 +355,7 @@ if (tool) {
 ### Search Tools
 
 ```typescript
-const results = matimo.searchTools('calculate');
+const results = matimo.searchTools('user');
 console.log(
   'Found:',
   results.map((t) => t.name)
@@ -393,17 +366,15 @@ console.log(
 
 ```typescript
 try {
-  const result = await matimo.execute('calculator', {
-    operation: 'divide',
-    a: 10,
-    b: 0,
-  });
+  const result = await matimo.execute('get_user', { id: 1 });
   console.log('Success:', result);
 } catch (error) {
   if (error.code === 'TOOL_NOT_FOUND') {
     console.error('Tool not found:', error.message);
-  } else if (error.code === 'INVALID_PARAMETERS') {
+  } else if (error.code === 'INVALID_PARAMETER') {
     console.error('Invalid parameters:', error.details);
+  } else if (error.code === 'POLICY_DENIED') {
+    console.error('Refused by policy or by a reviewer:', error.message);
   } else if (error.code === 'EXECUTION_FAILED') {
     console.error('Execution failed:', error.details);
   }
@@ -419,7 +390,9 @@ After installing `@matimo/slack`:
 ```typescript
 import { MatimoInstance } from 'matimo';
 
-const matimo = await MatimoInstance.init(['./tools', './node_modules/@matimo/slack/tools']);
+const matimo = await MatimoInstance.init({
+  toolPaths: ['./tools', './node_modules/@matimo/slack/tools'],
+});
 
 // Execute a Slack tool
 const result = await matimo.execute('slack-send-message', {

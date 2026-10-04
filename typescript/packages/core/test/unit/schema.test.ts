@@ -2,6 +2,7 @@ import {
   ParameterSchema,
   AuthConfigSchema,
   ExecutionConfigSchema,
+  OutputSchemaSchema,
   validateToolDefinition,
   validateProviderDefinition,
 } from '../../src/core/schema';
@@ -71,6 +72,42 @@ describe('Schema Validation', () => {
         type: 'string',
       };
       expect(() => ParameterSchema.parse(param)).toThrow();
+    });
+
+    // Regression: `items`/`properties` used to be silently stripped by this
+    // schema at YAML-load time (not declared on ParameterSchema at all), so
+    // e.g. `sections: { type: array, items: { type: string } }` lost its
+    // items sub-schema before it ever reached the LangChain/MCP converters.
+    // Those converters then fell back to an untyped array, which serializes
+    // to a JSON-schema `items` entry with no 'type' key — rejected by
+    // OpenAI's function-calling schema validator.
+    it('should preserve items on an array parameter', () => {
+      const param = {
+        type: 'array',
+        description: 'Sections to return',
+        items: { type: 'string' },
+      };
+      expect(ParameterSchema.parse(param)).toEqual(param);
+    });
+
+    it('should not require a description on a nested items schema', () => {
+      const param = {
+        type: 'array',
+        description: 'Scores',
+        items: { type: 'number' },
+      };
+      expect(() => ParameterSchema.parse(param)).not.toThrow();
+    });
+
+    it('should preserve properties on an object parameter', () => {
+      const param = {
+        type: 'object',
+        description: 'A page cover',
+        properties: {
+          url: { type: 'string' },
+        },
+      };
+      expect(ParameterSchema.parse(param)).toEqual(param);
     });
   });
 
@@ -188,6 +225,37 @@ describe('Schema Validation', () => {
         args: ['test'],
       };
       expect(() => ExecutionConfigSchema.parse(exec)).toThrow();
+    });
+  });
+
+  describe('OutputSchemaSchema', () => {
+    it('should validate an output schema with max_response_size', () => {
+      const output = { type: 'object', max_response_size: 262_144 };
+      expect(OutputSchemaSchema.parse(output)).toEqual(output);
+    });
+
+    it('should validate an output schema without max_response_size (optional)', () => {
+      const output = { type: 'object' };
+      expect(OutputSchemaSchema.parse(output)).toEqual(output);
+    });
+
+    it('should reject a non-positive max_response_size', () => {
+      expect(() => OutputSchemaSchema.parse({ max_response_size: 0 })).toThrow();
+      expect(() => OutputSchemaSchema.parse({ max_response_size: -1 })).toThrow();
+    });
+
+    it('should validate a full tool definition with output_schema.max_response_size', () => {
+      const tool = {
+        name: 'list-items',
+        description: 'Lists items',
+        version: '1.0.0',
+        execution: { type: 'http', method: 'GET', url: 'https://api.example.com/items' },
+        output_schema: {
+          type: 'object',
+          max_response_size: 100_000,
+        },
+      };
+      expect(() => validateToolDefinition(tool)).not.toThrow();
     });
   });
 

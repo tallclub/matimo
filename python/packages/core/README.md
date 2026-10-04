@@ -4,7 +4,7 @@
 
 [![PyPI](https://img.shields.io/pypi/v/matimo-core)](https://pypi.org/project/matimo-core/)
 [![Python](https://img.shields.io/pypi/pyversions/matimo-core)](https://pypi.org/project/matimo-core/)
-[![Docs](https://img.shields.io/badge/docs-matimo.dev-blue)](https://matimo.dev/docs)
+[![Docs](https://img.shields.io/badge/docs-matimo.dev-blue)](https://docs.matimo.dev)
 [![Tests](https://img.shields.io/badge/tests-1134%20passing-brightgreen)](https://github.com/tallclub/matimo)
 [![Coverage](https://img.shields.io/badge/coverage-97%25-brightgreen)](https://github.com/tallclub/matimo)
 
@@ -121,7 +121,7 @@ await server.start()
 ### `Matimo.init()`
 
 ```python
-from matimo import Matimo, InitOptions
+from matimo import InitOptions, JsonlFileSink, Matimo
 
 matimo = await Matimo.init(
     tool_paths=['./tools', './agent-tools'],  # or a single string
@@ -132,6 +132,7 @@ matimo = await Matimo.init(
     log_level='info',          # silent | error | warn | info | debug
     log_format='json',         # json | simple
     on_event=my_event_handler,
+    audit_sink=JsonlFileSink('./logs/matimo-audit.jsonl'),  # hash-chained audit log
     on_hitl=my_approval_callback,
 )
 ```
@@ -175,13 +176,22 @@ execution:
 ## Policy Engine
 
 ```python
-from matimo import Matimo, InitOptions
+from matimo import ApprovalRequest, JsonlFileSink, Matimo
 
-matimo = await Matimo.init('./tools', InitOptions(
+
+async def ask_operator(request: ApprovalRequest) -> bool:
+    return input(f"Approve {request.tool_name} {request.params}? (y/n) ") == "y"
+
+
+matimo = await Matimo.init(
+    './tools',
     policy_file='./policy.yaml',
-    on_hitl=lambda req: {'approved': True, 'reason': 'auto'},
-))
+    on_approval=ask_operator,                       # calls that need approval ask here
+    audit_sink=JsonlFileSink('./matimo-audit.jsonl'),  # hash-chained audit log
+)
 ```
+
+Calls that need approval: tools with `requires_approval: true`, HTTP `DELETE` and command tools (the 0.2.0 secure default), and calls whose `sql`/`command` argument contains a destructive keyword. With no `on_approval` they are refused.
 
 `policy.yaml`:
 ```yaml
@@ -242,25 +252,28 @@ Built-in tools that let agents manage other tools at runtime:
 | `matimo_list_skills` | List available skills | No |
 | `matimo_get_skill` | Read skill content | No |
 | `matimo_validate_skill` | Validate skill spec | No |
+| `matimo_search_skills` | Semantically rank skills by relevance (TF-IDF) | No |
+| `matimo_get_skill_sections` | Inventory a skill's sections and token costs | No |
+| `matimo_get_skill_content` | Load only specific sections of a skill | No |
 
 ---
 
 ## Documentation
 
-- [Getting Started](https://matimo.dev/docs/getting-started/QUICK_START)
-- [Full API Reference](https://matimo.dev/docs/api-reference/SDK)
-- [LangChain Integration](https://matimo.dev/docs/framework-integrations/LANGCHAIN)
-- [CrewAI Integration](https://matimo.dev/docs/framework-integrations/CREWAI)
-- [MCP Guide](https://matimo.dev/docs/MCP)
-- [Policy & Lifecycle](https://matimo.dev/docs/api-reference/POLICY_AND_LIFECYCLE)
-- [Meta-Tools Reference](https://matimo.dev/docs/api-reference/META_TOOLS)
+- [Getting Started](https://docs.matimo.dev/getting-started/QUICK_START)
+- [Full API Reference](https://docs.matimo.dev/api-reference/SDK)
+- [LangChain Integration](https://docs.matimo.dev/framework-integrations/LANGCHAIN)
+- [CrewAI Integration](https://docs.matimo.dev/framework-integrations/CREWAI)
+- [MCP Guide](https://docs.matimo.dev/MCP)
+- [Policy & Lifecycle](https://docs.matimo.dev/api-reference/POLICY_AND_LIFECYCLE)
+- [Meta-Tools Reference](https://docs.matimo.dev/api-reference/META_TOOLS)
 
 ---
 
 ## Links
 
 - **PyPI:** https://pypi.org/project/matimo-core/
-- **Docs:** https://matimo.dev/docs
+- **Docs:** https://docs.matimo.dev/
 - **GitHub:** https://github.com/tallclub/matimo
 - **Changelog:** https://github.com/tallclub/matimo/blob/main/docs/RELEASES.md
 

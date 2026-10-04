@@ -1,5 +1,6 @@
 name: extract_from_file
 version: '1.0.0'
+risk: medium
 description: >-
   Extract text content from a local or remote file. Supports PDF (text extraction),
   DOCX (raw text extraction), and plain text/CSV files. Format is auto-detected from

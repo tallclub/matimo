@@ -113,7 +113,8 @@ execution:
     const context: PolicyContext = { roles: ['admin'] };
 
     // Should not throw POLICY_DENIED
-    const result = await matimo.execute('draft-tool', {}, { context });
+    // command tools need per-call approval by default; this test is not about that
+    const result = await matimo.execute('draft-tool', {}, { context, approved: true });
     expect(result).toBeDefined();
   });
 
@@ -293,7 +294,8 @@ execution:
 
     // Non-draft, non-deprecated tools still execute fine without context —
     // the default engine doesn't require an explicit PolicyContext.
-    const result = await matimo.execute('simple-tool', {});
+    // command tools need per-call approval by default; this test is not about that
+    const result = await matimo.execute('simple-tool', {}, { approved: true });
     expect(result).toBeDefined();
   });
 

@@ -113,3 +113,42 @@ class TestFromHttpError:
         err = from_http_error(exc)
         body = err.details.get("body", "")
         assert len(body) <= 500
+
+    def test_401_maps_to_auth_failed(self) -> None:
+        request = httpx.Request("GET", "https://api.example.com/")
+        response = httpx.Response(401, text="Unauthorized", request=request)
+        exc = httpx.HTTPStatusError("401", request=request, response=response)
+        err = from_http_error(exc)
+        assert err.code == ErrorCode.AUTH_FAILED
+        assert err.details.get("retryable") is False
+
+    def test_403_maps_to_auth_failed(self) -> None:
+        request = httpx.Request("GET", "https://api.example.com/")
+        response = httpx.Response(403, text="Forbidden", request=request)
+        exc = httpx.HTTPStatusError("403", request=request, response=response)
+        err = from_http_error(exc)
+        assert err.code == ErrorCode.AUTH_FAILED
+
+    def test_429_maps_to_rate_limit_exceeded_and_retryable(self) -> None:
+        request = httpx.Request("GET", "https://api.example.com/")
+        response = httpx.Response(429, text="Too Many Requests", request=request)
+        exc = httpx.HTTPStatusError("429", request=request, response=response)
+        err = from_http_error(exc)
+        assert err.code == ErrorCode.RATE_LIMIT_EXCEEDED
+        assert err.details.get("retryable") is True
+
+    def test_5xx_stays_execution_failed_but_retryable(self) -> None:
+        request = httpx.Request("GET", "https://api.example.com/")
+        response = httpx.Response(503, text="Service Unavailable", request=request)
+        exc = httpx.HTTPStatusError("503", request=request, response=response)
+        err = from_http_error(exc)
+        assert err.code == ErrorCode.EXECUTION_FAILED
+        assert err.details.get("retryable") is True
+
+    def test_404_stays_execution_failed_not_retryable(self) -> None:
+        request = httpx.Request("GET", "https://api.example.com/")
+        response = httpx.Response(404, text="Not Found", request=request)
+        exc = httpx.HTTPStatusError("404", request=request, response=response)
+        err = from_http_error(exc)
+        assert err.code == ErrorCode.EXECUTION_FAILED
+        assert err.details.get("retryable") is False

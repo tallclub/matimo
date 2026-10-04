@@ -26,6 +26,10 @@ pnpm validate:skills # Only skills
 pnpm meta:flow      # Meta-tools integration (most comprehensive)
 pnpm policy:demo    # Policy engine focus
 pnpm skills:demo    # Skills system focus
+pnpm policy:approval-modes  # Approval triggers & callbacks (no API key)
+pnpm policy:audit           # Audit log (no API key)
+pnpm policy:response-size   # Response-size guardrail (no API key)
+pnpm skills:registry        # Skills from anywhere (no API key)
 pnpm credentials:example # Credentials management
 
 # Option C: Run by provider (factory pattern is simplest to start, Please update provider api key in .env ref example.env)
@@ -60,7 +64,11 @@ pnpm execute:langchain      # Execute with LangChain
 |---------|---------|
 | `pnpm meta:flow` | Meta-tools integration demo (tool creation, policy, approvals) |
 | `pnpm policy:demo` | Policy engine validation & blocking scenarios |
+| `pnpm policy:approval-modes` | Which calls need approval, `onApproval` (instance and per call), `governanceMode`, `hitlMinRiskLevel`, function-tool context |
+| `pnpm policy:audit` | `tool:executed` / `tool:execution_failed` events, `JsonlFileSink`, `verifyAuditLog()` |
+| `pnpm policy:response-size` | `max_response_size`, `defaultMaxResponseSize`, `_truncated` |
 | `pnpm skills:demo` | Skills system creation and validation |
+| `pnpm skills:registry` | `registerSkill()`, `addSkillPath()`, `buildSkillPromptContext()`, `skill:created` |
 | `pnpm credentials:example` | Credentials management patterns |
 
 ### Provider Examples - Factory Pattern
@@ -209,10 +217,10 @@ For detailed validation details and expected outputs, see individual README file
 ### Meta-Tools Integration (`meta:flow`)
 📖 **Full details:** [meta-flow/README.md](./meta-flow/README.md)
 
+✓ Policy validation (matimo_validate_tool)  
 ✓ Tool creation (matimo_create_tool)  
-✓ Policy validation (matimo_doctor)  
-✓ Human approval (matimo_review)  
 ✓ Registry reload (matimo_reload_tools)  
+✓ Human approval (matimo_approve_tool)  
 ✓ Tool listing (matimo_list_user_tools)  
 ✓ Tool execution after approval  
 ✓ Agent learns from policy rejections  

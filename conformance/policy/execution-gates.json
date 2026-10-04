@@ -1,0 +1,179 @@
+{
+  "description": "Execution-time gates by tool status, deprecation and requires_approval, per caller environment and roles. Both SDKs load this file and must produce identical outcomes from DefaultPolicyEngine.canExecute with HITL off. Context keys are the TypeScript PolicyContext names.",
+  "contexts": {
+    "no_context": {},
+    "development": {
+      "environment": "development"
+    },
+    "development_admin": {
+      "environment": "development",
+      "roles": [
+        "admin"
+      ]
+    },
+    "production": {
+      "environment": "production"
+    },
+    "production_admin": {
+      "environment": "production",
+      "roles": [
+        "admin"
+      ]
+    },
+    "production_operator": {
+      "environment": "production",
+      "roles": [
+        "operator"
+      ]
+    }
+  },
+  "cases": [
+    {
+      "tool": {
+        "name": "no_status",
+        "version": "1.0.0",
+        "description": "conformance fixture",
+        "execution": {
+          "type": "http",
+          "method": "GET",
+          "url": "https://api.example.com/x"
+        }
+      },
+      "expected": {
+        "no_context": "allowed",
+        "development": "allowed",
+        "development_admin": "allowed",
+        "production": "allowed",
+        "production_admin": "allowed",
+        "production_operator": "allowed"
+      }
+    },
+    {
+      "tool": {
+        "name": "draft_tool",
+        "version": "1.0.0",
+        "description": "conformance fixture",
+        "execution": {
+          "type": "http",
+          "method": "GET",
+          "url": "https://api.example.com/x"
+        },
+        "status": "draft"
+      },
+      "expected": {
+        "no_context": "denied",
+        "development": "denied",
+        "development_admin": "allowed",
+        "production": "denied",
+        "production_admin": "denied",
+        "production_operator": "denied"
+      }
+    },
+    {
+      "tool": {
+        "name": "approved_tool",
+        "version": "1.0.0",
+        "description": "conformance fixture",
+        "execution": {
+          "type": "http",
+          "method": "GET",
+          "url": "https://api.example.com/x"
+        },
+        "status": "approved"
+      },
+      "expected": {
+        "no_context": "allowed",
+        "development": "allowed",
+        "development_admin": "allowed",
+        "production": "allowed",
+        "production_admin": "allowed",
+        "production_operator": "allowed"
+      }
+    },
+    {
+      "tool": {
+        "name": "deprecated_status",
+        "version": "1.0.0",
+        "description": "conformance fixture",
+        "execution": {
+          "type": "http",
+          "method": "GET",
+          "url": "https://api.example.com/x"
+        },
+        "status": "deprecated"
+      },
+      "expected": {
+        "no_context": "denied",
+        "development": "denied",
+        "development_admin": "denied",
+        "production": "denied",
+        "production_admin": "denied",
+        "production_operator": "denied"
+      }
+    },
+    {
+      "tool": {
+        "name": "deprecated_flag",
+        "version": "1.0.0",
+        "description": "conformance fixture",
+        "execution": {
+          "type": "http",
+          "method": "GET",
+          "url": "https://api.example.com/x"
+        },
+        "deprecated": true
+      },
+      "expected": {
+        "no_context": "denied",
+        "development": "denied",
+        "development_admin": "denied",
+        "production": "denied",
+        "production_admin": "denied",
+        "production_operator": "denied"
+      }
+    },
+    {
+      "tool": {
+        "name": "requires_approval_tool",
+        "version": "1.0.0",
+        "description": "conformance fixture",
+        "execution": {
+          "type": "http",
+          "method": "GET",
+          "url": "https://api.example.com/x"
+        },
+        "requires_approval": true
+      },
+      "expected": {
+        "no_context": "allowed",
+        "development": "allowed",
+        "development_admin": "allowed",
+        "production": "denied",
+        "production_admin": "allowed",
+        "production_operator": "allowed"
+      }
+    },
+    {
+      "tool": {
+        "name": "approved_requires_approval",
+        "version": "1.0.0",
+        "description": "conformance fixture",
+        "execution": {
+          "type": "http",
+          "method": "GET",
+          "url": "https://api.example.com/x"
+        },
+        "status": "approved",
+        "requires_approval": true
+      },
+      "expected": {
+        "no_context": "allowed",
+        "development": "allowed",
+        "development_admin": "allowed",
+        "production": "denied",
+        "production_admin": "allowed",
+        "production_operator": "allowed"
+      }
+    }
+  ]
+}

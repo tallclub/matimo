@@ -1,6 +1,5 @@
 import os
 import shutil
-import json
 import asyncio
 
 from matimo.instance import Matimo
@@ -101,13 +100,13 @@ async def main():
     try:
         print("🔍 Getting collection info...")
         info = await m.execute("bruno_get_collection_info", {"collection_path": collection_path})
-        print(f"   ✅ Collection found:")
+        print("   ✅ Collection found:")
         if info.get("success"):
             print(f"      Name: {info.get('collection', {}).get('name', 'Unknown')}")
             print(f"      Path: {info.get('collection', {}).get('path', 'Unknown')}")
             requests = info.get('collection', {}).get('requests', [])
             print(f"      Requests: {len(requests)}")
-            print(f"      Requests list:")
+            print("      Requests list:")
             for r in requests:
                 print(f"        • {r.get('name', 'Unknown')} [{r.get('method', 'UNKNOWN')}]")
         else:
@@ -123,7 +122,7 @@ async def main():
         run_result = await m.execute("bruno_run_collection", {"collection_path": collection_path})
         
         if run_result.get("success"):
-            print(f"   ✅ Collection Execution Summary:")
+            print("   ✅ Collection Execution Summary:")
             summary = run_result.get('summary', {})
             print(f"      Total: {summary.get('total', 0)}")
             print(f"      Passed: {summary.get('passed', 0)}")
@@ -150,7 +149,7 @@ async def main():
         })
         
         if req_result.get("success"):
-            print(f"   ✅ Request Execution:")
+            print("   ✅ Request Execution:")
             print(f"      Name: {req_result.get('request', {}).get('name', 'Unknown')}")
             print(f"      Status: {req_result.get('response', {}).get('status', 0)}")
         else:
@@ -196,7 +195,7 @@ async def main():
         })
         
         if import_result.get("success"):
-            print(f"   ✅ Import Status: Success ✅")
+            print("   ✅ Import Status: Success ✅")
             if os.path.exists(import_path):
                 print(f"      📁 Collection bootstrapped at: {import_path}")
         else:

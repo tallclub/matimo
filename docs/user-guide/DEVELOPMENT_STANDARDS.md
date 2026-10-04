@@ -270,7 +270,7 @@ make test           # Tests
 - [ ] All tests passing (`make test`)
 - [ ] No mypy errors (`make typecheck`)
 - [ ] Ruff clean (`make lint && make format-check`)
-- [ ] Coverage ≥ 95% (`make test-coverage`)
+- [ ] New code well covered (`make test-coverage`; Python has no enforced floor, aim for full coverage of new tools)
 - [ ] Pydantic models validate all external inputs
 - [ ] No hardcoded secrets
 - [ ] `from __future__ import annotations` in every file
@@ -316,10 +316,10 @@ interface ToolDefinition {
 }
 
 // Use union types for variants
-type ExecutionType = 'command' | 'http' | 'script';
+type ExecutionType = 'http' | 'function' | 'command';
 
 // Use const assertions for immutable data
-const EXECUTION_TYPES = ['command', 'http', 'script'] as const;
+const EXECUTION_TYPES = ['http', 'function', 'command'] as const;
 ```
 
 **DON'T:**
@@ -384,8 +384,8 @@ class MatimoError extends Error {}
 
 // PascalCase for types/interfaces
 interface ToolDefinition {}
-interface ExecutionConfig {}
-type ExecutionType = 'command' | 'http' | 'script';
+interface HttpExecution {}
+type ExecutionType = 'http' | 'function' | 'command';
 ```
 
 ### Functions & Variables
@@ -409,7 +409,7 @@ let executionCount = 0;
 // UPPER_SNAKE_CASE for constants
 const MAX_RETRIES = 3;
 const DEFAULT_TIMEOUT = 5000;
-const SUPPORTED_TYPES = ['command', 'http', 'script'];
+const SUPPORTED_TYPES = ['http', 'function', 'command'];
 
 // Constants should be immutable
 const readonly EXECUTION_TYPES = ['command', 'http'] as const;
@@ -473,6 +473,8 @@ throw new Error('Something went wrong');
 // ❌ DON'T: Include sensitive data
 throw new Error(`Failed with token: ${apiKey}`);
 ```
+
+> Matimo's own built-in HTTP executor already does this HTTP-error → `MatimoError` wrapping for you via `fromHttpError()`/`from_http_error()`, and doesn't collapse every status to `EXECUTION_FAILED` — it maps 401/403 → `AUTH_FAILED`, 429 → `RATE_LIMIT_EXCEEDED`, and records a `retryable` flag on `details`. Reach for the pattern above only when writing a custom `type: function` executor that talks to something other than a standard HTTP tool. See the [Error Codes Reference](../api-reference/ERRORS.md).
 
 ### Error Handling Pattern
 
@@ -653,7 +655,7 @@ const first = items[0];
 
 ### README Structure
 
-```markdown
+````markdown
 # Tool Name
 
 Brief description (1 sentence)
@@ -662,9 +664,6 @@ Brief description (1 sentence)
 
 - Feature 1
 - Feature 2
-
-## Installation
-```
 
 ## Installation
 
@@ -681,7 +680,6 @@ Methods and options
 ## Troubleshooting
 
 Common issues and solutions
-
 ````
 
 ---
@@ -949,8 +947,7 @@ const validated = schema.parse(userInput);
 
 ## See Also
 
-- [CONTRIBUTING.md](../CONTRIBUTING.md) — Contribution guide
+- [CONTRIBUTING.md](../../CONTRIBUTING.md) — Contribution guide
 - [COMMIT_GUIDELINES.md](../community/COMMIT_GUIDELINES.md) — Commit standards
 - [QUICK_START.md](../getting-started/QUICK_START.md) — Get started
 - [API_REFERENCE.md](../api-reference/SDK.md) — SDK documentation
-````

@@ -89,11 +89,11 @@ result = await matimo.execute('slack_send_channel_message', {
 })
 ```
 
-To add a new governed capability at runtime rather than hand-writing an ungoverned script, use the meta-tools (`matimo_create_tool`, `matimo_create_skill`, `matimo_reload_tools`) documented in [docs/api-reference/META_TOOLS.md](./docs/api-reference/META_TOOLS.md) — new tools are policy-validated and, if high-risk, held for human approval before they're usable.
+To add a new governed capability at runtime rather than hand-writing an ungoverned script, use the meta-tools (`matimo_create_tool`, `matimo_create_skill`, `matimo_reload_tools`) documented in [docs/api-reference/META_TOOLS.md](./docs/api-reference/META_TOOLS.md) — new tools are policy-validated, start as drafts, and run only after a human approves them with `matimo_approve_tool` (or `matimo review approve`).
 
 ## MCP
 
-Matimo ships a first-party MCP server (stdio and Streamable HTTP transports) exposing every installed `@matimo/*` tool. Setup and full flag reference: [docs/MCP.md](./docs/MCP.md), [docs/mcp/SETUP_GUIDE.md](./docs/mcp/SETUP_GUIDE.md).
+Matimo ships a first-party MCP server (stdio and Streamable HTTP transports) exposing every installed `@matimo/*` tool. Setup and full flag reference: [docs/MCP.md](./docs/MCP.md). Contributors building provider packages with Copilot over MCP: [docs/mcp/SETUP_GUIDE.md](./docs/mcp/SETUP_GUIDE.md).
 
 ## Where to look for more
 

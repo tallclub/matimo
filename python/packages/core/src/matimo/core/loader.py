@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
@@ -125,7 +126,7 @@ class ToolLoader:
         return tools
 
     def load_tools_from_multiple_paths(
-        self, paths: list[str | Path]
+        self, paths: Sequence[str | Path]
     ) -> dict[str, ToolDefinition]:
         """
         Load tools from multiple directories.

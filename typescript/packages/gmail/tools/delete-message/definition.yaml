@@ -1,6 +1,7 @@
 name: gmail-delete-message
 description: Permanently delete a message from Gmail (cannot be undone)
 version: '1.0.0'
+requires_approval: true
 
 parameters:
   messageId:

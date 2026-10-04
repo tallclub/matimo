@@ -15,11 +15,20 @@ import type {
   RiskLevel,
 } from './types.js';
 import { validateToolContent } from './content-validator.js';
-import { classifyRisk } from './risk-classifier.js';
+import {
+  classifyExecutionRisk,
+  classifyRisk,
+  lowestRisk,
+  meetsRiskThreshold,
+} from './risk-classifier.js';
 import { extractAuthPlaceholders } from '../mcp/tool-converter.js';
 
-const DEFAULT_CONFIG: Required<Omit<PolicyConfig, 'approvalTtlSeconds'>> &
-  Pick<PolicyConfig, 'approvalTtlSeconds'> = {
+type ResolvedPolicyConfig = Required<
+  Omit<PolicyConfig, 'approvalTtlSeconds' | 'hitlMinRiskLevel' | 'governanceMode'>
+> &
+  Pick<PolicyConfig, 'approvalTtlSeconds' | 'hitlMinRiskLevel' | 'governanceMode'>;
+
+const DEFAULT_CONFIG: ResolvedPolicyConfig = {
   allowedDomains: [],
   allowedCredentials: [],
   allowedHttpMethods: ['GET', 'POST'],
@@ -31,8 +40,7 @@ const DEFAULT_CONFIG: Required<Omit<PolicyConfig, 'approvalTtlSeconds'>> &
 };
 
 export class DefaultPolicyEngine implements PolicyEngine {
-  private config: Required<Omit<PolicyConfig, 'approvalTtlSeconds'>> &
-    Pick<PolicyConfig, 'approvalTtlSeconds'>;
+  private config: ResolvedPolicyConfig;
 
   constructor(config?: PolicyConfig) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -213,12 +221,14 @@ export class DefaultPolicyEngine implements PolicyEngine {
       };
     }
 
-    // Quarantine tools whose risk level is configured for HITL review. Opt-in
-    // via enableHITL (off by default) so this never changes behavior for
-    // callers who haven't configured quarantineRiskLevels themselves.
+    // Quarantine tools at or above the HITL threshold. Opt-in via enableHITL.
+    // A threshold (not list membership) so that quarantining medium-risk
+    // writes can never let a high-risk DELETE or critical tool straight through.
     if (this.config.enableHITL) {
-      const risk = classifyRisk(tool);
-      if (this.config.quarantineRiskLevels.includes(risk)) {
+      const risk = classifyExecutionRisk(tool);
+      const threshold =
+        this.config.hitlMinRiskLevel ?? lowestRisk(this.config.quarantineRiskLevels);
+      if (threshold !== undefined && meetsRiskThreshold(risk, threshold)) {
         return {
           allowed: 'pending_approval',
           reason: `Tool "${tool.name}" risk level "${risk}" requires human approval`,
@@ -242,9 +252,7 @@ export class DefaultPolicyEngine implements PolicyEngine {
   }
 
   /** Expose the resolved config (read-only snapshot). */
-  getConfig(): Readonly<
-    Required<Omit<PolicyConfig, 'approvalTtlSeconds'>> & Pick<PolicyConfig, 'approvalTtlSeconds'>
-  > {
+  getConfig(): Readonly<ResolvedPolicyConfig> {
     return { ...this.config };
   }
 

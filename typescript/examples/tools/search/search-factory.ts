@@ -1,4 +1,4 @@
-import { MatimoInstance, getGlobalApprovalHandler, type ApprovalRequest } from '@matimo/core';
+import { MatimoInstance, type ApprovalRequest } from '@matimo/core';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import * as readline from 'readline';
@@ -28,9 +28,7 @@ function createApprovalCallback() {
 
     if (!isInteractive) {
       console.info('\n❌ REJECTED - Non-interactive environment (no terminal)');
-      console.info('\n💡 To enable auto-approval in CI/scripts:');
-      console.info('   export MATIMO_AUTO_APPROVE=true');
-      console.info('\n💡 Or approve specific patterns:');
+      console.info('\n💡 To pre-approve this tool in CI/scripts:');
       console.info('   export MATIMO_APPROVED_PATTERNS="search"');
       console.info('\n' + '='.repeat(70) + '\n');
       return false;
@@ -69,11 +67,11 @@ function createApprovalCallback() {
  */
 async function searchExample() {
   // Initialize Matimo with autoDiscover to find all tools (core + providers)
-  const matimo = await MatimoInstance.init({ autoDiscover: true });
-
-  // Configure centralized approval handler
-  const approvalHandler = getGlobalApprovalHandler();
-  approvalHandler.setApprovalCallback(createApprovalCallback());
+  const matimo = await MatimoInstance.init({
+    autoDiscover: true,
+    // Decides every call that needs approval, for this instance only.
+    onApproval: createApprovalCallback(),
+  });
 
   console.info('=== Search Tool - Factory Pattern (Interactive Approval) ===\n');
 

@@ -190,7 +190,7 @@ async def main() -> None:
     # Initialize Matimo
     print("🚀 Initializing Matimo...")
     matimo = await Matimo.init(get_tools_path())
-    tools = BrunoTools(matimo)
+    BrunoTools(matimo)
 
     all_tools = matimo.list_tools()
     bruno_tools = [t for t in all_tools if t.name.startswith("bruno")]

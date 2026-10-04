@@ -253,16 +253,16 @@ All examples work with these HubSpot operations:
 | **Create Invoice** | `hubspot-create-invoice` | Create a new invoice |
 | **List Products** | `hubspot-list-products` | List all products |
 
-See [packages/hubspot/README.md](../../packages/hubspot/README.md) for complete tool list and documentation.
+See [packages/hubspot/README.md](../../../packages/hubspot/README.md) for complete tool list and documentation.
 
 ## 📖 Full Documentation
 
 For comprehensive documentation, see:
 
-- **Package Docs:** [packages/hubspot/README.md](../../packages/hubspot/README.md)
+- **Package Docs:** [packages/hubspot/README.md](../../../packages/hubspot/README.md)
 - **HubSpot API Reference:** https://developers.hubspot.com/docs/api-reference/crm-objects
 - **Service Keys Guide:** https://developers.hubspot.com/docs/apps/developer-platform/build-apps/authentication/account-service-keys
-- **Matimo Documentation:** [docs/getting-started/](../../docs/getting-started/)
+- **Matimo Documentation:** [docs/getting-started/](../../../../docs/getting-started/QUICK_START.md)
 
 ## 🛠️ Troubleshooting
 
@@ -303,7 +303,7 @@ pnpm install
 
 2. **Build your own:**
    - Combine patterns as needed
-   - Add more HubSpot tools from [full list](../../packages/hubspot/README.md)
+   - Add more HubSpot tools from [full list](../../../packages/hubspot/README.md)
    - Integrate with your own application
 
 3. **Advanced:**
@@ -313,4 +313,4 @@ pnpm install
 
 ---
 
-**Questions?** See [CONTRIBUTING.md](../../CONTRIBUTING.md) or review the Matimo core documentation.
+**Questions?** See [CONTRIBUTING.md](../../../../CONTRIBUTING.md) or review the Matimo core documentation.

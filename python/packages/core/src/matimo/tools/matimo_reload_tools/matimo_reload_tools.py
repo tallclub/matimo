@@ -6,11 +6,12 @@ This fallback is only reached in environments without the interception.
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 logger = logging.getLogger("matimo")
 
 
-async def run(params: dict) -> dict:  # noqa: ARG001  # type: ignore[type-arg]
+async def run(params: dict[str, Any]) -> dict[str, Any]:  # noqa: ARG001
     # Try to call reload on the global instance
     try:
         from matimo.decorators import get_global_matimo_instance

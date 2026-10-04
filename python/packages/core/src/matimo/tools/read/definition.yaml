@@ -1,5 +1,6 @@
 name: read
 version: '1.0.0'
+risk: medium
 description: Read file contents with support for line ranges, encoding detection, and large file handling.
 requires_approval: true
 

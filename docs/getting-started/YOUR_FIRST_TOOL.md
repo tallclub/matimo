@@ -4,9 +4,10 @@ Execute your first Matimo tool in 5 minutes.
 
 ## Prerequisites
 
-- ✅ Matimo installed (see [Installation](./installation.md))
-- ✅ Node.js v18+ and pnpm installed
-- ✅ `cd` into a Matimo project with tools loaded
+- ✅ Matimo installed (`npm install matimo` — see [Installation](./installation.md))
+- ✅ Node.js v18+
+
+This guide uses `calculator`, one of the core tools that ship with Matimo.
 
 ## Step 1: Initialize Matimo
 
@@ -16,8 +17,8 @@ Create `first-tool.ts`:
 import { MatimoInstance } from 'matimo';
 
 async function main() {
-  // Initialize Matimo with tools directory
-  const m = await MatimoInstance.init('./tools');
+  // Load Matimo's core tools, plus any @matimo/* provider packages you installed
+  const m = await MatimoInstance.init({ autoDiscover: true });
 
   console.log(`✅ Loaded ${m.listTools().length} tools`);
 }
@@ -34,8 +35,10 @@ npx tsx first-tool.ts
 **Output:**
 
 ```
-✅ Loaded 8 tools
+✅ Loaded 24 tools
 ```
+
+(24 core tools; each provider package you install adds its own.)
 
 ---
 
@@ -47,7 +50,7 @@ Update `first-tool.ts`:
 import { MatimoInstance } from 'matimo';
 
 async function main() {
-  const m = await MatimoInstance.init('./tools');
+  const m = await MatimoInstance.init({ autoDiscover: true });
 
   // List all tools
   const tools = m.listTools();
@@ -68,10 +71,10 @@ main().catch(console.error);
 📦 Available Tools:
 
   • calculator
-    Perform basic math operations
+    Perform arithmetic operations. Two mutually exclusive modes are supported: ...
 
-  • gmail_send_email
-    Send an email via Gmail API
+  • convert_to_file
+    Convert structured content between JSON, CSV, Markdown, and plain text ...
 
   ... (more tools)
 ```
@@ -92,11 +95,13 @@ console.log(`Parameters:`, tool.parameters);
 
 ```
 Tool: calculator
-Description: Perform basic math operations
+Description: Perform arithmetic operations. Two mutually exclusive modes are supported: ...
 Parameters: {
-  operation: { type: 'string', required: true, ... },
-  a: { type: 'number', required: true, ... },
-  b: { type: 'number', required: true, ... }
+  operation: { type: 'string', enum: [...], ... },
+  a: { type: 'number', ... },
+  b: { type: 'number', ... },
+  expression: { type: 'string', ... },
+  precision: { type: 'number', ... }
 }
 ```
 
@@ -112,7 +117,7 @@ const result = await m.execute('calculator', {
 });
 
 console.log('Result:', result);
-// Output: Result: { result: 8 }
+// Output: Result: { result: 8, operation: 'add', original_operation: 'add', operands: { a: 5, b: 3 } }
 ```
 
 ### Execute Different Operations
@@ -139,20 +144,23 @@ console.log('10 / 5 =', div.result); // 2
 
 ## Step 5: Handle Errors
 
+A tool can report a failure in its result, or Matimo can throw:
+
 ```typescript
+// The calculator reports division by zero in its result
+const div0 = await m.execute('calculator', { operation: 'divide', a: 10, b: 0 });
+// { success: false, error: 'Division by zero', code: 'EXECUTION_FAILED', details: { a: 10, b: 0 } }
+
+// Matimo throws a MatimoError for unknown tools, bad parameters, policy refusals, ...
 try {
-  const result = await m.execute('calculator', {
-    operation: 'divide',
-    a: 10,
-    b: 0, // ⚠️ Invalid
-  });
+  await m.execute('no_such_tool', {});
 } catch (error) {
-  if (error.code === 'EXECUTION_FAILED') {
-    console.error('Tool execution failed:', error.message);
-  } else if (error.code === 'INVALID_PARAMETERS') {
+  if (error.code === 'TOOL_NOT_FOUND') {
+    console.error('Tool not found:', error.message);
+  } else if (error.code === 'INVALID_PARAMETER') {
     console.error('Invalid parameters:', error.details);
   } else {
-    console.error('Error:', error.message);
+    console.error('Error:', error.code, error.message);
   }
 }
 ```
@@ -177,7 +185,7 @@ import { MatimoInstance } from 'matimo';
 
 async function main() {
   // 1. Initialize
-  const m = await MatimoInstance.init('./tools');
+  const m = await MatimoInstance.init({ autoDiscover: true });
   console.log(`✅ Loaded ${m.listTools().length} tools\n`);
 
   // 2. List tools
@@ -205,12 +213,12 @@ main().catch(console.error);
 **Output:**
 
 ```
-✅ Loaded 8 tools
+✅ Loaded 24 tools
 
 📦 Available tools:
   - calculator
-  - gmail-send-email
-  - github-get-repo
+  - convert_to_file
+  - edit
   ... (more tools)
 
 🔧 Tool: calculator

@@ -1,634 +1,125 @@
-# Decorator Guide — Using @tool Decorators
+# Decorator Guide — Calling Tools with `@tool`
 
-Use TypeScript decorators to define tools directly in code instead of YAML.
+`@tool('<tool-name>')` turns a method into a call to an existing Matimo tool. The method body is ignored: calling the method runs `matimo.execute('<tool-name>', params)`, with the same policy, approval and audit checks as any other call.
 
-## Overview
+The decorator **does not define tools**. Tools are still defined in YAML (see [TOOL_SPECIFICATION.md](TOOL_SPECIFICATION.md)); the decorator is a typed, class-based way to call them.
 
-The `@tool` decorator provides a way to define Matimo tools using TypeScript decorators. This is useful when:
-
-- You want to keep tool logic and definitions together
-- You prefer type-safe tool definitions
-- You're building tools that reference existing TypeScript functions
-
----
-
-## Basic Usage
-
-### Simple Tool
+## TypeScript
 
 ```typescript
-import { tool, param } from 'matimo/decorators';
+import { MatimoInstance, tool } from '@matimo/core';
 
-@tool({
-  name: 'greet',
-  description: 'Greet a person',
-})
-export class GreetTool {
-  @param({
-    type: 'string',
-    description: 'Person to greet',
-    required: true,
-  })
-  name: string;
+class MathAgent {
+  constructor(public matimo: MatimoInstance) {}
 
-  execute(): string {
-    return `Hello, ${this.name}!`;
-  }
-}
-```
-
-Use with Matimo:
-
-```typescript
-import { MatimoInstance } from 'matimo';
-import { GreetTool } from './tools/greet.tool';
-
-const matimo = await MatimoInstance.init('./tools');
-
-const result = await matimo.execute('greet', {
-  name: 'Alice',
-});
-
-console.log(result); // "Hello, Alice!"
-```
-
----
-
-## Decorator Options
-
-### @tool
-
-Define a tool class.
-
-```typescript
-@tool({
-  name: string;              // Tool identifier (required)
-  description: string;       // What the tool does (required)
-  version?: string;          // Semantic version (default: "1.0.0")
-  returnType?: 'object' | 'string' | 'number' | 'boolean' | 'array';
-})
-class MyTool {
-  // ...
-}
-```
-
-### @param
-
-Define a parameter.
-
-```typescript
-@param({
-  type: 'string' | 'number' | 'boolean' | 'object' | 'array';  // (required)
-  description: string;       // What the parameter does (required)
-  required?: boolean;        // Is it mandatory? (default: false)
-  default?: unknown;         // Default value
-  enum?: unknown[];          // Allowed values
-  validation?: {
-    minLength?: number;
-    maxLength?: number;
-    min?: number;
-    max?: number;
-    pattern?: string;
-  };
-})
-property: PropertyType;
-```
-
----
-
-## Examples
-
-### Calculator Tool
-
-```typescript
-import { tool, param } from 'matimo/decorators';
-
-@tool({
-  name: 'calculator',
-  description: 'Perform basic math operations',
-})
-export class CalculatorTool {
-  @param({
-    type: 'string',
-    description: 'Math operation',
-    required: true,
-    enum: ['add', 'subtract', 'multiply', 'divide'],
-  })
-  operation: string;
-
-  @param({
-    type: 'number',
-    description: 'First operand',
-    required: true,
-  })
-  a: number;
-
-  @param({
-    type: 'number',
-    description: 'Second operand',
-    required: true,
-  })
-  b: number;
-
-  execute(): { result: number } {
-    switch (this.operation) {
-      case 'add':
-        return { result: this.a + this.b };
-      case 'subtract':
-        return { result: this.a - this.b };
-      case 'multiply':
-        return { result: this.a * this.b };
-      case 'divide':
-        if (this.b === 0) throw new Error('Division by zero');
-        return { result: this.a / this.b };
-      default:
-        throw new Error('Unknown operation');
-    }
-  }
-}
-```
-
-Usage:
-
-```typescript
-const result = await matimo.execute('calculator', {
-  operation: 'add',
-  a: 10,
-  b: 5,
-});
-
-console.log(result); // { result: 15 }
-```
-
-### Async Tool with HTTP Request
-
-```typescript
-import { tool, param } from 'matimo/decorators';
-import fetch from 'node-fetch';
-
-@tool({
-  name: 'fetch-user',
-  description: 'Fetch user information from an API',
-})
-export class FetchUserTool {
-  @param({
-    type: 'string',
-    description: 'User ID',
-    required: true,
-    validation: {
-      pattern: '^[0-9]+$',
-    },
-  })
-  userId: string;
-
-  async execute(): Promise<{
-    id: number;
-    name: string;
-    email: string;
-  }> {
-    const response = await fetch(`https://jsonplaceholder.typicode.com/users/${this.userId}`);
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch user: ${response.statusText}`);
-    }
-
-    return await response.json();
-  }
-}
-```
-
-### Tool with Validation
-
-```typescript
-import { tool, param } from 'matimo/decorators';
-
-@tool({
-  name: 'email-validator',
-  description: 'Validate email format',
-})
-export class EmailValidatorTool {
-  @param({
-    type: 'string',
-    description: 'Email address to validate',
-    required: true,
-    validation: {
-      pattern: '^[^@]+@[^@]+\\.[^@]+$',
-    },
-  })
-  email: string;
-
-  execute(): { valid: boolean; message: string } {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const valid = emailRegex.test(this.email);
-
-    return {
-      valid,
-      message: valid ? 'Valid email' : 'Invalid email format',
-    };
-  }
-}
-```
-
-### Tool with Complex Parameters
-
-```typescript
-import { tool, param } from 'matimo/decorators';
-
-@tool({
-  name: 'user-create',
-  description: 'Create a new user',
-})
-export class UserCreateTool {
-  @param({
-    type: 'string',
-    description: 'User name',
-    required: true,
-    validation: {
-      minLength: 2,
-      maxLength: 50,
-    },
-  })
-  name: string;
-
-  @param({
-    type: 'string',
-    description: 'User email',
-    required: true,
-    validation: {
-      pattern: '^[^@]+@[^@]+\\.[^@]+$',
-    },
-  })
-  email: string;
-
-  @param({
-    type: 'number',
-    description: 'User age',
-    required: false,
-    validation: {
-      min: 13,
-      max: 120,
-    },
-  })
-  age?: number;
-
-  @param({
-    type: 'array',
-    description: 'User roles',
-    required: false,
-    default: ['user'],
-  })
-  roles?: string[];
-
-  execute(): {
-    id: string;
-    name: string;
-    email: string;
-    age?: number;
-    roles: string[];
-  } {
-    return {
-      id: `user_${Date.now()}`,
-      name: this.name,
-      email: this.email,
-      age: this.age,
-      roles: this.roles || ['user'],
-    };
-  }
-}
-```
-
----
-
-## Advanced Features
-
-### Error Handling
-
-```typescript
-import { tool, param } from 'matimo/decorators';
-import { MatimoError, ErrorCode } from 'matimo';
-
-@tool({
-  name: 'divide',
-  description: 'Divide two numbers',
-})
-export class DivideTool {
-  @param({
-    type: 'number',
-    description: 'Dividend',
-    required: true,
-  })
-  dividend: number;
-
-  @param({
-    type: 'number',
-    description: 'Divisor',
-    required: true,
-  })
-  divisor: number;
-
-  execute(): { result: number } {
-    if (this.divisor === 0) {
-      throw new MatimoError('Division by zero not allowed', ErrorCode.VALIDATION_FAILED, {
-        dividend: this.dividend,
-        divisor: this.divisor,
-      });
-    }
-
-    return { result: this.dividend / this.divisor };
-  }
-}
-```
-
-### Type-Safe Results
-
-```typescript
-interface CalculationResult {
-  result: number;
-  timestamp: string;
-  operation: string;
-}
-
-@tool({
-  name: 'typed-calculator',
-  description: 'Type-safe calculator',
-})
-export class TypedCalculatorTool {
-  @param({
-    type: 'string',
-    description: 'Operation',
-    required: true,
-    enum: ['add', 'subtract'],
-  })
-  operation: string;
-
-  @param({
-    type: 'number',
-    description: 'First number',
-    required: true,
-  })
-  a: number;
-
-  @param({
-    type: 'number',
-    description: 'Second number',
-    required: true,
-  })
-  b: number;
-
-  execute(): CalculationResult {
-    let result: number;
-
-    if (this.operation === 'add') {
-      result = this.a + this.b;
-    } else {
-      result = this.a - this.b;
-    }
-
-    return {
-      result,
-      timestamp: new Date().toISOString(),
-      operation: this.operation,
-    };
-  }
-}
-```
-
-### Dependency Injection
-
-```typescript
-import { tool, param } from 'matimo/decorators';
-
-// Service to inject
-class LoggerService {
-  log(message: string): void {
-    console.log(`[${new Date().toISOString()}] ${message}`);
+  @tool('calculator')
+  async calculate(operation: string, a: number, b: number): Promise<unknown> {
+    return undefined; // never runs; the decorator calls matimo.execute('calculator', …)
   }
 }
 
-@tool({
-  name: 'logged-operation',
-  description: 'Operation with logging',
-})
-export class LoggedOperationTool {
-  private logger: LoggerService;
+const matimo = await MatimoInstance.init({ autoDiscover: true });
+const agent = new MathAgent(matimo);
 
-  constructor(logger: LoggerService) {
-    this.logger = logger;
-  }
-
-  @param({
-    type: 'string',
-    description: 'Operation name',
-    required: true,
-  })
-  operation: string;
-
-  execute(): { success: boolean; message: string } {
-    this.logger.log(`Starting operation: ${this.operation}`);
-    // ... perform operation ...
-    this.logger.log(`Completed operation: ${this.operation}`);
-
-    return {
-      success: true,
-      message: `Operation '${this.operation}' completed`,
-    };
-  }
-}
+console.log(await agent.calculate('add', 5, 3));
+// { result: 8, operation: 'add', original_operation: 'add', operands: { a: 5, b: 3 } }
 ```
 
----
+### How arguments become parameters
 
-## Decorator vs YAML Comparison
+TypeScript maps **positional arguments to the tool's parameters in the order the YAML declares them**. The method's own parameter names are not used.
 
-### When to Use Decorators
+`calculator` declares `operation`, `a`, `b`, `expression`, `precision`, so `calculate('add', 5, 3)` becomes `{ operation: 'add', a: 5, b: 3 }`. A method declared as `swapped(x, y, op)` and called as `swapped(5, 3, 'add')` would send `{ operation: 5, a: 3, b: 'add' }`. Keep the method's parameters in the YAML's order, and check it with `matimo.getTool(name)?.parameters`.
 
-✅ **Decorators are best for:**
+### Which instance runs the call
 
-- Complex business logic
-- Type-safe definitions
-- Reusing existing TypeScript code
-- Tools with dependencies
-- Dynamic behavior
-
-### When to Use YAML
-
-✅ **YAML is best for:**
-
-- Simple command/HTTP tools
-- Configuration-driven tools
-- Non-technical tool definitions
-- Sharing tools without code
-- External API wrappers
-
-### Example: Decorator vs YAML
-
-**Same tool, two approaches:**
-
-**Decorator:**
+1. The object's `matimo` property, if it has one.
+2. Otherwise the global instance set with `setGlobalMatimoInstance(matimo)`.
+3. Otherwise the call fails with `TOOL_NOT_FOUND` ("Matimo instance not found for @tool(...)").
 
 ```typescript
-@tool({
-  name: 'fetch-issue',
-  description: 'Fetch GitHub issue by number',
-})
-export class FetchIssueTool {
-  @param({
-    type: 'string',
-    description: 'Repository (owner/repo)',
-    required: true,
-  })
-  repo: string;
+import { MatimoInstance, tool, setGlobalMatimoInstance } from '@matimo/core';
 
-  @param({
-    type: 'number',
-    description: 'Issue number',
-    required: true,
-  })
-  number: number;
+const matimo = await MatimoInstance.init({ autoDiscover: true });
+setGlobalMatimoInstance(matimo);
 
-  async execute() {
-    const [owner, repoName] = this.repo.split('/');
-    const response = await fetch(
-      `https://api.github.com/repos/${owner}/${repoName}/issues/${this.number}`,
-      { headers: { Authorization: `Bearer ${process.env.GITHUB_TOKEN}` } }
-    );
-    return await response.json();
+class Agent {
+  @tool('calculator')
+  async multiply(operation: string, a: number, b: number): Promise<unknown> {
+    return undefined;
   }
 }
+
+await new Agent().multiply('multiply', 4, 2); // { result: 8, … }
 ```
 
-**YAML:**
+The decorators use the standard (TC39) decorator syntax; no `experimentalDecorators` setting is needed with TypeScript 5.
 
-```yaml
-name: fetch-issue
-description: Fetch GitHub issue by number
-version: '1.0.0'
+## Python
 
-parameters:
-  repo:
-    type: string
-    description: Repository (owner/repo)
-    required: true
-  number:
-    type: number
-    description: Issue number
-    required: true
+```python
+from matimo import Matimo
+from matimo.decorators import tool, set_global_matimo_instance
 
-execution:
-  type: http
-  method: GET
-  url: 'https://api.github.com/repos/{repo}/issues/{number}'
-  auth:
-    type: bearer
-    secret_env_var: MATIMO_GITHUB_TOKEN
+
+class MathAgent:
+    def __init__(self, matimo: Matimo) -> None:
+        self._matimo = matimo
+
+    @tool("calculator")
+    async def calculate(self, operation: str, a: float, b: float): ...
+
+
+matimo = await Matimo.init(auto_discover=True)
+agent = MathAgent(matimo)
+print(await agent.calculate("add", 5, 3))
+# {'result': 8.0, 'operation': 'add', 'original_operation': 'add', 'operands': {'a': 5.0, 'b': 3.0}}
 ```
 
----
+Python maps arguments **by the method's parameter names**: positional arguments take the names from the signature, and keyword arguments are passed as given. So the names must match the tool's parameters, but their order does not matter, and `agent.calculate(operation="multiply", a=4, b=2)` works too.
 
-## Best Practices
+The instance comes from the object's `_matimo` attribute, else from `set_global_matimo_instance(matimo)`. A sync method is run to completion on an event loop; prefer `async def`.
 
-1. **Naming** — Tool names should be descriptive and kebab-case
-2. **Validation** — Use validation rules to catch errors early
-3. **Error Handling** — Return structured errors with context
-4. **Async Support** — Use `async execute()` for I/O operations
-5. **Type Safety** — Define proper return types
-6. **Documentation** — Add JSDoc comments to tools
-7. **Testing** — Unit test tool logic independently
+## Approval and errors
 
----
+A decorated call is an ordinary `execute()` call:
 
-## Testing Decorator Tools
+- If the tool needs approval (`requires_approval: true`, an HTTP `DELETE`, a destructive SQL keyword), the instance's `onApproval` / `on_approval` is asked. With none, the call is refused.
+- Policy denials and refused approvals raise `MatimoError`.
+- Bad input to a built-in tool returns `{ success: false, error, code }` in TypeScript and raises `EXECUTION_FAILED` in Python.
 
 ```typescript
-import { CalculatorTool } from './calculator.tool';
-
-describe('CalculatorTool', () => {
-  let tool: CalculatorTool;
-
-  beforeEach(() => {
-    tool = new CalculatorTool();
-  });
-
-  it('should add two numbers', () => {
-    tool.operation = 'add';
-    tool.a = 5;
-    tool.b = 3;
-
-    const result = tool.execute();
-
-    expect(result.result).toBe(8);
-  });
-
-  it('should subtract two numbers', () => {
-    tool.operation = 'subtract';
-    tool.a = 10;
-    tool.b = 3;
-
-    const result = tool.execute();
-
-    expect(result.result).toBe(7);
-  });
-
-  it('should throw on division by zero', () => {
-    tool.operation = 'divide';
-    tool.a = 10;
-    tool.b = 0;
-
-    expect(() => tool.execute()).toThrow('Division by zero');
-  });
+const matimo = await MatimoInstance.init({
+  autoDiscover: true,
+  onApproval: async (request) => askUser(`Run ${request.toolName}?`),
 });
 ```
 
----
+## Decorator vs direct `execute()`
 
-## Migration from YAML
+| | `@tool` method | `matimo.execute()` |
+|---|---|---|
+| Call style | `agent.getRepository('octocat', 'hello-world')` | `matimo.execute('github-get-repository', { owner, repo })` |
+| Parameter mapping | TS: YAML order; Python: method parameter names | Explicit names |
+| Optional parameters in the middle | Awkward (TS) | Easy |
+| Best for | Agent classes with a fixed set of tools | Dynamic tool choice, LangChain/MCP, scripts |
 
-Convert existing YAML tools to decorators:
+Each provider has a runnable example: `typescript/examples/tools/<provider>/<provider>-decorator.ts` and `python/examples/native/<provider>/…_decorator.py` (for example `github-decorator.ts`).
 
-**Before (YAML):**
+## Testing decorated methods
 
-```yaml
-name: echo
-description: Echo input back
-version: '1.0.0'
-
-parameters:
-  message:
-    type: string
-    required: true
-
-execution:
-  type: command
-  command: echo
-  args: ['{message}']
-```
-
-**After (Decorator):**
+Test them as you would test `execute()`: mock the HTTP layer and assert the request (see [TESTING.md](TESTING.md)).
 
 ```typescript
-@tool({
-  name: 'echo',
-  description: 'Echo input back',
-})
-export class EchoTool {
-  @param({
-    type: 'string',
-    description: 'Message to echo',
-    required: true,
-  })
-  message: string;
-
-  execute(): { output: string } {
-    return { output: this.message };
-  }
-}
+it('maps arguments in YAML order', async () => {
+  const matimo = await MatimoInstance.init({ autoDiscover: true });
+  const agent = new MathAgent(matimo);
+  await expect(agent.calculate('add', 5, 3)).resolves.toMatchObject({ result: 8 });
+});
 ```
-
----
 
 ## See Also
 
-- [Quick Start](../getting-started/QUICK_START.md) — Get started in 5 minutes
-- [API Reference](../api-reference/SDK.md) — Complete SDK documentation
-- [Tool Specification](./TOOL_SPECIFICATION.md) — YAML tool schema
-- [CONTRIBUTING.md](../CONTRIBUTING.md) — Development guide
+- [TOOL_SPECIFICATION.md](TOOL_SPECIFICATION.md) — defining tools in YAML
+- [SDK Patterns](../user-guide/SDK_PATTERNS.md) — factory, decorator and framework patterns
+- [Approval System](../api-reference/APPROVAL-SYSTEM.md)

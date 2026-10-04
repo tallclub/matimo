@@ -13,7 +13,7 @@ def install_command(tool_names: list[str]) -> None:
     if not tool_names:
         print("❌ Error: Please specify at least one tool to install", file=sys.stderr)
         print("\nUsage: matimo install [tool1] [tool2] …")
-        print("Example: matimo install slack gmail stripe")
+        print("Example: matimo install slack gmail github")
         sys.exit(1)
 
     packages = [f"matimo-{name}" for name in tool_names]

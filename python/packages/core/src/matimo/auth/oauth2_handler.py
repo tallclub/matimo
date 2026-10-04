@@ -108,9 +108,9 @@ class OAuth2Handler:
                     details={"provider": config.provider},
                 )
             return OAuth2Endpoints(
-                authorization_url=env_auth,
-                token_url=env_token,
-                revoke_url=os.environ.get(f"OAUTH_{provider_upper}_REVOKE_URL"),
+                authorizationUrl=env_auth,
+                tokenUrl=env_token,
+                revokeUrl=os.environ.get(f"OAUTH_{provider_upper}_REVOKE_URL"),
             )
 
         # Priority 3: YAML definition

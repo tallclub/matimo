@@ -537,7 +537,7 @@ pnpm add -D lint-staged
 
 ## See Also
 
-- [CONTRIBUTING.md](../CONTRIBUTING.md) — Full contribution guide
+- [CONTRIBUTING.md](../../CONTRIBUTING.md) — Full contribution guide
 - [DEVELOPMENT_STANDARDS.md](../user-guide/DEVELOPMENT_STANDARDS.md) — Code quality standards
 - [Conventional Commits](https://www.conventionalcommits.org/) — Full specification
 

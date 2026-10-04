@@ -22,11 +22,40 @@ import inspect
 import logging
 import time
 from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
-from matimo.core.models import FunctionExecution, ToolDefinition
+from matimo.core.models import FunctionExecution, PolicyContext, ToolDefinition
 from matimo.errors import ErrorCode, MatimoError
+
+
+@dataclass(frozen=True)
+class FunctionToolContext:
+    """
+    Second argument passed to a function tool's ``run(params, context)`` when
+    it accepts one: per-call credentials and the caller's policy context
+    (agent id, roles, environment) as supplied by the host via
+    ``execute(..., context=...)``. Agents cannot set either.
+    Mirrors FunctionToolContext in function-executor.ts.
+    """
+
+    credentials: dict[str, str] | None = None
+    policy_context: PolicyContext | None = None
+
+
+def _accepts_context(fn: Callable[..., Any]) -> bool:
+    """True when ``fn`` takes a second positional argument (or ``*args``)."""
+    try:
+        params = list(inspect.signature(fn).parameters.values())
+    except (TypeError, ValueError):
+        return False
+    positional = [
+        p
+        for p in params
+        if p.kind in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD)
+    ]
+    return len(positional) >= 2 or any(p.kind == inspect.Parameter.VAR_POSITIONAL for p in params)
 
 logger = logging.getLogger("matimo")
 
@@ -50,9 +79,14 @@ class FunctionExecutor:
         tool: ToolDefinition,
         params: dict[str, Any],
         credentials: dict[str, str] | None = None,
+        policy_context: PolicyContext | None = None,
     ) -> Any:  # noqa: ANN401
         """
         Load and execute the Python run() function specified in the tool definition.
+
+        A ``run(params, context)`` that takes a second argument receives a
+        FunctionToolContext carrying ``credentials`` and ``policy_context``;
+        ``run(params)`` keeps working unchanged.
 
         Returns Any because tool run() functions return arbitrary Python values.
         """
@@ -82,14 +116,17 @@ class FunctionExecutor:
             call_params.update(credentials)
 
         timeout_s = (exec_cfg.timeout or 30_000) / 1000.0
+        args: tuple[Any, ...] = (call_params,)
+        if _accepts_context(run_fn):
+            args = (call_params, FunctionToolContext(credentials, policy_context))
 
         try:
             if inspect.iscoroutinefunction(run_fn):
-                result = await asyncio.wait_for(run_fn(call_params), timeout=timeout_s)
+                result = await asyncio.wait_for(run_fn(*args), timeout=timeout_s)
             else:
                 # Run sync function in executor to avoid blocking the event loop
                 result = await asyncio.wait_for(
-                    asyncio.get_running_loop().run_in_executor(None, run_fn, call_params),
+                    asyncio.get_running_loop().run_in_executor(None, run_fn, *args),
                     timeout=timeout_s,
                 )
         except TimeoutError:
@@ -122,7 +159,13 @@ class FunctionExecutor:
         then fall back to self._base_path. Supports both relative and absolute paths.
         """
         exec_cfg = tool.execution
-        code_str: str = exec_cfg.code  # type: ignore[attr-defined]
+        if not isinstance(exec_cfg, FunctionExecution):
+            raise MatimoError(
+                f"Tool '{tool.name}' is not a function tool",
+                ErrorCode.EXECUTION_FAILED,
+                {"tool_name": tool.name, "execution_type": exec_cfg.type},
+            )
+        code_str: str = exec_cfg.code
 
         # Resolve relative to the definition file directory first
         base = (
@@ -173,7 +216,7 @@ class FunctionExecutor:
 
         module = importlib.util.module_from_spec(spec)
         try:
-            spec.loader.exec_module(module)  # type: ignore[union-attr]
+            spec.loader.exec_module(module)
         except Exception as exc:
             raise MatimoError(
                 f"Error importing module for tool '{tool_name}': {exc}",
@@ -190,4 +233,4 @@ class FunctionExecutor:
                 {"tool_name": tool_name, "py_path": str(py_path)},
             )
 
-        return run_fn
+        return cast("Callable[..., Any]", run_fn)

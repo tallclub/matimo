@@ -1,6 +1,6 @@
 {
   "name": "@matimo/core",
-  "version": "0.1.8",
+  "version": "0.2.0",
   "description": "Core SDK for Matimo: Framework-agnostic YAML-driven tool ecosystem for AI agents.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -71,6 +71,7 @@
   "files": [
     "dist",
     "tools",
+    "skills",
     "destructive-keywords.yaml",
     "README.md",
     "LICENSE"
@@ -79,7 +80,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "@mozilla/readability": "^0.6.0",
     "axios": "^1.18.0",
     "docx": "^9.7.1",

@@ -3,7 +3,7 @@
 > PostgreSQL tools for [Matimo](https://matimo.dev) - execute SQL queries safely with policy-gated approval.
 
 [![PyPI](https://img.shields.io/pypi/v/matimo-postgres)](https://pypi.org/project/matimo-postgres/)
-[![Docs](https://img.shields.io/badge/docs-matimo.dev-blue)](https://matimo.dev/docs)
+[![Docs](https://img.shields.io/badge/docs-matimo.dev-blue)](https://docs.matimo.dev)
 
 ---
 
@@ -23,7 +23,7 @@ pip install matimo matimo-postgres
 
 The tool does not set `requires_approval` itself - if you want destructive operations
 (INSERT, UPDATE, DELETE, DROP) to require human approval, gate them yourself via a
-[policy file](https://matimo.dev/docs/api-reference/POLICY_AND_LIFECYCLE) or a custom
+[policy file](https://docs.matimo.dev/api-reference/POLICY_AND_LIFECYCLE) or a custom
 `PolicyEngine`.
 
 ---
@@ -49,22 +49,26 @@ asyncio.run(main())
 
 ### With Interactive Approval (Recommended for Writes)
 
-If you've configured a policy that quarantines this tool for HITL review, provide an
-`on_hitl` callback:
+A query whose `sql` contains a destructive keyword (`DELETE`, `DROP`, `UPDATE`, `INSERT`, `ALTER`, `CREATE`, ...) needs approval. Provide an `on_approval` callback; without one the query is refused:
 
 ```python
-async def ask_user(request) -> dict:
+from matimo import ApprovalRequest
+
+
+async def ask_user(request: ApprovalRequest) -> bool:
     print(f"\nSQL requires approval:\n{request.params.get('sql')}")
-    answer = input("Run this query? [y/n]: ").strip()
-    return {'approved': answer == 'y', 'reason': 'user reviewed'}
+    return input("Run this query? [y/n]: ").strip() == "y"
 
-matimo = await Matimo.init(get_tools_path(), on_hitl=ask_user)
 
-# This will prompt before executing, if quarantined by your policy
+matimo = await Matimo.init(get_tools_path(), on_approval=ask_user)
+
+# Prompts before executing
 await matimo.execute('postgres-execute-sql', {
     'sql': 'DELETE FROM sessions WHERE expired_at < NOW()',
 })
 ```
+
+The keyword match is a substring of the upper-cased query, so a `SELECT created_at ...` also asks (it contains `CREATE`).
 
 ---
 
@@ -87,14 +91,14 @@ export MATIMO_POSTGRES_PASSWORD="mypassword"
 - All SQL queries go through Matimo's **content validator** - SSRF and injection patterns are detected
 - The tool itself does not require approval - use a policy file if you want writes gated
 - Use a **read-only database user** for agent workloads when possible
-- Consider a [policy file](https://matimo.dev/docs/api-reference/POLICY_AND_LIFECYCLE) to restrict allowed SQL patterns
+- Consider a [policy file](https://docs.matimo.dev/api-reference/POLICY_AND_LIFECYCLE) to restrict allowed SQL patterns
 
 ---
 
 ## Documentation
 
-- [Approval System](https://matimo.dev/docs/api-reference/APPROVAL-SYSTEM)
-- [Policy & Lifecycle](https://matimo.dev/docs/api-reference/POLICY_AND_LIFECYCLE)
+- [Approval System](https://docs.matimo.dev/api-reference/APPROVAL-SYSTEM)
+- [Policy & Lifecycle](https://docs.matimo.dev/api-reference/POLICY_AND_LIFECYCLE)
 - [Python Examples](https://github.com/tallclub/matimo/tree/main/python/examples/langchain/postgres)
 
 ---

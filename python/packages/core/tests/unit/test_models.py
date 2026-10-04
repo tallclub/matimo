@@ -10,6 +10,7 @@ from matimo.core.models import (
     CommandExecution,
     FunctionExecution,
     HttpExecution,
+    OutputSchema,
     Parameter,
     ParameterEncoding,
     ParameterEncodingType,
@@ -193,3 +194,31 @@ class TestToolDefinition:
         )
         assert "messaging" in tool.tags
         assert "slack" in tool.tags
+
+    def test_output_schema_max_response_size(self) -> None:
+        tool = ToolDefinition(
+            name="t",
+            description="d",
+            execution=HttpExecution(type="http", method="GET", url="https://x.com"),
+            output_schema=OutputSchema(type="object", max_response_size=100_000),
+        )
+        assert tool.output_schema is not None
+        assert tool.output_schema.max_response_size == 100_000
+
+
+class TestOutputSchema:
+    def test_max_response_size_optional(self) -> None:
+        schema = OutputSchema(type="object")
+        assert schema.max_response_size is None
+
+    def test_max_response_size_accepts_positive_int(self) -> None:
+        schema = OutputSchema(max_response_size=262_144)
+        assert schema.max_response_size == 262_144
+
+    def test_max_response_size_rejects_zero(self) -> None:
+        with pytest.raises(ValidationError):
+            OutputSchema(max_response_size=0)
+
+    def test_max_response_size_rejects_negative(self) -> None:
+        with pytest.raises(ValidationError):
+            OutputSchema(max_response_size=-1)

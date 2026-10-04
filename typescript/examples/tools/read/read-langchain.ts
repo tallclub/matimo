@@ -43,7 +43,6 @@ import {
   MatimoInstance,
   convertToolsToLangChain,
   type ToolDefinition,
-  getGlobalApprovalHandler,
   type ApprovalRequest,
 } from '@matimo/core';
 
@@ -72,9 +71,7 @@ function createApprovalCallback() {
 
     if (!isInteractive) {
       console.info('\n❌ REJECTED - Non-interactive environment (no terminal)');
-      console.info('\n💡 To enable auto-approval in CI/scripts:');
-      console.info('   export MATIMO_AUTO_APPROVE=true');
-      console.info('\n💡 Or approve specific patterns:');
+      console.info('\n💡 To pre-approve this tool in CI/scripts:');
       console.info('   export MATIMO_APPROVED_PATTERNS="read"');
       console.info('\n' + '='.repeat(70) + '\n');
       return false;
@@ -159,11 +156,11 @@ export { getUserInfo, validateEmail };
   try {
     // Initialize Matimo with auto-discovery
     console.info('🚀 Initializing Matimo...');
-    const matimo = await MatimoInstance.init({ autoDiscover: true });
-
-    // Configure centralized approval handler
-    const approvalHandler = getGlobalApprovalHandler();
-    approvalHandler.setApprovalCallback(createApprovalCallback());
+    const matimo = await MatimoInstance.init({
+      autoDiscover: true,
+      // Decides every call that needs approval, for this instance only.
+      onApproval: createApprovalCallback(),
+    });
 
     // Get read tool
     console.info('💬 Loading read tool...');

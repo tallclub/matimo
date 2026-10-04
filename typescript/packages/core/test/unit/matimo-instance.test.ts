@@ -334,6 +334,8 @@ describe('MatimoInstance – branch coverage', () => {
       name: 'test-command-scan-tool',
       version: '1.0.0',
       description: 'Fake command tool for branch coverage',
+      // Opted out of the command-tool approval default so the keyword scan decides
+      requires_approval: false,
       parameters: { command: { type: 'string', required: true } },
       execution: { type: 'command' as const, command: 'echo', args: ['{command}'] },
     });

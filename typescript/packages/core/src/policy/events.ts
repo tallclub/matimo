@@ -36,11 +36,30 @@ export type MatimoEvent =
       timestamp: string;
     }
   | {
+      /** A tool ran to completion. `success` is false when it returned `{ success: false }`. */
       type: 'tool:executed';
       toolName: string;
       agentId?: string;
-      duration: number;
+      /** Correlates this event with the call's logs. */
+      traceId: string;
+      /** Time spent in the tool itself, after every gate passed (excludes approval waits). */
+      durationMs: number;
       success: boolean;
+      /** Execution risk (classifyExecutionRisk) of the tool that ran. */
+      riskLevel: RiskLevel;
+      timestamp: string;
+    }
+  | {
+      /** A tool that passed every gate threw instead of returning. */
+      type: 'tool:execution_failed';
+      toolName: string;
+      agentId?: string;
+      traceId: string;
+      durationMs: number;
+      riskLevel: RiskLevel;
+      /** MatimoError code, or UNKNOWN_ERROR for any other error. */
+      errorCode: string;
+      error: string;
       timestamp: string;
     }
   | {
@@ -97,6 +116,12 @@ export type MatimoEvent =
       type: 'skills:reloaded';
       loaded: number;
       removed: number;
+      timestamp: string;
+    }
+  | {
+      type: 'skill:created';
+      skillName: string;
+      source: 'user' | 'catalog';
       timestamp: string;
     };
 

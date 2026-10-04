@@ -10,6 +10,7 @@
  *   HTTP mode protected by Bearer token (MATIMO_MCP_TOKEN)
  */
 
+import { createHash, timingSafeEqual } from 'crypto';
 import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -20,6 +21,7 @@ import { MatimoError, ErrorCode } from '../errors/matimo-error.js';
 import { getGlobalMatimoLogger, setGlobalMatimoLogger } from '../logging/index.js';
 import { createLogger } from '../logging/winston-logger.js';
 import { toolToMcpRegistration, extractAuthPlaceholders } from './tool-converter.js';
+import { createElicitationApprovalCallback } from './approval-elicitation.js';
 import { createResolverChain, SecretResolverChain } from './secrets/resolver-chain.js';
 import type { SecretResolverChainConfig } from './secrets/types.js';
 import type { ToolDefinition } from '../core/schema.js';
@@ -73,13 +75,35 @@ export interface MCPServerOptions {
   approvalDir?: string;
   /**
    * Trust `_matimo_approved: true` from MCP tool-call arguments as an
-   * out-of-band approval. Defaults to false because MCP arguments are supplied
-   * by the client/model and are not a server-side approval signal by themselves.
+   * out-of-band approval, and advertise that parameter on tools that need
+   * approval. Only for clients that confirm every call with their user
+   * themselves: the argument is supplied by the client/model, so by default
+   * (false) approval is asked of the user via MCP elicitation instead.
    */
   trustClientApproval?: boolean;
+  /**
+   * Policy context applied to every tool call from MCP clients — the identity
+   * and roles the operator grants this server's callers, e.g.
+   * `{ agentId: 'claude-desktop', roles: ['admin'] }` for a single-user local
+   * server so matimo_approve_tool can be used. Default: none (no roles).
+   */
+  context?: import('../policy/types').PolicyContext;
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────
+
+/**
+ * Check an Authorization header against the server's bearer token in
+ * constant time, so response timing reveals nothing about how much of a
+ * guessed token was right. Both sides are hashed first because
+ * timingSafeEqual requires equal-length inputs.
+ * Mirrors bearer_token_matches() in python/.../mcp/server.py.
+ */
+export function bearerTokenMatches(authHeader: string | undefined, token: string): boolean {
+  if (!authHeader) return false;
+  const digest = (value: string) => createHash('sha256').update(value, 'utf8').digest();
+  return timingSafeEqual(digest(authHeader), digest(`Bearer ${token}`));
+}
 
 function getPackageVersion(): string {
   try {
@@ -420,7 +444,7 @@ export class MCPServer {
   private async createMcpServerWithTools(): Promise<any> {
     const { McpServer } = await import(
       // @ts-ignore — TS2307: module not found at compile time, resolves at runtime
-      '@modelcontextprotocol/sdk/server/mcp'
+      '@modelcontextprotocol/sdk/server/mcp.js'
     );
     const logger = getGlobalMatimoLogger();
     const matimo = this.matimo!;
@@ -432,7 +456,10 @@ export class MCPServer {
     let registeredCount = 0;
     for (const tool of this.filteredTools) {
       try {
-        const registration = toolToMcpRegistration(tool);
+        const registration = toolToMcpRegistration(tool, {
+          clientApproval: this.options.trustClientApproval === true,
+          governanceMode: matimo.getGovernanceMode(),
+        });
 
         server.registerTool(
           tool.name,
@@ -440,34 +467,25 @@ export class MCPServer {
             title: registration.title,
             description: registration.description,
             inputSchema: registration.inputSchema,
+            annotations: registration.annotations,
           },
-          async (args: Record<string, unknown>) => {
+          async (args: Record<string, unknown>, extra?: { requestId?: string | number }) => {
             try {
               logger.debug(`MCP tool call: ${tool.name}`, {
                 toolName: tool.name,
                 argCount: Object.keys(args).length,
               });
 
-              if (tool.requires_approval) {
-                const approved = args._matimo_approved;
-                if (approved !== true) {
-                  throw new MatimoError(
-                    `Tool '${tool.name}' requires approval. This is a destructive operation. Re-invoke with parameter _matimo_approved: true to confirm execution.`,
-                    ErrorCode.EXECUTION_FAILED
-                  );
-                }
-              }
-
-              // Strip _matimo_approved from args before passing to execute.
-              // By default this client-supplied flag is only a confirmation
-              // prompt signal; it must not bypass server-side approval checks.
+              // A call that needs approval is put to the human behind this MCP
+              // session via elicitation. `_matimo_approved` is set by the
+              // client/model, so it only counts when the operator has said the
+              // client confirms calls with its user (trustClientApproval).
               const { _matimo_approved, ...cleanArgs } = args;
               const result = await matimo.execute(tool.name, cleanArgs, {
-                approved:
-                  this.options.trustClientApproval === true &&
-                  tool.requires_approval === true &&
-                  _matimo_approved === true,
+                approved: this.options.trustClientApproval === true && _matimo_approved === true,
+                onApproval: createElicitationApprovalCallback(server.server, extra?.requestId),
                 credentials: this.resolvedSecrets,
+                ...(this.options.context ? { context: this.options.context } : {}),
               });
 
               return {
@@ -482,16 +500,40 @@ export class MCPServer {
               logger.error(`MCP tool call failed: ${tool.name}`, {
                 toolName: tool.name,
                 error: error instanceof Error ? error.message : String(error),
+                code: error instanceof MatimoError ? error.code : undefined,
               });
+
+              const message = error instanceof Error ? error.message : String(error);
+
+              // Carry the structured error code/status/retryability across the
+              // MCP boundary instead of dropping it — `structuredContent` is
+              // safe to attach here regardless of any registered outputSchema,
+              // since the MCP SDK skips output validation whenever isError is
+              // true (and Matimo never registers a success-path outputSchema).
+              const structuredContent =
+                error instanceof MatimoError
+                  ? {
+                      code: error.code,
+                      statusCode: (error.details?.statusCode as number | undefined) ?? null,
+                      retryable: (error.details?.retryable as boolean | undefined) ?? false,
+                      message,
+                    }
+                  : {
+                      code: ErrorCode.UNKNOWN_ERROR,
+                      statusCode: null,
+                      retryable: false,
+                      message,
+                    };
 
               return {
                 content: [
                   {
                     type: 'text' as const,
-                    text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+                    text: `Error: ${message}`,
                   },
                 ],
                 isError: true,
+                structuredContent,
               };
             }
           }
@@ -521,7 +563,7 @@ export class MCPServer {
   private async connectStdio(): Promise<void> {
     const { StdioServerTransport } = await import(
       // @ts-ignore — TS2307: module not found at compile time, resolves at runtime
-      '@modelcontextprotocol/sdk/server/stdio'
+      '@modelcontextprotocol/sdk/server/stdio.js'
     );
 
     const server = await this.createMcpServerWithTools();
@@ -546,13 +588,13 @@ export class MCPServer {
     const http = await import('http');
     const { StreamableHTTPServerTransport } = (await import(
       // @ts-ignore — TS2307: module not found at compile time, resolves at runtime
-      '@modelcontextprotocol/sdk/server/streamableHttp'
+      '@modelcontextprotocol/sdk/server/streamableHttp.js'
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     )) as any;
     const { randomUUID } = await import('crypto');
     const { isInitializeRequest } = (await import(
       // @ts-ignore — TS2307: module not found at compile time, resolves at runtime
-      '@modelcontextprotocol/sdk/types'
+      '@modelcontextprotocol/sdk/types.js'
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     )) as any;
 
@@ -599,7 +641,7 @@ export class MCPServer {
 
       // Bearer token auth (always enabled in HTTP mode)
       const authHeader = req.headers.authorization;
-      if (!authHeader || authHeader !== `Bearer ${mcpToken}`) {
+      if (!bearerTokenMatches(authHeader, mcpToken)) {
         res.writeHead(401, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Unauthorized' }));
         return;

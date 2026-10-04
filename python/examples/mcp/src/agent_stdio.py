@@ -104,7 +104,7 @@ async def main() -> None:
     print("🚀 Initialising Matimo MCP (stdio)...")
     print(f"   Server script: {server_script}\n")
 
-    async with MultiServerMCPClient(
+    client = MultiServerMCPClient(
         {
             "matimo": {
                 "command": "python",
@@ -113,32 +113,32 @@ async def main() -> None:
                 "env": {**os.environ},   # pass all env vars (incl. SLACK_BOT_TOKEN)
             }
         }
-    ) as client:
-        tools = client.get_tools()
-        print(f"📦 Loaded {len(tools)} tools from Matimo MCP:\n")
-        for t in tools:
-            print(f"  • {t.name}")
-        print()
+    )
+    tools = await client.get_tools()
+    print(f"📦 Loaded {len(tools)} tools from Matimo MCP:\n")
+    for t in tools:
+        print(f"  • {t.name}")
+    print()
 
-        if not tools:
-            print("❌ No tools loaded. Is server_stdio.py working correctly?")
-            sys.exit(1)
+    if not tools:
+        print("❌ No tools loaded. Is server_stdio.py working correctly?")
+        sys.exit(1)
 
-        # MCP auto-discovers every installed matimo-* provider package (150+
-        # tools across the example workspace), but LangChain/OpenAI rejects
-        # requests with more than 128 bound tools. This demo only exercises
-        # Slack, so bind just the Slack tools rather than everything MCP loaded.
-        slack_tools = [t for t in tools if t.name.startswith("slack")]
-        print(f"💬 {len(slack_tools)} Slack tools available\n")
+    # MCP auto-discovers every installed matimo-* provider package (150+
+    # tools across the example workspace), but LangChain/OpenAI rejects
+    # requests with more than 128 bound tools. This demo only exercises
+    # Slack, so bind just the Slack tools rather than everything MCP loaded.
+    slack_tools = [t for t in tools if t.name.startswith("slack")]
+    print(f"💬 {len(slack_tools)} Slack tools available\n")
 
-        # ── Build agent ───────────────────────────────────────────────────────
-        print("🤖 Initialising OpenAI (GPT-4o-mini) LLM...")
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
-        agent = create_react_agent(llm, slack_tools)
+    # ── Build agent ───────────────────────────────────────────────────────
+    print("🤖 Initialising OpenAI (GPT-4o-mini) LLM...")
+    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+    agent = create_react_agent(llm, slack_tools)
 
-        # ── Task prompt ───────────────────────────────────────────────────────
-        channel_hint = f"Use channel {channel_id}." if channel_id else "Pick any available channel."
-        task = f"""
+    # ── Task prompt ───────────────────────────────────────────────────────
+    channel_hint = f"Use channel {channel_id}." if channel_id else "Pick any available channel."
+    task = f"""
 You are testing the Matimo MCP Slack integration. {channel_hint}
 Please perform these tasks in order and report the result of each:
 
@@ -155,15 +155,15 @@ Please perform these tasks in order and report the result of each:
 After each step, confirm what happened. If a step fails, note the error and continue.
 Report a final summary of all steps (pass/fail).
 """
-        print("🧠 Running agent tasks...\n")
-        print("─" * 60)
+    print("🧠 Running agent tasks...\n")
+    print("─" * 60)
 
-        response = await agent.ainvoke({"messages": [HumanMessage(content=task)]})
-        final = response["messages"][-1].content
+    response = await agent.ainvoke({"messages": [HumanMessage(content=task)]})
+    final = response["messages"][-1].content
 
-        print("\n" + "─" * 60)
-        print("\n✅ Agent complete. Final summary:\n")
-        print(final)
+    print("\n" + "─" * 60)
+    print("\n✅ Agent complete. Final summary:\n")
+    print(final)
 
 
 if __name__ == "__main__":

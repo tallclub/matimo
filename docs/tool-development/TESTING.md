@@ -1,407 +1,259 @@
 # Testing Tools
 
-Write and validate tests for Matimo tools.
+How to test a Matimo tool definition in both SDKs: validate the YAML, check the definition, run it against mocked HTTP, and test the approval and error paths. Unit tests never call a live API.
+
+| | TypeScript | Python |
+|---|---|---|
+| Framework | Jest (ts-jest) | pytest + pytest-asyncio |
+| HTTP mocking | `jest.mock('axios')` | `respx` |
+| Unit tests | `typescript/packages/<provider>/test/unit/` | `python/packages/<provider>/tests/unit/` |
 
 ## Tool Validation
 
-### Validate All Tools
-
 ```bash
-# Validate tool definitions (YAML syntax and schema)
-pnpm validate-tools
-
-# Output:
-# ✅ tools/calculator/definition.yaml - Valid
-# ✅ tools/gmail/send-email/definition.yaml - Valid
-# ✅ tools/gmail/list-messages/definition.yaml - Valid
+cd typescript && pnpm validate-tools
 ```
 
-This validates:
+```
+✅ .../packages/twilio/tools/twilio-send-sms/definition.yaml (tool)
+...
+Results: 602 valid, 0 invalid, 0 skipped (no definition.yaml)
+```
 
-- YAML syntax is correct
-- All required fields present
-- Parameter types are valid
-- Execution config is complete
-- Output schema is valid
+It checks every `definition.yaml` in the workspace against the Zod schema, and the governance rules: an HTTP `DELETE` tool must declare `requires_approval: true`, and a `type: function` tool must declare `risk:`. Python's `make validate-tools` runs the same checks.
+
+The schema drops keys it does not know (for example `timeout_ms`) instead of failing, so a test that reads the definition is still worth writing.
 
 ---
 
-## Unit Tests
+## Definition Tests
 
-### Test Tool Definition
+Read the YAML and check what matters for this tool. This is the pattern the provider packages use:
 
 ```typescript
-import { describe, it, expect, beforeAll } from 'vitest';
-import { MatimoInstance } from 'matimo';
+import fs from 'fs';
+import path from 'path';
+import yaml from 'js-yaml';
 
-describe('Tool Definition', () => {
-  let matimo: Awaited<ReturnType<typeof MatimoInstance.init>>;
+describe('github_get_user definition', () => {
+  const def = yaml.load(
+    fs.readFileSync(path.join(__dirname, '../../tools/github_get_user/definition.yaml'), 'utf8')
+  ) as Record<string, any>;
 
-  beforeAll(async () => {
-    matimo = await MatimoInstance.init('./tools');
+  it('is a GET to the GitHub API', () => {
+    expect(def.execution).toMatchObject({ type: 'http', method: 'GET' });
+    expect(def.execution.url).toBe('https://api.github.com/users/{username}');
   });
 
-  it('should load calculator tool', () => {
-    const tool = matimo.getTool('calculator');
-
-    expect(tool).toBeDefined();
-    expect(tool!.name).toBe('calculator');
-    expect(tool!.description).toBe('Perform basic math operations');
-    expect(tool!.version).toBe('1.0.0');
-  });
-
-  it('should have required parameters', () => {
-    const tool = matimo.getTool('calculator');
-
-    expect(tool!.parameters).toHaveProperty('operation');
-    expect(tool!.parameters).toHaveProperty('a');
-    expect(tool!.parameters).toHaveProperty('b');
-  });
-
-  it('should validate parameter types', () => {
-    const tool = matimo.getTool('calculator');
-
-    expect(tool!.parameters!.operation.type).toBe('string');
-    expect(tool!.parameters!.a.type).toBe('number');
-    expect(tool!.parameters!.b.type).toBe('number');
-  });
-
-  it('should have execution config', () => {
-    const tool = matimo.getTool('calculator');
-
-    expect(tool!.execution).toBeDefined();
-    expect(tool!.execution.type).toMatch(/command|http/);
+  it('requires username, with a description', () => {
+    expect(def.parameters.username).toMatchObject({ type: 'string', required: true });
+    expect(def.parameters.username.description).toBeTruthy();
   });
 });
 ```
 
 ---
 
-## Integration Tests
+## Execution Tests (mocked HTTP)
 
-### Test Tool Execution
+Load the tool into a real `MatimoInstance` so the call goes through the policy, approval and templating code, and mock only the network.
+
+### TypeScript
 
 ```typescript
-import { describe, it, expect, beforeAll } from 'vitest';
-import { MatimoInstance } from 'matimo';
+import axios from 'axios';
+import path from 'path';
+import { MatimoInstance, MatimoError, ErrorCode } from '@matimo/core';
 
-describe('Calculator Tool Execution', () => {
-  let m: Awaited<ReturnType<typeof MatimoInstance.init>>;
+jest.mock('axios');
+const mockedAxios = axios as jest.Mocked<typeof axios>;
+const TOOLS_DIR = path.join(__dirname, '../../tools');
+
+describe('github_get_user', () => {
+  let matimo: MatimoInstance;
 
   beforeAll(async () => {
-    m = await MatimoInstance.init('./tools');
+    matimo = await MatimoInstance.init({ toolPaths: [TOOLS_DIR] });
   });
 
-  it('should execute add operation', async () => {
-    const result = await m.execute('calculator', {
-      operation: 'add',
-      a: 5,
-      b: 3,
-    });
+  beforeEach(() => mockedAxios.request.mockReset());
 
-    expect(result.result).toBe(8);
+  it('calls the API with the templated URL', async () => {
+    mockedAxios.request.mockResolvedValue({ status: 200, data: { login: 'octocat' }, headers: {} });
+
+    const result = await matimo.execute('github_get_user', { username: 'octocat' });
+
+    expect(mockedAxios.request).toHaveBeenCalledWith(
+      expect.objectContaining({ method: 'GET', url: 'https://api.github.com/users/octocat' })
+    );
+    expect(result).toMatchObject({ success: true, statusCode: 200, data: { login: 'octocat' } });
   });
 
-  it('should execute subtract operation', async () => {
-    const result = await m.execute('calculator', {
-      operation: 'subtract',
-      a: 10,
-      b: 4,
-    });
+  it('maps HTTP 429 to RATE_LIMIT_EXCEEDED', async () => {
+    mockedAxios.request.mockRejectedValue(
+      Object.assign(new Error('Too Many Requests'), { response: { status: 429, data: {} } })
+    );
 
-    expect(result.result).toBe(6);
+    const error = await matimo.execute('github_get_user', { username: 'octocat' }).catch((e) => e);
+
+    expect(error).toBeInstanceOf(MatimoError);
+    expect(error.code).toBe(ErrorCode.RATE_LIMIT_EXCEEDED);
+    expect(error.details.retryable).toBe(true);
   });
 
-  it('should execute multiply operation', async () => {
-    const result = await m.execute('calculator', {
-      operation: 'multiply',
-      a: 5,
-      b: 3,
+  it('fails before sending when a URL parameter is missing', async () => {
+    await expect(matimo.execute('github_get_user', {})).rejects.toMatchObject({
+      code: ErrorCode.INVALID_SCHEMA,
     });
-
-    expect(result.result).toBe(15);
-  });
-
-  it('should execute divide operation', async () => {
-    const result = await m.execute('calculator', {
-      operation: 'divide',
-      a: 10,
-      b: 2,
-    });
-
-    expect(result.result).toBe(5);
+    expect(mockedAxios.request).not.toHaveBeenCalled();
   });
 });
+```
+
+### Python
+
+An HTTP tool returns the parsed response body in Python (TypeScript wraps it in `{ success, data, statusCode, headers }`).
+
+```python
+from pathlib import Path
+
+import httpx
+import pytest
+import respx
+
+from matimo import ErrorCode, Matimo, MatimoError
+
+TOOLS_DIR = str(Path(__file__).parents[2] / "tools")
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_get_user_calls_the_api() -> None:
+    route = respx.get("https://api.github.com/users/octocat").mock(
+        return_value=httpx.Response(200, json={"login": "octocat"})
+    )
+    matimo = await Matimo.init(TOOLS_DIR)
+
+    result = await matimo.execute("github_get_user", {"username": "octocat"})
+
+    assert route.called
+    assert result == {"login": "octocat"}
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_rate_limit_maps_to_code() -> None:
+    respx.get("https://api.github.com/users/octocat").mock(return_value=httpx.Response(429))
+    matimo = await Matimo.init(TOOLS_DIR)
+
+    with pytest.raises(MatimoError) as excinfo:
+        await matimo.execute("github_get_user", {"username": "octocat"})
+
+    assert excinfo.value.code == ErrorCode.RATE_LIMIT_EXCEEDED
 ```
 
 ---
 
-## Parameter Validation Tests
+## Approval Tests
 
-### Test Parameter Constraints
+Any tool that needs approval — `requires_approval: true`, an HTTP `DELETE`, or a command tool — should have a test that the call asks, and that nothing is sent when the answer is no. Pass an `onApproval` that records the request; never set `MATIMO_AUTO_APPROVE` in tests.
 
 ```typescript
-import { describe, it, expect, beforeAll } from 'vitest';
-import { MatimoInstance } from 'matimo';
-
-describe('Calculator Parameter Validation', () => {
-  let m: Awaited<ReturnType<typeof MatimoInstance.init>>;
-
-  beforeAll(async () => {
-    m = await MatimoInstance.init('./tools');
+it('asks before deleting and sends nothing when refused', async () => {
+  const asked: string[] = [];
+  const matimo = await MatimoInstance.init({
+    toolPaths: [TOOLS_DIR],
+    onApproval: async (request) => {
+      asked.push(request.toolName);
+      return false;
+    },
   });
 
-  it('should reject invalid operation', async () => {
-    expect(async () => {
-      await m.execute('calculator', {
-        operation: 'invalid', // Not in enum
-        a: 5,
-        b: 3,
-      });
-    }).rejects.toThrow('INVALID_PARAMETERS');
-  });
-
-  it('should require all parameters', async () => {
-    expect(async () => {
-      await m.execute('calculator', {
-        operation: 'add',
-        // Missing: a, b
-      });
-    }).rejects.toThrow('INVALID_PARAMETERS');
-  });
-
-  it('should validate parameter types', async () => {
-    expect(async () => {
-      await m.execute('calculator', {
-        operation: 'add',
-        a: 'five', // Should be number
-        b: 3,
-      });
-    }).rejects.toThrow('INVALID_PARAMETERS');
-  });
+  await expect(matimo.execute('delete_item', { id: '42' })).rejects.toThrow(
+    'Operation rejected by approval handler'
+  );
+  expect(asked).toEqual(['delete_item']);
+  expect(mockedAxios.request).not.toHaveBeenCalled();
 });
+```
+
+```python
+@respx.mock
+@pytest.mark.asyncio
+async def test_delete_asks_and_sends_nothing_when_refused() -> None:
+    route = respx.delete("https://api.example.com/items/42")
+    asked: list[str] = []
+
+    async def decline(request: ApprovalRequest) -> bool:
+        asked.append(request.tool_name)
+        return False
+
+    matimo = await Matimo.init(TOOLS_DIR, on_approval=decline)
+
+    with pytest.raises(MatimoError, match="rejected by approval handler"):
+        await matimo.execute("delete_item", {"id": "42"})
+
+    assert asked == ["delete_item"]
+    assert not route.called
 ```
 
 ---
 
-## OAuth2 Tool Tests
+## Error Tests
 
-### Test OAuth2 Tools
+Decide which kind of failure you are testing:
+
+- **Thrown** — Matimo raises a `MatimoError`: unknown tool, policy denial, refused approval, a missing URL parameter, or an HTTP error (401/403 → `AUTH_FAILED`, 429 → `RATE_LIMIT_EXCEEDED`, other non-2xx → `EXECUTION_FAILED`).
+- **Returned** — a function tool reports bad input in its result. In TypeScript the built-in calculator returns `{ success: false, error: 'Division by zero', code: 'EXECUTION_FAILED' }` rather than throwing. Python's built-in tools raise instead: the same call raises `MatimoError` with `EXECUTION_FAILED` and `Division by zero` in the message.
 
 ```typescript
-import { describe, it, expect, beforeAll } from 'vitest';
-import { MatimoInstance } from 'matimo';
-
-describe('Gmail Tool Execution', () => {
-  let m: Awaited<ReturnType<typeof MatimoInstance.init>>;
-
-  beforeAll(async () => {
-    // Ensure GMAIL_ACCESS_TOKEN is set in environment
-    if (!process.env.GMAIL_ACCESS_TOKEN) {
-      console.warn('⚠️  Skipping Gmail tests: GMAIL_ACCESS_TOKEN not set');
-      return;
-    }
-
-    m = await MatimoInstance.init('./tools');
-  });
-
-  it('should send email', async () => {
-    if (!m) {
-      console.warn('Skipping: no Matimo instance');
-      return;
-    }
-
-    const result = await m.execute('gmail-send-email', {
-      to: 'test@example.com',
-      subject: 'Test Email',
-      body: 'This is a test email',
-    });
-
-    expect(result.messageId).toBeDefined();
-  });
-
-  it('should list messages', async () => {
-    if (!m) return;
-
-    const result = await m.execute('gmail-list-messages', {
-      maxResults: 10,
-    });
-
-    expect(result.messages).toBeDefined();
-    expect(Array.isArray(result.messages)).toBe(true);
-  });
-
-  it('should handle missing auth token', async () => {
-    // Clear token temporarily
-    const saved = process.env.GMAIL_ACCESS_TOKEN;
-    delete process.env.GMAIL_ACCESS_TOKEN;
-
-    const m2 = await MatimoInstance.init('./tools');
-
-    expect(async () => {
-      await m2.execute('gmail-send-email', {
-        to: 'test@example.com',
-        subject: 'Test',
-        body: 'Test',
-      });
-    }).rejects.toThrow('AUTH_FAILED');
-
-    // Restore token
-    if (saved) {
-      process.env.GMAIL_ACCESS_TOKEN = saved;
-    }
-  });
+it('reports bad input in its result', async () => {
+  const matimo = await MatimoInstance.init({ autoDiscover: true });
+  const result = await matimo.execute('calculator', { operation: 'divide', a: 10, b: 0 });
+  expect(result).toMatchObject({ success: false, error: 'Division by zero' });
 });
 ```
 
----
+Match on `error.code`, not on `toThrow('SOME_CODE')`: `toThrow` with a string checks the message, which does not contain the code.
 
-## Error Handling Tests
-
-### Test Error Conditions
-
-```typescript
-import { describe, it, expect, beforeAll } from 'vitest';
-import { MatimoInstance } from 'matimo';
-
-describe('Error Handling', () => {
-  let m: Awaited<ReturnType<typeof MatimoInstance.init>>;
-
-  beforeAll(async () => {
-    m = await MatimoInstance.init('./tools');
-  });
-
-  it('should throw TOOL_NOT_FOUND', async () => {
-    expect(async () => {
-      await m.execute('unknown-tool', {});
-    }).rejects.toThrow('TOOL_NOT_FOUND');
-  });
-
-  it('should throw INVALID_PARAMETERS', async () => {
-    expect(async () => {
-      await m.execute('calculator', {
-        operation: 'add',
-        // Missing: a, b
-      });
-    }).rejects.toThrow('INVALID_PARAMETERS');
-  });
-
-  it('should include error details', async () => {
-    try {
-      await m.execute('calculator', {
-        operation: 'invalid',
-        a: 5,
-        b: 3,
-      });
-      expect.fail('Should throw error');
-    } catch (error) {
-      expect(error.code).toBe('INVALID_PARAMETERS');
-      expect(error.details).toBeDefined();
-    }
-  });
-});
-```
+Matimo does not check parameters against the YAML before a call, so there is no Matimo error for a wrong enum value or type. Test what the API (mocked) or your tool's own code does with it.
 
 ---
 
 ## Running Tests
 
 ```bash
-# Run all tests
-pnpm test
+cd typescript
+pnpm test                                         # all packages
+pnpm test:coverage                                # with coverage thresholds
+pnpm test:watch                                   # watch mode
+pnpm test -- packages/github/test/unit            # one directory
+pnpm test -- -t "github_get_user"                 # tests whose name matches
 
-# Run with coverage
-pnpm test:coverage
-
-# Run in watch mode (during development)
-pnpm test:watch
-
-# Run specific test file
-pnpm test -- tools.test.ts
-
-# Run tests matching pattern
-pnpm test -- --grep "Calculator"
+cd python
+make test                                         # all packages
+uv run pytest packages/github/tests/unit -q       # one directory
+make test-coverage                                # HTML report in htmlcov/
 ```
 
----
+## Coverage
 
-## Test Coverage
-
-### View Coverage Report
-
-```bash
-pnpm test:coverage
-
-# Output:
-# ✅ 100% Statements
-# ✅ 100% Branches
-# ✅ 100% Functions
-# ✅ 100% Lines
-```
+`pnpm test:coverage` fails if TypeScript coverage drops below the thresholds in `typescript/jest.config.cjs`: lines 95%, functions 97%, branches 87%, statements 95%. Python has no enforced floor. A new tool should have full unit coverage in both SDKs.
 
 ---
 
 ## Best Practices
 
-### 1. Test YAML Syntax First
-
-Always validate YAML before testing execution:
-
-```bash
-pnpm validate-tools
-```
-
-### 2. Test Parameters Before Execution
-
-```typescript
-// First: validate tool definition
-const tool = m.getTool('calculator');
-expect(tool.parameters).toBeDefined();
-
-// Then: test execution
-const result = await m.execute('calculator', params);
-```
-
-### 3. Mock External Calls (for unit tests)
-
-```typescript
-import { describe, it, expect, vi } from 'vitest';
-
-describe('Gmail Tool (Mocked)', () => {
-  it('should call Gmail API', async () => {
-    const mockExecute = vi.fn().mockResolvedValue({
-      messageId: 'msg_123',
-    });
-
-    const result = await mockExecute({
-      to: 'test@example.com',
-      subject: 'Test',
-      body: 'Test',
-    });
-
-    expect(result.messageId).toBe('msg_123');
-  });
-});
-```
-
-### 4. Test Error Cases
-
-```typescript
-it('should handle execution errors', async () => {
-  expect(async () => {
-    await m.execute('calculator', {
-      operation: 'divide',
-      a: 10,
-      b: 0, // Division by zero
-    });
-  }).rejects.toThrow();
-});
-```
-
----
+1. **Validate first** — run `pnpm validate-tools` before writing tests.
+2. **Mock the network, nothing else** — call `matimo.execute()` so policy, approval and templating are tested too.
+3. **Assert the request** — check the method, URL and body sent, not only the result.
+4. **Test the approval path** for every tool that writes or deletes.
+5. **Test both error kinds** — thrown `MatimoError`s and `{ success: false }` results.
+6. **Never call a live API in a test that runs in CI** — `pnpm test` and `make test` run the integration tests too.
 
 ## Next Steps
 
 - **Tool Development**: [YAML Tool Specification](./YAML_TOOLS.md)
+- **Approval**: [Approval System](../api-reference/APPROVAL-SYSTEM.md)
 - **Error Codes**: [Error Reference](../api-reference/ERRORS.md)
 - **Examples**: [Code Examples](../../typescript/examples/)

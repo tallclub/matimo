@@ -23,6 +23,7 @@ jest.mock('../../../src/matimo-instance', () => ({
         listSkills: mockListSkills,
         getSkillContent: mockGetSkillContent,
         reloadTools: mockReloadTools,
+        getGovernanceMode: () => 'secure',
       })
     ),
   },
@@ -34,9 +35,11 @@ const mockConnect = jest.fn().mockResolvedValue(undefined);
 const mockClose = jest.fn().mockResolvedValue(undefined);
 const mockSendToolListChanged = jest.fn();
 const mockSendResourceListChanged = jest.fn();
+const mockGetClientCapabilities = jest.fn().mockReturnValue(undefined);
+const mockElicitInput = jest.fn();
 
 jest.mock(
-  '@modelcontextprotocol/sdk/server/mcp',
+  '@modelcontextprotocol/sdk/server/mcp.js',
   () => ({
     McpServer: jest.fn().mockImplementation(() => ({
       registerTool: mockRegisterTool,
@@ -45,13 +48,17 @@ jest.mock(
       close: mockClose,
       sendToolListChanged: mockSendToolListChanged,
       sendResourceListChanged: mockSendResourceListChanged,
+      server: {
+        getClientCapabilities: mockGetClientCapabilities,
+        elicitInput: mockElicitInput,
+      },
     })),
   }),
   { virtual: true }
 );
 
 jest.mock(
-  '@modelcontextprotocol/sdk/server/stdio',
+  '@modelcontextprotocol/sdk/server/stdio.js',
   () => ({
     StdioServerTransport: jest.fn().mockImplementation(() => ({})),
   }),
@@ -69,7 +76,7 @@ const mockHttpTransport = {
   sessionId: 'test-session-id',
 };
 jest.mock(
-  '@modelcontextprotocol/sdk/server/streamableHttp',
+  '@modelcontextprotocol/sdk/server/streamableHttp.js',
   () => ({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     StreamableHTTPServerTransport: jest.fn().mockImplementation((opts: any) => {
@@ -86,7 +93,7 @@ jest.mock(
 
 const mockIsInitializeRequest = jest.fn().mockReturnValue(false);
 jest.mock(
-  '@modelcontextprotocol/sdk/types',
+  '@modelcontextprotocol/sdk/types.js',
   () => ({
     isInitializeRequest: (...args: unknown[]) => mockIsInitializeRequest(...args),
   }),
@@ -147,6 +154,7 @@ jest.mock('child_process', () => ({
 
 import { MCPServer, createMCPServer } from '../../../src/mcp/mcp-server';
 import type { ToolDefinition } from '../../../src/core/schema';
+import { ErrorCode } from '../../../src/errors/matimo-error';
 
 // ─── Fixtures ───────────────────────────────────────────────────────────
 
@@ -234,6 +242,30 @@ describe('MCPServer', () => {
       // Verify config objects have description and inputSchema
       expect(mockRegisterTool.mock.calls[0][1]).toEqual(
         expect.objectContaining({ description: 'A test tool' })
+      );
+
+      await server.stop();
+    });
+
+    it('should include MCP standard annotations in tool registration', async () => {
+      const tool = createTestTool({
+        name: 'delete_thing',
+        execution: { type: 'http', method: 'DELETE', url: 'https://api.example.com/thing' },
+      });
+      mockListTools.mockReturnValue([tool]);
+
+      const server = new MCPServer({ transport: 'stdio', autoDiscover: false });
+      await server.start();
+
+      expect(mockRegisterTool.mock.calls[0][1]).toEqual(
+        expect.objectContaining({
+          annotations: {
+            readOnlyHint: false,
+            destructiveHint: true,
+            idempotentHint: true,
+            openWorldHint: true,
+          },
+        })
       );
 
       await server.stop();
@@ -360,7 +392,7 @@ describe('MCPServer', () => {
       expect(mockExecute).toHaveBeenCalledWith(
         'test_tool',
         { message: 'hi' },
-        { approved: false, credentials: {} }
+        { approved: false, onApproval: expect.any(Function), credentials: {} }
       );
 
       await server.stop();
@@ -399,6 +431,12 @@ describe('MCPServer', () => {
       expect(result).toEqual({
         content: [{ type: 'text', text: 'Error: Tool not found' }],
         isError: true,
+        structuredContent: {
+          code: ErrorCode.TOOL_NOT_FOUND,
+          statusCode: null,
+          retryable: false,
+          message: 'Tool not found',
+        },
       });
 
       await server.stop();
@@ -418,27 +456,109 @@ describe('MCPServer', () => {
       expect(result).toEqual({
         content: [{ type: 'text', text: 'Error: Something went wrong' }],
         isError: true,
+        structuredContent: {
+          code: ErrorCode.UNKNOWN_ERROR,
+          statusCode: null,
+          retryable: false,
+          message: 'Something went wrong',
+        },
       });
 
       await server.stop();
     });
 
-    it('should block approval-required tools without _matimo_approved', async () => {
-      const tool = createTestTool({
-        name: 'dangerous_delete',
-        requires_approval: true,
-      });
+    it('should carry statusCode and retryable through structuredContent for a rate-limit MatimoError', async () => {
+      const { MatimoError, ErrorCode: RealErrorCode } = jest.requireActual(
+        '../../../src/errors/matimo-error'
+      );
+      const tool = createTestTool();
       mockListTools.mockReturnValue([tool]);
+      mockExecute.mockRejectedValue(
+        new MatimoError('Rate limit exceeded', RealErrorCode.RATE_LIMIT_EXCEEDED, {
+          statusCode: 429,
+          retryable: true,
+        })
+      );
 
       const server = new MCPServer({ transport: 'stdio', autoDiscover: false });
       await server.start();
 
       const callback = mockRegisterTool.mock.calls[0][2];
-      const result = await callback({ message: 'delete all' });
+      const result = await callback({ message: 'hi' });
 
-      expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain('requires approval');
-      expect(mockExecute).not.toHaveBeenCalled();
+      expect(result).toEqual({
+        content: [{ type: 'text', text: 'Error: Rate limit exceeded' }],
+        isError: true,
+        structuredContent: {
+          code: ErrorCode.RATE_LIMIT_EXCEEDED,
+          statusCode: 429,
+          retryable: true,
+          message: 'Rate limit exceeded',
+        },
+      });
+
+      await server.stop();
+    });
+
+    it('asks the MCP user through elicitation when a call needs approval', async () => {
+      const tool = createTestTool({ name: 'dangerous_delete', requires_approval: true });
+      mockListTools.mockReturnValue([tool]);
+      mockExecute.mockResolvedValue({ deleted: true });
+      mockGetClientCapabilities.mockReturnValue({ elicitation: {} });
+      mockElicitInput.mockResolvedValue({ action: 'accept', content: { approve: true } });
+
+      const server = new MCPServer({ transport: 'stdio', autoDiscover: false });
+      await server.start();
+
+      const callback = mockRegisterTool.mock.calls[0][2];
+      await callback({ message: 'delete all' }, { requestId: 7 });
+
+      // execute() calls onApproval when the call needs approval; do it here
+      const { onApproval } = mockExecute.mock.calls[0][2];
+      await expect(
+        onApproval({ toolName: 'dangerous_delete', params: { message: 'delete all' } })
+      ).resolves.toBe(true);
+      expect(mockElicitInput).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining('dangerous_delete'),
+          requestedSchema: expect.objectContaining({ required: ['approve'] }),
+        }),
+        { relatedRequestId: 7 }
+      );
+
+      await server.stop();
+    });
+
+    it('applies the configured policy context to every call', async () => {
+      mockListTools.mockReturnValue([createTestTool()]);
+      mockExecute.mockResolvedValue({ ok: true });
+      const context = { agentId: 'claude-desktop', roles: ['admin'] };
+
+      const server = new MCPServer({ transport: 'stdio', autoDiscover: false, context });
+      await server.start();
+      await mockRegisterTool.mock.calls[0][2]({ message: 'hi' });
+
+      expect(mockExecute.mock.calls[0][2].context).toBe(context);
+      await server.stop();
+    });
+
+    it('never tells the model how to approve its own call', async () => {
+      const tool = createTestTool({ name: 'dangerous_delete', requires_approval: true });
+      mockListTools.mockReturnValue([tool]);
+      mockExecute.mockResolvedValue({ deleted: true });
+      mockGetClientCapabilities.mockReturnValue({}); // client cannot elicit
+
+      const server = new MCPServer({ transport: 'stdio', autoDiscover: false });
+      await server.start();
+
+      const callback = mockRegisterTool.mock.calls[0][2];
+      await callback({ message: 'delete all' });
+      const { onApproval } = mockExecute.mock.calls[0][2];
+
+      const failure = onApproval({ toolName: 'dangerous_delete', params: {} });
+      await expect(failure).rejects.toThrow(/does not support elicitation/);
+      await expect(failure).rejects.not.toThrow(/_matimo_approved/);
+      expect(mockElicitInput).not.toHaveBeenCalled();
 
       await server.stop();
     });
@@ -465,7 +585,7 @@ describe('MCPServer', () => {
         {
           message: 'delete all',
         },
-        { approved: false, credentials: {} }
+        { approved: false, onApproval: expect.any(Function), credentials: {} }
       );
 
       await server.stop();
@@ -497,7 +617,7 @@ describe('MCPServer', () => {
         {
           message: 'delete all',
         },
-        { approved: true, credentials: {} }
+        { approved: true, onApproval: expect.any(Function), credentials: {} }
       );
 
       await server.stop();

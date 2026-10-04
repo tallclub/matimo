@@ -47,6 +47,7 @@ export { TfIdfEmbeddingProvider, cosineSimilarity } from './core/tfidf-embedding
 export { CommandExecutor } from './executors/command-executor.js';
 export { HttpExecutor } from './executors/http-executor.js';
 export { FunctionExecutor } from './executors/function-executor.js';
+export type { FunctionToolContext } from './executors/function-executor.js';
 
 // Parameter Encoding
 export { applyParameterEncodings } from './encodings/parameter-encoding.js';
@@ -120,14 +121,27 @@ export type {
   ValidationContext,
   HITLCallback,
   HITLRequest,
+  GovernanceMode,
 } from './policy/types.js';
 export { DefaultPolicyEngine, getTierForTool } from './policy/default-policy.js';
 export { validateToolContent, isSSRFTarget } from './policy/content-validator.js';
-export { classifyRisk } from './policy/risk-classifier.js';
+export {
+  classifyRisk,
+  classifyExecutionRisk,
+  meetsRiskThreshold,
+} from './policy/risk-classifier.js';
 export { ToolIntegrityTracker } from './policy/integrity-tracker.js';
 export { ApprovalManifest } from './policy/approval-manifest.js';
 export { loadPolicyFromFile, parsePolicyFile } from './policy/policy-loader.js';
 export type { MatimoEvent, MatimoEventHandler } from './policy/events.js';
+export {
+  JsonlFileSink,
+  verifyAuditLog,
+  redactSecrets,
+  hashAuditEntry,
+  AUDIT_GENESIS_HASH,
+} from './policy/audit-sink.js';
+export type { AuditSink, AuditLogEntry, AuditLogVerification } from './policy/audit-sink.js';
 
 // Schema validation
 export { ToolDefinitionSchema, validateToolDefinition } from './core/schema.js';
@@ -138,7 +152,11 @@ export type { ReloadResult } from './matimo-instance.js';
 // Generic Approval System - Simple, scalable flow for any tool
 // Tools declare requires_approval in YAML, or system detects destructive keywords
 // Single approval callback handles all tools - no per-provider logic needed
-export { ApprovalHandler, getGlobalApprovalHandler } from './approval/approval-handler.js';
+export {
+  ApprovalHandler,
+  definitionRequiresApproval,
+  getGlobalApprovalHandler,
+} from './approval/approval-handler.js';
 export type { ApprovalRequest, ApprovalCallback } from './approval/approval-handler.js';
 
 // MCP Server - Model Context Protocol integration

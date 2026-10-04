@@ -40,11 +40,23 @@ from dotenv import load_dotenv
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langchain_openai import ChatOpenAI
 
-from matimo import Matimo
+from matimo import ApprovalRequest, Matimo
 from matimo.integrations.langchain import convert_tools_to_langchain
 
 # Load .env from examples directory (where this project lives)
 load_dotenv(Path(__file__).parent.parent.parent / ".env")
+
+
+async def approve(request: ApprovalRequest) -> bool:
+    """Ask in the terminal before any tool call that needs approval."""
+    print(f"\n🔒  Approval required — {request.tool_name}: {request.params}")
+    if not sys.stdin.isatty():
+        print(
+            "    ❌  Rejected: no terminal. Pre-approve with "
+            f'MATIMO_APPROVED_PATTERNS="{request.tool_name}"'
+        )
+        return False
+    return input("    Approve? [y/N] ").strip().lower() in ("y", "yes")
 
 
 # ---------------------------------------------------------------------------
@@ -71,7 +83,7 @@ async def run_agent(mission: str) -> None:
 
     # ── 1. Initialise Matimo (auto-discover all installed providers) ──────────
     print("🚀  Initialising Matimo (auto-discover mode)…")
-    matimo = await Matimo.init(auto_discover=True)
+    matimo = await Matimo.init(auto_discover=True, on_approval=approve)
     all_tools = matimo.list_tools()
     print(f"✅  Loaded {len(all_tools)} tools across all providers")
 

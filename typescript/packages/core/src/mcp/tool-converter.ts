@@ -9,6 +9,8 @@
 import { z } from 'zod';
 import type { Parameter } from '../core/types.js';
 import type { ToolDefinition } from '../core/schema.js';
+import { definitionRequiresApproval } from '../approval/approval-handler.js';
+import type { GovernanceMode } from '../policy/types.js';
 
 /**
  * Convert a single Matimo Parameter to a Zod schema.
@@ -38,7 +40,12 @@ export function parameterToZod(param: Parameter): z.ZodType<unknown> {
         schema = z.boolean();
         break;
       case 'array': {
-        const itemSchema = param.items ? parameterToZod(param.items) : z.unknown();
+        // z.unknown() serializes to a JSON-schema items entry with no 'type' key,
+        // which OpenAI's function-calling schema validator rejects outright
+        // (especially once wrapped in the anyOf an optional field produces).
+        // Default untyped items to string — the overwhelming majority of
+        // undeclared array params in this codebase are string lists.
+        const itemSchema = param.items ? parameterToZod(param.items) : z.string();
         schema = z.array(itemSchema);
         break;
       }
@@ -127,20 +134,133 @@ export function convertParametersToMcpSchema(
 }
 
 /**
+ * MCP standard tool-annotation hints (readOnlyHint, destructiveHint,
+ * idempotentHint, openWorldHint — see the MCP spec's ToolAnnotations).
+ * Defined locally, matching the shape of @modelcontextprotocol/sdk's
+ * ToolAnnotations, rather than imported — the rest of mcp/ only ever
+ * loads the SDK dynamically (see mcp-server.ts), so this module avoids
+ * taking a static compile-time dependency on its type exports.
+ */
+export interface McpToolAnnotations {
+  readOnlyHint: boolean;
+  destructiveHint: boolean;
+  idempotentHint: boolean;
+  openWorldHint: boolean;
+}
+
+/**
+ * Derive MCP standard tool annotations directly from execution type and
+ * HTTP method — more precise than projecting through the aggregate risk
+ * *level* string, since e.g. GET and DELETE can share a risk tier on some
+ * tools while having opposite readOnlyHint/destructiveHint values.
+ *
+ * `requires_approval: true` always forces destructiveHint to true, since
+ * that flag exists precisely to flag operations a human should confirm.
+ */
+export function deriveToolAnnotations(tool: ToolDefinition): McpToolAnnotations {
+  const exec = tool.execution;
+  let annotations: McpToolAnnotations;
+
+  if (exec.type === 'function' || exec.type === 'command') {
+    // Arbitrary code / shell execution: not read-only, treat as destructive
+    // and non-idempotent (matches classifyAutomaticRisk's critical/high tiers).
+    annotations = {
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: false,
+      openWorldHint: true,
+    };
+  } else if (exec.type === 'http') {
+    switch (exec.method.toUpperCase()) {
+      case 'GET':
+        annotations = {
+          readOnlyHint: true,
+          destructiveHint: false,
+          idempotentHint: true,
+          openWorldHint: true,
+        };
+        break;
+      case 'PUT':
+        annotations = {
+          readOnlyHint: false,
+          destructiveHint: false,
+          idempotentHint: true,
+          openWorldHint: true,
+        };
+        break;
+      case 'DELETE':
+        annotations = {
+          readOnlyHint: false,
+          destructiveHint: true,
+          idempotentHint: true,
+          openWorldHint: true,
+        };
+        break;
+      default:
+        // POST, PATCH, and any other write method: not idempotent by default
+        annotations = {
+          readOnlyHint: false,
+          destructiveHint: false,
+          idempotentHint: false,
+          openWorldHint: true,
+        };
+    }
+  } else {
+    // Unknown execution type — treat conservatively (matches
+    // classifyAutomaticRisk's 'high' fallback for unrecognized types).
+    annotations = {
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: false,
+      openWorldHint: true,
+    };
+  }
+
+  if (tool.requires_approval === true) {
+    annotations = { ...annotations, destructiveHint: true };
+  }
+
+  return annotations;
+}
+
+/**
+ * Convert a snake_case tool name into a human-readable title for MCP
+ * clients, e.g. `slack_get_channel_history` → `Slack Get Channel History`.
+ */
+export function humanizeToolName(name: string): string {
+  return name
+    .split('_')
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
+/**
  * Build the full MCP tool registration metadata from a ToolDefinition.
  *
  * @returns Object ready for server.registerTool(name, metadata, handler)
  */
-export function toolToMcpRegistration(tool: ToolDefinition): {
+export function toolToMcpRegistration(
+  tool: ToolDefinition,
+  options: {
+    /**
+     * Add the `_matimo_approved` parameter to tools that need approval, for a
+     * server that trusts client-side confirmation (`trustClientApproval`).
+     * Off by default so the model is never offered a way to approve itself.
+     */
+    clientApproval?: boolean;
+    /** Governance mode of the serving instance; decides which tools need approval. */
+    governanceMode?: GovernanceMode;
+  } = {}
+): {
   title: string;
   description: string;
   inputSchema: Record<string, z.ZodTypeAny>;
+  annotations: McpToolAnnotations;
 } {
   const schema = convertParametersToMcpSchema(tool.parameters || {});
 
-  // Tools with requires_approval need the _matimo_approved parameter in
-  // the MCP schema so clients can confirm destructive operations.
-  if (tool.requires_approval) {
+  if (options.clientApproval === true && definitionRequiresApproval(tool, options.governanceMode)) {
     schema._matimo_approved = z
       .boolean()
       .optional()
@@ -148,9 +268,10 @@ export function toolToMcpRegistration(tool: ToolDefinition): {
   }
 
   return {
-    title: tool.name,
+    title: humanizeToolName(tool.name),
     description: tool.description || tool.name,
     inputSchema: schema,
+    annotations: deriveToolAnnotations(tool),
   };
 }
 

@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import os
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -26,6 +27,13 @@ from datetime import UTC
 from pathlib import Path
 from typing import Any
 
+from matimo.approval.handler import (
+    ApprovalCallback,
+    ApprovalHandler,
+    ApprovalRequest,
+    definition_requires_approval,
+    get_global_approval_handler,
+)
 from matimo.auth.injection import inject_auth_parameters
 from matimo.core.loader import ToolLoader
 from matimo.core.models import (
@@ -36,16 +44,21 @@ from matimo.core.models import (
     ToolDefinition,
 )
 from matimo.core.registry import ToolRegistry
+from matimo.core.response_size_guardrail import apply_response_size_guardrail
 from matimo.core.skill_loader import SkillLoader
 from matimo.core.skill_registry import SemanticSearchResult, SkillRegistry
 from matimo.errors import ErrorCode, MatimoError
 from matimo.executors.command_executor import CommandExecutor
 from matimo.executors.function_executor import FunctionExecutor
 from matimo.executors.http_executor import HttpExecutor
+from matimo.integrations.langchain import build_relevant_skill_prompt
 from matimo.logging import MatimoLogger, setup_logger
 from matimo.policy.approval_manifest import ApprovalManifest
+from matimo.policy.audit_sink import AuditSink
 from matimo.policy.default_policy import DefaultPolicyEngine, PolicyEngine
+from matimo.policy.risk_classifier import classify_execution_risk
 from matimo.policy.types import (
+    GovernanceMode,
     HITLCallback,
     MatimoEventHandler,
     PolicyConfig,
@@ -94,12 +107,30 @@ class InitOptions:
 
     # Events / HITL
     on_event: MatimoEventHandler | None = None
+    audit_sink: AuditSink | None = None
     on_hitl: HITLCallback | None = None
+    on_approval: ApprovalCallback | None = None
+    governance_mode: GovernanceMode | None = None
     hitl_timeout_ms: int | None = None
 
     # Logging
     log_level: str | None = None
     log_format: str | None = None
+
+    # Response size guardrail
+    default_max_response_size: int | None = None
+
+    # Skills
+    default_skill_write_dir: str | None = None
+    """Default directory matimo_create_skill writes new skills to when the
+    caller doesn't pass target_dir explicitly. Falls back to
+    ./matimo-tools/skills."""
+
+
+_AUTO_APPROVE_WARNING = (
+    "MATIMO_AUTO_APPROVE=true: every tool call that needs approval (requires_approval, "
+    "destructive SQL/commands) is approved without a human seeing it. Use only in CI or tests."
+)
 
 
 class Matimo:
@@ -125,12 +156,20 @@ class Matimo:
         approval_manifest: ApprovalManifest | None = None,
         skill_paths: list[str] | None = None,
         skill_loader: SkillLoader | None = None,
+        default_max_response_size: int | None = None,
+        default_skill_write_dir: str | None = None,
+        approval_handler: ApprovalHandler | None = None,
+        on_approval: ApprovalCallback | None = None,
+        audit_sink: AuditSink | None = None,
+        governance_mode: GovernanceMode | None = None,
     ) -> None:
         self._registry = registry
         self._policy = policy_engine
         self._loader = loader
         self._tool_paths = tool_paths
         self._on_event = on_event
+        self._audit_sink = audit_sink
+        self._governance_mode = governance_mode
         self._on_hitl = on_hitl
         self._hitl_timeout_ms = hitl_timeout_ms
         self._logger = matimo_logger
@@ -139,10 +178,18 @@ class Matimo:
         self._approval_manifest = approval_manifest
         self._skill_paths = skill_paths or []
         self._skill_loader = skill_loader or SkillLoader()
+        self._default_max_response_size = default_max_response_size
+        self._default_skill_write_dir = default_skill_write_dir
 
         self._http_executor = HttpExecutor()
         self._command_executor = CommandExecutor()
         self._function_executor = FunctionExecutor()
+        self._approval_handler: ApprovalHandler = (
+            approval_handler or get_global_approval_handler()
+        )
+        self._on_approval = on_approval
+        if self._approval_handler.auto_approve:
+            self._logger.warn(_AUTO_APPROVE_WARNING)
 
     # ------------------------------------------------------------------
     # Factory
@@ -164,10 +211,15 @@ class Matimo:
         approval_dir: str | None = None,
         approval_ttl_seconds: int | None = None,
         on_event: MatimoEventHandler | None = None,
+        audit_sink: AuditSink | None = None,
         on_hitl: HITLCallback | None = None,
+        on_approval: ApprovalCallback | None = None,
+        governance_mode: GovernanceMode | None = None,
         hitl_timeout_ms: int | None = None,
         log_level: str | None = None,
         log_format: str | None = None,
+        default_max_response_size: int | None = None,
+        default_skill_write_dir: str | None = None,
     ) -> Matimo:
         """
         Initialise Matimo by loading tool definitions and configuring the policy engine.
@@ -182,12 +234,34 @@ class Matimo:
             trusted_paths: Paths considered developer-authored (skip content validation).
             untrusted_paths: Paths considered agent-created (undergo content validation).
             on_event:      Audit event handler.
+            audit_sink:    Durable destination for the same audit events, e.g.
+                           JsonlFileSink("./matimo-audit.jsonl"). Runs alongside
+                           on_event; a failing sink is logged and never fails the
+                           tool call.
             on_hitl:       Human-in-the-loop callback for quarantined tools.
+            on_approval:   Per-call approval callback for this instance: decides
+                           calls to tools that declare requires_approval or whose
+                           command/SQL contains a destructive keyword. Takes
+                           precedence over the global approval handler's callback,
+                           so instances serving different tenants never share a
+                           reviewer.
+            governance_mode: Default approval behaviour for tools that don't
+                           declare requires_approval. "secure" (default): HTTP
+                           DELETE and command tools ask before every call.
+                           "legacy": the pre-0.2.0 defaults. Overrides
+                           governance_mode in the policy config or policy file.
             hitl_timeout_ms: Timeout in milliseconds for the HITL callback.
                            If the callback does not resolve within this time the tool
                            is auto-rejected. Defaults to None (waits indefinitely).
             log_level:     One of 'silent' | 'error' | 'warn' | 'info' | 'debug'.
             log_format:    'json' | 'simple'.
+            default_max_response_size: Instance-wide default cap (UTF-8 bytes) on a
+                           tool's serialized response size, applied to every tool that
+                           doesn't declare its own output_schema.max_response_size.
+                           Falls back to DEFAULT_MAX_RESPONSE_SIZE_BYTES when unset.
+            default_skill_write_dir: Default directory matimo_create_skill writes new
+                           skills to when the caller doesn't pass target_dir explicitly.
+                           Falls back to ./matimo-tools/skills.
 
         Returns:
             Configured Matimo instance.
@@ -204,6 +278,7 @@ class Matimo:
 
         loader = ToolLoader()
 
+        discovered: list[str] = []
         if auto_discover:
             discovered = loader.auto_discover_packages()
             paths.extend(p for p in discovered if p not in paths)
@@ -240,9 +315,20 @@ class Matimo:
         skill_reg = SkillRegistry()
         skill_loader = SkillLoader()
 
-        # Auto-discover skill paths if auto_discover=True
         skill_discovery_paths = list(skill_paths) if skill_paths else []
-        # Note: auto_discover is for tools only, not skills. Skills must be passed via skill_paths.
+
+        # Core skills ship inside matimo-core and are always included
+        core_skills = Path(__file__).parent / "skills"
+        if core_skills.is_dir() and str(core_skills) not in skill_discovery_paths:
+            skill_discovery_paths.append(str(core_skills))
+
+        # With auto_discover, also pick up each provider's skills/ directory — the
+        # sibling of its tools/ directory, as in the TypeScript SDK
+        if auto_discover:
+            for tool_path in discovered:
+                provider_skills = Path(tool_path).parent / "skills"
+                if provider_skills.is_dir() and str(provider_skills) not in skill_discovery_paths:
+                    skill_discovery_paths.append(str(provider_skills))
 
         if skill_discovery_paths:
             for sp in skill_discovery_paths:
@@ -258,7 +344,10 @@ class Matimo:
             loader=loader,
             tool_paths=paths,
             on_event=on_event,
+            audit_sink=audit_sink,
             on_hitl=on_hitl,
+            on_approval=on_approval,
+            governance_mode=governance_mode,
             matimo_logger=matimo_logger,
             hitl_timeout_ms=hitl_timeout_ms,
             skill_registry=skill_reg,
@@ -266,6 +355,8 @@ class Matimo:
             approval_manifest=approval_manifest,
             skill_paths=skill_discovery_paths,
             skill_loader=skill_loader,
+            default_max_response_size=default_max_response_size,
+            default_skill_write_dir=default_skill_write_dir,
         )
 
     # ------------------------------------------------------------------
@@ -280,6 +371,7 @@ class Matimo:
         credentials: dict[str, str] | None = None,
         context: PolicyContext | None = None,
         approved: bool = False,
+        on_approval: ApprovalCallback | None = None,
     ) -> Any:  # noqa: ANN401
         """
         Execute a tool by name.
@@ -290,7 +382,13 @@ class Matimo:
             credentials: Per-call credential overrides (multi-tenant).
                          SECURITY: never logged.
             context:     Policy context (agent ID, roles, environment).
-            approved:    Skip approval check (use when already confirmed out-of-band).
+            approved:    Skip the per-call approval prompt (use when a human already
+                         confirmed this call out-of-band). Policy denials and HITL
+                         quarantine still apply.
+            on_approval: Approval callback for this call only. Takes precedence
+                         over the instance's on_approval and the global approval
+                         handler's callback (e.g. the MCP server asks the human
+                         behind the current session).
 
         Returns:
             Tool execution result — arbitrary value (JSON, text, etc.).
@@ -300,39 +398,65 @@ class Matimo:
             MatimoError(POLICY_DENIED)     if the policy engine blocks execution.
             MatimoError(EXECUTION_FAILED)  on runtime errors.
         """
-        trace_id = str(uuid.uuid4())[:8]
-        start = time.monotonic()
+        trace_id = str(uuid.uuid4())
 
         tool = self._registry.get_or_raise(tool_name)
 
-        # Policy check
-        if not approved:
-            ctx = context or PolicyContext()
-            decision = self._policy.can_execute(ctx, tool)
+        # Policy check — always runs. `approved` only skips the per-call
+        # approval prompt below; it can never override a policy denial or
+        # quarantine (same as MatimoInstance.execute()).
+        ctx = context or PolicyContext()
+        decision = self._policy.can_execute(ctx, tool)
 
-            if isinstance(decision, PolicyDenied):
-                self._emit_event({
-                    "type": "tool:execution_denied",
-                    "tool_name": tool_name,
-                    "reason": decision.reason,
-                    "agent_id": ctx.agent_id,
-                    "timestamp": _now(),
-                })
+        if isinstance(decision, PolicyDenied):
+            self._emit_event({
+                "type": "tool:execution_denied",
+                "tool_name": tool_name,
+                "reason": decision.reason,
+                "agent_id": ctx.agent_id,
+                "timestamp": _now(),
+            })
+            raise MatimoError(
+                f"Policy denied execution of '{tool_name}': {decision.reason}",
+                ErrorCode.POLICY_DENIED,
+                {"tool_name": tool_name, "reason": decision.reason},
+            )
+
+        if isinstance(decision, PolicyPendingApproval):
+            hitl_approved = await self._resolve_hitl(decision, tool, ctx)
+            if not hitl_approved:
                 raise MatimoError(
-                    f"Policy denied execution of '{tool_name}': {decision.reason}",
+                    f"Human approval denied for tool '{tool_name}'",
                     ErrorCode.POLICY_DENIED,
-                    {"tool_name": tool_name, "reason": decision.reason},
+                    {"tool_name": tool_name},
                 )
 
-            if isinstance(decision, PolicyPendingApproval):
-                hitl_approved = await self._resolve_hitl(decision, tool, ctx)
-                if not hitl_approved:
-                    raise MatimoError(
-                        f"Human approval denied for tool '{tool_name}'",
-                        ErrorCode.POLICY_DENIED,
-                        {"tool_name": tool_name},
-                    )
+        await self._require_call_approval(
+            tool, params, context, skip_prompt=approved, on_approval=on_approval
+        )
 
+        # Every gate (policy, quarantine, approval) has passed: from here on
+        # this is the tool's own run, ending in tool:executed or
+        # tool:execution_failed. Gate refusals have their own events.
+        run_started = time.monotonic()
+        try:
+            result = await self._run_tool(tool, params, credentials, context, trace_id)
+        except Exception as exc:
+            self._emit_run_outcome(tool, context, trace_id, run_started, error=exc)
+            raise
+        self._emit_run_outcome(tool, context, trace_id, run_started, result=result)
+        return result
+
+    async def _run_tool(
+        self,
+        tool: ToolDefinition,
+        params: dict[str, Any],
+        credentials: dict[str, str] | None,
+        context: PolicyContext | None,
+        trace_id: str,
+    ) -> Any:  # noqa: ANN401
+        """Run a tool that has passed every gate and cap the size of its result."""
+        tool_name = tool.name
         # Built-in interception: matimo_reload_tools must run on the instance
         # itself because reload() clears/rebuilds the in-memory registry.
         # The function executor has no reference to the Matimo instance, so we
@@ -362,7 +486,7 @@ class Matimo:
 
         # Execute
         try:
-            result = await self._dispatch(tool, working_params, credentials)
+            raw_result = await self._dispatch(tool, working_params, credentials, context)
         except MatimoError:
             raise
         except Exception as exc:
@@ -373,17 +497,52 @@ class Matimo:
                 cause=exc,
             ) from exc
 
-        duration = time.monotonic() - start
-        self._emit_event({
-            "type": "tool:executed",
-            "tool_name": tool_name,
-            "agent_id": context.agent_id if context else None,
-            "duration": duration,
-            "success": True,
-            "timestamp": _now(),
-        })
+        # Cap the result size here — the one place every execution path
+        # (direct SDK, LangChain, CrewAI, MCP) funnels through — so an
+        # oversized page doesn't silently consume the caller's whole
+        # context budget regardless of which entry point they used.
+        result = apply_response_size_guardrail(
+            tool, raw_result, self._default_max_response_size
+        )
 
         return result
+
+    def _emit_run_outcome(
+        self,
+        tool: ToolDefinition,
+        context: PolicyContext | None,
+        trace_id: str,
+        started: float,
+        *,
+        result: Any = None,  # noqa: ANN401
+        error: BaseException | None = None,
+    ) -> None:
+        """
+        Emit how a tool's own run ended: tool:executed when it returned
+        (success False if it returned {"success": False}), or
+        tool:execution_failed when it raised. Fields follow
+        conformance/events/execution-events.json, shared with the TS SDK.
+        """
+        event: dict[str, Any] = {"tool_name": tool.name}
+        if context is not None and context.agent_id is not None:
+            event["agent_id"] = context.agent_id
+        event.update({
+            "trace_id": trace_id,
+            "duration_ms": round((time.monotonic() - started) * 1000),
+            "risk_level": classify_execution_risk(tool).value,
+            "timestamp": _now(),
+        })
+        if error is not None:
+            code = error.code if isinstance(error, MatimoError) else ErrorCode.UNKNOWN_ERROR
+            self._emit_event({
+                "type": "tool:execution_failed",
+                **event,
+                "error_code": code.value,
+                "error": str(error),
+            })
+            return
+        reported_failure = isinstance(result, dict) and result.get("success") is False
+        self._emit_event({"type": "tool:executed", **event, "success": not reported_failure})
 
     # ------------------------------------------------------------------
     # Tool discovery API
@@ -406,6 +565,26 @@ class Matimo:
     ) -> list[ToolDefinition]:
         """Return only the tools this agent context is permitted to use."""
         return self._policy.filter_for_agent(context, self._registry.get_all())
+
+    def get_governance_mode(self) -> GovernanceMode:
+        """
+        The governance mode in force: ``governance_mode`` passed to init(), else
+        the policy config's ``governance_mode`` (followed across reload_policy),
+        else "secure". Mirrors getGovernanceMode() in matimo-instance.ts.
+        """
+        if self._governance_mode is not None:
+            return self._governance_mode
+        if isinstance(self._policy, DefaultPolicyEngine):
+            return self._policy.config.governance_mode or "secure"
+        return "secure"
+
+    def set_approval_callback(self, callback: ApprovalCallback | None) -> None:
+        """
+        Set this instance's per-call approval callback (see `on_approval`).
+        Pass None to fall back to the global approval handler's callback.
+        Mirrors MatimoInstance.setApprovalCallback().
+        """
+        self._on_approval = callback
 
     def has_policy(self) -> bool:
         """Return True if a policy engine is configured (always True in Matimo)."""
@@ -431,6 +610,83 @@ class Matimo:
         """Return the full markdown content of a skill, or None if not found."""
         return self._skill_registry.get_skill_content(name, options)
 
+    def get_skill_sections(self, name: str) -> list[dict[str, object]] | None:
+        """List a skill's sections and their token costs (Level 2.5 progressive disclosure)."""
+        return self._skill_registry.get_skill_sections(name)
+
+    def get_approval_manifest(self) -> ApprovalManifest | None:
+        """The manifest that records approvals made with matimo_approve_tool."""
+        return self._approval_manifest
+
+    def get_skill_paths(self) -> list[str]:
+        """Return the configured skill directories."""
+        return list(self._skill_paths)
+
+    def add_skill_path(self, skill_path: str) -> None:
+        """
+        Add a skill path at runtime — the mutable counterpart to the
+        construction-time `skill_paths` option. A skill path is a filesystem
+        directory (local disk, or anything the OS mounts as one — NFS/EFS/SMB,
+        a synced git checkout, a FUSE-mounted bucket); it is read on the next
+        `reload_skills()` call, not eagerly. For skills that don't live on a
+        filesystem (Postgres, S3 via its API, an internal service), use
+        `register_skill()`/`register_skills()` instead.
+        """
+        if skill_path not in self._skill_paths:
+            self._skill_paths.append(skill_path)
+            self._logger.debug(f"Skill path added: {skill_path}")
+
+    def get_default_skill_write_dir(self) -> str | None:
+        """Return the default directory matimo_create_skill writes new skills to."""
+        return self._default_skill_write_dir
+
+    def register_skill(self, skill: SkillDefinition) -> None:
+        """
+        Register a single skill directly, bypassing the filesystem entirely.
+        The "storage can be anywhere" answer for skills: a host with skills in
+        Postgres, MongoDB, S3, or an internal API fetches them however it
+        wants and pushes plain SkillDefinition objects straight into the
+        running instance — visible immediately to list_skills()/search_skills().
+        """
+        self._skill_registry.register(skill)
+
+    def register_skills(self, skills: list[SkillDefinition]) -> None:
+        """Register multiple skills directly. See register_skill()."""
+        self._skill_registry.register_all(skills)
+
+    def notify_skill_created(self, skill_name: str, source: str = "user") -> None:
+        """
+        Emit a skill:created event to the configured on_event handler. Called
+        by the matimo_create_skill meta-tool after it successfully writes a
+        new skill to disk, so a host can observe an agent's skill creation in
+        real time and mirror it into its own storage.
+        """
+        self._emit_event({
+            "type": "skill:created",
+            "skill_name": skill_name,
+            "source": source,
+            "timestamp": _now(),
+        })
+
+    async def build_skill_prompt_context(
+        self,
+        query: str,
+        *,
+        top_k: int = 3,
+        min_score: float = 0.3,
+        header: str | None = None,
+    ) -> str:
+        """
+        Build a per-request system-prompt snippet from semantically relevant skills.
+        Instance-method counterpart to the standalone `build_relevant_skill_prompt()`
+        in `matimo.integrations.langchain` — for integrators who already hold a
+        `Matimo` instance and would rather call a method than import a free function.
+        Both call styles do the same thing; see `docs/skills/SKILLS.md`.
+        """
+        return await build_relevant_skill_prompt(
+            self, query, top_k=top_k, min_score=min_score, header=header
+        )
+
     async def execute_tool(
         self,
         tool_name: str,
@@ -439,6 +695,7 @@ class Matimo:
         credentials: dict[str, str] | None = None,
         context: PolicyContext | None = None,
         approved: bool = False,
+        on_approval: ApprovalCallback | None = None,
     ) -> Any:  # noqa: ANN401
         """
         Execute a tool (alias for execute() with simpler params).
@@ -459,6 +716,7 @@ class Matimo:
             credentials=credentials,
             context=context,
             approved=approved,
+            on_approval=on_approval,
         )
 
 
@@ -516,9 +774,24 @@ class Matimo:
                     if self._registry.get(name) is not None:
                         self._registry.remove(name)
                         result.removed += 1
+                    self._emit_event({
+                        "type": "tool:rejected",
+                        "tool_name": name,
+                        "violations": [
+                            {"rule": "policy-denied", "severity": "high", "message": decision.reason}
+                        ],
+                        "timestamp": _now(),
+                    })
                     logger.warning("Reload: rejected '%s': %s", name, decision.reason)
                     continue
                 if isinstance(decision, PolicyPendingApproval):
+                    self._emit_event({
+                        "type": "tool:quarantined",
+                        "tool_name": name,
+                        "risk_level": decision.risk_level.value,
+                        "reason": decision.reason,
+                        "timestamp": _now(),
+                    })
                     logger.info(
                         "Reload: quarantined '%s' (risk=%s): %s",
                         name,
@@ -527,11 +800,14 @@ class Matimo:
                     )
                     # Still register the tool so it exists, but it will be blocked
                     # at execution time until approved.
+                # As in TypeScript: revalidated counts untrusted tools re-checked
+                # against the policy, loaded counts every tool now registered.
+                result.revalidated += 1
 
             existing = self._registry.get(name)
             if existing is not None:
                 self._registry.register_or_replace(tool)
-                result.revalidated += 1
+                result.loaded += 1
             else:
                 try:
                     self._registry.register(tool)
@@ -592,6 +868,7 @@ class Matimo:
         tool: ToolDefinition,
         params: dict[str, Any],
         credentials: dict[str, str] | None,
+        context: PolicyContext | None = None,
     ) -> Any:  # noqa: ANN401
         # Returns Any: tool execution results are arbitrary JSON/values dispatched to executors.
         exec_type = tool.execution.type
@@ -600,7 +877,9 @@ class Matimo:
         if exec_type == "command":
             return await self._command_executor.execute(tool, params, credentials)
         if exec_type == "function":
-            return await self._function_executor.execute(tool, params, credentials)
+            # Function tools also get the caller's PolicyContext (e.g. so
+            # matimo_approve_tool can check the approver's role and identity).
+            return await self._function_executor.execute(tool, params, credentials, context)
         raise MatimoError(
             f"Unknown execution type: '{exec_type}'",
             ErrorCode.EXECUTION_FAILED,
@@ -634,6 +913,21 @@ class Matimo:
         content_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
         return self._approval_manifest.is_approved(tool.name, content_hash)
 
+    @staticmethod
+    def _definition_hash(tool: ToolDefinition) -> str:
+        """
+        Hash identifying the exact tool definition a HITL approval covers: the
+        on-disk YAML when available (the same hash matimo_approve_tool signs),
+        otherwise the serialized definition.
+        """
+        if tool.definition_path:
+            try:
+                content = Path(tool.definition_path).read_text(encoding="utf-8")
+                return hashlib.sha256(content.encode("utf-8")).hexdigest()
+            except OSError:
+                pass
+        return hashlib.sha256(tool.model_dump_json().encode("utf-8")).hexdigest()
+
     def _evaluate_untrusted_reload(self, tool: ToolDefinition) -> PolicyDecision:
         """
         Decide policy for an untrusted tool during reload(): use the looser
@@ -654,16 +948,40 @@ class Matimo:
         tool: ToolDefinition,
         context: PolicyContext,
     ) -> bool:
-        """Invoke the HITL callback or deny if no callback is configured."""
+        """
+        Resolve a quarantined tool. Mirrors #resolveHITL in matimo-instance.ts:
+        1. A matching signed approval in the manifest lets the tool through.
+        2. Otherwise ask the HITL callback; an approval is recorded in the manifest.
+        3. No callback — fail closed.
+        """
         import asyncio
 
         from matimo.policy.types import HITLRequest
+
+        approval_hash = self._definition_hash(tool)
+        if self._approval_manifest is not None and self._approval_manifest.is_approved(
+            tool.name, approval_hash
+        ):
+            self._emit_quarantine_outcome(tool.name, approved=True)
+            return True
 
         if self._on_hitl is None:
             self._logger.warn(
                 f"Tool '{tool.name}' requires HITL approval but no on_hitl callback is set — denying"
             )
+            self._emit_quarantine_outcome(tool.name, approved=False)
             return False
+
+        event: dict[str, Any] = {
+            "type": "tool:quarantined",
+            "tool_name": tool.name,
+            "risk_level": decision.risk_level.value,
+            "reason": decision.reason,
+            "timestamp": _now(),
+        }
+        if context.environment is not None:
+            event["environment"] = context.environment
+        self._emit_event(event)
 
         request = HITLRequest(
             tool_name=tool.name,
@@ -687,21 +1005,102 @@ class Matimo:
         else:
             approved = await self._on_hitl(request)
 
-        self._emit_event({
-            "type": "tool:quarantine_approved" if approved else "tool:quarantine_rejected",
-            "tool_name": tool.name,
-            "timestamp": _now(),
-        })
+        if approved and self._approval_manifest is not None:
+            self._approval_manifest.approve(tool.name, approval_hash)
+
+        self._emit_quarantine_outcome(tool.name, approved=approved)
         return approved
 
-    def _emit_event(self, event_dict: dict[str, Any]) -> None:
-        """Emit an audit event if a handler is configured."""
-        if self._on_event is None:
+    def _emit_quarantine_outcome(self, tool_name: str, *, approved: bool) -> None:
+        """Every quarantine ends in one of these events, as in TypeScript's execute()."""
+        self._emit_event({
+            "type": "tool:quarantine_approved" if approved else "tool:quarantine_rejected",
+            "tool_name": tool_name,
+            "timestamp": _now(),
+        })
+
+    async def _require_call_approval(
+        self,
+        tool: ToolDefinition,
+        params: dict[str, Any],
+        context: PolicyContext | None,
+        *,
+        skip_prompt: bool,
+        on_approval: ApprovalCallback | None = None,
+    ) -> None:
+        """
+        Per-call approval for tools that declare `requires_approval` or whose
+        command/SQL contains a destructive keyword. Mirrors the approval step
+        in MatimoInstance.execute(): pre-approved patterns and an out-of-band
+        `approved=True` skip the prompt; otherwise the approval callback
+        decides, and with no callback the call fails closed.
+        """
+        handler = self._approval_handler
+        if not handler.requires_approval(
+            definition_requires_approval(tool, self.get_governance_mode()),
+            _approval_scan_content(tool, params),
+        ):
             return
+        if skip_prompt or handler.is_pre_approved(tool.name):
+            return
+
+        agent_id = context.agent_id if context else None
+        callback = on_approval or self._on_approval or handler.get_approval_callback()
         try:
-            self._on_event(event_dict)  # type: ignore[arg-type]
-        except Exception as exc:
-            logger.debug("Event handler raised: %s", exc)
+            if callback is None:
+                raise MatimoError(
+                    f"Destructive operation requires approval: {tool.name}",
+                    ErrorCode.EXECUTION_FAILED,
+                    {
+                        "tool_name": tool.name,
+                        "hint": "Pass on_approval to Matimo.init() (or "
+                        "matimo.set_approval_callback()) to have a human decide, or "
+                        "pre-approve trusted tools with MATIMO_APPROVED_PATTERNS",
+                    },
+                )
+            request = ApprovalRequest(
+                tool_name=tool.name, description=tool.description, params=params
+            )
+            if not await handler.request_approval(request, callback):
+                raise MatimoError(
+                    f"Operation rejected by approval handler: {tool.name}",
+                    ErrorCode.EXECUTION_FAILED,
+                    {"tool_name": tool.name, "message": "User or policy rejected the operation"},
+                )
+        except MatimoError as error:
+            # Includes a callback that cannot ask anyone (e.g. an MCP client
+            # without elicitation) — audited as a denial, as in TS.
+            self._emit_event({
+                "type": "tool:approval_denied",
+                "tool_name": tool.name,
+                "reason": str(error),
+                "agent_id": agent_id,
+                "timestamp": _now(),
+            })
+            raise
+
+        self._emit_event({
+            "type": "tool:approval_granted",
+            "tool_name": tool.name,
+            "agent_id": agent_id,
+            "timestamp": _now(),
+        })
+        self._logger.info(f"Destructive operation approved: {tool.name}")
+
+    def _emit_event(self, event_dict: dict[str, Any]) -> None:
+        """Emit an audit event to the handler and audit sink, if configured."""
+        if self._on_event is not None:
+            try:
+                self._on_event(event_dict)  # type: ignore[arg-type]
+            except Exception as exc:
+                logger.debug("Event handler raised: %s", exc)
+        if self._audit_sink is not None:
+            try:
+                self._audit_sink.write(event_dict)
+            except Exception as exc:
+                self._logger.warn(
+                    f"Audit sink failed to record {event_dict.get('type')}: {exc}"
+                )
 
     @staticmethod
     def _build_policy_engine(
@@ -727,6 +1126,24 @@ class Matimo:
         )
 
 
+def _approval_scan_content(tool: ToolDefinition, params: dict[str, Any]) -> str | None:
+    """
+    The text scanned for destructive keywords. Mirrors execute() in
+    matimo-instance.ts: a command tool's `command` param, else a `sql` param,
+    else (only with MATIMO_APPROVAL_SCAN_ALL_PARAMS=true) every string param.
+    """
+    command = params.get("command")
+    if tool.execution.type == "command" and isinstance(command, str):
+        return command
+    sql = params.get("sql")
+    if isinstance(sql, str):
+        return sql
+    if os.environ.get("MATIMO_APPROVAL_SCAN_ALL_PARAMS") == "true":
+        parts = [v for v in params.values() if isinstance(v, str)]
+        return " ".join(parts) if parts else None
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Module-level convenience namespace (mirrors `export const matimo = { init }`)
 # ---------------------------------------------------------------------------
@@ -737,7 +1154,7 @@ class _MatimoNamespace:
     @staticmethod
     async def init(
         tool_paths: str | list[str] | None = None,
-        **kwargs: object,
+        **kwargs: Any,  # noqa: ANN401 — forwarded unchanged to Matimo.init
     ) -> Matimo:
         return await Matimo.init(tool_paths, **kwargs)
 

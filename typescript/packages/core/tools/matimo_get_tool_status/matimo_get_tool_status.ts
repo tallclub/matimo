@@ -7,6 +7,7 @@ import {
   getTierForTool,
   ApprovalManifest,
   getGlobalMatimoLogger,
+  getGlobalMatimoInstance,
 } from '@matimo/core';
 
 interface StatusParams {
@@ -69,8 +70,9 @@ export default async function matimoGetToolStatus(
   const tier = getTierForTool(tool);
 
   // Determine approval state from manifest
-  const approvalDir = path.resolve(toolDir);
-  const manifest = new ApprovalManifest(approvalDir, context?.credentials?.MATIMO_APPROVAL_SECRET);
+  const manifest =
+    ownerApprovalManifest() ??
+    new ApprovalManifest(path.resolve(toolDir), context?.credentials?.MATIMO_APPROVAL_SECRET);
 
   const hash = manifest.computeHash(yamlContent);
   const approvalRecord = manifest.getApproval(params.name);
@@ -82,6 +84,9 @@ export default async function matimoGetToolStatus(
     approvalState = 'rejected';
   } else if (isApproved) {
     approvalState = 'approved';
+  } else if (tool.status === 'draft') {
+    // A draft runs only after matimo_approve_tool, whatever its risk.
+    approvalState = 'pending';
   } else if (tier === 'auto') {
     approvalState = 'auto-approved';
   } else if (pendingTools.includes(params.name)) {
@@ -108,4 +113,13 @@ export default async function matimoGetToolStatus(
     approvedBy: approvalRecord?.approvedBy,
     message: `Tool "${params.name}" is ${approvalState} (${riskLevel} risk)`,
   };
+}
+
+/** The approval manifest of the instance that owns this call, where approvals are recorded. */
+function ownerApprovalManifest(): ApprovalManifest | null {
+  try {
+    return getGlobalMatimoInstance().getApprovalManifest();
+  } catch {
+    return null;
+  }
 }
