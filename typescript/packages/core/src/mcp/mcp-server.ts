@@ -66,7 +66,7 @@ export interface MCPServerOptions {
   /** Auto-generate self-signed certificate. Default: false. Certs stored in .matimo/certs/ */
   selfSigned?: boolean;
   /** Policy configuration for tool filtering. Creates a DefaultPolicyEngine. */
-  policyConfig?: import('../policy/types').PolicyConfig;
+  policyConfig?: import('../policy/types.js').PolicyConfig;
   /** Paths containing untrusted (agent-created) tools. Subject to policy validation on reload. */
   untrustedPaths?: string[];
   /** HMAC secret for approval manifest. */
@@ -87,7 +87,7 @@ export interface MCPServerOptions {
    * `{ agentId: 'claude-desktop', roles: ['admin'] }` for a single-user local
    * server so matimo_approve_tool can be used. Default: none (no roles).
    */
-  context?: import('../policy/types').PolicyContext;
+  context?: import('../policy/types.js').PolicyContext;
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────

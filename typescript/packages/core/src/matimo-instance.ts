@@ -1643,7 +1643,7 @@ export class MatimoInstance {
     decision: {
       allowed: 'pending_approval';
       reason: string;
-      riskLevel: import('./policy/types').RiskLevel;
+      riskLevel: import('./policy/types.js').RiskLevel;
       toolName?: string;
     },
     context: PolicyContext

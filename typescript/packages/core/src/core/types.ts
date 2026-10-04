@@ -244,7 +244,7 @@ export interface ExecuteOptions {
    * Policy context for the current execution. When a PolicyEngine is active,
    * this context is checked against the tool's requirements before execution.
    */
-  context?: import('../policy/types').PolicyContext;
+  context?: import('../policy/types.js').PolicyContext;
   /**
    * Skip approval check for this execution. Use when the caller (e.g., MCP layer)
    * has already confirmed approval out-of-band, to avoid re-prompting the user.
@@ -258,7 +258,7 @@ export interface ExecuteOptions {
    * Used where one instance serves many users, e.g. the MCP server asks the
    * human behind the current MCP session.
    */
-  onApproval?: import('../approval/approval-handler').ApprovalCallback;
+  onApproval?: import('../approval/approval-handler.js').ApprovalCallback;
 }
 
 /**
