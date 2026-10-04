@@ -104,7 +104,7 @@ class ToolLoader:
         """
         root = Path(dir_path)
         if not root.exists():
-            logger.warning("Tool directory does not exist: %s", root)
+            logger.warning("Configured tool directory does not exist; skipping it")
             return {}
 
         tools: dict[str, ToolDefinition] = {}
