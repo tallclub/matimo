@@ -312,7 +312,7 @@ See [Adding Tools to Matimo](https://github.com/tallclub/matimo/blob/main/docs/t
 
 ## License
 
-MIT © 2026 Matimo Contributors
+MIT © 2026 ROAIQ TECHNOLOGIES PRIVATE LIMITED
 
 ---
 
