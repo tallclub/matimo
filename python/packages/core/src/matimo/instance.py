@@ -278,6 +278,7 @@ class Matimo:
 
         loader = ToolLoader()
 
+        discovered: list[str] = []
         if auto_discover:
             discovered = loader.auto_discover_packages()
             paths.extend(p for p in discovered if p not in paths)
@@ -314,9 +315,20 @@ class Matimo:
         skill_reg = SkillRegistry()
         skill_loader = SkillLoader()
 
-        # Auto-discover skill paths if auto_discover=True
         skill_discovery_paths = list(skill_paths) if skill_paths else []
-        # Note: auto_discover is for tools only, not skills. Skills must be passed via skill_paths.
+
+        # Core skills ship inside matimo-core and are always included
+        core_skills = Path(__file__).parent / "skills"
+        if core_skills.is_dir() and str(core_skills) not in skill_discovery_paths:
+            skill_discovery_paths.append(str(core_skills))
+
+        # With auto_discover, also pick up each provider's skills/ directory — the
+        # sibling of its tools/ directory, as in the TypeScript SDK
+        if auto_discover:
+            for tool_path in discovered:
+                provider_skills = Path(tool_path).parent / "skills"
+                if provider_skills.is_dir() and str(provider_skills) not in skill_discovery_paths:
+                    skill_discovery_paths.append(str(provider_skills))
 
         if skill_discovery_paths:
             for sp in skill_discovery_paths:

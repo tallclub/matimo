@@ -898,7 +898,7 @@ class TestInstanceSkillsAndCoverage:
         skills_root.mkdir()
 
         matimo = await Matimo.init([], skill_paths=[str(skills_root)])
-        assert matimo.list_skills() == []
+        assert not any(s.name == "new-skill" for s in matimo.list_skills())
 
         new_skill_dir = skills_root / "new-skill"
         new_skill_dir.mkdir()
@@ -910,6 +910,53 @@ class TestInstanceSkillsAndCoverage:
 
         assert result["loaded"] == 1
         assert any(s.name == "new-skill" for s in matimo.list_skills())
+
+    @pytest.mark.asyncio
+    async def test_core_skills_are_bundled_and_always_loaded(self) -> None:
+        matimo = await Matimo.init([])
+        names = {s.name for s in matimo.list_skills()}
+        assert {
+            "tool-creation",
+            "meta-tools-lifecycle",
+            "skills-catalog",
+            "policy-validation",
+            "skill-creator",
+            "tool-discovery",
+        } <= names
+
+    @pytest.mark.asyncio
+    async def test_auto_discover_loads_provider_skills_next_to_tools(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A discovered provider's skills/ directory (sibling of tools/) is loaded."""
+        from matimo.core.loader import ToolLoader
+
+        provider = tmp_path / "matimo_demo"
+        (provider / "tools").mkdir(parents=True)
+        (provider / "skills" / "demo").mkdir(parents=True)
+        (provider / "skills" / "demo" / "SKILL.md").write_text(
+            "---\nname: demo\ndescription: Demo provider skill\n---\n\nContent."
+        )
+        monkeypatch.setattr(
+            ToolLoader, "auto_discover_packages", lambda self: [str(provider / "tools")]
+        )
+
+        matimo = await Matimo.init([], auto_discover=True)
+
+        assert str(provider / "skills") in matimo.get_skill_paths()
+        assert any(s.name == "demo" for s in matimo.list_skills())
+
+    @pytest.mark.asyncio
+    async def test_explicit_tool_paths_do_not_load_sibling_skills(self, tmp_path: Path) -> None:
+        (tmp_path / "tools").mkdir()
+        (tmp_path / "skills" / "stray").mkdir(parents=True)
+        (tmp_path / "skills" / "stray" / "SKILL.md").write_text(
+            "---\nname: stray\ndescription: Not discovered\n---\n\nContent."
+        )
+
+        matimo = await Matimo.init([str(tmp_path / "tools")])
+
+        assert not any(s.name == "stray" for s in matimo.list_skills())
 
     @pytest.mark.asyncio
     async def test_reload_skills_removes_deleted_skill(self, tmp_path: Path) -> None:
@@ -946,11 +993,12 @@ class TestInstanceSkillsAndCoverage:
 
         matimo = await Matimo.init([])
         assert str(skills_root) not in matimo.get_skill_paths()
-        assert matimo.list_skills() == []
+        assert not any(s.name == "added-skill" for s in matimo.list_skills())
 
         matimo.add_skill_path(str(skills_root))
         assert str(skills_root) in matimo.get_skill_paths()
-        assert matimo.list_skills() == []  # not read until reload_skills()
+        # not read until reload_skills()
+        assert not any(s.name == "added-skill" for s in matimo.list_skills())
 
         await matimo.reload_skills()
         assert any(s.name == "added-skill" for s in matimo.list_skills())
