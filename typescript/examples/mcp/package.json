@@ -15,21 +15,21 @@
   "dependencies": {
     "@langchain/core": "^1.2.14",
     "@langchain/langgraph": "^1.4.19",
-    "@langchain/mcp-adapters": "^1.1.4",
+    "@langchain/mcp-adapters": "^2.0.0",
     "@langchain/openai": "^1.6.2",
     "@matimo/cli": "workspace:*",
     "@matimo/core": "workspace:*",
     "@matimo/gmail": "workspace:*",
     "@matimo/slack": "workspace:*",
-    "dotenv": "^16.6.1",
+    "dotenv": "^18.0.5",
     "langchain": "^1.5.15",
     "matimo": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^25.9.9",
-    "better-sqlite3": "^12.11.1",
+    "@types/node": "^26.6.4",
+    "better-sqlite3": "^13.0.3",
     "tsx": "^4.23.15",
-    "typescript": "^5.9.3"
+    "typescript": "^7.0.2"
   },
   "engines": {
     "node": ">=18.0.0"
