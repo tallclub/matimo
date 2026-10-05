@@ -5,8 +5,12 @@ import hashlib
 import logging
 import re
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import yaml
+
+if TYPE_CHECKING:
+    from matimo.policy.approval_manifest import ApprovalManifest
 
 logger = logging.getLogger("matimo")
 
@@ -18,7 +22,7 @@ async def run(params: dict) -> dict:  # type: ignore[type-arg]
     from matimo.policy.approval_manifest import ApprovalManifest
     from matimo.policy.default_policy import get_tier_for_tool
     from matimo.policy.risk_classifier import classify_risk
-    from matimo.policy.types import PolicyTier
+    from matimo.policy.types import PolicyTier, RiskLevel
 
     name: str = params.get("name", "")
     tool_dir: str = params.get("tool_dir", "./matimo-tools")
@@ -45,10 +49,10 @@ async def run(params: dict) -> dict:  # type: ignore[type-arg]
     try:
         risk_level = classify_risk(tool_def)
     except Exception:
-        risk_level = "medium"
+        risk_level = RiskLevel.MEDIUM
 
     content_hash = hashlib.sha256(yaml_content.encode("utf-8")).hexdigest()
-    manifest = ApprovalManifest(str(Path(tool_dir).resolve()))
+    manifest = _owner_approval_manifest() or ApprovalManifest(str(Path(tool_dir).resolve()))
     is_approved = manifest.is_approved(name, content_hash)
 
     # Find approval record from get_all()
@@ -59,6 +63,9 @@ async def run(params: dict) -> dict:  # type: ignore[type-arg]
         approval_state = "rejected"
     elif is_approved:
         approval_state = "approved"
+    elif status == ToolStatus.DRAFT:
+        # A draft runs only after matimo_approve_tool, whatever its risk.
+        approval_state = "pending"
     elif get_tier_for_tool(tool_def) == PolicyTier.AUTO:
         approval_state = "auto-approved"
     else:
@@ -74,3 +81,11 @@ async def run(params: dict) -> dict:  # type: ignore[type-arg]
         "approvedBy": approval.approved_by if approval else None,
         "message": f'Tool "{name}" is {approval_state} ({risk_level} risk)',
     }
+
+
+def _owner_approval_manifest() -> ApprovalManifest | None:
+    """The approval manifest of the instance that owns this call, where approvals are recorded."""
+    from matimo.decorators import get_global_matimo_instance
+
+    owner = get_global_matimo_instance()
+    return owner.get_approval_manifest() if owner is not None else None

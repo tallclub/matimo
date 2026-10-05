@@ -70,6 +70,30 @@ class TestMatimoReload:
         assert len(matimo.list_tools()) == 2
         assert reload_result is not None
 
+    @pytest.mark.asyncio
+    async def test_reload_counts_match_typescript(self, tmp_path: Path) -> None:
+        """loaded counts every registered tool; revalidated counts untrusted tools re-checked."""
+        trusted_dir = tmp_path / "trusted"
+        untrusted_dir = tmp_path / "untrusted"
+        (trusted_dir / "tool_a").mkdir(parents=True)
+        (untrusted_dir / "tool_b").mkdir(parents=True)
+        (trusted_dir / "tool_a" / "definition.yaml").write_text(
+            "name: tool_a\ndescription: A\nexecution:\n  type: http\n  method: GET\n  url: https://a.com\n"
+        )
+        (untrusted_dir / "tool_b" / "definition.yaml").write_text(
+            "name: tool_b\ndescription: B\nstatus: draft\nrequires_approval: true\n"
+            "execution:\n  type: http\n  method: GET\n  url: https://b.com\n"
+        )
+        matimo = await Matimo.init(
+            [str(trusted_dir), str(untrusted_dir)], untrusted_paths=[str(untrusted_dir)]
+        )
+
+        result = await matimo.reload()
+
+        assert result.loaded == 2
+        assert result.revalidated == 1
+        assert result.rejected == []
+
 
 class TestApproveReloadLifecycle:
     """
@@ -122,7 +146,13 @@ class TestApproveReloadLifecycle:
 
         # Approve via the real meta-tool (exercises the hash-timing fix: the approval
         # hash must be computed from the file's final, post-mutation on-disk content).
-        approval = await approve_run({"name": "my_tool", "tool_dir": str(untrusted_dir)})
+        from matimo.core.models import PolicyContext
+        from matimo.executors.function_executor import FunctionToolContext
+
+        approval = await approve_run(
+            {"name": "my_tool", "tool_dir": str(untrusted_dir)},
+            FunctionToolContext(policy_context=PolicyContext(roles=["admin"])),
+        )
         assert approval["success"] is True
 
         on_disk_yaml = (tool_dir / "definition.yaml").read_text()
@@ -141,6 +171,59 @@ class TestApproveReloadLifecycle:
         )
         result = await matimo.execute("my_tool", {}, approved=True)
         assert result is not None
+
+    @pytest.mark.asyncio
+    async def test_keeps_an_approval_made_without_a_configured_secret(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """
+        The default setup: no MATIMO_APPROVAL_SECRET (each manifest would sign
+        with its own ephemeral key) and an approval directory that is not the
+        tool's. matimo_approve_tool records the approval in the owning instance.
+        """
+        from matimo.core.models import PolicyContext
+        from matimo.decorators import set_global_matimo_instance
+        from matimo.executors.function_executor import FunctionToolContext
+        from matimo.tools.matimo_approve_tool.matimo_approve_tool import run as approve_run
+
+        monkeypatch.delenv("MATIMO_APPROVAL_SECRET", raising=False)
+        untrusted_dir = tmp_path / "untrusted"
+        approval_dir = tmp_path / "approvals"
+        untrusted_dir.mkdir()
+        approval_dir.mkdir()
+
+        matimo = await Matimo.init(
+            str(untrusted_dir),
+            untrusted_paths=[str(untrusted_dir)],
+            approval_dir=str(approval_dir),
+        )
+        set_global_matimo_instance(matimo)
+        tool_dir = untrusted_dir / "my_tool"
+        tool_dir.mkdir()
+        (tool_dir / "definition.yaml").write_text(
+            "name: my_tool\n"
+            "version: '1.0.0'\n"
+            "description: A benign agent-created tool\n"
+            "status: draft\n"
+            "requires_approval: true\n"
+            "execution:\n"
+            "  type: http\n"
+            "  method: GET\n"
+            "  url: 'https://api.example.com/data'\n"
+        )
+        await matimo.reload()
+
+        approval = await approve_run(
+            {"name": "my_tool", "tool_dir": str(untrusted_dir)},
+            FunctionToolContext(policy_context=PolicyContext(agent_id="reviewer", roles=["admin"])),
+        )
+        assert approval["success"] is True
+
+        reload = await matimo.reload()
+        assert "my_tool" not in reload.rejected
+        tool = matimo.get_tool("my_tool")
+        assert tool is not None
+        assert tool.status == "approved"
 
     @pytest.mark.asyncio
     async def test_still_rejects_a_tool_hand_edited_to_approved_status(

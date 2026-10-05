@@ -1,5 +1,6 @@
 name: matimo_validate_skill
 version: '1.0.0'
+risk: low
 description: >-
   Validate an existing skill against the Agent Skills specification
   (https://agentskills.io/specification). Checks SKILL.md frontmatter, naming

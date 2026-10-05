@@ -3,21 +3,21 @@
  * Matimo Meta-Tools Integration Flow
  *
  * A REAL LangChain ReAct agent that demonstrates the complete tool lifecycle:
- *   1. Agent creates a new tool (matimo_create_tool)
- *   2. Doctor validates the YAML (matimo_doctor)
- *   3. Policy engine evaluates security rules (automatically enforced)
- *   4. If safe → human approves via matimo_review
- *   5. If unsafe → agent learns why and tries again
- *   6. Matimo reloads the registry (matimo_reload_tools)
- *   7. Agent uses the newly approved tool
+ *   1. Agent validates the YAML (matimo_validate_tool)
+ *   2. Policy engine evaluates security rules (automatically enforced)
+ *   3. If safe → agent creates a draft tool (matimo_create_tool)
+ *   4. If unsafe → agent learns why and tries again
+ *   5. Matimo reloads the registry (matimo_reload_tools)
+ *   6. A human approves the tool (matimo_approve_tool asks you in the terminal)
+ *   7. Matimo reloads again, and the agent uses the approved tool
  *
  * This is NOT a mock — it's a real agent making real decisions based on
  * actual policy enforcement and human feedback.
  *
  * Flow:
- *   Mission 1: "Create a safe HTTP GET tool" → agent generates YAML → doctor validates → human approves
+ *   Mission 1: "Create a safe HTTP GET tool" → agent generates YAML → validates → creates → human approves
  *   Mission 2: "Create a shell command tool" → agent tries → policy rejects → agent learns limits
- *   Mission 3: "Create a file reader tool" → agent tries → policy blocks → human rejects
+ *   Mission 3: "Create a file reader tool" → agent tries → policy blocks
  *   Mission 4: "Build a working tool myself" → agent sees previous failures → creates safe tool
  *   Mission 5: "List and use all available tools" → agent discovers matimo_list_user_tools and uses new tool
  *
@@ -41,7 +41,6 @@ import {
   convertToolsToLangChain,
   getSkillsMetadata,
   MatimoError,
-  getGlobalApprovalHandler,
   setGlobalMatimoInstance,
 } from 'matimo';
 import type { ToolDefinition } from 'matimo';
@@ -110,7 +109,7 @@ async function interactiveApproval(request: {
   params?: Record<string, unknown>;
 }): Promise<boolean> {
   console.info('\n    ╔══════════════════════════════════════════════════════════╗');
-  console.info('    ║  🛡️  HUMAN APPROVAL REQUIRED (via matimo review)          ║');
+  console.info('    ║  🛡️  HUMAN APPROVAL REQUIRED                              ║');
   console.info('    ╠══════════════════════════════════════════════════════════╣');
   console.info(`    ║  Tool: ${request.toolName.padEnd(50)}║`);
   console.info(`    ║  Desc: ${(request.description || 'N/A').slice(0, 48).padEnd(50)}║`);
@@ -133,30 +132,28 @@ async function interactiveApproval(request: {
 const AGENT_SYSTEM_PROMPT = `You are an expert Matimo agent orchestrating a tool creation and approval workflow.
 
 You have these meta-tools:
-1. **matimo_doctor** — Validate a YAML tool definition against schema and policies
-   - Input: YAML string
-   - Output: Validation report (errors, warnings, or "valid")
-   - Use this BEFORE submitting tools for approval
-   
-2. **matimo_create_tool** — Create a new tool YAML file on disk (draft status)
-   - Input: toolName, yaml_content (complete YAML string with all required fields), target_dir
-   - Output: { success: boolean, message: string, ... }
-   - After creation, must be approved via matimo_review before use
-   
-3. **matimo_review** — Approve a tool for production (human-in-the-loop)
-   - Input: toolName, target_dir
-   - Output: Approval status or error if human rejects
-   - This is where the external human operator confirms use
-   - After approval, you must reload the registry
-   
-4. **matimo_reload_tools** — Reload the tool registry after changes
-   - Input: target_dir
-   - Output: Refreshed tool list
-   - Call this after approving a tool to make it available
-   
-5. **matimo_list_user_tools** — List all tools in a directory
-   - Input: target_dir
-   - Output: Array of tool metadata
+1. **matimo_validate_tool** — Validate a YAML tool definition against the schema and policy rules
+   - Input: yaml_content (the complete YAML string)
+   - Output: { valid, schemaErrors, policyViolations: [{ rule, severity, message }], riskLevel }
+   - Use this BEFORE creating a tool; valid is true exactly when creation would accept it
+
+2. **matimo_create_tool** — Write a new tool to disk as a draft
+   - Input: name, yaml_content, target_dir
+   - Output: { success, path, riskLevel, status: "draft", approvalState: "pending", message }
+   - A draft cannot run until a human approves it
+
+3. **matimo_reload_tools** — Reload the tool registry from disk (no parameters)
+   - Output: { success, loaded, removed, rejected, message }
+   - Call it after creating a tool and again after it is approved
+
+4. **matimo_approve_tool** — Ask the human operator to approve a draft tool
+   - Input: name, tool_dir
+   - The human decides; if they decline, the call fails and the tool stays a draft
+   - You cannot approve your own tool: the human is the reviewer
+
+5. **matimo_list_user_tools** — List the tools in a directory
+   - Input: tool_dir
+   - Output: { tools: [{ name, description, version, status, riskLevel, tags }], total }
 
 REQUIRED YAML STRUCTURE:
 Every tool MUST have these fields:
@@ -192,7 +189,7 @@ execution:
   url: "https://api.github.com/users/{username}"
 \`\`\`
 
-Your policy constraints (enforced by matimo_doctor):
+Your policy constraints (reported by matimo_validate_tool):
 - ✅ HTTP GET/POST to allowed domains only
 - ✅ No shell commands (command type blocked)
 - ✅ No arbitrary code execution (function type blocked)
@@ -202,17 +199,18 @@ Your policy constraints (enforced by matimo_doctor):
 Strategy:
 1. **Understand** the requirements — what should the tool do?
 2. **Generate** complete YAML with name, version, description, parameters, and execution
-3. **Validate** with matimo_doctor — if errors, read error messages and revise YAML
+3. **Validate** with matimo_validate_tool — if errors, read each violation's rule and revise the YAML
 4. **Create** with matimo_create_tool when validation passes
-5. **Review** with matimo_review (human approves or rejects)
-6. **Reload** with matimo_reload_tools
-7. **Use** the tool in your next mission
+5. **Reload** with matimo_reload_tools
+6. **Approve** with matimo_approve_tool (the human approves or declines)
+7. **Reload** again, then **use** the tool — each call asks the human
 
 IMPORTANT:
 - Always include version, description, and execution fields — never omit them
 - Parameters and execution are always required
-- If doctor says "version: Invalid input", revise by adding version: "1.0.0"
-- If doctor says "execution: Invalid input", check that execution has type, method (if http), url, etc.
+- If validation says "version: Invalid input", revise by adding version: "1.0.0"
+- If validation says "execution: Invalid input", check that execution has type, method (if http), url, etc.
+- Leave out requires_approval and status — matimo_create_tool sets them
 
 You are NOT told which tools to call — discover them from the descriptions above.`;
 
@@ -338,16 +336,13 @@ async function main(): Promise<void> {
 
     header('PHASE 1: Setup');
 
-    // Set up approval handler
-    const approvalHandler = getGlobalApprovalHandler();
-    approvalHandler.setApprovalCallback(interactiveApproval);
-
     const matimo = await MatimoInstance.init({
       autoDiscover: true,
       toolPaths: [toolsDir],
       logLevel: 'silent',
       untrustedPaths: [toolsDir],
       policyConfig: {}, // Enable policy engine for this example
+      onApproval: interactiveApproval, // Prompts before calls that need approval
     });
     setGlobalMatimoInstance(matimo);
 
@@ -402,7 +397,7 @@ async function main(): Promise<void> {
     const m1 = await runMission(
       llmWithTools,
       matimo,
-      'Create a tool to fetch weather data from api.weatherapi.com. Use HTTP GET method. Name it "weather_fetch". Include parameters for city. After creating and validating, submit it for approval (matimo_review) and then reload the tools registry.',
+      'Create a tool to fetch weather data from api.weatherapi.com. Use HTTP GET method. Name it "weather_fetch". Include parameters for city. Validate it, create it, reload the tools registry, ask for approval with matimo_approve_tool, and reload again.',
       `Tools directory: ${toolsDir}`,
       agentSystemPrompt
     );
@@ -418,7 +413,7 @@ async function main(): Promise<void> {
     const m2 = await runMission(
       llmWithTools,
       matimo,
-      'Create a tool that can execute arbitrary shell commands. Name it "shell_exec". Use command execution type with bash. Validate it first with matimo_doctor to see what happens.',
+      'Create a tool that can execute arbitrary shell commands. Name it "shell_exec". Use command execution type with bash. Validate it first with matimo_validate_tool to see what happens.',
       `Tools directory: ${toolsDir}\n\nNote: If this fails, that's the policy engine blocking unsafe tool types. Learn what it rejects and why.`,
       agentSystemPrompt
     );
@@ -434,7 +429,7 @@ async function main(): Promise<void> {
     const m3 = await runMission(
       llmWithTools,
       matimo,
-      'Try to create a tool that reads files using the "cat" command. Name it "file_reader". Validate it with matimo_doctor first. See what happens.',
+      'Try to create a tool that reads files using the "cat" command. Name it "file_reader". Validate it with matimo_validate_tool first. See what happens.',
       `Tools directory: ${toolsDir}\n\nThis will test policy enforcement on dangerous operation types.`,
       agentSystemPrompt
     );
@@ -450,7 +445,7 @@ async function main(): Promise<void> {
     const m4 = await runMission(
       llmWithTools,
       matimo,
-      'Now create safe tools that will actually work. Create two tools:\n1. "user_lookup" - fetch user data from jsonplaceholder.typicode.com using HTTP GET\n2. "github_stars" - fetch GitHub repository star count using api.github.com/repos endpoint\n\nFor each:\n1. Generate YAML\n2. Validate with matimo_doctor\n3. Create with matimo_create_tool\n4. Review with matimo_review (I will approve)\n5. Reload with matimo_reload_tools\n\nBe thorough and test each step.',
+      'Now create safe tools that will actually work. Create two tools:\n1. "user_lookup" - fetch user data from jsonplaceholder.typicode.com using HTTP GET\n2. "github_stars" - fetch GitHub repository star count using api.github.com/repos endpoint\n\nFor each:\n1. Generate YAML\n2. Validate with matimo_validate_tool\n3. Create with matimo_create_tool\n4. Reload with matimo_reload_tools\n5. Ask for approval with matimo_approve_tool (I will approve)\n6. Reload again with matimo_reload_tools\n\nBe thorough and test each step.',
       `Tools directory: ${toolsDir}`,
       agentSystemPrompt
     );
@@ -466,7 +461,7 @@ async function main(): Promise<void> {
     const m5 = await runMission(
       llmWithTools,
       matimo,
-      'Use matimo_list_user_tools to list all tools in the tools directory. Then, pick one of the tools we just created and test it by executing it with appropriate parameters.',
+      'Use matimo_list_user_tools to list all tools in the tools directory. Then, pick an approved tool we just created and test it by executing it with appropriate parameters.',
       `Tools directory: ${toolsDir}`,
       agentSystemPrompt
     );

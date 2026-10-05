@@ -4,27 +4,28 @@ from __future__ import annotations
 import asyncio
 import logging
 from pathlib import Path
+from typing import Any
 
 import yaml
 
 logger = logging.getLogger("matimo")
 
 
-def _extract_frontmatter(content: str) -> dict:  # type: ignore[type-arg]
+def _extract_frontmatter(content: str) -> dict[str, Any]:
     if not content.startswith("---"):
         return {}
     end = content.find("---", 3)
     if end == -1:
         return {}
     try:
-        return yaml.safe_load(content[3:end]) or {}  # type: ignore[return-value]
+        return yaml.safe_load(content[3:end]) or {}
     except Exception:
         return {}
 
 
-def _load_skills_from_path_sync(skills_path: Path) -> list[dict]:  # type: ignore[type-arg]
+def _load_skills_from_path_sync(skills_path: Path) -> list[dict[str, Any]]:
     """Synchronous version - only called from async context via run_in_executor."""
-    skills = []
+    skills: list[dict[str, Any]] = []
     if not skills_path.exists():
         return skills
     for entry in sorted(skills_path.iterdir()):
@@ -49,11 +50,11 @@ def _load_skills_from_path_sync(skills_path: Path) -> list[dict]:  # type: ignor
     return skills
 
 
-async def run(params: dict) -> dict:  # type: ignore[type-arg]
+async def run(params: dict[str, Any]) -> dict[str, Any]:
     logger.debug("matimo_list_skills: START")
     skills_dir: str | None = params.get("skills_dir")
     # Use dict to deduplicate by name (mirrors TS Map behaviour)
-    all_skills: dict[str, dict] = {}  # type: ignore[type-arg]
+    all_skills: dict[str, dict[str, Any]] = {}
 
     # Try global instance first (non-blocking)
     logger.debug("matimo_list_skills: attempting global instance lookup")
@@ -63,9 +64,9 @@ async def run(params: dict) -> dict:  # type: ignore[type-arg]
         instance = get_global_matimo_instance()
         if instance is not None and hasattr(instance, "list_skills"):
             logger.debug("matimo_list_skills: loading skills from global instance")
-            skills = instance.list_skills()
-            logger.debug(f"matimo_list_skills: loaded {len(skills)} skills from instance")
-            for s in skills:
+            instance_skills = instance.list_skills()
+            logger.debug(f"matimo_list_skills: loaded {len(instance_skills)} skills from instance")
+            for s in instance_skills:
                 all_skills[s.name] = {
                     "name": s.name,
                     "description": getattr(s, "description", ""),
@@ -90,6 +91,6 @@ async def run(params: dict) -> dict:  # type: ignore[type-arg]
         for skill in disk_skills:
             all_skills.setdefault(skill["name"], skill)
 
-    skills = list(all_skills.values())
-    logger.debug(f"matimo_list_skills: returning {len(skills)} total skills")
-    return {"skills": skills, "total": len(skills)}
+    result_skills = list(all_skills.values())
+    logger.debug(f"matimo_list_skills: returning {len(result_skills)} total skills")
+    return {"skills": result_skills, "total": len(result_skills)}

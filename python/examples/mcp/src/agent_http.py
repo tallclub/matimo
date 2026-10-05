@@ -24,7 +24,7 @@ SETUP:
   1. Create .env:
        OPENAI_API_KEY=sk-xxxxxxxxxxxxx
        SLACK_BOT_TOKEN=xoxb-xxxxxxxxxxxxx
-       MCP_SERVER_URL=http://localhost:3555/mcp  # or your server URL
+       MCP_SERVER_URL=http://localhost:3101/mcp  # or your server URL
        MATIMO_MCP_TOKEN=matimo-dev-token         # auth token (optional)
        TEST_CHANNEL=C0000000000                  # optional
 
@@ -95,10 +95,10 @@ async def main() -> None:
         sys.exit(1)
 
     # ── Configuration ──────────────────────────────────────────────────────────
-    server_url = os.getenv("MCP_SERVER_URL", "http://localhost:3555/mcp")
+    server_url = os.getenv("MCP_SERVER_URL", "http://localhost:3101/mcp")
     bearer_token = os.getenv("MCP_BEARER_TOKEN") or os.getenv("MATIMO_MCP_TOKEN")
 
-    print(f"🤖 Using OpenAI (GPT-4o-mini) as the AI agent")
+    print("🤖 Using OpenAI (GPT-4o-mini) as the AI agent")
     print(f"🔌 Transport: HTTP → {server_url}")
     if bearer_token:
         print("🔑 Using bearer token authentication")
@@ -123,7 +123,7 @@ async def main() -> None:
     if bearer_token:
         headers["Authorization"] = f"Bearer {bearer_token}"
 
-    async with MultiServerMCPClient(
+    client = MultiServerMCPClient(
         {
             "matimo": {
                 "transport": "http",
@@ -132,59 +132,59 @@ async def main() -> None:
                 "reconnect": {"enabled": True, "max_attempts": 5, "delay_ms": 2000},
             }
         }
-    ) as client:
-        tools = client.get_tools()
-        print(f"📦 Loaded {len(tools)} tools from Matimo MCP:\n")
-        for t in tools:
-            print(f"  • {t.name}")
-        print()
+    )
+    tools = await client.get_tools()
+    print(f"📦 Loaded {len(tools)} tools from Matimo MCP:\n")
+    for t in tools:
+        print(f"  • {t.name}")
+    print()
 
-        if not tools:
-            print("❌ No tools loaded. Is the MCP server running at " + server_url + "?")
-            sys.exit(1)
+    if not tools:
+        print("❌ No tools loaded. Is the MCP server running at " + server_url + "?")
+        sys.exit(1)
 
-        # MCP auto-discovers every installed matimo-* provider package (150+
-        # tools across the example workspace), but LangChain/OpenAI rejects
-        # requests with more than 128 bound tools. This demo only exercises
-        # Slack, so bind just the Slack tools rather than everything MCP loaded.
-        slack_tools = [t for t in tools if t.name.startswith("slack")]
-        print(f"💬 {len(slack_tools)} Slack tools available\n")
+    # MCP auto-discovers every installed matimo-* provider package (150+
+    # tools across the example workspace), but LangChain/OpenAI rejects
+    # requests with more than 128 bound tools. This demo only exercises
+    # Slack, so bind just the Slack tools rather than everything MCP loaded.
+    slack_tools = [t for t in tools if t.name.startswith("slack")]
+    print(f"💬 {len(slack_tools)} Slack tools available\n")
 
-        # ── Build agent ───────────────────────────────────────────────────────
-        print("🤖 Initialising OpenAI (GPT-4o-mini) LLM...")
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
-        agent = create_react_agent(llm, slack_tools)
+    # ── Build agent ───────────────────────────────────────────────────────
+    print("🤖 Initialising OpenAI (GPT-4o-mini) LLM...")
+    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+    agent = create_react_agent(llm, slack_tools)
 
-        # ── Find a channel to use for all the tasks ────────────────────────────
-        active_channel = channel_id
-        if not active_channel:
-            print("📋 Finding an available channel...")
-            try:
-                list_resp = await agent.ainvoke(
-                    {
-                        "messages": [
-                            HumanMessage(
-                                content="List all Slack channels and return just the first channel ID, nothing else."
-                            )
-                        ]
-                    }
-                )
-                list_msg = list_resp["messages"][-1]
-                import re
-                match = re.search(r"C[A-Z0-9]{8,}", list_msg.content) if isinstance(
-                    list_msg.content, str
-                ) else None
-                if match:
-                    active_channel = match.group(0)
-                    print(f"   Using channel: {active_channel}\n")
-                else:
-                    print("   ⚠️  Could not auto-detect channel. Set TEST_CHANNEL in .env\n")
-            except Exception as e:
-                print(f"   ⚠️  Channel detection failed: {e}\n")
+    # ── Find a channel to use for all the tasks ────────────────────────────
+    active_channel = channel_id
+    if not active_channel:
+        print("📋 Finding an available channel...")
+        try:
+            list_resp = await agent.ainvoke(
+                {
+                    "messages": [
+                        HumanMessage(
+                            content="List all Slack channels and return just the first channel ID, nothing else."
+                        )
+                    ]
+                }
+            )
+            list_msg = list_resp["messages"][-1]
+            import re
+            match = re.search(r"C[A-Z0-9]{8,}", list_msg.content) if isinstance(
+                list_msg.content, str
+            ) else None
+            if match:
+                active_channel = match.group(0)
+                print(f"   Using channel: {active_channel}\n")
+            else:
+                print("   ⚠️  Could not auto-detect channel. Set TEST_CHANNEL in .env\n")
+        except Exception as e:
+            print(f"   ⚠️  Channel detection failed: {e}\n")
 
-        # ── Task prompt ───────────────────────────────────────────────────────
-        channel_hint = f"Use channel {active_channel}." if active_channel else "Pick any available channel."
-        task = f"""
+    # ── Task prompt ───────────────────────────────────────────────────────
+    channel_hint = f"Use channel {active_channel}." if active_channel else "Pick any available channel."
+    task = f"""
 You are testing the Matimo MCP Slack integration. {channel_hint}
 Please perform these tasks in order and report the result of each:
 
@@ -201,15 +201,15 @@ Please perform these tasks in order and report the result of each:
 After each step, confirm what happened. If a step fails, note the error and continue.
 Report a final summary of all steps (pass/fail).
 """
-        print("🧠 Running agent tasks...\n")
-        print("─" * 60)
+    print("🧠 Running agent tasks...\n")
+    print("─" * 60)
 
-        response = await agent.ainvoke({"messages": [HumanMessage(content=task)]})
-        final = response["messages"][-1].content
+    response = await agent.ainvoke({"messages": [HumanMessage(content=task)]})
+    final = response["messages"][-1].content
 
-        print("\n" + "─" * 60)
-        print("\n✅ Agent complete. Final summary:\n")
-        print(final)
+    print("\n" + "─" * 60)
+    print("\n✅ Agent complete. Final summary:\n")
+    print(final)
 
 
 if __name__ == "__main__":

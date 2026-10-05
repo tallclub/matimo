@@ -12,7 +12,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from matimo import Matimo, get_global_approval_handler
+from matimo import Matimo
 
 
 def create_approval_callback():
@@ -42,9 +42,7 @@ def create_approval_callback():
 
         if not is_interactive:
             print('\n❌ REJECTED - Non-interactive environment (no terminal)')
-            print('\n💡 To enable auto-approval in CI/scripts:')
-            print('   export MATIMO_AUTO_APPROVE=true')
-            print('\n💡 Or approve specific patterns:')
+            print('\n💡 To pre-approve this tool in CI/scripts:')
             print('   export MATIMO_APPROVED_PATTERNS="search"')
             print('\n' + '=' * 70 + '\n')
             return False
@@ -78,11 +76,8 @@ async def main():
     load_dotenv()
 
     # Initialize Matimo with auto-discovery to find all tools
-    matimo = await Matimo.init(auto_discover=True)
-
-    # Configure centralized approval handler
-    approval_handler = get_global_approval_handler()
-    approval_handler.set_approval_callback(create_approval_callback())
+    # on_approval decides every call that needs approval, for this instance only.
+    matimo = await Matimo.init(auto_discover=True, on_approval=create_approval_callback())
 
     print('=== Search Tool - Factory Pattern (Interactive Approval) ===\n')
 

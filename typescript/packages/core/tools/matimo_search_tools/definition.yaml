@@ -1,5 +1,6 @@
 name: matimo_search_tools
 version: '1.0.0'
+risk: low
 description: Search the loaded tool registry by keyword. Returns matching tool names, descriptions, and tags. Use to discover available tools before calling them.
 requires_approval: false
 tags:

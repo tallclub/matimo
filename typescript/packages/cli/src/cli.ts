@@ -1,21 +1,11 @@
-import { readFileSync } from 'fs';
-import { join, basename } from 'path';
+import { basename } from 'path';
 import { installCommand } from './commands/install.js';
 import { listCommand } from './commands/list.js';
 import { searchCommand } from './commands/search.js';
 import { mcpCommand } from './commands/mcp.js';
 import { doctorCommand } from './commands/doctor.js';
 import { reviewCommand } from './commands/review.js';
-
-function getPackageVersion(): string {
-  try {
-    const pkgPath = join(process.cwd(), 'package.json');
-    const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
-    return pkg.version;
-  } catch {
-    return 'unknown';
-  }
-}
+import { getPackageVersion } from './version.js';
 
 export function showHelp(): void {
   console.info(`
@@ -64,7 +54,7 @@ MCP Options:
 Examples:
   # Install new tools
   $ matimo install slack
-  $ matimo install gmail stripe
+  $ matimo install gmail github
   
   # List all installed tools
   $ matimo list

@@ -1,5 +1,6 @@
 name: calculator
 version: '1.1.0'
+risk: low
 description: >
   Perform arithmetic operations. Two mutually exclusive modes are supported: (1) binary/unary
   mode using `operation` + `a` (+ `b`) for add, subtract, multiply, divide, power, sqrt, modulo,

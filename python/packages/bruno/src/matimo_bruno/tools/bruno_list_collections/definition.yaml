@@ -2,6 +2,7 @@ name: bruno_list_collections
 description: Discover all Bruno API collections in a workspace directory. Returns collection metadata including name, path, and request count.
 version: '1.0.0'
 status: approved
+risk: low
 
 parameters:
   workspace_path:

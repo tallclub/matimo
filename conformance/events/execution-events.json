@@ -1,0 +1,13 @@
+{
+  "description": "Fields of the events that end a tool's own run, emitted identically by both SDKs. Names are camelCase here; the Python SDK emits the snake_case form (toolName -> tool_name). Both SDKs' test suites assert every emitted event has exactly its required fields plus any optional ones.",
+  "events": {
+    "tool:executed": {
+      "required": ["type", "toolName", "traceId", "durationMs", "success", "riskLevel", "timestamp"],
+      "optional": ["agentId"]
+    },
+    "tool:execution_failed": {
+      "required": ["type", "toolName", "traceId", "durationMs", "riskLevel", "errorCode", "error", "timestamp"],
+      "optional": ["agentId"]
+    }
+  }
+}

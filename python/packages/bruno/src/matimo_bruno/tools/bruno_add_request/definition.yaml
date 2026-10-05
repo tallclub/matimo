@@ -2,6 +2,7 @@ name: bruno_add_request
 description: Add a new HTTP request to a Bruno collection programmatically. Creates a .bru file with the specified method, URL, headers, body, and test assertions.
 version: '1.0.0'
 status: approved
+risk: medium
 
 parameters:
   collection_path:

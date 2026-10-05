@@ -9,7 +9,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from matimo.integrations._pydantic_utils import is_secret_parameter, parameter_to_pydantic_field, sanitize_model_name
+from matimo.integrations._pydantic_utils import (
+    drop_unset_arguments,
+    is_secret_parameter,
+    parameter_to_pydantic_field,
+    sanitize_model_name,
+)
 
 if TYPE_CHECKING:
     from matimo.core.models import ToolDefinition
@@ -40,7 +45,7 @@ def convert_tools_to_langchain(
         ImportError if langchain-core is not installed.
     """
     try:
-        from langchain_core.tools import StructuredTool  # type: ignore[import] # noqa: F401
+        from langchain_core.tools import StructuredTool  # noqa: F401
     except ImportError as exc:
         raise ImportError(
             "langchain-core is required for LangChain integration. "
@@ -64,7 +69,7 @@ def _make_langchain_tool(
     Returns Any because StructuredTool is from an optional dependency (langchain-core).
     """
     import pydantic
-    from langchain_core.tools import StructuredTool  # type: ignore[import]
+    from langchain_core.tools import StructuredTool
 
     # Build a Pydantic model for the tool's non-secret parameters
     fields: dict[str, Any] = {}
@@ -84,7 +89,15 @@ def _make_langchain_tool(
 
     async def _invoke(**kwargs: object) -> Any:  # noqa: ANN401
         # Returns Any: tool execution results are arbitrary JSON/values.
-        return await matimo.execute(tool.name, dict(kwargs), credentials=credentials)
+        try:
+            return await matimo.execute(
+                tool.name, drop_unset_arguments(dict(kwargs)), credentials=credentials
+            )
+        except Exception as exc:  # noqa: BLE001
+            # Mirrors convertToolsToLangChain: the failure goes back to the model
+            # as text, so a refused approval or a policy denial doesn't end the
+            # agent run (LangGraph's ToolNode re-raises other exceptions).
+            return f"Error: {exc}"
 
     return StructuredTool(
         name=tool.name,

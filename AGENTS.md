@@ -12,9 +12,9 @@ Full narrative and API surface: [README.md](./README.md). Deep architecture: [do
 
 ```
 typescript/     pnpm workspace — packages/{core,cli,slack,github,gmail,notion,hubspot,postgres,twilio,mailchimp,microsoft,bruno,composio}
-python/         uv workspace  — packages/{core,cli,matimo,<same providers>} — mirrors typescript/ 1:1
+python/         uv workspace  — packages/{core,cli,matimo,<same providers except composio>} — mirrors typescript/
 docs/           getting-started, api-reference, architecture, tool-development, framework-integrations, mcp, skills
-examples/       usage examples per integration pattern (factory, decorator, LangChain, MCP)
+typescript/examples/, python/examples/   usage examples per integration pattern (factory, decorator, LangChain, CrewAI, MCP)
 ```
 
 ## Setup, build, test
@@ -45,7 +45,7 @@ Never run `npm install` inside `typescript/` (it uses `pnpm-lock.yaml`) or `pnpm
 - Python: version pinned in `python/.python-version`; ruff for lint/format; mypy strict on `packages/core/src`.
 - Every tool (built-in or agent-created) needs an explicit risk classification (`low`/`medium`/`high`/`critical`) in its YAML definition — see [docs/api-reference/POLICY_AND_LIFECYCLE.md](./docs/api-reference/POLICY_AND_LIFECYCLE.md).
 - New provider package → mirror an existing one exactly (`slack` or `github` are the reference implementations) in **both** languages. Don't let TS and Python drift — ship new features to both unless told otherwise.
-- 3,700+ tests, 95%+ coverage target across TS + Python — don't drop coverage on new code.
+- 4,400+ tests, 95%+ coverage target across TS + Python — don't drop coverage on new code.
 - Don't hand-edit `pnpm-lock.yaml` / `uv.lock` — regenerate via the package manager.
 
 ## CLI commands available to an agent (`@matimo/cli`, bin name `matimo`)
@@ -89,11 +89,11 @@ result = await matimo.execute('slack_send_channel_message', {
 })
 ```
 
-To add a new governed capability at runtime rather than hand-writing an ungoverned script, use the meta-tools (`matimo_create_tool`, `matimo_create_skill`, `matimo_reload_tools`) documented in [docs/api-reference/META_TOOLS.md](./docs/api-reference/META_TOOLS.md) — new tools are policy-validated and, if high-risk, held for human approval before they're usable.
+To add a new governed capability at runtime rather than hand-writing an ungoverned script, use the meta-tools (`matimo_create_tool`, `matimo_create_skill`, `matimo_reload_tools`) documented in [docs/api-reference/META_TOOLS.md](./docs/api-reference/META_TOOLS.md) — new tools are policy-validated, start as drafts, and run only after a human approves them with `matimo_approve_tool` (or `matimo review approve`).
 
 ## MCP
 
-Matimo ships a first-party MCP server (stdio and Streamable HTTP transports) exposing every installed `@matimo/*` tool. Setup and full flag reference: [docs/MCP.md](./docs/MCP.md), [docs/mcp/SETUP_GUIDE.md](./docs/mcp/SETUP_GUIDE.md).
+Matimo ships a first-party MCP server (stdio and Streamable HTTP transports) exposing every installed `@matimo/*` tool. Setup and full flag reference: [docs/MCP.md](./docs/MCP.md). Contributors building provider packages with Copilot over MCP: [docs/mcp/SETUP_GUIDE.md](./docs/mcp/SETUP_GUIDE.md).
 
 ## Where to look for more
 

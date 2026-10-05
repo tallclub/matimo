@@ -76,6 +76,17 @@ _VALID_SKILL_CONTENT = textwrap.dedent("""\
 """)
 
 
+def _admin_context() -> object:
+    from matimo.core.models import PolicyContext
+    from matimo.executors.function_executor import FunctionToolContext
+
+    return FunctionToolContext(policy_context=PolicyContext(roles=["admin"]))
+
+
+# matimo_approve_tool requires the caller to hold the admin role.
+_ADMIN = _admin_context()
+
+
 def _write_tool(tool_dir: Path, name: str, yaml_content: str = _VALID_HTTP_TOOL_YAML) -> Path:
     """Write a tool definition.yaml to a temp directory."""
     path = tool_dir / name
@@ -116,6 +127,48 @@ class TestMatimoValidateTool:
         assert result["valid"] is True
         assert result["schemaErrors"] == []
         assert result["riskLevel"] == "low"
+
+    @pytest.mark.asyncio
+    async def test_checks_the_tool_as_create_writes_it(self) -> None:
+        """matimo_create_tool forces requires_approval and draft status, so leaving them out is valid."""
+        import textwrap
+
+        from matimo.tools.matimo_validate_tool.matimo_validate_tool import run
+
+        result = await run({"yaml_content": textwrap.dedent("""\
+            name: no_approval_tool
+            version: '1.0.0'
+            description: Tool without approval
+            requires_approval: false
+            status: approved
+            execution:
+              type: http
+              method: GET
+              url: 'https://api.example.com/data'
+        """)})
+
+        assert result["valid"] is True
+        assert result["policyViolations"] == []
+        assert result["riskLevel"] == "low"
+
+    @pytest.mark.asyncio
+    async def test_invalid_when_create_would_refuse(self) -> None:
+        import textwrap
+
+        from matimo.tools.matimo_validate_tool.matimo_validate_tool import run
+
+        result = await run({"yaml_content": textwrap.dedent("""\
+            name: metadata_probe
+            version: '1.0.0'
+            description: Reads cloud metadata
+            execution:
+              type: http
+              method: GET
+              url: 'http://169.254.169.254/latest/meta-data/'
+        """)})
+
+        assert result["valid"] is False
+        assert "no-ssrf" in [v["rule"] for v in result["policyViolations"]]
 
     @pytest.mark.asyncio
     async def test_invalid_yaml_syntax_returns_error(self) -> None:
@@ -339,7 +392,8 @@ class TestMatimoCreateTool:
         assert result["riskLevel"] in ("low", "medium", "high", "critical")
 
     @pytest.mark.asyncio
-    async def test_auto_approved_for_low_risk_get_tool(self, tmp_path: Path) -> None:
+    async def test_low_risk_get_tool_still_awaits_approval(self, tmp_path: Path) -> None:
+        """A new tool is a draft, and a draft runs only after matimo_approve_tool."""
         from matimo.tools.matimo_create_tool.matimo_create_tool import run
 
         result = await run({
@@ -349,8 +403,9 @@ class TestMatimoCreateTool:
         })
 
         assert result["success"] is True
-        assert result["approvalState"] == "auto-approved"
-        assert "Ready for use" in result["message"]
+        assert result["approvalState"] == "pending"
+        assert "low risk" in result["message"]
+        assert "matimo_approve_tool" in result["message"]
 
     @pytest.mark.asyncio
     async def test_pending_for_post_tool(self, tmp_path: Path) -> None:
@@ -375,7 +430,7 @@ class TestMatimoCreateTool:
 
         assert result["success"] is True
         assert result["approvalState"] == "pending"
-        assert "approval" in result["message"].lower()
+        assert "matimo_approve_tool" in result["message"]
 
     @pytest.mark.asyncio
     async def test_proposed_by_and_justification_written_as_header(self, tmp_path: Path) -> None:
@@ -434,7 +489,7 @@ class TestMatimoApproveTool:
 
         _write_tool(tmp_path, "city_lookup", _VALID_DRAFT_TOOL_YAML)
 
-        result = await run({"name": "city_lookup", "tool_dir": str(tmp_path)})
+        result = await run({"name": "city_lookup", "tool_dir": str(tmp_path)}, _ADMIN)
 
         assert result["success"] is True
         assert result["name"] == "city_lookup"
@@ -449,7 +504,7 @@ class TestMatimoApproveTool:
 
         _write_tool(tmp_path, "my_tool", _VALID_DRAFT_TOOL_YAML)
 
-        await run({"name": "my_tool", "tool_dir": str(tmp_path)})
+        await run({"name": "my_tool", "tool_dir": str(tmp_path)}, _ADMIN)
 
         written = yaml.safe_load((tmp_path / "my_tool" / "definition.yaml").read_text())
         assert written["status"] == "approved"
@@ -458,7 +513,7 @@ class TestMatimoApproveTool:
     async def test_fails_for_nonexistent_tool(self, tmp_path: Path) -> None:
         from matimo.tools.matimo_approve_tool.matimo_approve_tool import run
 
-        result = await run({"name": "nonexistent", "tool_dir": str(tmp_path)})
+        result = await run({"name": "nonexistent", "tool_dir": str(tmp_path)}, _ADMIN)
 
         assert result["success"] is False
         assert "not found" in result["message"].lower()
@@ -471,7 +526,7 @@ class TestMatimoApproveTool:
         bad_dir.mkdir()
         (bad_dir / "definition.yaml").write_text(_INVALID_YAML)
 
-        result = await run({"name": "bad_tool", "tool_dir": str(tmp_path)})
+        result = await run({"name": "bad_tool", "tool_dir": str(tmp_path)}, _ADMIN)
 
         assert result["success"] is False
         assert "Validation failed" in result["message"]
@@ -484,24 +539,24 @@ class TestMatimoApproveTool:
         monkeypatch.chdir(tmp_path)
         _write_tool(tmp_path / "matimo-tools", "demo_tool", _VALID_DRAFT_TOOL_YAML)
 
-        result = await run({"name": "demo_tool"})
+        result = await run({"name": "demo_tool"}, _ADMIN)
         assert result["success"] is True
 
     @pytest.mark.asyncio
     async def test_rejects_path_traversal_and_never_reaches_manifest(self, tmp_path: Path) -> None:
         from matimo.tools.matimo_approve_tool.matimo_approve_tool import run
 
-        result = await run({"name": "../../../etc/passwd", "tool_dir": str(tmp_path)})
+        result = await run({"name": "../../../etc/passwd", "tool_dir": str(tmp_path)}, _ADMIN)
         assert result["success"] is False
         assert "invalid characters" in result["message"]
         # No manifest write should have happened — approve() was never reached.
         assert not (tmp_path / ".matimo-approvals.json").exists()
 
-        backslash_result = await run({"name": "..\\..\\secrets", "tool_dir": str(tmp_path)})
+        backslash_result = await run({"name": "..\\..\\secrets", "tool_dir": str(tmp_path)}, _ADMIN)
         assert backslash_result["success"] is False
         assert "invalid characters" in backslash_result["message"]
 
-        control_char_result = await run({"name": "tool\x00name", "tool_dir": str(tmp_path)})
+        control_char_result = await run({"name": "tool\x00name", "tool_dir": str(tmp_path)}, _ADMIN)
         assert control_char_result["success"] is False
         assert "invalid characters" in control_char_result["message"]
 
@@ -651,7 +706,7 @@ class TestMatimoGetToolStatus:
         from matimo.tools.matimo_get_tool_status.matimo_get_tool_status import run as status_run
 
         _write_tool(tmp_path, "approved_tool", _VALID_DRAFT_TOOL_YAML)
-        await approve_run({"name": "approved_tool", "tool_dir": str(tmp_path)})
+        await approve_run({"name": "approved_tool", "tool_dir": str(tmp_path)}, _ADMIN)
 
         result = await status_run({"name": "approved_tool", "tool_dir": str(tmp_path)})
 
@@ -942,6 +997,136 @@ class TestMatimoCreateSkill:
             "content": content,
             "target_dir": str(tmp_path),
         })
+
+        assert result["success"] is True
+
+    @pytest.mark.asyncio
+    async def test_tolerates_global_instance_lookup_raising(self, tmp_path: Path) -> None:
+        from matimo.tools.matimo_create_skill.matimo_create_skill import run
+
+        with patch(
+            "matimo.decorators.get_global_matimo_instance",
+            side_effect=ImportError("no module"),
+        ):
+            result = await run({
+                "name": "my-skill",
+                "content": _VALID_SKILL_CONTENT,
+                "target_dir": str(tmp_path),
+            })
+
+        assert result["success"] is True
+        assert (tmp_path / "my-skill" / "SKILL.md").exists()
+
+    @pytest.mark.asyncio
+    async def test_uses_default_target_dir_when_no_global_instance(self, tmp_path: Path) -> None:
+        from matimo.tools.matimo_create_skill.matimo_create_skill import run
+
+        with patch("matimo.decorators.get_global_matimo_instance", return_value=None):
+            result = await run({"name": "my-skill", "content": _VALID_SKILL_CONTENT})
+
+        assert result["success"] is True
+        assert result["path"] == str(Path("./matimo-tools/skills") / "my-skill" / "SKILL.md")
+
+        import shutil
+
+        shutil.rmtree("./matimo-tools", ignore_errors=True)
+
+    @pytest.mark.asyncio
+    async def test_uses_instance_default_skill_write_dir(self, tmp_path: Path) -> None:
+        from matimo.tools.matimo_create_skill.matimo_create_skill import run
+
+        mock_instance = MagicMock()
+        mock_instance.get_default_skill_write_dir.return_value = str(tmp_path)
+
+        with patch(
+            "matimo.decorators.get_global_matimo_instance",
+            return_value=mock_instance,
+        ):
+            result = await run({"name": "my-skill", "content": _VALID_SKILL_CONTENT})
+
+        assert result["success"] is True
+        assert (tmp_path / "my-skill" / "SKILL.md").exists()
+
+    @pytest.mark.asyncio
+    async def test_explicit_target_dir_overrides_instance_default(self, tmp_path: Path) -> None:
+        from matimo.tools.matimo_create_skill.matimo_create_skill import run
+
+        other_dir = tmp_path / "other"
+        write_dir = tmp_path / "explicit"
+        mock_instance = MagicMock()
+        mock_instance.get_default_skill_write_dir.return_value = str(other_dir)
+
+        with patch(
+            "matimo.decorators.get_global_matimo_instance",
+            return_value=mock_instance,
+        ):
+            result = await run({
+                "name": "my-skill",
+                "content": _VALID_SKILL_CONTENT,
+                "target_dir": str(write_dir),
+            })
+
+        assert result["success"] is True
+        assert (write_dir / "my-skill" / "SKILL.md").exists()
+        assert not other_dir.exists()
+
+    @pytest.mark.asyncio
+    async def test_notifies_instance_on_successful_creation(self, tmp_path: Path) -> None:
+        from matimo.tools.matimo_create_skill.matimo_create_skill import run
+
+        mock_instance = MagicMock()
+        mock_instance.get_default_skill_write_dir.return_value = None
+
+        with patch(
+            "matimo.decorators.get_global_matimo_instance",
+            return_value=mock_instance,
+        ):
+            result = await run({
+                "name": "my-skill",
+                "content": _VALID_SKILL_CONTENT,
+                "target_dir": str(tmp_path),
+            })
+
+        assert result["success"] is True
+        mock_instance.notify_skill_created.assert_called_once_with("my-skill", "user")
+
+    @pytest.mark.asyncio
+    async def test_does_not_notify_instance_on_failure(self, tmp_path: Path) -> None:
+        from matimo.tools.matimo_create_skill.matimo_create_skill import run
+
+        mock_instance = MagicMock()
+        mock_instance.get_default_skill_write_dir.return_value = None
+
+        with patch(
+            "matimo.decorators.get_global_matimo_instance",
+            return_value=mock_instance,
+        ):
+            result = await run({
+                "name": "Bad_Name!",
+                "content": _VALID_SKILL_CONTENT,
+                "target_dir": str(tmp_path),
+            })
+
+        assert result["success"] is False
+        mock_instance.notify_skill_created.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_tolerates_notify_skill_created_raising(self, tmp_path: Path) -> None:
+        from matimo.tools.matimo_create_skill.matimo_create_skill import run
+
+        mock_instance = MagicMock()
+        mock_instance.get_default_skill_write_dir.return_value = None
+        mock_instance.notify_skill_created.side_effect = RuntimeError("handler exploded")
+
+        with patch(
+            "matimo.decorators.get_global_matimo_instance",
+            return_value=mock_instance,
+        ):
+            result = await run({
+                "name": "my-skill",
+                "content": _VALID_SKILL_CONTENT,
+                "target_dir": str(tmp_path),
+            })
 
         assert result["success"] is True
 
@@ -1563,7 +1748,7 @@ class TestMatimoApproveToolBranchCoverage:
             "matimo.policy.content_validator.validate_tool_content",
             return_value=[mock_violation],
         ):
-            result = await run({"name": "my_api_tool", "tool_dir": str(tmp_path)})
+            result = await run({"name": "my_api_tool", "tool_dir": str(tmp_path)}, _ADMIN)
 
         assert result["success"] is False
         assert "policy violations" in result["message"]
@@ -1715,3 +1900,388 @@ class TestMatimoListSkillsBranchCoverage:
             result = await run({"skills_dir": str(tmp_path)})
 
         assert result["total"] == 1
+
+
+class TestMatimoSearchSkills:
+    """Tests for matimo_search_skills.run() — thin wrapper around semantic_search_skills()."""
+
+    @pytest.mark.asyncio
+    async def test_rejects_empty_query(self) -> None:
+        from matimo.tools.matimo_search_skills.matimo_search_skills import run
+
+        result = await run({"query": ""})
+
+        assert result["success"] is False
+        assert "required" in result["message"].lower()
+        assert result["results"] == []
+        assert result["total"] == 0
+
+    @pytest.mark.asyncio
+    async def test_rejects_whitespace_only_query(self) -> None:
+        from matimo.tools.matimo_search_skills.matimo_search_skills import run
+
+        result = await run({"query": "   "})
+
+        assert result["success"] is False
+        assert "required" in result["message"].lower()
+
+    @pytest.mark.asyncio
+    async def test_no_active_instance_returns_failure(self) -> None:
+        from matimo.tools.matimo_search_skills.matimo_search_skills import run
+
+        with patch("matimo.decorators.get_global_matimo_instance", return_value=None):
+            result = await run({"query": "rate limiting"})
+
+        assert result["success"] is False
+        assert "no active matimo instance" in result["message"].lower()
+
+    @pytest.mark.asyncio
+    async def test_instance_lookup_raising_is_treated_as_no_instance(self) -> None:
+        from matimo.tools.matimo_search_skills.matimo_search_skills import run
+
+        with patch("matimo.decorators.get_global_matimo_instance", side_effect=Exception("boom")):
+            result = await run({"query": "rate limiting"})
+
+        assert result["success"] is False
+        assert "no active matimo instance" in result["message"].lower()
+
+    @pytest.mark.asyncio
+    async def test_returns_ranked_results(self) -> None:
+        from matimo.tools.matimo_search_skills.matimo_search_skills import run
+
+        hit1 = MagicMock()
+        hit1.skill.name = "slack"
+        hit1.skill.description = "Slack messaging"
+        hit1.score = 0.82
+
+        hit2 = MagicMock()
+        hit2.skill.name = "postgres"
+        hit2.skill.description = "SQL queries"
+        hit2.score = 0.41
+
+        mock_instance = MagicMock()
+        mock_instance.semantic_search_skills = AsyncMock(return_value=[hit1, hit2])
+
+        with patch("matimo.decorators.get_global_matimo_instance", return_value=mock_instance):
+            result = await run({"query": "rate limiting and retries"})
+
+        assert result["success"] is True
+        assert result["total"] == 2
+        assert result["results"] == [
+            {"name": "slack", "description": "Slack messaging", "relevanceScore": 0.82},
+            {"name": "postgres", "description": "SQL queries", "relevanceScore": 0.41},
+        ]
+        mock_instance.semantic_search_skills.assert_awaited_once_with(
+            "rate limiting and retries", limit=10, min_score=0.1
+        )
+
+    @pytest.mark.asyncio
+    async def test_passes_through_custom_limit_and_min_score(self) -> None:
+        from matimo.tools.matimo_search_skills.matimo_search_skills import run
+
+        mock_instance = MagicMock()
+        mock_instance.semantic_search_skills = AsyncMock(return_value=[])
+
+        with patch("matimo.decorators.get_global_matimo_instance", return_value=mock_instance):
+            await run({"query": "slack", "limit": 3, "min_score": 0.5})
+
+        mock_instance.semantic_search_skills.assert_awaited_once_with("slack", limit=3, min_score=0.5)
+
+    @pytest.mark.asyncio
+    async def test_returns_failure_message_when_search_raises(self) -> None:
+        from matimo.tools.matimo_search_skills.matimo_search_skills import run
+
+        mock_instance = MagicMock()
+        mock_instance.semantic_search_skills = AsyncMock(side_effect=RuntimeError("embedding provider down"))
+
+        with patch("matimo.decorators.get_global_matimo_instance", return_value=mock_instance):
+            result = await run({"query": "slack"})
+
+        assert result["success"] is False
+        assert "search failed" in result["message"].lower()
+        assert "embedding provider down" in result["message"]
+
+
+class TestMatimoGetSkillSections:
+    """Tests for matimo_get_skill_sections.run() — thin wrapper around get_skill_sections()."""
+
+    @pytest.mark.asyncio
+    async def test_rejects_empty_name(self) -> None:
+        from matimo.tools.matimo_get_skill_sections.matimo_get_skill_sections import run
+
+        result = await run({"name": ""})
+
+        assert result["success"] is False
+        assert "required" in result["message"].lower()
+        assert result["sections"] == []
+
+    @pytest.mark.asyncio
+    async def test_no_active_instance_returns_failure(self) -> None:
+        from matimo.tools.matimo_get_skill_sections.matimo_get_skill_sections import run
+
+        with patch("matimo.decorators.get_global_matimo_instance", return_value=None):
+            result = await run({"name": "slack"})
+
+        assert result["success"] is False
+        assert "no active matimo instance" in result["message"].lower()
+
+    @pytest.mark.asyncio
+    async def test_instance_lookup_raising_is_treated_as_no_instance(self) -> None:
+        from matimo.tools.matimo_get_skill_sections.matimo_get_skill_sections import run
+
+        with patch("matimo.decorators.get_global_matimo_instance", side_effect=Exception("boom")):
+            result = await run({"name": "slack"})
+
+        assert result["success"] is False
+        assert "no active matimo instance" in result["message"].lower()
+
+    @pytest.mark.asyncio
+    async def test_returns_failure_for_missing_skill(self) -> None:
+        from matimo.tools.matimo_get_skill_sections.matimo_get_skill_sections import run
+
+        mock_instance = MagicMock()
+        mock_instance.get_skill_sections.return_value = None
+
+        with patch("matimo.decorators.get_global_matimo_instance", return_value=mock_instance):
+            result = await run({"name": "nonexistent"})
+
+        assert result["success"] is False
+        assert "not found" in result["message"].lower()
+        mock_instance.get_skill_sections.assert_called_once_with("nonexistent")
+
+    @pytest.mark.asyncio
+    async def test_returns_section_inventory_in_camel_case(self) -> None:
+        from matimo.tools.matimo_get_skill_sections.matimo_get_skill_sections import run
+
+        mock_instance = MagicMock()
+        mock_instance.get_skill_sections.return_value = [
+            {"path": "Messaging", "level": 1, "token_estimate": 120},
+            {"path": "Messaging.Error Handling", "level": 2, "token_estimate": 45},
+        ]
+
+        with patch("matimo.decorators.get_global_matimo_instance", return_value=mock_instance):
+            result = await run({"name": "slack"})
+
+        assert result["success"] is True
+        assert result["total"] == 2
+        assert result["sections"] == [
+            {"path": "Messaging", "level": 1, "tokenEstimate": 120},
+            {"path": "Messaging.Error Handling", "level": 2, "tokenEstimate": 45},
+        ]
+
+    @pytest.mark.asyncio
+    async def test_returns_empty_inventory_for_skill_with_no_headings(self) -> None:
+        from matimo.tools.matimo_get_skill_sections.matimo_get_skill_sections import run
+
+        mock_instance = MagicMock()
+        mock_instance.get_skill_sections.return_value = []
+
+        with patch("matimo.decorators.get_global_matimo_instance", return_value=mock_instance):
+            result = await run({"name": "flat-skill"})
+
+        assert result["success"] is True
+        assert result["sections"] == []
+        assert result["total"] == 0
+
+
+class TestMatimoGetSkillContent:
+    """Tests for matimo_get_skill_content.run() — thin wrapper around get_skill_content()."""
+
+    @pytest.mark.asyncio
+    async def test_rejects_empty_name(self) -> None:
+        from matimo.tools.matimo_get_skill_content.matimo_get_skill_content import run
+
+        result = await run({"name": ""})
+
+        assert result["success"] is False
+        assert "required" in result["message"].lower()
+
+    @pytest.mark.asyncio
+    async def test_no_active_instance_returns_failure(self) -> None:
+        from matimo.tools.matimo_get_skill_content.matimo_get_skill_content import run
+
+        with patch("matimo.decorators.get_global_matimo_instance", return_value=None):
+            result = await run({"name": "slack"})
+
+        assert result["success"] is False
+        assert "no active matimo instance" in result["message"].lower()
+
+    @pytest.mark.asyncio
+    async def test_instance_lookup_raising_is_treated_as_no_instance(self) -> None:
+        from matimo.tools.matimo_get_skill_content.matimo_get_skill_content import run
+
+        with patch("matimo.decorators.get_global_matimo_instance", side_effect=Exception("boom")):
+            result = await run({"name": "slack"})
+
+        assert result["success"] is False
+        assert "no active matimo instance" in result["message"].lower()
+
+    @pytest.mark.asyncio
+    async def test_returns_failure_for_missing_skill(self) -> None:
+        from matimo.tools.matimo_get_skill_content.matimo_get_skill_content import run
+
+        mock_instance = MagicMock()
+        mock_instance.get_skill_content.return_value = None
+
+        with patch("matimo.decorators.get_global_matimo_instance", return_value=mock_instance):
+            result = await run({"name": "nonexistent"})
+
+        assert result["success"] is False
+        assert "not found" in result["message"].lower()
+
+    @pytest.mark.asyncio
+    async def test_returns_content_and_approximate_token_count(self) -> None:
+        from matimo.tools.matimo_get_skill_content.matimo_get_skill_content import run
+
+        mock_instance = MagicMock()
+        mock_instance.get_skill_content.return_value = "Send a message via the Slack API."
+
+        with patch("matimo.decorators.get_global_matimo_instance", return_value=mock_instance):
+            result = await run({"name": "slack"})
+
+        assert result["success"] is True
+        assert result["content"] == "Send a message via the Slack API."
+        assert result["tokensUsed"] > 0
+        assert "tokens" in result["message"].lower()
+
+    @pytest.mark.asyncio
+    async def test_passes_selective_loading_options_through(self) -> None:
+        from matimo.core.models import SkillContentOptions
+        from matimo.tools.matimo_get_skill_content.matimo_get_skill_content import run
+
+        mock_instance = MagicMock()
+        mock_instance.get_skill_content.return_value = "content"
+
+        with patch("matimo.decorators.get_global_matimo_instance", return_value=mock_instance):
+            await run(
+                {
+                    "name": "slack",
+                    "sections": ["Messaging"],
+                    "max_tokens": 500,
+                    "include_preamble": False,
+                    "max_depth": 1,
+                }
+            )
+
+        mock_instance.get_skill_content.assert_called_once()
+        call_name, call_options = mock_instance.get_skill_content.call_args.args
+        assert call_name == "slack"
+        assert isinstance(call_options, SkillContentOptions)
+        assert call_options.sections == ["Messaging"]
+        assert call_options.max_tokens == 500
+        assert call_options.include_preamble is False
+        assert call_options.max_depth == 1
+
+    @pytest.mark.asyncio
+    async def test_returns_zero_tokens_for_empty_content(self) -> None:
+        from matimo.tools.matimo_get_skill_content.matimo_get_skill_content import run
+
+        mock_instance = MagicMock()
+        mock_instance.get_skill_content.return_value = ""
+
+        with patch("matimo.decorators.get_global_matimo_instance", return_value=mock_instance):
+            result = await run({"name": "empty-skill"})
+
+        assert result["success"] is True
+        assert result["content"] == ""
+        assert result["tokensUsed"] == 0
+
+
+# ===========================================================================
+# Who may approve — mirrors "who may approve" in matimo-approve-tool.test.ts
+# ===========================================================================
+
+
+class TestWhoMayApprove:
+    @staticmethod
+    def _context(**kwargs: object) -> object:
+        from matimo.core.models import PolicyContext
+        from matimo.executors.function_executor import FunctionToolContext
+
+        return FunctionToolContext(policy_context=PolicyContext(**kwargs))  # type: ignore[arg-type]
+
+    @pytest.mark.asyncio
+    @pytest.mark.asyncio
+    async def test_no_identity_leaves_the_decision_to_the_confirming_human(
+        self, tmp_path: Path
+    ) -> None:
+        from matimo.tools.matimo_approve_tool.matimo_approve_tool import run
+
+        _write_tool(tmp_path, "my_tool", _VALID_DRAFT_TOOL_YAML + "created_by: agent-a\n")
+        result = await run({"name": "my_tool", "tool_dir": str(tmp_path)})
+        assert result["success"] is True
+
+    @pytest.mark.parametrize("roles", [[], ["operator"]], ids=["no-roles", "non-admin"])
+    async def test_refuses_non_admins_and_leaves_the_tool_untouched(
+        self, tmp_path: Path, roles: list[str]
+    ) -> None:
+        from matimo.tools.matimo_approve_tool.matimo_approve_tool import run
+
+        _write_tool(tmp_path, "my_tool", _VALID_DRAFT_TOOL_YAML)
+        result = await run(
+            {"name": "my_tool", "tool_dir": str(tmp_path)},
+            self._context(roles=roles),  # type: ignore[arg-type]
+        )
+
+        assert result["success"] is False
+        assert "requires the admin role" in result["message"]
+        assert "status: draft" in (tmp_path / "my_tool" / "definition.yaml").read_text()
+        assert not (tmp_path / ".matimo-approvals.json").exists()
+
+    @pytest.mark.asyncio
+    async def test_refuses_to_let_the_creator_approve_its_own_tool(self, tmp_path: Path) -> None:
+        from matimo.tools.matimo_approve_tool.matimo_approve_tool import run
+
+        _write_tool(tmp_path, "my_tool", _VALID_DRAFT_TOOL_YAML + "created_by: agent-a\n")
+        result = await run(
+            {"name": "my_tool", "tool_dir": str(tmp_path)},
+            self._context(agent_id="agent-a", roles=["admin"]),  # type: ignore[arg-type]
+        )
+        assert result["success"] is False
+        assert "someone other than its creator" in result["message"]
+
+    @pytest.mark.asyncio
+    async def test_lets_a_different_admin_approve_it(self, tmp_path: Path) -> None:
+        from matimo.tools.matimo_approve_tool.matimo_approve_tool import run
+
+        _write_tool(tmp_path, "my_tool", _VALID_DRAFT_TOOL_YAML + "created_by: agent-a\n")
+        result = await run(
+            {"name": "my_tool", "tool_dir": str(tmp_path)},
+            self._context(agent_id="reviewer", roles=["admin"]),  # type: ignore[arg-type]
+        )
+        assert result["success"] is True
+
+
+class TestCreateToolRecordsCreator:
+    _YAML = (
+        "version: '1.0.0'\ndescription: d\n{extra}"
+        "execution:\n  type: http\n  method: GET\n  url: https://api.example.com/x\n"
+    )
+
+    @pytest.mark.asyncio
+    async def test_records_the_creating_agent(self, tmp_path: Path) -> None:
+        from matimo.core.models import PolicyContext
+        from matimo.executors.function_executor import FunctionToolContext
+        from matimo.tools.matimo_create_tool.matimo_create_tool import run
+
+        result = await run(
+            {"name": "t", "yaml_content": self._YAML.format(extra=""), "target_dir": str(tmp_path)},
+            FunctionToolContext(policy_context=PolicyContext(agent_id="agent-a")),
+        )
+        assert "created_by: agent-a" in Path(result["path"]).read_text()
+
+    @pytest.mark.asyncio
+    async def test_ignores_a_created_by_written_into_the_yaml(self, tmp_path: Path) -> None:
+        from matimo.core.models import PolicyContext
+        from matimo.executors.function_executor import FunctionToolContext
+        from matimo.tools.matimo_create_tool.matimo_create_tool import run
+
+        forged = self._YAML.format(extra="created_by: someone-else\n")
+        with_agent = await run(
+            {"name": "a", "yaml_content": forged, "target_dir": str(tmp_path)},
+            FunctionToolContext(policy_context=PolicyContext(agent_id="agent-a")),
+        )
+        assert "created_by: agent-a" in Path(with_agent["path"]).read_text()
+
+        without_agent = await run({"name": "b", "yaml_content": forged, "target_dir": str(tmp_path)})
+        assert "created_by" not in Path(without_agent["path"]).read_text()

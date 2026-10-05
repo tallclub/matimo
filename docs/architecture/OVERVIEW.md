@@ -4,46 +4,35 @@ Understand how Matimo's monorepo structure works and how components interact.
 
 ## Monorepo Organization
 
-Matimo uses a **pnpm workspaces** monorepo with independent, installable packages:
+The repository holds two SDKs that share one tool format. `typescript/` is a pnpm workspace and `python/` a uv workspace; every package has a Python counterpart except `@matimo/composio`, which is TypeScript-only.
 
 ```
-packages/core              # Core SDK (matimo on npm)
-├── Orchestration
-├── Executors
-├── Policy engine (allowCommand, allowHttp, protectedNamespaces)
-├── Type definitions
-├── Built-in tools (calculator, web, web_scraper, convert_to_file, extract_from_file, execute, read, edit, search)
-├── Meta-tools (packages/core/tools/matimo_*/)
+typescript/packages/core          # Core SDK (@matimo/core on npm)   ↔ python/packages/core (matimo-core)
+├── src/                          # Orchestration, executors, policy, approval, MCP server, integrations
+├── tools/                        # 9 built-in tools + 15 matimo_* meta-tools
+│   ├── calculator, web, web_scraper, convert_to_file, extract_from_file, execute, read, edit, search
 │   ├── matimo_validate_tool / matimo_create_tool / matimo_approve_tool
 │   ├── matimo_reload_tools / matimo_list_user_tools / matimo_get_tool_status
 │   ├── matimo_get_tool / matimo_search_tools
-│   └── matimo_create_skill / matimo_list_skills / matimo_get_skill / matimo_validate_skill
-└── skills/ (built-in SKILL.md domain knowledge)
-    ├── tool-creation/
-    ├── meta-tools-lifecycle/
-    ├── policy-validation/
-    └── tool-discovery/
+│   ├── matimo_create_skill / matimo_list_skills / matimo_get_skill / matimo_validate_skill
+│   └── matimo_search_skills / matimo_get_skill_sections / matimo_get_skill_content
+└── skills/                       # 6 core SKILL.md files
+    ├── tool-creation/  meta-tools-lifecycle/  policy-validation/
+    └── tool-discovery/  skill-creator/  skills-catalog/
 
-packages/slack             # Slack tools (@matimo/slack)
-├── 6+ Slack tool definitions
-└── Slack OAuth2 config
+typescript/packages/<provider>    # @matimo/slack, gmail, github, hubspot, notion, postgres,
+├── tools/<tool>/definition.yaml  #   twilio, mailchimp, microsoft, bruno, composio
+├── skills/<provider>/SKILL.md
+└── definition.yaml               # OAuth2 provider config, where the provider uses OAuth2
 
-packages/gmail             # Gmail tools (@matimo/gmail)
-├── 4+ Gmail tool definitions
-└── Gmail OAuth2 config
+typescript/packages/cli           # matimo CLI (@matimo/cli): install, list, search, doctor, review, mcp
 
-packages/cli               # CLI (@matimo/cli)
-├── install, list, search commands
-└── Tool discovery & management
-
-examples/tools             # Working examples
-├── factory-pattern-agent.ts
-├── decorator-pattern-agent.ts
-├── langchain-agent.ts
-└── Provider-specific examples
+typescript/examples/tools/        # Per-provider examples (factory, decorator, LangChain, with-approval),
+                                  # plus policy/, skills/, meta-flow/ and agents/
+python/examples/                  # native/, langchain/, crewai/, mcp/
 ```
 
-**Key principle:** Each package is independently installable from npm, but shares a single source of truth for tool definitions.
+**Key principle:** Each package installs on its own from npm or PyPI. A tool's YAML is the single source of truth for both SDKs.
 
 ## High-Level Runtime Architecture
 
@@ -81,18 +70,21 @@ examples/tools             # Working examples
             │  ┌─────────────────────────────────────────────────┐  │
             │  │           MatimoInstance (Orchestrator)         │  │
             │  │  • Tool registry      • Executor coordination   │  │
-            │  │  • Parameter validation  • Error handling       │  │
+            │  │  • Approval callbacks • Events and audit sink   │  │
             │  │  • Skills registry    • Auto-discovery          │  │
             │  └──────────────────────────┬──────────────────────┘  │
             │                             │                         │
             │  ┌──────────────────────────▼──────────────────────┐  │
             │  │                    Policy Gate                  │  │
-            │  │  • allowCommand / allowFunction tools           │  │
-            │  │  • allowedHttpMethods    (default: GET, POST)   │  │
-            │  │  • protectedNamespaces   (default: matimo_)     │  │
+            │  │  On load (untrusted tools):                     │  │
             │  │  • Content validator: 9 security rules          │  │
-            │  │  • HMAC approval verification on tool load      │  │
-            │  │  • Immutable after MatimoInstance.init()        │  │
+            │  │  • HMAC approval verification                   │  │
+            │  │  On every call:                                 │  │
+            │  │  • Risk classification (low → critical)         │  │
+            │  │  • Execution gates (status, roles, environment) │  │
+            │  │  • HITL quarantine at hitlMinRiskLevel          │  │
+            │  │  • Per-call approval (onApproval)               │  │
+            │  │  Policy is frozen after MatimoInstance.init()   │  │
             │  └─────────────────────────────────────────────────┘  │
             └──────────┬──────────────────────┬──────────────┬──────┘
                        │                      │              │
@@ -122,6 +114,9 @@ examples/tools             # Working examples
      │   packages/{provider}/           │    │   ├─ matimo_get_skill                   │
      │   ├─ definition.yaml (OAuth2)    │    │   ├─ matimo_create_skill                │
      │   └─ tools/{tool}/def.yaml       │    │   ├─ matimo_validate_skill              │
+     │                                  │    │   ├─ matimo_search_skills               │
+     │                                  │    │   ├─ matimo_get_skill_sections          │
+     │                                  │    │   ├─ matimo_get_skill_content           │
      │                                  │    │   └─ matimo_get_tool / search_tools     │
      │                                  │    │   packages/core/skills/                 │
      │                                  │    │   ├─ tool-creation/SKILL.md             │
@@ -166,7 +161,7 @@ Your code that uses Matimo. Examples:
 ```typescript
 import { MatimoInstance } from 'matimo';
 
-const m = await MatimoInstance.init('./tools');
+const m = await MatimoInstance.init({ autoDiscover: true });
 const result = await m.execute('calculator', params);
 ```
 
@@ -187,12 +182,14 @@ class Agent {
 
 - Initializes tool loading
 - Manages auto-discovery
+- Runs every call through the policy gate, HITL quarantine and per-call approval
 - Coordinates execution
 - Handles errors
-- Manages OAuth2 tokens
-- Validates parameters
-- Enforces policy gate on tool loads and meta-tool operations
-- Routes meta-tool calls to the built-in meta-tools subsystem
+- Injects credentials (environment variables or per-call `credentials`)
+- Emits events to `onEvent` and the `auditSink`
+- Runs `matimo_reload_tools` on itself, since a reload rebuilds its registry
+
+It does not validate parameters against the YAML before running a tool; the tool or the API it calls reports bad input.
 
 ### 4. Tool Management (packages/core/src/core)
 
@@ -234,11 +231,13 @@ Used by all 9 core tools: `execute`, `read`, `edit`, `search`, `web`, `calculato
 
 ```
 Input: { method: "POST", url: "...", headers: {...}, body: {...} }
-Process: Send request, embed params, validate by output_schema
-Output: { status, data, headers }
+Process: Embed params, re-check the final URL for SSRF targets, send the request
+Output: { success, data, statusCode, headers }   (Python returns the parsed body)
 ```
 
-**CommandExecutor** (Legacy Shell Execution): Runs external shell commands
+Both language implementations enforce a coarse 50 MB upstream size ceiling on the raw response as defense in depth, independent of the response-size guardrail applied later in `execute()` (see [Tool Execution Flow](#tool-execution-flow)): TypeScript sets axios's `maxContentLength`/`maxBodyLength`; Python streams the response manually via `httpx`'s `client.stream()` and aborts once the declared `Content-Length` or the accumulated body exceeds the cap, since `httpx` has no direct equivalent option.
+
+**CommandExecutor** (Shell Execution): Runs external shell commands. No built-in tool uses it; a `type: command` tool asks for approval on every call unless it declares `requires_approval: false`
 
 ```
 Input: { command: "node script.js", args: [...] }
@@ -291,14 +290,23 @@ Tools interact with:
 
 ### 8. Policy Gate (packages/core/src/policy)
 
-**PolicyEngine**: Enforces security rules during tool registration and meta-tool operations:
+**PolicyEngine** (`DefaultPolicyEngine` unless you pass your own) works at two points.
 
-- `allowCommandTools` — block/allow command-type tools (default: `false`)
-- `allowFunctionTools` — block/allow function-type tools that run arbitrary code (default: `false`)
-- `allowedHttpMethods` — restrict HTTP verbs (default: `['GET', 'POST']`)
-- `protectedNamespaces` — namespaces that cannot be overwritten by user tools (default: `['matimo_']`)
-- **Content Validator** — 9 security rules: no path traversal, no env var injection, no credential exposure, etc.
-- **Immutable after init** — `PolicyConfig` is frozen once `MatimoInstance.init()` completes
+When an **untrusted** tool loads (from `untrustedPaths`, or created by an agent), and when `matimo_create_tool` writes one:
+
+- `allowCommandTools` / `allowFunctionTools` — whether untrusted command and function tools may load (default: `false`)
+- `allowedHttpMethods` — HTTP verbs untrusted tools may use (default: `['GET', 'POST']`)
+- `allowedDomains`, `allowedCredentials` — optional allow-lists
+- `protectedNamespaces` — name prefixes untrusted tools cannot take (default: `['matimo_']`)
+- **Content Validator** — 9 rules: `no-function-execution`, `no-command-execution`, `no-ssrf`, `unauthorized-credential`, `reserved-namespace`, `forced-approval`, `blocked-http-method`, `blocked-domain`, `forced-draft-status`
+
+On **every call**, `canExecute()`:
+
+- classifies the tool's risk (`low`, `medium`, `high`, `critical`)
+- denies deprecated tools, drafts (in production, and elsewhere without the `admin` role), and `requires_approval` tools in production without `admin` or `operator`
+- quarantines calls at or above `hitlMinRiskLevel` for the `onHITL` callback when `enableHITL` is on
+
+After the policy, `execute()` asks for per-call approval (`onApproval`) when the tool requires it. `PolicyConfig` is frozen once `MatimoInstance.init()` completes.
 
 For full details see [Policy Engine & Lifecycle](../api-reference/POLICY_AND_LIFECYCLE.md).
 
@@ -309,15 +317,20 @@ Built-in tools that manage the tool lifecycle from within the agent. They are al
 | Tool | Purpose |
 |------|---------|
 | `matimo_validate_tool` | Validate a YAML definition against schema + policy |
-| `matimo_create_tool` | Create a new `.draft` tool definition (policy-safe) |
-| `matimo_approve_tool` | Sign and promote a draft tool (HMAC, integrity) |
+| `matimo_create_tool` | Write a new tool as a draft (`status: draft`, `requires_approval: true`) |
+| `matimo_approve_tool` | Mark a draft `approved` and sign it in the approval manifest (HMAC) |
 | `matimo_reload_tools` | Hot-reload the live registry without restarting |
-| `matimo_list_user_tools` | List non-meta user tools with metadata |
+| `matimo_list_user_tools` | List the tools in an agent tool directory, with risk and status |
 | `matimo_get_tool_status` | Check lifecycle state of a single tool |
 | `matimo_create_skill` | Create a new SKILL.md in the skills directory |
 | `matimo_list_skills` | List available SKILL.md files |
 | `matimo_get_skill` | Read a skill by name |
 | `matimo_validate_skill` | Validate a skill against the Agent Skills spec |
+| `matimo_search_skills` | Semantically rank skills by relevance to a query (TF-IDF) |
+| `matimo_get_skill_sections` | Inventory a skill's sections and token costs without loading it |
+| `matimo_get_skill_content` | Load only specific sections of a skill (token-efficient) |
+| `matimo_get_tool` | Read one tool's YAML and parsed definition |
+| `matimo_search_tools` | Search the loaded registry by keyword |
 
 For full details see [Meta-Tools Reference](../api-reference/META_TOOLS.md).
 
@@ -325,13 +338,13 @@ For full details see [Meta-Tools Reference](../api-reference/META_TOOLS.md).
 
 When a tool is approved via `matimo_approve_tool`, the approval system:
 
-1. Computes **SHA-256** hash of the YAML content
-2. Issues an **HMAC-SHA256** signature using a secret key
-3. Writes an entry to `.matimo-approvals.json` in the target directory
-4. Renames the file from `*.draft.yaml` → `*.yaml`
-5. On subsequent loads, verifies the HMAC — any tampering causes load failure
+1. Re-validates the tool, then sets `status: approved` in its `definition.yaml`
+2. Computes a **SHA-256** hash of the updated file
+3. Signs it with **HMAC-SHA256**, using `approvalSecret` / `MATIMO_APPROVAL_SECRET` (or a per-process key, so approvals last only for that process)
+4. Records it in the owning instance's manifest, `.matimo-approvals.json` in `approvalDir` (default: the working directory)
+5. On reload, a tool whose hash matches its signed record is re-checked with the narrower `canReload()`; anything else, including a hand-edited `status: approved`, goes through `canCreate()` again
 
-This ensures that agent-written tools cannot be silently altered between sessions.
+An edit after approval changes the hash, so the tool must be approved again. Never commit `.matimo-approvals.json`.
 
 For full details see [Approval System](../api-reference/APPROVAL-SYSTEM.md).
 
@@ -344,12 +357,14 @@ packages/core/skills/
 ├── tool-creation/SKILL.md        # How to create Matimo tools
 ├── meta-tools-lifecycle/SKILL.md # How to use meta-tools
 ├── policy-validation/SKILL.md    # How to work within policy constraints
-└── tool-discovery/SKILL.md       # How to discover available tools
+├── tool-discovery/SKILL.md       # How to discover available tools
+├── skill-creator/SKILL.md        # How to write a skill
+└── skills-catalog/SKILL.md       # Which skills exist
 ```
 
-Agent runtime skills live in `./matimo-tools/skills/` (created by `matimo_create_skill`).
+Agent runtime skills live in `./matimo-tools/skills/` (created by `matimo_create_skill`). Skills also support progressive disclosure — `matimo_search_skills` finds the right skill by meaning, `matimo_get_skill_sections` inventories its headings and token costs, and `matimo_get_skill_content` loads only the needed sections instead of the whole file.
 
-For full details see [Skills System](../tool-development/SKILLS.md).
+For full details see [Skills System](../skills/SKILLS.md).
 
 ---
 
@@ -358,44 +373,36 @@ For full details see [Skills System](../tool-development/SKILLS.md).
 For agents that create tools at runtime (e.g., autonomous coding agents), the full lifecycle is:
 
 ```
-1. Agent decides a new tool is needed
-   │
-   └─> matimo_create_tool(name, description, execution, parameters)
-       │
-       ├─ Policy Gate: blocks command/function type if disallowed
-       ├─ Content Validator: 9 security rules
-       ├─ Saves as {name}.draft.yaml in ./matimo-tools/
-       ▼
-2. Agent (or human) reviews the draft
-   │
-   └─> matimo_validate_tool(tool_path)
-       │
-       ├─ Re-runs schema + policy validation
-       ├─ Returns validation_passed: true | false
+1. Validate
+   └─> matimo_validate_tool(yaml_content)
+       ├─ Schema check + the 9 content rules (default policy)
+       └─ valid: true exactly when matimo_create_tool would accept it
        │
        ▼
-3. Approval
-   │
-   └─> matimo_approve_tool(tool_path)
-       │
-       ├─ Generates SHA-256 hash of YAML content
-       ├─ Signs with HMAC-SHA256
-       ├─ Writes entry to .matimo-approvals.json
-       ├─ Renames .draft.yaml → .yaml
+2. Create                                      (asks a human: requires_approval)
+   └─> matimo_create_tool(name, yaml_content, target_dir)
+       ├─ Forces status: draft and requires_approval: true
+       ├─ Refuses matimo_* names; runs the content rules again
+       ├─ Writes <target_dir>/<name>/definition.yaml (default ./matimo-tools)
+       └─ Reports approvalState: pending
        │
        ▼
-4. Reload
-   │
-   └─> matimo_reload_tools(tools_dir)
-       │
-       ├─ Rescans the tools directory
-       ├─ Verifies HMAC for each approved tool
-       ├─ Registers new tools into the live registry
+3. Reload
+   └─> matimo_reload_tools()
+       ├─ Re-reads every tool path; untrusted tools face the developer's policy
+       └─ Returns { loaded, removed, revalidated, rejected }
+       │   (the draft is now registered, but cannot run: drafts need the admin role)
+       ▼
+4. Approve                                      (always asks a human)
+   └─> matimo_approve_tool(name, tool_dir)
+       ├─ Refuses a tool the calling agent created; needs admin when a context is set
+       ├─ Re-validates, sets status: approved, signs the hash (HMAC)
+       └─ Records it in the instance's .matimo-approvals.json
        │
        ▼
-5. Use
-   │
-   └─> matimo.execute(new_tool_name, params)
+5. Reload, then use
+   └─> matimo_reload_tools()  →  matimo.execute(new_tool_name, params)
+       └─ Each call still asks a human, because the tool keeps requires_approval: true
 ```
 
 ---
@@ -404,46 +411,64 @@ For agents that create tools at runtime (e.g., autonomous coding agents), the fu
 
 ### Tool Execution Flow
 
+Every call takes the same path, whether it comes from the SDK, LangChain, CrewAI or MCP:
+
 ```
 1. Application
-   │
-   └─> matimo.execute('calculator', { operation: 'add', a: 5, b: 3 })
+   └─> matimo.execute('calculator', { operation: 'add', a: 5, b: 3 }, options?)
        │
        ▼
-2. MatimoInstance
-   └─> Validate parameters against schema
+2. ToolRegistry lookup
+   └─> Unknown name → TOOL_NOT_FOUND
        │
        ▼
-3. ToolRegistry
-   └─> Lookup 'calculator' definition
-       │
-       ├─ execution: { type: 'function', code: './calculator.ts' }
-       ├─ parameters: { operation, a, b }
-       │
-       ▼
-4. FunctionExecutor (or CommandExecutor/HttpExecutor based on type)
-   └─> Execute: Import function and call with params { operation: 'add', a: 5, b: 3 }
-       │
-       ├─ (For command type): Spawn child process with templated args
-       ├─ (For http type): Make HTTP request with embedded params
+3. Policy: canExecute(context, tool)
+   ├─ Risk: low (GET) · medium (POST/PUT/PATCH) · high (DELETE, command,
+   │        requires_approval) · function tools by their declared risk
+   ├─ Denied (deprecated, draft without admin, production role check)
+   │     → tool:execution_denied, POLICY_DENIED
+   └─ Quarantined (enableHITL and risk ≥ hitlMinRiskLevel)
+         → approval manifest, else onHITL callback
+         → tool:quarantine_approved / tool:quarantine_rejected
        │
        ▼
-5. Tool Implementation
-   └─> Run: calculator({ operation: 'add', a: 5, b: 3 })
-       │
-       ├─ Calculate: 5 + 3 = 8
-       │
-       ▼
-6. Result Validation
-   └─> Validate against output_schema
-       │
-       ├─ Check type matches
-       ├─ Check required fields present
+4. Per-call approval
+   ├─ Needed when: requires_approval: true · HTTP DELETE or command tool
+   │   without requires_approval (secure mode) · destructive keyword in
+   │   params.sql (or params.command for command tools)
+   ├─ Skipped when: the name matches MATIMO_APPROVED_PATTERNS, or
+   │   options.approved is true
+   └─ Asks: options.onApproval → instance onApproval → global callback → reject
+         → tool:approval_granted / tool:approval_denied
        │
        ▼
-7. Return to Application
-   └─> { result: 8 }
+5. Credentials
+   └─> Fill auth placeholders from options.credentials, else environment
+       variables; an unfilled one fails with a clear error
+       │
+       ▼
+6. Executor (by execution.type)
+   ├─ function → import the tool's module and call it with
+   │             { credentials, policyContext }
+   ├─ http     → build the request, re-check the final URL for SSRF, send
+   └─ command  → spawn the process with templated args
+       │
+       ▼
+7. Response size guardrail
+   └─> Cap the result to output_schema.max_response_size, else the
+       instance default, else 256 KB. Arrays are sliced with a
+       "...truncated, N of M items shown" sentinel, long strings get an
+       inline marker, large objects are truncated per field and marked
+       `_truncated: true`.
+       │
+       ▼
+8. Outcome event, then return
+   └─> tool:executed { durationMs, success, riskLevel, traceId }
+       or tool:execution_failed { errorCode, error }
+       → onEvent and the auditSink
 ```
+
+The calculator returns `{ result: 8 }`. An HTTP tool returns `{ success, data, statusCode, headers }` in TypeScript and the parsed body in Python.
 
 ### OAuth2 Token Flow
 
@@ -534,7 +559,7 @@ Uses Matimo's `@tool()` decorators for class-based agents:
 │  @tool('calculator')             │
 │  async calculate(...) { }        │
 │                                  │
-│  @tool('email-sender')           │
+│  @tool('gmail-send-email')       │
 │  async sendEmail(...) { }        │
 └────────────┬─────────────────────┘
              │
@@ -573,7 +598,7 @@ Direct `matimo.execute()` calls in agent logic:
 │    m.execute('calculator', ...)  │
 │                                  │
 │  if (prompt.includes('email'))   │
-│    m.execute('gmail-send', ...)  │
+│  m.execute('gmail-send-email')   │
 └────────────┬─────────────────────┘
              │
              ▼
@@ -615,9 +640,21 @@ interface ToolDefinition {
   description: string;
   version: string;
   parameters?: Record<string, Parameter>;
-  execution: ExecutionConfig; // command or http
+  execution: HttpExecution | CommandExecution | FunctionExecution;
   authentication?: AuthConfig;
   output_schema?: OutputSchema;
+  tags?: string[];
+  // Governance
+  requires_approval?: boolean; // ask a human on every call
+  risk?: 'low' | 'medium' | 'high' | 'critical'; // can only raise the computed risk
+  status?: 'draft' | 'approved' | 'deprecated'; // unset = approved
+}
+
+// Execution Config (Function)
+interface FunctionExecution {
+  type: 'function';
+  code: string; // path to the module, relative to the YAML
+  timeout?: number;
 }
 
 // Execution Config (Command)
@@ -668,7 +705,7 @@ YAML File
    │   ├─ Check provider exists
    │   ├─ Check endpoints are URLs
    ├─> Validate execution
-   │   ├─ Check type is 'command' or 'http'
+   │   ├─ Check type is 'http', 'function' or 'command'
    │   ├─ Check required fields for type
    ├─> Validate parameters
    │   ├─ Check types match
@@ -689,7 +726,7 @@ Error occurs
    ├─> Wrap in MatimoError
    │   ├─ code: ErrorCode
    │   ├─ message: string
-   │   ├─ details?: object
+   │   ├─ details?: object (includes retryable for HTTP-sourced errors)
    │
    ▼
 Application error handling
@@ -701,6 +738,22 @@ Application error handling
    ▼
 Application recovery
 ```
+
+HTTP-sourced errors are mapped to specific codes rather than a single
+generic failure — 401/403 → `AUTH_FAILED`, 429 → `RATE_LIMIT_EXCEEDED`,
+other 4xx/5xx → `EXECUTION_FAILED`; a `retryable` flag on `details`
+tells the caller whether the failure is worth retrying (true for 429
+and 5xx). Network-level failures with no HTTP response at all (timeout,
+DNS failure, connection refused) get their own `TIMEOUT`/`NETWORK_ERROR`
+codes instead of being folded into `EXECUTION_FAILED`.
+
+The MCP server surfaces this same structured data across the protocol
+boundary: a failed tool call returns `isError: true` with a
+`structuredContent` field carrying `{ code, statusCode, retryable,
+message }`, rather than flattening the error into freeform text. See
+[MCP Server docs — Tool Metadata & Error Responses](../MCP.md#tool-metadata--error-responses)
+for the exact shape and [Error Codes Reference](../api-reference/ERRORS.md)
+for the full code list.
 
 ---
 
@@ -714,12 +767,11 @@ Tools defined in YAML, not code:
 - ✅ Non-technical users can add tools
 - ✅ Version control friendly
 
-### 2. Stateless
+### 2. No Database
 
-Matimo doesn't store anything:
+Matimo needs no server or database. The only state it writes is the approval manifest (`.matimo-approvals.json`) and, if you configure one, the audit log:
 
-- ✅ No database required
-- ✅ Easy to scale
+- ✅ Easy to embed and scale
 - ✅ Simple to test
 
 ### 3. Multi-Provider
@@ -743,18 +795,22 @@ Full TypeScript + Zod validation:
 Works with any framework:
 
 - ✅ Direct SDK usage
-- ✅ LangChain integration
+- ✅ LangChain (TypeScript and Python), CrewAI and Agno (Python)
+- ✅ Any MCP client, through the MCP server
 - ✅ Custom framework support
-- ✅ Coming: CrewAI, Vercel AI, etc.
+- 🔜 Vercel AI, OpenAI and Anthropic SDK adapters
 
 ### 6. Secure by Default
 
 Policy engine is on from the start:
 
-- ✅ Command and function tools blocked unless explicitly allowed
+- ✅ Every call is risk-classified and passes the execution gates
+- ✅ DELETE and command tools ask a human unless they opt out (`governanceMode: 'legacy'` restores the old default)
+- ✅ Untrusted command and function tools are blocked unless explicitly allowed
 - ✅ Protected namespaces prevent shadowing built-in tools
-- ✅ Agent-created tools must pass policy + content validation
+- ✅ Agent-created tools must pass policy + content validation, and a human approves them
 - ✅ Approved tools are HMAC-signed to prevent silent tampering
+- ✅ Every call ends in an event; `JsonlFileSink` keeps a hash-chained audit log
 
 ---
 
@@ -769,10 +825,7 @@ Policy engine is on from the start:
 
 ### Adding an Executor
 
-1. Extend `Executor` base class
-2. Implement `execute(tool, params)` method
-3. Add to tool execution dispatch
-4. Support new execution types
+There is no plug-in point for executors. A new execution type means a new `execution.type` in the Zod schema (`core/schema.ts`), an executor class in `executors/`, a case in `MatimoInstance`'s executor dispatch, and the same in the Python SDK.
 
 ### Adding a Provider
 
@@ -801,7 +854,7 @@ Policy engine is on from the start:
 - **[Tool Specification](../tool-development/YAML_TOOLS.md)** — How to build tools
 - **[Policy Engine & Lifecycle](../api-reference/POLICY_AND_LIFECYCLE.md)** — Security controls and tool lifecycle
 - **[Meta-Tools Reference](../api-reference/META_TOOLS.md)** — Built-in tool management
-- **[Approval System](../api-reference/APPROVAL-SYSTEM.md)** — Approval handler configuration
-- **[Skills System](../tool-development/SKILLS.md)** — Domain knowledge via SKILL.md
+- **[Approval System](../api-reference/APPROVAL-SYSTEM.md)** — Who approves a call, and how
+- **[Skills System](../skills/SKILLS.md)** — Domain knowledge via SKILL.md
 - **[Logging](../api-reference/LOGGING.md)** — Winston logger integration
 - **[Troubleshooting](../troubleshooting/FAQ.md)** — Common issues

@@ -92,12 +92,15 @@ execution:
     expect(result.riskLevel).toBe('medium');
   });
 
-  it('should detect forced-approval violation for untrusted tools without requires_approval', async () => {
+  it('checks the tool as matimo_create_tool writes it, with the forced safety fields', async () => {
+    // matimo_create_tool sets requires_approval: true and status: draft, so a
+    // definition that leaves them out (or sets them otherwise) is still valid.
     const yaml = `
 name: no_approval_tool
 version: '1.0.0'
 description: 'Tool without approval'
 requires_approval: false
+status: approved
 execution:
   type: http
   method: GET
@@ -105,8 +108,24 @@ execution:
 `;
 
     const result = await matimoValidateTool({ yaml_content: yaml });
-    expect(
-      result.policyViolations.some((v: { rule: string }) => v.rule === 'forced-approval')
-    ).toBe(true);
+    expect(result.valid).toBe(true);
+    expect(result.policyViolations).toEqual([]);
+    expect(result.riskLevel).toBe('low');
+  });
+
+  it('is invalid when matimo_create_tool would refuse the tool', async () => {
+    const yaml = `
+name: metadata_probe
+version: '1.0.0'
+description: 'Reads cloud metadata'
+execution:
+  type: http
+  method: GET
+  url: 'http://169.254.169.254/latest/meta-data/'
+`;
+
+    const result = await matimoValidateTool({ yaml_content: yaml });
+    expect(result.valid).toBe(false);
+    expect(result.policyViolations.map((v: { rule: string }) => v.rule)).toContain('no-ssrf');
   });
 });

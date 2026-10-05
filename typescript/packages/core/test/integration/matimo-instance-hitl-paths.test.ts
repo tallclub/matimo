@@ -89,6 +89,30 @@ quarantineRiskLevels:
 
   // ─── Lines 1201-1205: Approval manifest check ────────────────────
 
+  describe('Approval persistence for init-loaded tools', () => {
+    it('asks the reviewer once per tool definition, not on every call', async () => {
+      writeToolYaml('persisted-tool', toolDir);
+      let calls = 0;
+      const matimo = await MatimoInstance.init({
+        toolPaths: [toolDir],
+        policyConfig: { enableHITL: true, quarantineRiskLevels: ['high'] },
+        approvalDir,
+        approvalSecret: 'test-secret',
+        logLevel: 'silent',
+        onHITL: async () => {
+          calls++;
+          return true;
+        },
+      });
+
+      // approved: true answers the per-call prompt command tools get by
+      // default; the HITL quarantine under test still runs
+      await matimo.execute('persisted-tool', {}, { approved: true });
+      await matimo.execute('persisted-tool', {}, { approved: true });
+      expect(calls).toBe(1);
+    });
+  });
+
   describe('Approval manifest check (lines 1201-1205)', () => {
     it('should approve tool if already in approval manifest', async () => {
       writeToolYaml('approved-tool', toolDir);

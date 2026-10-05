@@ -1,6 +1,7 @@
 import {
   ApprovalHandler,
   getGlobalApprovalHandler,
+  NEVER_PRE_APPROVED_TOOLS,
   type ApprovalRequest,
 } from '../../src/approval/approval-handler';
 import { MatimoError, ErrorCode } from '../../src/errors/matimo-error';
@@ -142,6 +143,13 @@ describe('ApprovalHandler', () => {
       expect(result).toBe(true);
     });
 
+    it('reports whether MATIMO_AUTO_APPROVE is enabled', () => {
+      process.env.MATIMO_AUTO_APPROVE = 'true';
+      expect(new ApprovalHandler().isAutoApproveEnabled()).toBe(true);
+      process.env.MATIMO_AUTO_APPROVE = 'false';
+      expect(new ApprovalHandler().isAutoApproveEnabled()).toBe(false);
+    });
+
     it('should return false when MATIMO_AUTO_APPROVE is false', () => {
       process.env.MATIMO_AUTO_APPROVE = 'false';
       const freshHandler = new ApprovalHandler();
@@ -191,6 +199,21 @@ describe('ApprovalHandler', () => {
       const freshHandler = new ApprovalHandler();
       const result = freshHandler.isPreApproved('any-tool');
       expect(result).toBe(false);
+    });
+
+    it('pre-approves tools matching a pattern added at runtime', () => {
+      const freshHandler = new ApprovalHandler();
+      expect(freshHandler.isPreApproved('get_post')).toBe(false);
+      freshHandler.addApprovedPattern(' get_* ');
+      freshHandler.addApprovedPattern('   ');
+      expect(freshHandler.isPreApproved('get_post')).toBe(true);
+      expect(freshHandler.isPreApproved('delete_post')).toBe(false);
+    });
+
+    it('never pre-approves matimo_approve_tool through an added pattern', () => {
+      const freshHandler = new ApprovalHandler();
+      freshHandler.addApprovedPattern('*');
+      expect(freshHandler.isPreApproved('matimo_approve_tool')).toBe(false);
     });
 
     it('should trim whitespace from patterns', () => {
@@ -273,7 +296,9 @@ describe('ApprovalHandler', () => {
         expect(error).toBeInstanceOf(MatimoError);
         const matimoError = error as MatimoError;
         expect(matimoError.code).toBe(ErrorCode.EXECUTION_FAILED);
-        expect(String(matimoError.details?.hint)).toContain('MATIMO_AUTO_APPROVE');
+        // Points at a human reviewer, never at switching approval off
+        expect(String(matimoError.details?.hint)).toContain('onApproval');
+        expect(String(matimoError.details?.hint)).not.toContain('MATIMO_AUTO_APPROVE');
       }
     });
   });
@@ -298,6 +323,19 @@ describe('ApprovalHandler', () => {
 
       await expect(handler.requestApproval(request)).rejects.toThrow();
       expect(callback2).toHaveBeenCalled();
+    });
+  });
+
+  describe('tools that are never pre-approved', () => {
+    it('keeps matimo_approve_tool out of MATIMO_AUTO_APPROVE and every pattern', () => {
+      process.env.MATIMO_AUTO_APPROVE = 'true';
+      process.env.MATIMO_APPROVED_PATTERNS = '*,matimo_*';
+      const strict = new ApprovalHandler();
+      delete process.env.MATIMO_APPROVED_PATTERNS;
+
+      expect(NEVER_PRE_APPROVED_TOOLS.has('matimo_approve_tool')).toBe(true);
+      expect(strict.isPreApproved('matimo_approve_tool')).toBe(false);
+      expect(strict.isPreApproved('anything_else')).toBe(true);
     });
   });
 

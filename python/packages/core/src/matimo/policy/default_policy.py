@@ -10,7 +10,12 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from matimo.core.models import PolicyContext, ToolDefinition
 from matimo.policy.content_validator import ContentViolation, validate_tool_content
-from matimo.policy.risk_classifier import RiskLevel, classify_risk
+from matimo.policy.risk_classifier import (
+    classify_execution_risk,
+    classify_risk,
+    lowest_risk,
+    meets_risk_threshold,
+)
 from matimo.policy.types import (
     PolicyAllowed,
     PolicyConfig,
@@ -18,6 +23,7 @@ from matimo.policy.types import (
     PolicyDenied,
     PolicyPendingApproval,
     PolicyTier,
+    RiskLevel,
 )
 
 if TYPE_CHECKING:
@@ -184,9 +190,10 @@ class DefaultPolicyEngine:
 
         Block conditions:
         - Tool is deprecated
-        - Tool is in 'draft' status in a production environment without admin role
+        - Tool is in 'draft' status in a production environment, or elsewhere
+          without the admin role
         - Tool requires explicit approval in production without admin/operator role
-        - Policy HITL is enabled and tool risk level is in quarantineRiskLevels
+        - Policy HITL is enabled and tool execution risk meets the HITL threshold
         """
         env = (context.environment or "").lower()
         roles = context.roles or []
@@ -199,11 +206,18 @@ class DefaultPolicyEngine:
                 + (f": {tool.deprecation_message}" if tool.deprecation_message else ""),
             )
 
-        # 2. Draft tools blocked in production without admin role
-        if tool.status.value == "draft" and _is_production(env) and "admin" not in roles:
+        # 2. Draft tools: never in production, and elsewhere only for admins
+        if tool.status.value == "draft" and _is_production(env):
             return PolicyDenied(
                 allowed=False,
                 reason=f"Tool '{tool.name}' is in draft status and cannot be used in production",
+                risk_level=RiskLevel.MEDIUM,
+            )
+        if tool.status.value == "draft" and "admin" not in roles:
+            return PolicyDenied(
+                allowed=False,
+                reason=f"Draft tool '{tool.name}' requires admin role",
+                risk_level=RiskLevel.MEDIUM,
             )
 
         # 3. requires_approval in production without privileged role
@@ -214,10 +228,15 @@ class DefaultPolicyEngine:
                     reason=f"Tool '{tool.name}' requires approval and the current context lacks admin/operator role",
                 )
 
-        # 4. HITL quarantine for high-risk tools
+        # 4. HITL quarantine for tools at or above the threshold. A threshold
+        # (not list membership) so that quarantining medium-risk writes can
+        # never let a high-risk DELETE or critical tool straight through.
         if self.config.enable_hitl:
-            risk = classify_risk(tool)
-            if risk in self.config.quarantine_risk_levels:
+            risk = classify_execution_risk(tool)
+            threshold = self.config.hitl_min_risk_level or lowest_risk(
+                self.config.quarantine_risk_levels
+            )
+            if threshold is not None and meets_risk_threshold(risk, threshold):
                 return PolicyPendingApproval(
                     allowed="pending_approval",
                     reason=f"Tool '{tool.name}' has risk level '{risk.value}' and requires human approval",
@@ -284,15 +303,16 @@ class DefaultPolicyEngine:
                     risk_level=RiskLevel.CRITICAL,
                 )
 
+            # High-severity violations (disallowed domain or HTTP method, forced
+            # approval, credentials) reject the tool in every environment, as in
+            # TypeScript; allowed_domains would otherwise mean nothing outside prod.
             if high:
-                env = (context.environment or "").lower()
-                if _is_production(env):
-                    msgs = "; ".join(v.message for v in high)
-                    return PolicyDenied(
-                        allowed=False,
-                        reason=f"Tool '{tool_def.name}' failed high-severity content policy in production: {msgs}",
-                        risk_level=RiskLevel.HIGH,
-                    )
+                msgs = "; ".join(v.message for v in high)
+                return PolicyDenied(
+                    allowed=False,
+                    reason=f"Tool '{tool_def.name}' failed high-severity content policy: {msgs}",
+                    risk_level=RiskLevel.HIGH,
+                )
 
             # Remaining (medium/low) violations — e.g. forced-draft-status, which fires
             # when a tool's status no longer matches 'draft' without a legitimate approval

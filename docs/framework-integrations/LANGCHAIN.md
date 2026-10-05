@@ -57,18 +57,19 @@ asyncio.run(main())
 ```python
 import asyncio
 import os
-from matimo import Matimo, convert_tools_to_langchain
+from matimo import ApprovalRequest, Matimo, convert_tools_to_langchain
 from langchain_openai import ChatOpenAI
-from langchain.agents import AgentExecutor, create_tool_calling_agent
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain.agents import create_agent           # LangChain 1.x
+
+async def confirm(request: ApprovalRequest) -> bool:
+    return input(f"Allow {request.tool_name}? [y/N] ").strip().lower() == "y"
 
 async def run_slack_agent():
-    # Initialise Matimo
-    matimo = await Matimo.init(auto_discover=True)
+    # Initialise Matimo; tools that need approval ask confirm()
+    matimo = await Matimo.init(auto_discover=True, on_approval=confirm)
 
-    # Filter to Slack tools only
-    slack_tools_def = [t for t in matimo.list_tools() if t.name.startswith('slack_')]
+    # Filter to Slack tools only (the package uses both slack- and slack_ names)
+    slack_tools_def = [t for t in matimo.list_tools() if t.name.startswith('slack')]
     print(f"📦 Loaded {len(slack_tools_def)} Slack tools")
 
     # Convert to LangChain format
@@ -78,15 +79,12 @@ async def run_slack_agent():
         credentials={'SLACK_BOT_TOKEN': os.environ['SLACK_BOT_TOKEN']},
     )
 
-    # Build OpenAI tool-calling agent
-    llm = ChatOpenAI(model='gpt-4o-mini', temperature=0)
-    prompt = ChatPromptTemplate.from_messages([
-        ('system', 'You are a helpful Slack assistant.'),
-        ('human', '{input}'),
-        ('placeholder', '{agent_scratchpad}'),
-    ])
-    agent = create_tool_calling_agent(llm, lc_tools, prompt)
-    executor = AgentExecutor(agent=agent, tools=lc_tools, verbose=True)
+    # Build the agent
+    agent = create_agent(
+        ChatOpenAI(model='gpt-4o-mini', temperature=0),
+        tools=lc_tools,
+        system_prompt='You are a helpful Slack assistant.',
+    )
 
     # Test queries
     queries = [
@@ -96,8 +94,8 @@ async def run_slack_agent():
     ]
     for query in queries:
         print(f"\n📝 User: \"{query}\"")
-        result = await executor.ainvoke({'input': query})
-        print(f"🤖 Agent: {result['output']}")
+        result = await agent.ainvoke({'messages': [('user', query)]})
+        print(f"🤖 Agent: {result['messages'][-1].content}")
 
 asyncio.run(run_slack_agent())
 ```
@@ -186,6 +184,20 @@ lc_tools = convert_tools_to_langchain(
 # SLACK_BOT_TOKEN injected automatically
 ```
 
+### Approvals and Unset Parameters (Python)
+
+An agent's calls go through the same governance as `matimo.execute()`. Calls to tools that need approval — `requires_approval: true`, HTTP `DELETE` or command tools (secure by default in 0.2.0), or a destructive keyword in a `sql`/`command` argument — ask the instance's `on_approval` callback. Without one they raise `MatimoError` ("Destructive operation requires approval"), so give the instance a reviewer before handing the agent such tools:
+
+```python
+async def ask_operator(request: ApprovalRequest) -> bool:
+    return await my_ui.confirm(f"Allow {request.tool_name} with {request.params}?")
+
+matimo = await Matimo.init(auto_discover=True, on_approval=ask_operator)
+lc_tools = convert_tools_to_langchain(matimo.list_tools(), matimo)
+```
+
+LangChain fills every optional parameter the model leaves out with `None`. Since 0.2.0 those are dropped before the call, so a tool sees only the arguments the model actually chose and its own defaults apply.
+
 ### Skills Integration (Python, Non-MCP)
 
 When running LangChain without an MCP server, use the skills helpers to implement progressive skill disclosure:
@@ -225,21 +237,16 @@ async def run_skills_agent():
 
 ### Error Handling (Python)
 
-```python
-from matimo.errors import MatimoError, ErrorCode
+As in TypeScript, a tool made by `convert_tools_to_langchain` never raises into the agent: a policy denial, a refused approval or an HTTP error comes back to the model as `"Error: <message>"`, and the agent can explain it or try something else. Only the model call itself can raise out of `ainvoke()`:
 
+```python
 try:
-    result = await executor.ainvoke({'input': 'Send an email'})
-except MatimoError as e:
-    if e.code == ErrorCode.TOOL_NOT_FOUND:
-        print(f"Tool not available: {e.message}")
-    elif e.code == ErrorCode.VALIDATION_FAILED:
-        print(f"Invalid parameters: {e.context}")
-    elif e.code == ErrorCode.EXECUTION_FAILED:
-        print(f"Tool execution failed: {e.context}")
-    else:
-        raise
+    result = await agent.ainvoke({"messages": [("user", "Send an email")]})
+except Exception as e:  # network, rate limit, invalid API key for the model
+    print(f"Agent run failed: {e}")
 ```
+
+Use `on_event` to record tool failures (`tool:execution_failed`, `tool:execution_denied`, `tool:approval_denied`).
 
 ### OAuth2 with LangChain (Python)
 
@@ -329,54 +336,60 @@ pnpm add matimo langchain @langchain/core
 ### Basic Integration
 
 ```typescript
-import { MatimoInstance, convertToolsToLangChain } from 'matimo';
+import { MatimoInstance, convertToolsToLangChain } from '@matimo/core';
 import { ChatOpenAI } from '@langchain/openai';
-import { createAgent } from 'langchain/agents';
+import { createAgent } from 'langchain';
 
-// 1. Load Matimo tools
-const matimo = await MatimoInstance.init('./tools');
+// 1. Load Matimo tools; tools that need approval ask the callback
+const matimo = await MatimoInstance.init({
+  autoDiscover: true,
+  onApproval: async (request) => confirmWithUser(request),
+});
 
-// 2. Convert to LangChain (that's it!)
+// 2. Convert the tools this agent needs
 const langchainTools = await convertToolsToLangChain(
-  matimo.listTools().filter((t) => t.name.startsWith('slack-')),
+  matimo.listTools().filter((t) => t.name.startsWith('slack')),
   matimo,
   { SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN! }
 );
 
-// 3. Create agent
-const agent = await createAgent({
-  model: new ChatOpenAI({ modelName: 'gpt-4o-mini' }),
+// 3. Create the agent
+const agent = createAgent({
+  model: new ChatOpenAI({ model: 'gpt-4o-mini' }),
   tools: langchainTools,
 });
 
 // Run it
 const result = await agent.invoke({
-  input: 'List all Slack channels',
+  messages: [{ role: 'user', content: 'List all Slack channels' }],
 });
 
-console.log('Agent response:', result.output);
+console.log('Agent response:', result.messages[result.messages.length - 1].content);
 ```
 
 > ⚠️ **OpenAI 128-tool limit**: `gpt-4o`, `gpt-4o-mini`, and most OpenAI models reject requests with more than 128 tools bound.
 > Filter to only the tools the agent needs:
 > ```typescript
-> const slackTools = matimo.listTools().filter(t => t.name.startsWith('slack_'));
-> const langchainTools = convertToolsToLangChain(slackTools, matimo, credentials);
+> const slackTools = matimo.listTools().filter(t => t.name.startsWith('slack'));
+> const langchainTools = await convertToolsToLangChain(slackTools, matimo, secrets);
 > ```
 
 ### Complete LangChain Agent Example
 
 ```typescript
-import { MatimoInstance, convertToolsToLangChain } from 'matimo';
+import { MatimoInstance, convertToolsToLangChain } from '@matimo/core';
 import { ChatOpenAI } from '@langchain/openai';
-import { createAgent } from 'langchain/agents';
+import { createAgent } from 'langchain';
 
 async function runSlackAgent() {
-  // Initialize Matimo
-  const matimo = await MatimoInstance.init('./tools');
+  // Initialize Matimo; sending a message asks the callback if the tool requires approval
+  const matimo = await MatimoInstance.init({
+    autoDiscover: true,
+    onApproval: async (request) => confirmWithUser(request),
+  });
 
-  // Get all Slack tools
-  const slackTools = matimo.listTools().filter((t) => t.name.startsWith('slack-'));
+  // Get all Slack tools (the package uses both slack- and slack_ names)
+  const slackTools = matimo.listTools().filter((t) => t.name.startsWith('slack'));
 
   console.log(`📦 Loaded ${slackTools.length} Slack tools`);
 
@@ -385,15 +398,9 @@ async function runSlackAgent() {
     SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN!,
   });
 
-  // Create OpenAI LLM
-  const model = new ChatOpenAI({
-    modelName: 'gpt-4o-mini',
-    temperature: 0,
-  });
-
   // Create agent
-  const agent = await createAgent({
-    model,
+  const agent = createAgent({
+    model: new ChatOpenAI({ model: 'gpt-4o-mini', temperature: 0 }),
     tools: langchainTools,
   });
 
@@ -406,8 +413,8 @@ async function runSlackAgent() {
 
   for (const query of queries) {
     console.log(`\n📝 User: "${query}"`);
-    const result = await agent.invoke({ input: query });
-    console.log(`🤖 Agent: ${result.output}`);
+    const result = await agent.invoke({ messages: [{ role: 'user', content: query }] });
+    console.log(`🤖 Agent: ${result.messages[result.messages.length - 1].content}`);
   }
 }
 
@@ -557,23 +564,35 @@ const result = await matimoInstance.execute('gmail-send-email', {
 
 ## Error Handling
 
+Inside an agent, a tool failure does not throw out of `agent.invoke()`. The tools made by `convertToolsToLangChain` catch every `MatimoError` (policy denial, refused approval, HTTP error) and return it to the model as text, `"Error: <message>"`, so the model can explain it or try something else. A tool that reports bad input returns `{ success: false, error, code }`, which the model also sees.
+
+What can still throw from `invoke()` is the model call itself (network, rate limits, an invalid API key):
+
 ```typescript
 try {
-  const result = await agentExecutor.invoke({
-    input: 'Send an email',
+  const result = await agent.invoke({
+    messages: [{ role: 'user', content: 'Send an email' }],
   });
 } catch (error) {
-  if (error.code === 'TOOL_NOT_FOUND') {
-    console.error('Tool not available:', error.message);
-  } else if (error.code === 'INVALID_PARAMETERS') {
-    console.error('Invalid parameters:', error.details);
-  } else if (error.code === 'EXECUTION_FAILED') {
-    console.error('Tool execution failed:', error.details);
-  } else {
-    console.error('Unexpected error:', error);
-  }
+  console.error('Agent run failed:', error);
 }
 ```
+
+To act on tool errors in your own code (metrics, alerts), use `onEvent`: every failed run emits `tool:execution_failed`, and refusals emit `tool:execution_denied` or `tool:approval_denied`.
+
+## Approvals
+
+Agent calls go through the same governance as `matimo.execute()`. Calls to tools that need approval — `requires_approval: true`, HTTP `DELETE` or command tools (secure by default in 0.2.0), or a destructive keyword in a `sql`/`command` argument — ask the instance's `onApproval` callback. If it declines, or there is none, the tool returns `Error: ...` to the model instead of running:
+
+```typescript
+const matimo = await MatimoInstance.init({
+  autoDiscover: true,
+  onApproval: async (request) => confirmWithOperator(request.toolName, request.params),
+});
+const tools = await convertToolsToLangChain(matimo.listTools(), matimo);
+```
+
+See [Approval System](../api-reference/APPROVAL-SYSTEM.md).
 
 ## Skills Integration (Non-MCP)
 

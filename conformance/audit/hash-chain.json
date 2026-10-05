@@ -1,0 +1,140 @@
+{
+  "description": "JsonlFileSink hash chain and secret redaction, asserted by both SDKs. hash = sha256_hex(prevHash + canonicalJson({seq, event})) where canonicalJson sorts object keys at every level with no whitespace and the event is redacted first. The first entry's prevHash is genesisPrevHash.",
+  "genesisPrevHash": "0000000000000000000000000000000000000000000000000000000000000000",
+  "redacted": "[REDACTED]",
+  "canonicalJsonExample": {
+    "value": {
+      "b": [
+        1,
+        {
+          "d": null,
+          "c": "é"
+        }
+      ],
+      "a": true
+    },
+    "expected": "{\"a\":true,\"b\":[1,{\"c\":\"é\",\"d\":null}]}"
+  },
+  "secretKeys": {
+    "password": true,
+    "apiKey": true,
+    "api_key": true,
+    "client_secret": true,
+    "Authorization": true,
+    "X-Auth-Token": true,
+    "accessToken": true,
+    "refresh_token": true,
+    "cookie": true,
+    "privateKey": true,
+    "AWS_ACCESS_KEY_ID": true,
+    "credentials": true,
+    "toolName": false,
+    "agentId": false,
+    "traceId": false,
+    "durationMs": false,
+    "riskLevel": false,
+    "hash": false,
+    "prevHash": false,
+    "error": false,
+    "approvedBy": false
+  },
+  "entries": [
+    {
+      "event": {
+        "type": "tool:executed",
+        "toolName": "slack_send_message",
+        "agentId": "agent-1",
+        "traceId": "6f1c2b1e-0000-4000-8000-000000000001",
+        "durationMs": 42,
+        "success": true,
+        "riskLevel": "medium",
+        "timestamp": "2026-09-30T10:00:00.000Z"
+      },
+      "expected": {
+        "seq": 1,
+        "prevHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "event": {
+          "type": "tool:executed",
+          "toolName": "slack_send_message",
+          "agentId": "agent-1",
+          "traceId": "6f1c2b1e-0000-4000-8000-000000000001",
+          "durationMs": 42,
+          "success": true,
+          "riskLevel": "medium",
+          "timestamp": "2026-09-30T10:00:00.000Z"
+        },
+        "hash": "5e63a5c696b440ca4cd6cba5ab12217d837d66b9d0f37472e116d376a47a0ce3"
+      }
+    },
+    {
+      "event": {
+        "type": "tool:execution_failed",
+        "toolName": "github_delete_repo",
+        "traceId": "6f1c2b1e-0000-4000-8000-000000000002",
+        "durationMs": 7,
+        "riskLevel": "high",
+        "errorCode": "AUTH_FAILED",
+        "error": "Missing token — «GITHUB_TOKEN»",
+        "timestamp": "2026-09-30T10:00:01.000Z"
+      },
+      "expected": {
+        "seq": 2,
+        "prevHash": "5e63a5c696b440ca4cd6cba5ab12217d837d66b9d0f37472e116d376a47a0ce3",
+        "event": {
+          "type": "tool:execution_failed",
+          "toolName": "github_delete_repo",
+          "traceId": "6f1c2b1e-0000-4000-8000-000000000002",
+          "durationMs": 7,
+          "riskLevel": "high",
+          "errorCode": "AUTH_FAILED",
+          "error": "Missing token — «GITHUB_TOKEN»",
+          "timestamp": "2026-09-30T10:00:01.000Z"
+        },
+        "hash": "0cbab1cb910c5aaad25e8e18272cf5964cdfb81bf7992b5cb4bf0b27ea59330b"
+      }
+    },
+    {
+      "event": {
+        "type": "tools:reloaded",
+        "loaded": 3,
+        "removed": 0,
+        "rejected": ["bad_tool"],
+        "timestamp": "2026-09-30T10:00:02.000Z",
+        "metadata": {
+          "apiKey": "sk-live-123",
+          "nested": [
+            {
+              "client_secret": "x",
+              "ok": 1.5
+            }
+          ],
+          "X-Auth-Token": "t",
+          "tokenCount": 9
+        }
+      },
+      "expected": {
+        "seq": 3,
+        "prevHash": "0cbab1cb910c5aaad25e8e18272cf5964cdfb81bf7992b5cb4bf0b27ea59330b",
+        "event": {
+          "type": "tools:reloaded",
+          "loaded": 3,
+          "removed": 0,
+          "rejected": ["bad_tool"],
+          "timestamp": "2026-09-30T10:00:02.000Z",
+          "metadata": {
+            "apiKey": "[REDACTED]",
+            "nested": [
+              {
+                "client_secret": "[REDACTED]",
+                "ok": 1.5
+              }
+            ],
+            "X-Auth-Token": "[REDACTED]",
+            "tokenCount": "[REDACTED]"
+          }
+        },
+        "hash": "3e6078eb9941ad7464a00f2ee0c6941700292a74ce902c44d101be1e1e3fec1a"
+      }
+    }
+  ]
+}

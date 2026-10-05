@@ -16,6 +16,8 @@ Usage::
 from __future__ import annotations
 
 import sys
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _pkg_version
 
 from matimo_cli.commands.doctor import doctor_command
 from matimo_cli.commands.install import install_command
@@ -24,7 +26,10 @@ from matimo_cli.commands.mcp import mcp_command
 from matimo_cli.commands.review import review_command
 from matimo_cli.commands.search import search_command
 
-_VERSION = "0.1.0"  # also update in setup.py and pyproject.toml
+try:
+    _VERSION = _pkg_version("matimo-cli")
+except PackageNotFoundError:  # running from a source tree without install metadata
+    _VERSION = "unknown"
 
 _HELP = f"""\
 🔨 Matimo CLI — Tool Package Manager  (v{_VERSION})
@@ -57,8 +62,17 @@ Documentation: https://github.com/tallclub/matimo#readme
 """
 
 
+def _ensure_utf8_output() -> None:
+    """Avoid UnicodeEncodeError on consoles with a legacy code page (e.g. cp1252 on Windows)."""
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            reconfigure(encoding="utf-8", errors="replace")
+
+
 def main(cli_args: list[str] | None = None) -> None:
     """Main CLI handler — parses commands and routes to handlers."""
+    _ensure_utf8_output()
     args = cli_args if cli_args is not None else sys.argv[1:]
     command = args[0] if args else None
     params = args[1:] if args else []

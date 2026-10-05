@@ -1,5 +1,6 @@
 name: execute
 version: '1.0.0'
+risk: critical
 description: Execute shell commands and capture output. Supports command execution with arguments and streaming output capture.
 requires_approval: true
 
@@ -12,6 +13,8 @@ parameters:
 
   args:
     type: array
+    items:
+      type: string
     description: Command arguments as array of strings (optional, can also embed in command)
     required: false
     example: ['--verbose', '--color']

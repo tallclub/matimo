@@ -32,10 +32,23 @@ from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langchain_openai import ChatOpenAI
 from matimo_github import get_tools_path
 
-from matimo import Matimo
+from matimo import ApprovalRequest, Matimo
 from matimo.integrations.langchain import convert_tools_to_langchain
 
 load_dotenv(Path(__file__).parent.parent.parent / ".env")
+
+
+async def approve(request: ApprovalRequest) -> bool:
+    """Ask in the terminal before any tool call that needs approval."""
+    print(f"\n🔒  Approval required — {request.tool_name}: {request.params}")
+    if not sys.stdin.isatty():
+        print(
+            "    ❌  Rejected: no terminal. Pre-approve with "
+            f'MATIMO_APPROVED_PATTERNS="{request.tool_name}"'
+        )
+        return False
+    return input("    Approve? [y/N] ").strip().lower() in ("y", "yes")
+
 
 DEFAULT_TASK = (
     "Search for the top 3 TypeScript repositories about AI agents on GitHub, "
@@ -53,7 +66,7 @@ async def run(task: str) -> None:
             print(f"❌  {label} ({key}) not set in .env")
             sys.exit(1)
 
-    matimo = await Matimo.init(get_tools_path())
+    matimo = await Matimo.init(get_tools_path(), on_approval=approve)
     gh_tools = [t for t in matimo.list_tools() if t.name.startswith("github")]
     print(f"✅  Loaded {len(gh_tools)} GitHub tools")
 

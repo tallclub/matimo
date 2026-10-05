@@ -22,8 +22,15 @@ SETUP:
 
 USAGE:
 ────────────────────────────────────────────────────────────────────────────
-  export MATIMO_AUTO_APPROVE=true
-  uv run python edit/edit_decorator.py
+  uv run python edit/edit_decorator.py        # asks before each edit
+
+  edit declares requires_approval: true. To run unattended, pre-approve it:
+  MATIMO_APPROVED_PATTERNS="edit" uv run python edit/edit_decorator.py
+
+NOTE: @tool sends the method's own parameter names as the tool's parameters,
+so they must match the tool definition exactly (filePath, operation,
+content, startLine, endLine), and only the arguments you pass are sent —
+Python defaults are not.
 
 ⚠️  WARNING: This tool modifies files on disk. Use with caution!
 
@@ -31,15 +38,29 @@ USAGE:
 """
 
 import asyncio
-import os
+import sys
 import tempfile
 from pathlib import Path
+
 from dotenv import load_dotenv
 
-from matimo import Matimo
+from matimo import ApprovalRequest, Matimo
 from matimo.decorators import set_global_matimo_instance, tool
 
 load_dotenv(Path(__file__).parent.parent.parent / ".env")
+
+
+async def approve(request: ApprovalRequest) -> bool:
+    """Ask in the terminal before each call that needs approval."""
+    params = request.params
+    print(
+        f"\n🔒 Approval required — {request.tool_name}: {params.get('operation')} "
+        f"{params.get('filePath')} (line {params.get('startLine')})"
+    )
+    if not sys.stdin.isatty():
+        print('   ❌ Rejected: no terminal. Pre-approve with MATIMO_APPROVED_PATTERNS="edit"')
+        return False
+    return input("   Approve? (y/n): ").strip().lower() in ("y", "yes")
 
 
 # ───────────────────────────────────────────────────────────────────────────
@@ -50,32 +71,26 @@ class FileEditor:
     """High-level file editing service using the @tool decorator pattern."""
 
     @tool("edit")
-    async def write_file(self, file_path: str, new_content: str) -> dict:
-        """
-        Decorator auto-calls matimo.execute('edit', {...}).
-        
-        Args:
-            file_path: Path to file to edit
-            new_content: New content to write
-            
-        Returns:
-            Edit result
-        """
-        ...
-
-    @tool("edit")
-    async def create_file(
+    async def replace_lines(
         self,
-        file_path: str,
-        new_content: str,
-        create_if_missing: bool = True
+        filePath: str,  # noqa: N803
+        operation: str,
+        content: str,
+        startLine: int,  # noqa: N803
+        endLine: int,  # noqa: N803
     ) -> dict:
-        """Create a new file with content."""
+        """Decorator auto-calls matimo.execute('edit', {...}) with operation='replace'."""
         ...
 
     @tool("edit")
-    async def update_python_file(self, file_path: str, new_content: str) -> dict:
-        """Update a Python file."""
+    async def insert_before(
+        self,
+        filePath: str,  # noqa: N803
+        operation: str,
+        content: str,
+        startLine: int,  # noqa: N803
+    ) -> dict:
+        """Insert content before a line (operation='insert')."""
         ...
 
 
@@ -92,91 +107,48 @@ async def main() -> None:
 
     # ── Initialize Matimo and register globally for the decorator ────────────
     print("🚀  Initializing Matimo…")
-    matimo = await Matimo.init(auto_discover=True)
+    matimo = await Matimo.init(auto_discover=True, on_approval=approve)
     set_global_matimo_instance(matimo)
     print("✅  Matimo initialized\n")
 
     editor = FileEditor()
 
+    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".txt") as tmp:
+        tmp.write("Original line\nAnother line\nThird line\n")
+        tmp_path = Path(tmp.name)
+    backup_path = Path(f"{tmp_path}.backup")  # edit writes this before each change
+    print(f"Created temporary file {tmp_path.name}\n")
+
     try:
-        # Create a temporary file for testing
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt') as tmp:
-            tmp_path = tmp.name
-            tmp.write("Original content\n")
-
-        print("Created temporary file for testing…\n")
-
-        # Example 1: Write to existing file
-        print("1. Writing new content to temporary file\n")
-        new_content = "Updated content from decorator\nLine 2\nLine 3\n"
-        result1 = await editor.write_file(tmp_path, new_content)
-        
+        # Example 1: Replace line 1
+        print("1. Replacing line 1\n")
+        result1 = await editor.replace_lines(
+            str(tmp_path), "replace", "Updated line from the decorator", 1, 1
+        )
         if result1.get("success"):
-            print("File written successfully")
-            with open(tmp_path, 'r') as f:
-                content = f.read()
-            print(f"Verified content:\n{content}")
+            print(f"Lines affected: {result1.get('linesAffected')}")
+            print(f"Backup created: {result1.get('backupCreated')}")
+            print(f"Content now:\n{tmp_path.read_text()}")
         else:
             print(f"Failed: {result1.get('error')}")
         print("---\n")
 
-        # Example 2: Create a new Python file
-        print("2. Creating a new Python file\n")
-        _fd, new_py_file = tempfile.mkstemp(suffix='.py', prefix='test_')
-        os.close(_fd)
-        python_content = '''#!/usr/bin/env python3
-"""Auto-generated by Matimo decorator example."""
-
-def main():
-    print("Hello from decorator-generated file!")
-
-if __name__ == "__main__":
-    main()
-'''
-        
-        result2 = await editor.create_file(new_py_file, python_content)
+        # Example 2: Insert a line before line 2
+        print("2. Inserting a line before line 2\n")
+        result2 = await editor.insert_before(str(tmp_path), "insert", "Inserted line", 2)
         if result2.get("success"):
-            print(f"Python file created: {Path(new_py_file).name}")
-            if Path(new_py_file).exists():
-                print("✓ File verified on disk")
+            print(f"File now has {result2.get('newLineCount')} lines")
+            print(f"Content now:\n{tmp_path.read_text()}")
         else:
             print(f"Failed: {result2.get('error')}")
         print("---\n")
 
-        # Example 3: Update Python file
-        print("3. Updating Python file\n")
-        updated_python = '''#!/usr/bin/env python3
-"""Updated by decorator pattern."""
-
-import sys
-
-def main():
-    print("Updated content")
-    print(f"Python version: {sys.version}")
-
-if __name__ == "__main__":
-    main()
-'''
-        
-        result3 = await editor.update_python_file(new_py_file, updated_python)
-        if result3.get("success"):
-            print("Python file updated successfully")
-            with open(new_py_file, 'r') as f:
-                lines = f.readlines()
-            print(f"File now has {len(lines)} lines")
-        else:
-            print(f"Failed: {result3.get('error')}")
-        print("---\n")
-
-        # Clean up
-        print("Cleaning up temporary files…")
-        Path(tmp_path).unlink(missing_ok=True)
-        if Path(new_py_file).exists():
-            Path(new_py_file).unlink()
-        print("✓ Cleanup complete\n")
-
     except Exception as error:
         print(f"❌  Error: {error}\n")
+    finally:
+        for path in (tmp_path, backup_path):
+            path.unlink(missing_ok=True)
+        print("🧹 Cleaned up temporary files\n")
 
 
 if __name__ == "__main__":

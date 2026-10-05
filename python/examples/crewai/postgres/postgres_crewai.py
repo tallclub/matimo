@@ -18,13 +18,13 @@ SETUP:
 ────────────────────────────────────────────────────────────────────────────
   Set in .env:
     OPENAI_API_KEY=sk-…
-    POSTGRES_CONNECTION_STRING=postgresql://user:password@host:5432/dbname
+    MATIMO_POSTGRES_URL=postgresql://user:password@host:5432/dbname
     # or individual vars:
-    POSTGRES_HOST=localhost
-    POSTGRES_PORT=5432
-    POSTGRES_DB=mydb
-    POSTGRES_USER=myuser
-    POSTGRES_PASSWORD=mypassword
+    MATIMO_POSTGRES_HOST=localhost
+    MATIMO_POSTGRES_PORT=5432
+    MATIMO_POSTGRES_DB=mydb
+    MATIMO_POSTGRES_USER=myuser
+    MATIMO_POSTGRES_PASSWORD=mypassword
 
 USAGE:
 ────────────────────────────────────────────────────────────────────────────
@@ -44,10 +44,23 @@ from crewai import Agent, Crew, Process, Task
 from dotenv import load_dotenv
 from matimo_postgres import get_tools_path
 
-from matimo import Matimo
+from matimo import ApprovalRequest, Matimo
 from matimo.integrations.crewai import convert_tools_to_crewai
 
 load_dotenv(Path(__file__).parent.parent.parent / ".env")
+
+
+async def approve(request: ApprovalRequest) -> bool:
+    """Ask in the terminal before any tool call that needs approval."""
+    print(f"\n🔒  Approval required — {request.tool_name}: {request.params}")
+    if not sys.stdin.isatty():
+        print(
+            "    ❌  Rejected: no terminal. Pre-approve with "
+            f'MATIMO_APPROVED_PATTERNS="{request.tool_name}"'
+        )
+        return False
+    return input("    Approve? [y/N] ").strip().lower() in ("y", "yes")
+
 
 DEFAULT_TASK = (
     "List the tables available in the database schemas "
@@ -72,7 +85,7 @@ async def run(task: str) -> None:
 
     # ── 1. Initialise Matimo with PostgreSQL tools ────────────────────────────
     print("🚀  Initialising Matimo…")
-    matimo = await Matimo.init(get_tools_path())
+    matimo = await Matimo.init(get_tools_path(), on_approval=approve)
     pg_tools = [t for t in matimo.list_tools() if t.name.startswith("postgres")]
     print(f"✅  Loaded {len(pg_tools)} PostgreSQL tools\n")
 

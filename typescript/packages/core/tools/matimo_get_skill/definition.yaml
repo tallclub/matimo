@@ -1,5 +1,6 @@
 name: matimo_get_skill
 version: '1.0.0'
+risk: low
 description: >-
   Level 2 activation / Level 3 resource access — read a skill's SKILL.md
   content and metadata, or read a specific bundled resource file (scripts,

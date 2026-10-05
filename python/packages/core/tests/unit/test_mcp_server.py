@@ -24,6 +24,22 @@ def _make_matimo_mock(tools: list[ToolDefinition] | None = None) -> MagicMock:
     return mock
 
 
+def _mcp_modules_patch(mock_mcp_types: MagicMock) -> dict[str, Any]:
+    """Build the sys.modules patch dict for `import mcp.types as mcp_types`.
+
+    `import a.b as x` resolves `x` via attribute access on the already-imported
+    `a` (i.e. `sys.modules['a'].b`), not via `sys.modules['a.b']` directly — so
+    a bare `{"mcp": MagicMock(), "mcp.types": mock_mcp_types}` patch silently
+    binds `mcp_types` inside the code under test to `mcp_mock.types` (a
+    different, unrelated auto-vivified MagicMock) rather than to
+    `mock_mcp_types`. Wiring `mcp_mock.types = mock_mcp_types` explicitly here
+    keeps both resolution paths pointing at the same object.
+    """
+    mock_mcp = MagicMock()
+    mock_mcp.types = mock_mcp_types
+    return {"mcp": mock_mcp, "mcp.types": mock_mcp_types}
+
+
 def _make_tool(name: str = "test_tool") -> ToolDefinition:
     return ToolDefinition(
         name=name,
@@ -212,6 +228,22 @@ class TestMCPServerGetMcpTools:
         except ImportError:
             pytest.skip("mcp not installed")
 
+    def test_includes_title_and_annotations(self) -> None:
+        # my_tool uses HTTP GET (see _make_tool) -> readOnlyHint/idempotentHint True
+        matimo = _make_matimo_mock(tools=[_make_tool("my_tool")])
+        server = MCPServer(matimo, MCPServerOptions())
+        try:
+            result = server._get_mcp_tools()
+        except ImportError:
+            pytest.skip("mcp not installed")
+        tool = result[0]
+        assert tool.title == "My Tool"
+        assert tool.annotations is not None
+        assert tool.annotations.readOnlyHint is True
+        assert tool.annotations.destructiveHint is False
+        assert tool.annotations.idempotentHint is True
+        assert tool.annotations.openWorldHint is True
+
 
 # ---------------------------------------------------------------------------
 # MCPServer._call_tool
@@ -231,7 +263,7 @@ class TestMCPServerCallTool:
 
         server = MCPServer(matimo, MCPServerOptions())
 
-        with patch.dict("sys.modules", {"mcp": MagicMock(), "mcp.types": mock_mcp_types}):
+        with patch.dict("sys.modules", _mcp_modules_patch(mock_mcp_types)):
             result = await server._call_tool("test_tool", {"key": "value"})
         assert len(result) == 1
 
@@ -255,9 +287,65 @@ class TestMCPServerCallTool:
 
         server = MCPServer(matimo, MCPServerOptions())
 
-        with patch.dict("sys.modules", {"mcp": MagicMock(), "mcp.types": mock_mcp_types}):
+        with patch.dict("sys.modules", _mcp_modules_patch(mock_mcp_types)):
             result = await server._call_tool("test_tool", {})
-        assert len(result) == 1
+
+        # Error path now returns a structured CallToolResult, not a bare list.
+        mock_mcp_types.CallToolResult.assert_called_once()
+        _, kwargs = mock_mcp_types.CallToolResult.call_args
+        assert kwargs["isError"] is True
+        assert kwargs["structuredContent"]["code"] == ErrorCode.EXECUTION_FAILED.value
+        assert kwargs["structuredContent"]["message"] == "fail"
+        assert result is mock_mcp_types.CallToolResult.return_value
+
+    async def test_call_tool_handles_generic_exception(self) -> None:
+        """Non-MatimoError exceptions must also be caught (parity with TS's catch-all)."""
+        mock_mcp_types = MagicMock()
+        mock_mcp_types.TextContent.return_value = MagicMock()
+
+        matimo = _make_matimo_mock()
+        matimo.execute = AsyncMock(side_effect=ValueError("something odd"))
+        matimo.get_tool.return_value = None
+
+        server = MCPServer(matimo, MCPServerOptions())
+
+        with patch.dict("sys.modules", _mcp_modules_patch(mock_mcp_types)):
+            result = await server._call_tool("test_tool", {})
+
+        mock_mcp_types.CallToolResult.assert_called_once()
+        _, kwargs = mock_mcp_types.CallToolResult.call_args
+        assert kwargs["isError"] is True
+        assert kwargs["structuredContent"]["code"] == ErrorCode.UNKNOWN_ERROR.value
+        assert kwargs["structuredContent"]["retryable"] is False
+        assert result is mock_mcp_types.CallToolResult.return_value
+
+    async def test_call_tool_matimo_error_carries_status_and_retryable(self) -> None:
+        """A rate-limit MatimoError's statusCode/retryable survive into structuredContent."""
+        mock_mcp_types = MagicMock()
+        mock_mcp_types.TextContent.return_value = MagicMock()
+
+        matimo = _make_matimo_mock()
+        matimo.execute = AsyncMock(
+            side_effect=MatimoError(
+                "Rate limit exceeded",
+                ErrorCode.RATE_LIMIT_EXCEEDED,
+                {"status_code": 429, "retryable": True},
+            )
+        )
+        matimo.get_tool.return_value = None
+
+        server = MCPServer(matimo, MCPServerOptions())
+
+        with patch.dict("sys.modules", _mcp_modules_patch(mock_mcp_types)):
+            await server._call_tool("test_tool", {})
+
+        _, kwargs = mock_mcp_types.CallToolResult.call_args
+        assert kwargs["structuredContent"] == {
+            "code": ErrorCode.RATE_LIMIT_EXCEEDED.value,
+            "statusCode": 429,
+            "retryable": True,
+            "message": "Rate limit exceeded",
+        }
 
     async def test_call_tool_resolves_secrets(self) -> None:
         """When _resolved_secrets is empty, fall back to per-call resolution."""
@@ -288,7 +376,7 @@ class TestMCPServerCallTool:
         # _resolved_secrets is empty (start() not called) → fallback to per-call resolution
         server = MCPServer(matimo, MCPServerOptions(secret_resolver=mock_resolver))
 
-        with patch.dict("sys.modules", {"mcp": MagicMock(), "mcp.types": mock_mcp_types}):
+        with patch.dict("sys.modules", _mcp_modules_patch(mock_mcp_types)):
             await server._call_tool("tool_with_secret", {})
         mock_resolver.resolve_all.assert_called_once()
 
@@ -307,7 +395,7 @@ class TestMCPServerCallTool:
         # Simulate pre-resolved secrets as if start() was called
         server._resolved_secrets = {"SLACK_BOT_TOKEN": "xoxb-pre-resolved"}
 
-        with patch.dict("sys.modules", {"mcp": MagicMock(), "mcp.types": mock_mcp_types}):
+        with patch.dict("sys.modules", _mcp_modules_patch(mock_mcp_types)):
             await server._call_tool("any_tool", {})
 
         # resolve_all must NOT be called — secrets were pre-resolved
@@ -317,25 +405,54 @@ class TestMCPServerCallTool:
         _, kwargs = matimo.execute.await_args
         assert kwargs.get("credentials") == {"SLACK_BOT_TOKEN": "xoxb-pre-resolved"}
 
-    async def test_call_tool_approval_required_without_flag(self) -> None:
-        """Tools with requires_approval=True must reject calls without _matimo_approved."""
+    async def test_call_tool_asks_the_session_user_via_elicitation(self) -> None:
+        """execute() gets a per-call on_approval that elicits from this session's user."""
         mock_mcp_types = MagicMock()
-        text_content = MagicMock()
-        mock_mcp_types.TextContent.return_value = text_content
+        mock_mcp_types.TextContent.return_value = MagicMock()
 
         tool = _make_tool("dangerous_tool")
         object.__setattr__(tool, "requires_approval", True)
-
         matimo = _make_matimo_mock()
         matimo.get_tool.return_value = tool
+        matimo.execute = AsyncMock(return_value={"ok": True})
         server = MCPServer(matimo, MCPServerOptions())
 
-        with patch.dict("sys.modules", {"mcp": MagicMock(), "mcp.types": mock_mcp_types}):
-            result = await server._call_tool("dangerous_tool", {})
+        session = MagicMock()
+        session.check_client_capability.return_value = True
+        session.elicit_form = AsyncMock(
+            return_value=MagicMock(action="accept", content={"approve": True})
+        )
+        with patch.dict("sys.modules", _mcp_modules_patch(mock_mcp_types)):
+            await server._call_tool("dangerous_tool", {}, session=session, request_id=7)
 
-        assert len(result) == 1
-        # execute must NOT have been called
-        matimo.execute.assert_not_awaited()
+        on_approval = matimo.execute.await_args.kwargs["on_approval"]
+        from matimo.approval.handler import ApprovalRequest
+
+        assert await on_approval(ApprovalRequest("dangerous_tool", None, {})) is True
+        session.elicit_form.assert_awaited_once()
+        assert session.elicit_form.await_args.kwargs["related_request_id"] == 7
+
+    async def test_call_tool_never_tells_the_model_to_approve_itself(self) -> None:
+        """Without elicitation the call fails closed, with no self-approval hint."""
+        mock_mcp_types = MagicMock()
+        mock_mcp_types.TextContent.return_value = MagicMock()
+
+        tool = _make_tool("dangerous_tool")
+        object.__setattr__(tool, "requires_approval", True)
+        matimo = _make_matimo_mock()
+        matimo.get_tool.return_value = tool
+        matimo.execute = AsyncMock(return_value={"ok": True})
+        server = MCPServer(matimo, MCPServerOptions())
+
+        with patch.dict("sys.modules", _mcp_modules_patch(mock_mcp_types)):
+            await server._call_tool("dangerous_tool", {})
+
+        on_approval = matimo.execute.await_args.kwargs["on_approval"]
+        from matimo.approval.handler import ApprovalRequest
+
+        with pytest.raises(MatimoError, match="does not support elicitation") as exc:
+            await on_approval(ApprovalRequest("dangerous_tool", None, {}))
+        assert "_matimo_approved" not in str(exc.value)
 
     async def test_call_tool_does_not_trust_approval_flag_by_default(self) -> None:
         """_matimo_approved=True must not bypass server-side approval by default."""
@@ -350,7 +467,7 @@ class TestMCPServerCallTool:
         matimo.execute = AsyncMock(return_value={"ok": True})
         server = MCPServer(matimo, MCPServerOptions())
 
-        with patch.dict("sys.modules", {"mcp": MagicMock(), "mcp.types": mock_mcp_types}):
+        with patch.dict("sys.modules", _mcp_modules_patch(mock_mcp_types)):
             result = await server._call_tool("dangerous_tool", {"_matimo_approved": True})
 
         assert len(result) == 1
@@ -374,7 +491,7 @@ class TestMCPServerCallTool:
             MCPServerOptions(trust_client_approval=True),
         )
 
-        with patch.dict("sys.modules", {"mcp": MagicMock(), "mcp.types": mock_mcp_types}):
+        with patch.dict("sys.modules", _mcp_modules_patch(mock_mcp_types)):
             result = await server._call_tool("dangerous_tool", {"_matimo_approved": True})
 
         assert len(result) == 1
@@ -391,7 +508,7 @@ class TestMCPServerCallTool:
         matimo.execute = AsyncMock(return_value={"ok": True})
         server = MCPServer(matimo, MCPServerOptions())
 
-        with patch.dict("sys.modules", {"mcp": MagicMock(), "mcp.types": mock_mcp_types}):
+        with patch.dict("sys.modules", _mcp_modules_patch(mock_mcp_types)):
             await server._call_tool("test_tool", {"channel": "#general", "_matimo_approved": True})
 
         call_args = matimo.execute.await_args
@@ -543,6 +660,179 @@ class TestMCPServerStart:
             await server._run_stdio(mock_run_server)
 
         mock_run_server.run.assert_awaited_once()
+
+
+# ---------------------------------------------------------------------------
+# _mcp_major_version() / _build_server_v2() — mcp>=2.0 constructor-callback API
+#
+# mcp 2.0 removed the @server.list_tools()/@server.call_tool()/
+# @server.list_resources()/@server.read_resource() decorators entirely,
+# replacing them with on_list_tools=/on_call_tool=/on_list_resources=/
+# on_read_resource= constructor kwargs on Server (see _build_server_v2 in
+# mcp/server.py). These tests force that branch via _mcp_major_version even
+# though the pinned dev dependency is mcp 1.x, using the real mcp.types
+# models (present and structurally identical in both 1.x and 2.x) rather
+# than mocking them, so the callbacks are exercised against genuine
+# pydantic validation.
+# ---------------------------------------------------------------------------
+
+
+class TestMCPServerBuildV2:
+    async def test_start_uses_v2_constructor_kwargs_when_mcp_major_is_2(self) -> None:
+        captured: dict[str, Any] = {}
+
+        def fake_server_ctor(name: str, **kwargs: Any) -> Any:
+            captured.update(kwargs)
+            return MagicMock()
+
+        matimo_inst = _make_matimo_mock(tools=[_make_tool("t")])
+        server = MCPServer(matimo_inst, MCPServerOptions(transport="stdio"))
+        server._run_stdio = AsyncMock()  # type: ignore[method-assign]
+
+        with (
+            patch("matimo.mcp.server._mcp_major_version", return_value=2),
+            patch("mcp.server.Server", side_effect=fake_server_ctor),
+        ):
+            await server.start()
+
+        server._run_stdio.assert_awaited_once()
+        assert "on_list_tools" in captured
+        assert "on_call_tool" in captured
+        # No skills registered on this Matimo mock -> resource handlers omitted,
+        # mirroring _register_skill_resources_v1's early return when empty.
+        assert "on_list_resources" not in captured
+        assert "on_read_resource" not in captured
+
+        import mcp.types as mcp_types
+
+        list_result = await captured["on_list_tools"](None, None)
+        assert isinstance(list_result, mcp_types.ListToolsResult)
+        assert len(list_result.tools) == 1
+        assert list_result.tools[0].name == "t"
+
+        call_result = await captured["on_call_tool"](
+            None, mcp_types.CallToolRequestParams(name="t", arguments={})
+        )
+        assert isinstance(call_result, mcp_types.CallToolResult)
+        matimo_inst.execute.assert_awaited_once()
+
+    async def test_start_v2_call_tool_passes_through_error_result(self) -> None:
+        """When _call_tool already returns a CallToolResult (error path), the
+        v2 callback must return it as-is rather than double-wrapping it."""
+        captured: dict[str, Any] = {}
+
+        def fake_server_ctor(name: str, **kwargs: Any) -> Any:
+            captured.update(kwargs)
+            return MagicMock()
+
+        tool = _make_tool("t")
+        matimo_inst = _make_matimo_mock(tools=[tool])
+        matimo_inst.get_tool.return_value = tool
+        matimo_inst.execute = AsyncMock(
+            side_effect=MatimoError("needs approval", ErrorCode.EXECUTION_FAILED)
+        )
+        server = MCPServer(matimo_inst, MCPServerOptions(transport="stdio"))
+        server._run_stdio = AsyncMock()  # type: ignore[method-assign]
+
+        with (
+            patch("matimo.mcp.server._mcp_major_version", return_value=2),
+            patch("mcp.server.Server", side_effect=fake_server_ctor),
+        ):
+            await server.start()
+
+        import mcp.types as mcp_types
+
+        call_result = await captured["on_call_tool"](
+            None, mcp_types.CallToolRequestParams(name="t", arguments={})
+        )
+        assert isinstance(call_result, mcp_types.CallToolResult)
+        assert call_result.isError is True
+        matimo_inst.execute.assert_awaited_once()
+
+    async def test_start_v2_registers_skill_resource_handlers_when_skills_exist(self) -> None:
+        captured: dict[str, Any] = {}
+
+        def fake_server_ctor(name: str, **kwargs: Any) -> Any:
+            captured.update(kwargs)
+            return MagicMock()
+
+        matimo_inst = _make_matimo_mock()
+        skill = MagicMock()
+        skill.name = "demo-skill"
+        skill.description = "A demo skill"
+        matimo_inst.list_skills.return_value = [skill]
+        matimo_inst.get_skill_content.return_value = "# Demo"
+
+        server = MCPServer(matimo_inst, MCPServerOptions(transport="stdio"))
+        server._run_stdio = AsyncMock()  # type: ignore[method-assign]
+
+        with (
+            patch("matimo.mcp.server._mcp_major_version", return_value=2),
+            patch("mcp.server.Server", side_effect=fake_server_ctor),
+        ):
+            await server.start()
+
+        assert "on_list_resources" in captured
+        assert "on_read_resource" in captured
+
+        import mcp.types as mcp_types
+
+        list_result = await captured["on_list_resources"](None, None)
+        assert isinstance(list_result, mcp_types.ListResourcesResult)
+        assert len(list_result.resources) == 1
+        assert str(list_result.resources[0].uri) == "skills://demo-skill"
+
+        read_result = await captured["on_read_resource"](
+            None, mcp_types.ReadResourceRequestParams(uri="skills://demo-skill")
+        )
+        assert isinstance(read_result, mcp_types.ReadResourceResult)
+        assert read_result.contents[0].text == "# Demo"
+
+    async def test_start_v2_read_resource_reports_unavailable_when_content_none(self) -> None:
+        captured: dict[str, Any] = {}
+
+        def fake_server_ctor(name: str, **kwargs: Any) -> Any:
+            captured.update(kwargs)
+            return MagicMock()
+
+        matimo_inst = _make_matimo_mock()
+        skill = MagicMock()
+        skill.name = "demo-skill"
+        skill.description = "A demo skill"
+        matimo_inst.list_skills.return_value = [skill]
+        matimo_inst.get_skill_content.return_value = None
+
+        server = MCPServer(matimo_inst, MCPServerOptions(transport="stdio"))
+        server._run_stdio = AsyncMock()  # type: ignore[method-assign]
+
+        with (
+            patch("matimo.mcp.server._mcp_major_version", return_value=2),
+            patch("mcp.server.Server", side_effect=fake_server_ctor),
+        ):
+            await server.start()
+
+        import mcp.types as mcp_types
+
+        read_result = await captured["on_read_resource"](
+            None, mcp_types.ReadResourceRequestParams(uri="skills://demo-skill")
+        )
+        assert "unavailable" in read_result.contents[0].text
+
+
+class TestMcpMajorVersion:
+    def test_defaults_to_1_when_version_lookup_fails(self) -> None:
+        from matimo.mcp.server import _mcp_major_version
+
+        with patch("importlib.metadata.version", side_effect=Exception("boom")):
+            assert _mcp_major_version() == 1
+
+    def test_parses_major_version_from_installed_package(self) -> None:
+        from matimo.mcp.server import _mcp_major_version
+
+        with patch("importlib.metadata.version", return_value="2.2.0"):
+            assert _mcp_major_version() == 2
+        with patch("importlib.metadata.version", return_value="1.28.1"):
+            assert _mcp_major_version() == 1
 
 
 # ---------------------------------------------------------------------------
@@ -784,7 +1074,7 @@ class TestRunHttpAsgiHandler:
 
 
 # ---------------------------------------------------------------------------
-# MCPServer._register_skill_resources
+# MCPServer._register_skill_resources_v1
 # ---------------------------------------------------------------------------
 
 
@@ -794,7 +1084,7 @@ class TestRegisterSkillResources:
         matimo.list_skills.return_value = []
         server = MCPServer(matimo, MCPServerOptions())
         mock_server_obj = MagicMock()
-        server._register_skill_resources(mock_server_obj)
+        server._register_skill_resources_v1(mock_server_obj)
         mock_server_obj.list_resources.assert_not_called()
         mock_server_obj.read_resource.assert_not_called()
 
@@ -807,7 +1097,7 @@ class TestRegisterSkillResources:
         mock_server_obj = MagicMock()
 
         with patch.dict("sys.modules", {"mcp": None, "mcp.types": None}):
-            server._register_skill_resources(mock_server_obj)
+            server._register_skill_resources_v1(mock_server_obj)
 
         mock_server_obj.list_resources.assert_not_called()
 
@@ -844,7 +1134,7 @@ class TestRegisterSkillResources:
         mock_mcp_types.Resource.side_effect = lambda **kw: MagicMock(**kw)
 
         with patch.dict("sys.modules", {"mcp.types": mock_mcp_types}):
-            server._register_skill_resources(mock_server_obj)
+            server._register_skill_resources_v1(mock_server_obj)
 
         assert "list_resources" in registered_handlers
         assert "read_resource" in registered_handlers
@@ -890,10 +1180,53 @@ class TestRegisterSkillResources:
         mock_mcp_types = MagicMock()
 
         with patch.dict("sys.modules", {"mcp.types": mock_mcp_types}):
-            server._register_skill_resources(mock_server_obj)
+            server._register_skill_resources_v1(mock_server_obj)
 
         uri_mock = MagicMock()
         uri_mock.__str__ = MagicMock(return_value="skills://empty-skill")
         result = await registered_handlers["read_resource"](uri_mock)
         assert "unavailable" in result
 
+
+
+class TestBearerTokenMatches:
+    """bearer_token_matches — constant-time; mirrors bearerTokenMatches() in TS."""
+
+    def test_accepts_the_exact_bearer_header(self) -> None:
+        from matimo.mcp.server import bearer_token_matches
+
+        assert bearer_token_matches("Bearer s3cret", "s3cret") is True
+
+    @pytest.mark.parametrize(
+        "header",
+        ["", "Bearer s3creT", "Bearer s3cr", "Bearer s3cret2", "s3cret", "Basic s3cret"],
+    )
+    def test_rejects_anything_else(self, header: str) -> None:
+        from matimo.mcp.server import bearer_token_matches
+
+        assert bearer_token_matches(header, "s3cret") is False
+
+
+class TestMCPServerPolicyContext:
+    async def test_configured_context_is_applied_to_every_call(self) -> None:
+        from matimo.core.models import PolicyContext
+
+        matimo = _make_matimo_mock()
+        matimo.execute = AsyncMock(return_value={"ok": True})
+        context = PolicyContext(agent_id="claude-desktop", roles=["admin"])
+        server = MCPServer(matimo, MCPServerOptions(context=context))
+
+        with patch.dict("sys.modules", _mcp_modules_patch(MagicMock())):
+            await server._call_tool("test_tool", {})
+
+        assert matimo.execute.await_args.kwargs["context"] is context
+
+    async def test_no_context_by_default(self) -> None:
+        matimo = _make_matimo_mock()
+        matimo.execute = AsyncMock(return_value={"ok": True})
+        server = MCPServer(matimo, MCPServerOptions())
+
+        with patch.dict("sys.modules", _mcp_modules_patch(MagicMock())):
+            await server._call_tool("test_tool", {})
+
+        assert matimo.execute.await_args.kwargs["context"] is None

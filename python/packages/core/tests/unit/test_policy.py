@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from matimo.core.models import (
     CommandExecution,
     FunctionExecution,
@@ -114,6 +116,20 @@ class TestContentValidator:
         violations = validate_tool_content(tool, engine.config)
         assert violations == []
 
+    def test_unset_status_passes_forced_draft_status(self) -> None:
+        # A definition without `status` loads as STABLE; TypeScript leaves it
+        # undefined and accepts it, so Python must too.
+        engine = DefaultPolicyEngine()
+        tool = _make_http_tool(requires_approval=True)
+        violations = validate_tool_content(tool, engine.config)
+        assert not any(v.rule == "forced-draft-status" for v in violations)
+
+    def test_declared_non_draft_status_fails_forced_draft_status(self) -> None:
+        engine = DefaultPolicyEngine()
+        tool = _make_http_tool(requires_approval=True, status=ToolStatus.APPROVED)
+        violations = validate_tool_content(tool, engine.config)
+        assert any(v.rule == "forced-draft-status" for v in violations)
+
     def test_function_execution_blocked_for_untrusted(self) -> None:
         engine = DefaultPolicyEngine()
         tool = ToolDefinition(
@@ -131,6 +147,22 @@ class TestContentValidator:
         )
         violations = validate_tool_content(tool, engine.config)
         assert any(v.rule == "no-command-execution" for v in violations)
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "http://db.internal/admin",
+            "http://printer.local/status",
+            "http://app.localhost/",
+            "http://0.0.0.0:8080/",
+            "http://0/",
+        ],
+    )
+    def test_ssrf_internal_names_blocked_like_typescript(self, url: str) -> None:
+        engine = DefaultPolicyEngine()
+        tool = _make_http_tool(url=url)
+        violations = validate_tool_content(tool, engine.config)
+        assert any(v.rule == "no-ssrf" for v in violations)
 
     def test_ssrf_localhost_blocked(self) -> None:
         engine = DefaultPolicyEngine()
@@ -188,12 +220,20 @@ class TestDefaultPolicyEngine:
         decision = engine.can_execute(ctx, tool)
         assert decision.allowed is False
 
-    def test_draft_tool_allowed_in_dev(self) -> None:
+    def test_draft_tool_allowed_in_dev_for_admin(self) -> None:
+        engine = DefaultPolicyEngine()
+        tool = _make_http_tool(status=ToolStatus.DRAFT)
+        ctx = PolicyContext(agent_id="agent1", environment="development", roles=["admin"])
+        decision = engine.can_execute(ctx, tool)
+        assert decision.allowed is True
+
+    def test_draft_tool_denied_in_dev_without_admin(self) -> None:
         engine = DefaultPolicyEngine()
         tool = _make_http_tool(status=ToolStatus.DRAFT)
         ctx = PolicyContext(agent_id="agent1", environment="development")
         decision = engine.can_execute(ctx, tool)
-        assert decision.allowed is True
+        assert decision.allowed is False
+        assert "requires admin role" in decision.reason
 
     def test_draft_tool_denied_for_prod_like_environment_strings(self) -> None:
         """
@@ -353,6 +393,23 @@ class TestDefaultPolicyEngine:
         # should be allowed (no critical violations, not in production)
         assert result.allowed is not False or result.allowed == "pending_approval"
 
+    def test_can_create_rejects_high_severity_outside_production(self) -> None:
+        """A tool outside allowed_domains is rejected in development too, as in TS."""
+        import tempfile
+        engine = DefaultPolicyEngine(config=PolicyConfig(allowed_domains=["api.example.com"]))
+        tool = _make_http_tool(
+            url="https://elsewhere.example.org/data",
+            requires_approval=True,
+            status=ToolStatus.DRAFT,
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tool.set_definition_path(f"{tmpdir}/definition.yaml")
+            engine.register_untrusted_path(tmpdir)
+            ctx = PolicyContext(agent_id="a1", environment="development")
+            result = engine.can_create(ctx, tool)
+        assert result.allowed is False
+        assert "not in allowed_domains" in result.reason
+
     def test_can_create_rejects_hand_edited_approved_status(self) -> None:
         """
         A tool whose status was hand-edited to 'approved' (bypassing
@@ -365,7 +422,7 @@ class TestDefaultPolicyEngine:
             name="forged_tool",
             description="forged",
             requires_approval=True,
-            status=ToolStatus.STABLE,  # not 'draft' — self-declared, never legitimately approved
+            status=ToolStatus.APPROVED,  # not 'draft' — self-declared, never legitimately approved
             execution=HttpExecution(type="http", method="GET", url="https://api.example.com/data"),
         )
         with tempfile.TemporaryDirectory() as tmpdir:

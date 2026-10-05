@@ -29,9 +29,32 @@
  */
 
 import 'dotenv/config';
+import * as readline from 'readline';
 import { createAgent } from 'langchain';
 import { ChatOpenAI } from '@langchain/openai';
-import { MatimoInstance, convertToolsToLangChain } from 'matimo';
+import { MatimoInstance, convertToolsToLangChain, type ApprovalRequest } from 'matimo';
+
+/**
+ * Asks in the terminal before any call that needs approval (a tool that
+ * declares requires_approval, an HTTP DELETE or command tool, or SQL with a
+ * destructive keyword). Without a terminal it rejects; pre-approve trusted
+ * tools with MATIMO_APPROVED_PATTERNS instead.
+ */
+async function approveInTerminal(request: ApprovalRequest): Promise<boolean> {
+  console.info(`\n🔒 Approval required — ${request.toolName}: ${JSON.stringify(request.params)}`);
+  if (!process.stdin.isTTY) {
+    console.info(
+      `   ❌ Rejected: no terminal. Pre-approve with MATIMO_APPROVED_PATTERNS="${request.toolName}"`
+    );
+    return false;
+  }
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  const answer = await new Promise<string>((resolve) =>
+    rl.question('   Approve? (y/n): ', resolve)
+  );
+  rl.close();
+  return ['y', 'yes'].includes(answer.trim().toLowerCase());
+}
 
 async function runMailchimpAIAgent() {
   console.info('\n╔════════════════════════════════════════════════════════╗');
@@ -59,7 +82,7 @@ async function runMailchimpAIAgent() {
 
   // ── Initialize Matimo ────────────────────────────────────────────────────
   console.info('🚀 Initializing Matimo...');
-  const matimo = await MatimoInstance.init({ autoDiscover: true });
+  const matimo = await MatimoInstance.init({ autoDiscover: true, onApproval: approveInTerminal });
 
   const mailchimpToolDefs = matimo.listTools().filter((t) => t.name.startsWith('mailchimp-'));
 

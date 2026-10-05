@@ -33,9 +33,7 @@
  * `ms_send_email` is `risk: high` + `requires_approval: true` — Matimo routes it
  * through the human-in-the-loop approval flow before the executor ever runs. This
  * example registers an interactive approval callback (you'll be prompted in the
- * terminal), or you can pre-approve for unattended runs:
- *    export MATIMO_AUTO_APPROVE=true
- * or
+ * terminal), or you can pre-approve it for unattended runs:
  *    export MATIMO_APPROVED_PATTERNS="ms_send_email"
  *
  * USAGE:
@@ -63,7 +61,6 @@ import { ChatOpenAI } from '@langchain/openai';
 import {
   MatimoInstance,
   convertToolsToLangChain,
-  getGlobalApprovalHandler,
   type ToolDefinition,
   type ApprovalRequest,
 } from 'matimo';
@@ -86,8 +83,7 @@ function createApprovalCallback() {
 
     if (!isInteractive) {
       console.info('\n❌ REJECTED — non-interactive environment (no terminal)');
-      console.info('💡 To approve unattended: export MATIMO_AUTO_APPROVE=true');
-      console.info('💡 Or pre-approve this tool: export MATIMO_APPROVED_PATTERNS="ms_send_email"');
+      console.info('💡 To pre-approve this tool: export MATIMO_APPROVED_PATTERNS="ms_send_email"');
       console.info('═'.repeat(70) + '\n');
       return false;
     }
@@ -136,25 +132,19 @@ async function runMicrosoftAIAgent() {
 
   try {
     console.info('🚀 Initializing Matimo...');
-    const matimo = await MatimoInstance.init({ autoDiscover: true });
-
-    // Register the interactive approval callback so the agent can still
-    // execute ms_send_email (requires_approval: true) — it'll pause and
-    // prompt in the terminal rather than throwing AUTH/approval errors.
-    const autoApprove = process.env.MATIMO_AUTO_APPROVE === 'true';
+    // onApproval decides every call that needs approval (ms_send_email is
+    // requires_approval: true). Tools matched by MATIMO_APPROVED_PATTERNS
+    // skip it; everything else pauses and prompts in the terminal.
+    const matimo = await MatimoInstance.init({
+      autoDiscover: true,
+      onApproval: createApprovalCallback(),
+    });
     const approvedPatterns = process.env.MATIMO_APPROVED_PATTERNS;
-    if (!autoApprove && !approvedPatterns) {
-      getGlobalApprovalHandler().setApprovalCallback(createApprovalCallback());
-      console.info(
-        '🔐 Interactive approval enabled — you will be prompted before ms_send_email runs.'
-      );
-    } else if (autoApprove) {
-      console.info('🔐 MATIMO_AUTO_APPROVE=true — high-risk operations will be auto-approved.');
-    } else {
-      console.info(
-        `🔐 MATIMO_APPROVED_PATTERNS="${approvedPatterns}" — matching operations auto-approved.`
-      );
-    }
+    console.info(
+      approvedPatterns
+        ? `🔐 MATIMO_APPROVED_PATTERNS="${approvedPatterns}" — matching operations are pre-approved; others prompt.`
+        : '🔐 Interactive approval enabled — you will be prompted before ms_send_email runs.'
+    );
 
     console.info('\n📬 Loading Microsoft Graph tools...');
     const matimoTools = matimo.listTools();

@@ -1,23 +1,26 @@
 #!/usr/bin/env node
 
 import 'dotenv/config';
-import { MatimoInstance, getGlobalApprovalHandler, type ApprovalRequest } from '@matimo/core';
+import { MatimoInstance, type ApprovalRequest } from '@matimo/core';
 import * as readline from 'readline';
 
 /**
  * GitHub Tool Example with Destructive Operation Approval Flow
  *
- * This example demonstrates the NEW GENERIC approval system:
+ * This example demonstrates per-call approval:
  * 1. Loading GitHub tools via Matimo
  * 2. Executing read-only operations (no approval needed)
  * 3. Attempting destructive operations (requires approval)
- * 4. Human-in-the-loop approval with interactive callback
+ * 4. Human-in-the-loop approval with an `onApproval` callback
  *
- * NEW Approval Flow (Generic for ALL tools):
- * - Tool contains destructive keywords (CREATE, DELETE, DROP, UPDATE, MERGE, etc.)
- * - Check MATIMO_AUTO_APPROVE=true (auto-approve all)
- * - Check MATIMO_APPROVED_PATTERNS (pre-approved patterns)
- * - Or call single generic approval callback for interactive approval
+ * Approval flow (the same for every tool):
+ * - A call needs approval when the tool declares `requires_approval: true`
+ *   (every GitHub write tool does), when it is an HTTP DELETE or command tool
+ *   without `requires_approval: false`, or when its SQL/command contains a
+ *   destructive keyword.
+ * - Tools matching MATIMO_APPROVED_PATTERNS are pre-approved.
+ * - Otherwise the `onApproval` callback passed to MatimoInstance.init()
+ *   decides. With no callback the call is rejected.
  *
  * Setup:
  * ------
@@ -25,10 +28,10 @@ import * as readline from 'readline';
  *    export GITHUB_TOKEN=\"ghp_xxxx...\"
  *
  * 2. Run the example (interactive mode - you'll be prompted):
- *    pnpm github-with-approval
+ *    pnpm github:approval
  *
- * 3. Or auto-approve in CI:
- *    export MATIMO_AUTO_APPROVE=true && pnpm github-with-approval
+ * 3. Or pre-approve the tools you trust, for CI:
+ *    MATIMO_APPROVED_PATTERNS="github-create-issue" pnpm github:approval
  */
 
 // Interactive approval callback for GitHub operations
@@ -44,9 +47,7 @@ function createApprovalCallback() {
 
     if (!isInteractive) {
       console.info('\n❌ REJECTED - Non-interactive environment (no terminal)');
-      console.info('\n💡 To enable auto-approval in CI/scripts:');
-      console.info('   export MATIMO_AUTO_APPROVE=true');
-      console.info('\n💡 Or approve specific patterns:');
+      console.info('\n💡 To pre-approve this tool in CI/scripts:');
       console.info('   export MATIMO_APPROVED_PATTERNS="github-*"');
       console.info('\n' + '='.repeat(70) + '\n');
       return false;
@@ -93,28 +94,22 @@ async function main() {
     console.info('   2. Set the environment variable:');
     console.info('      export GITHUB_TOKEN="ghp_xxxx..."');
     console.info('   3. Run this example again:');
-    console.info('      pnpm github-with-approval\n');
+    console.info('      pnpm github:approval\n');
     process.exit(1);
   }
 
   // Initialize Matimo with GitHub tools
   const matimo = await MatimoInstance.init({
     autoDiscover: true,
+    // Decides every call that needs approval, for this instance only.
+    onApproval: createApprovalCallback(),
   });
 
-  // Configure approval handler
-  const approvalHandler = getGlobalApprovalHandler();
-  approvalHandler.setApprovalCallback(createApprovalCallback());
-
   // Show current approval mode
-  const autoApproveEnabled = process.env.MATIMO_AUTO_APPROVE === 'true';
   const approvedPatterns = process.env.MATIMO_APPROVED_PATTERNS;
 
   console.info('\n🔐 APPROVAL CONFIGURATION:');
-  if (autoApproveEnabled) {
-    console.info('   ✅ MATIMO_AUTO_APPROVE=true');
-    console.info('   → All destructive operations will be AUTO-APPROVED');
-  } else if (approvedPatterns) {
+  if (approvedPatterns) {
     console.info(`   ✅ MATIMO_APPROVED_PATTERNS="${approvedPatterns}"`);
     console.info('   → Matching operations will be auto-approved');
   } else {
@@ -189,22 +184,18 @@ async function main() {
     console.info('   1. Read-only operations (list, get, search) execute immediately');
     console.info('   2. Destructive operations (create, delete, merge, update, add)');
     console.info('      are detected and require approval before execution');
-    console.info('   3. Approval is controlled by environment or interactive callback:');
+    console.info('   3. Approval comes from pre-approved patterns or the onApproval callback:');
 
     console.info('\n🔐 Supported Approval Modes:');
-    console.info('   • MATIMO_AUTO_APPROVE=true     → Approve all destructive operations');
     console.info(
       '   • MATIMO_APPROVED_PATTERNS     → Approve only matching tool names (glob pattern)'
     );
-    console.info('   • Interactive (no env vars)    → Prompt user for each operation');
+    console.info('   • onApproval callback          → Prompt user for each other operation');
 
     console.info('\n💡 How to Use:');
-    console.info('   1. Interactive (default):     pnpm github-with-approval');
+    console.info('   1. Interactive (default):     pnpm github:approval');
     console.info(
-      '   2. Auto-approve in CI:         MATIMO_AUTO_APPROVE=true pnpm github-with-approval'
-    );
-    console.info(
-      '   3. Pre-approved patterns:      MATIMO_APPROVED_PATTERNS="github-*" pnpm github-with-approval'
+      '   2. Pre-approved patterns:      MATIMO_APPROVED_PATTERNS="github-create-issue" pnpm github:approval'
     );
 
     console.info('\n✅ Read-Only Examples Completed Successfully!');

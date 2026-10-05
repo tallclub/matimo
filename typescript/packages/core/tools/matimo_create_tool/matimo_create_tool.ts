@@ -8,7 +8,7 @@ import {
   getTierForTool,
   getGlobalMatimoLogger,
 } from '@matimo/core';
-import type { Violation } from '@matimo/core';
+import type { Violation, FunctionToolContext } from '@matimo/core';
 
 interface CreateParams {
   name: string;
@@ -24,10 +24,10 @@ interface CreateResult {
   riskLevel?: string;
   status?: string;
   /** Signals what approval state the tool is in after creation.
-   * - `pending`: requires human approval before execution (untrusted source, non-trivial risk)
-   * - `auto-approved`: low-risk read-only GET tool, can be used immediately
-   * - `approved`: manually approved (set externally by matimo_approve_tool)
-   * - `rejected`: policy blocked the tool
+   * - `pending`: a new tool is always a draft, which runs only after a reviewer
+   *   approves it with matimo_approve_tool and the tools reload
+   * - `auto-approved`, `approved`, `rejected`: reported later by
+   *   matimo_get_tool_status, never by creation
    */
   approvalState?: 'pending' | 'auto-approved' | 'approved' | 'rejected';
   message: string;
@@ -38,6 +38,7 @@ const UNSAFE_NAME_PATTERN = /[/\\]|\.\.|[\x00-\x1f]/;
 
 export default async function matimoCreateTool(
   params: CreateParams,
+  context?: FunctionToolContext,
 ): Promise<CreateResult> {
   const logger = getGlobalMatimoLogger();
   const targetDir = params.target_dir || './matimo-tools';
@@ -68,6 +69,13 @@ export default async function matimoCreateTool(
   parsed.name = params.name;
   parsed.requires_approval = true;
   parsed.status = 'draft';
+  // Record the creating agent (from the host-supplied policy context) so
+  // matimo_approve_tool can refuse to let it approve its own tool. Never
+  // taken from the YAML: an agent could otherwise name someone else.
+  delete parsed.created_by;
+  if (context?.policyContext?.agentId) {
+    parsed.created_by = context.policyContext.agentId;
+  }
 
   // Step 4: Validate against schema
   const yamlStr = yaml.dump(parsed);
@@ -94,7 +102,8 @@ export default async function matimoCreateTool(
   // Step 6: Classify risk + tier
   const riskLevel = classifyRisk(tool);
   const tier = getTierForTool(tool);
-  const approvalState: CreateResult['approvalState'] = tier === 'auto' ? 'auto-approved' : 'pending';
+  // Every created tool is a draft, and a draft runs only once it is approved.
+  const approvalState: CreateResult['approvalState'] = 'pending';
 
   // Step 7: Write to disk
   const toolDirPath = path.resolve(targetDir, params.name);
@@ -122,9 +131,9 @@ export default async function matimoCreateTool(
   });
 
   const message =
-    approvalState === 'auto-approved'
-      ? 'Tool created and auto-approved (low-risk read-only). Ready for use.'
-      : 'Tool created as draft. Requires approval before execution. Use matimo_approve_tool to promote.';
+    tier === 'auto'
+      ? 'Tool created as a draft (low risk, read-only). It runs after a reviewer approves it with matimo_approve_tool and the tools reload.'
+      : 'Tool created as a draft. It runs after a reviewer approves it with matimo_approve_tool and the tools reload.';
 
   return {
     success: true,

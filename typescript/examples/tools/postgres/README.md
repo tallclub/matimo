@@ -133,33 +133,28 @@ pnpm tsx examples/tools/postgres/postgres-with-approval.ts
 
 ### CI/Automated Mode
 
-For automated environments or CI pipelines, enable auto-approval:
+Approval is decided per tool name, not per SQL statement. For automated
+environments or CI pipelines, pre-approve the tool by name:
 
 ```bash
-export MATIMO_SQL_AUTO_APPROVE=true
+export MATIMO_APPROVED_PATTERNS="postgres-execute-sql"
 pnpm tsx examples/tools/postgres/postgres-with-approval.ts
 ```
 
-### Permanent Approval Patterns
-
-Define SQL patterns that are permanently approved:
-
-```bash
-export MATIMO_SQL_APPROVED_PATTERNS="DELETE FROM logs|DROP TABLE test_.*|TRUNCATE.*"
-pnpm tsx examples/tools/postgres/postgres-with-approval.ts
-```
+`MATIMO_APPROVED_PATTERNS` takes comma-separated tool names and `*` globs. Every
+other call that needs approval goes to the `onApproval` callback passed to
+`MatimoInstance.init()`; with no callback it is rejected.
 
 ## Destructive SQL Detection
 
-The Postgres tool automatically detects and requires approval for these operations:
-- `CREATE` - Create tables, indexes, etc.
-- `DROP` - Drop tables, indexes, etc.
-- `ALTER` - Alter tables, columns, etc.
-- `TRUNCATE` - Truncate tables
-- `DELETE` - Delete rows
-- `UPDATE` - Update rows
+Matimo asks for approval when the `sql` parameter contains any of these keywords
+(from `packages/core/destructive-keywords.yaml`): `CREATE`, `DELETE`, `DROP`,
+`ALTER`, `TRUNCATE`, `UPDATE`, `INSERT`, `UPSERT`, `REPLACE`, `MERGE`, `GRANT`,
+`REVOKE`.
 
-**SELECT, INSERT (without parameter templating), and other read-only operations are not flagged as destructive.**
+The check is a case-insensitive substring match on the whole statement, so a
+`SELECT` that mentions one of them — for example a `created_at` column — asks
+for approval too. A plain `SELECT` with none of them runs without asking.
 
 ## Troubleshooting
 

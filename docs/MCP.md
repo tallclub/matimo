@@ -24,12 +24,13 @@ Expose your Matimo tools to AI assistants via the [Model Context Protocol](https
   - [Docker](#docker)
 - [Secret Management](#secret-management)
 - [Tool Filtering](#tool-filtering)
-- [Approval-Required Tools](#approval-required-tools)
+- [Approval over MCP](#approval-over-mcp)
+- [Tool Metadata & Error Responses](#tool-metadata--error-responses)
 - [Programmatic Usage](#programmatic-usage)
 - [Architecture](#architecture)
 - [Troubleshooting](#troubleshooting)
-  - [TypeScript](#troubleshootingtypescript)
-  - [Python](#troubleshootingpython)
+  - [TypeScript](#troubleshooting)
+  - [Python](#troubleshooting-python)
 
 ---
 
@@ -43,7 +44,8 @@ Expose your Matimo tools to AI assistants via the [Model Context Protocol](https
 | Stdio transport (Claude Desktop) | ✅ | ✅ |
 | HTTP transport (remote / Docker) | ✅ | ✅ |
 | Auth parameter filtering | ✅ | ✅ |
-| `_matimo_approved` approval gating | ✅ | ✅ |
+| Approval via MCP elicitation (`_matimo_approved` only with `trustClientApproval`) | ✅ | ✅ |
+| `context` option — policy context (agent id, roles) for every MCP call | ✅ | ✅ |
 | Pre-resolved secrets (memory storage) | ✅ | ✅ |
 | Skill resources (MCP resources/list) | ✅ | ✅ |
 | Bearer token auth (HTTP) | ✅ | ✅ |
@@ -59,7 +61,7 @@ Both have identical capabilities and security features. Choose based on your lan
 
 **Implementation details:**
 - **TypeScript:** `typescript/packages/core/mcp/` — see [mcp-server.ts](https://github.com/tallclub/matimo/blob/main/typescript/packages/core/src/mcp/mcp-server.ts)
-- **Python:** `python/packages/core/src/matimo/mcp/` — see [README.md](../../python/packages/core/src/matimo/mcp/README.md)
+- **Python:** `python/packages/core/src/matimo/mcp/` — see [README.md](../python/packages/core/src/matimo/mcp/README.md)
 
 ---
 
@@ -590,25 +592,24 @@ if __name__ == "__main__":
     asyncio.run(main())
 ```
 
-#### Feature Parity Verification (v0.1.0-alpha.14)
+#### Tools discovered per package
 
-| Aspect | TypeScript | Python | Test Result |
-|--------|-----------|--------|------------|
-| Entry points discovery | ✅ | ✅ | ✅ IDENTICAL |
-| Filesystem scan | ✅ | ✅ | ✅ IDENTICAL |
-| Slack tools discovered | 16 | 16 | ✅ IDENTICAL |
-| GitHub tools discovered | 22 | 22 | ✅ IDENTICAL |
-| Gmail tools discovered | 5 | 5 | ✅ IDENTICAL |
-| Notion tools discovered | 7 | 7 | ✅ IDENTICAL |
-| Postgres tools discovered | 1 | 1 | ✅ IDENTICAL |
-| Twilio tools discovered | 4 | 4 | ✅ IDENTICAL |
-| HubSpot tools discovered | 50 | 50 | ✅ IDENTICAL |
-| Mailchimp tools discovered | 7 | 7 | ✅ IDENTICAL |
-| Core tools built-in | 136 | 136 | ✅ IDENTICAL |
-| Custom tools (example: PostgreSQL DBA) | 7 | 7 | ✅ IDENTICAL |
-| **Total tools on discovery** | **248** | **248** | **✅ 100% PARITY** |
+Both SDKs discover the same tool definitions from each installed package (counted from the YAML definitions shipped in 0.2.0):
 
-**Tested configuration:** Both `python/examples/mcp/` and `typescript/examples/mcp/` with all `@matimo/*`/`matimo-*` packages installed + TypeScript example tools.
+| Package | TypeScript | Python |
+|---------|-----------:|-------:|
+| core (built-in tools and meta-tools) | 24 | 24 |
+| slack | 16 | 16 |
+| github | 22 | 22 |
+| gmail | 6 | 6 |
+| notion | 7 | 7 |
+| postgres | 1 | 1 |
+| twilio | 4 | 4 |
+| hubspot | 50 | 50 |
+| mailchimp | 7 | 7 |
+| microsoft | 9 | 9 |
+
+The server lists only the packages installed in its environment, plus any `toolPaths` you pass.
 
 ---
 
@@ -918,15 +919,63 @@ npx matimo mcp --tools slack_send_channel_message,slack_delete_message --exclude
 
 ---
 
-## Approval-Required Tools
+## Approval over MCP
 
-Tools with `requires_approval: true` in their YAML definition are gated for safety:
+An MCP server is usually driven by a model, so the model must never be able to approve its own calls. When a call needs approval — the tool declares `requires_approval: true`, it is an HTTP `DELETE` or a command tool (the 0.2.0 secure default), or a `sql`/`command` argument contains a destructive keyword ([details](api-reference/APPROVAL-SYSTEM.md)) — Matimo asks the **person using the client**:
 
-1. First call → server returns an error explaining approval is required
-2. Client re-invokes with `_matimo_approved: true` in the arguments
-3. Second call → tool executes normally
+1. The server sends an MCP **elicitation** request to the client: the tool name, its description and the arguments, with a single yes/no field.
+2. The client shows it to its user, and the call runs only if they accept.
+3. A client that does not support elicitation gets an error result saying there is no one to ask — never a hint that the model could approve the call itself.
 
-This prevents accidental destructive operations (deletes, drops, etc.).
+Options for clients without elicitation:
+
+| Option | Effect |
+|--------|--------|
+| `MATIMO_APPROVED_PATTERNS="get_*,list_*"` on the server | Matching tools never ask |
+| `trustClientApproval: true` (`trust_client_approval=True`) | Tools that need approval advertise an optional `_matimo_approved` argument, and a call with `_matimo_approved: true` counts as approved. Only for clients that confirm every call with their user themselves — the argument comes from the client and model. |
+
+`context` (`PolicyContext`) sets the identity and roles every call from this server is checked with — for example `{ agentId: 'claude-desktop', roles: ['admin'] }` on a single-user local server, so that user can approve agent-written tools with `matimo_approve_tool`. Without it, calls carry no roles. The model cannot set this context; it comes only from the server's options. See [Where roles come from](api-reference/POLICY_AND_LIFECYCLE.md#where-roles-come-from).
+
+`trustClientApproval` and `context` are programmatic options (below); the `matimo mcp` CLI does not set them.
+
+---
+
+## Tool Metadata & Error Responses
+
+### Standard MCP annotations
+
+Every tool Matimo registers over MCP carries the protocol's standard [tool annotations](https://modelcontextprotocol.io/specification/2025-06-18/server/tools#annotations) — `readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint` — plus a humanized `title` (`slack_get_channel_history` → `"Slack Get Channel History"`). Clients that understand these hints (Claude Desktop, Cursor, etc.) can use them to decide when to prompt a user before invoking a tool, independent of Matimo's own policy gate.
+
+Annotations are derived from `execution.type` and HTTP method, not from the aggregate policy risk tier — the two can diverge (a GET and a DELETE tool can share a risk tier while having opposite `readOnlyHint`/`destructiveHint`):
+
+| Execution | `readOnlyHint` | `destructiveHint` | `idempotentHint` | `openWorldHint` |
+| --- | --- | --- | --- | --- |
+| `type: function` / `type: command` | `false` | `true` | `false` | `true` |
+| HTTP `GET` | `true` | `false` | `true` | `true` |
+| HTTP `PUT` | `false` | `false` | `true` | `true` |
+| HTTP `DELETE` | `false` | `true` | `true` | `true` |
+| HTTP `POST` / `PATCH` / other | `false` | `false` | `false` | `true` |
+
+A tool with `requires_approval: true` always gets `destructiveHint: true`, regardless of the table above.
+
+### Structured error responses
+
+Failed tool calls return `isError: true` with a `structuredContent` field carrying machine-readable error data, instead of only a freeform error string:
+
+```json
+{
+  "content": [{ "type": "text", "text": "Error: Rate limit exceeded" }],
+  "isError": true,
+  "structuredContent": {
+    "code": "RATE_LIMIT_EXCEEDED",
+    "statusCode": 429,
+    "retryable": true,
+    "message": "Rate limit exceeded"
+  }
+}
+```
+
+This applies uniformly to every error path: a thrown `MatimoError` (its `code`/`details.statusCode`/`details.retryable` map directly), any other exception (`code: "UNKNOWN_ERROR"`), and an approval-rejection response (`code: "EXECUTION_FAILED"`) — so a client can always branch on `structuredContent.code` rather than parsing the text. See the [Error Codes Reference](./api-reference/ERRORS.md) for the full code list and what `retryable` means for each.
 
 ---
 
@@ -985,6 +1034,14 @@ await server.stop();
 | `certPath` | `string` | | Path to TLS certificate PEM |
 | `keyPath` | `string` | | Path to TLS private key PEM |
 | `secretResolver` | `SecretResolverChainConfig` | env-only | Secret resolver chain config |
+| `skillPaths` | `string[]` | none | Skill directories, exposed as `skills://<name>` resources |
+| `policyConfig` | `PolicyConfig` | defaults | Policy for the server's instance |
+| `untrustedPaths` | `string[]` | none | Directories whose tools must pass the content rules |
+| `approvalSecret` / `approvalDir` | `string` | env / cwd | Where `matimo_approve_tool` approvals are signed and stored |
+| `trustClientApproval` | `boolean` | `false` | Accept `_matimo_approved: true` from the client ([Approval over MCP](#approval-over-mcp)) |
+| `context` | `PolicyContext` | none | Identity and roles applied to every call |
+
+Python's `MCPServerOptions` has the same options in snake_case. Two defaults differ: `port` is `3100` and `auto_discover` is `False` in Python.
 
 ---
 
@@ -1017,7 +1074,11 @@ Tool Call Flow:
       → Auth injection (from process.env)
       → Executor (HTTP / Command / Function)
       → Validate response against output_schema
+      → Response-size guardrail (truncates oversized results — see Tool Execution Flow in
+        docs/architecture/OVERVIEW.md)
       → Return as MCP content
+        (errors return isError: true + structuredContent — see Tool Metadata & Error
+        Responses above)
 ```
 
 ### Python Implementation Details
@@ -1030,11 +1091,13 @@ The Python MCP implementation mirrors TypeScript with full feature parity:
 |-----------|-----------|--------|---------|
 | Core server | `MCPServer` | `MCPServer` | Wraps Matimo instance, registers MCP handlers |
 | Auth filtering | `isAuthParameter()` | `_is_auth_parameter()` | Strips secrets from schemas |
-| Approval gating | `toolToMcpRegistration()` | `tool_to_mcp_registration()` | Adds `_matimo_approved` parameter |
+| Approval | `createElicitationApprovalCallback()` | `create_elicitation_approval_callback()` | Asks the client's user via elicitation; `_matimo_approved` only with `trustClientApproval` |
 | Secret resolution | `seedEnvironmentSecrets()` | `_seed_environment_secrets()` | Pre-resolves at startup, stores in memory |
 | Skill resources | `registerSkillResources()` | `_register_skill_resources()` | Registers skills as MCP resources |
 | HTTP transport | `StreamableHTTPServerTransport` | `StreamableHTTPSessionManager` | Stateless HTTP with bearer auth, CORS |
 | Stdio transport | `StdioServerTransport` | `stdio_server()` | JSON-RPC over pipe for Claude Desktop |
+| Tool annotations | `deriveToolAnnotations()` | `derive_tool_annotations()` | readOnlyHint/destructiveHint/idempotentHint/openWorldHint |
+| Structured errors | `structuredContent` in `registerTool()` catch block | `_build_error_result()` | code/statusCode/retryable/message on every error path, incl. a generic-exception catch-all |
 
 #### Auto-Discovery Implementation
 
@@ -1066,7 +1129,7 @@ The Python MCP implementation mirrors TypeScript with full feature parity:
 3. **Secret storage:** Both store in memory **after resolution**, never written back to process env — Python uses `dict[str, str]`, TypeScript uses `Record<string, string>`
 4. **Test coverage:** Both at 95%+ — 995 Python tests, 2001 TypeScript tests
 
-For full implementation details, see [python/packages/core/src/matimo/mcp/README.md](../../python/packages/core/src/matimo/mcp/README.md).
+For full implementation details, see [python/packages/core/src/matimo/mcp/README.md](../python/packages/core/src/matimo/mcp/README.md).
 
 ---
 
@@ -1107,7 +1170,7 @@ npm install @matimo/core @matimo/cli @matimo/slack
 
 #### "Tool requires approval"
 
-The tool has `requires_approval: true`. The MCP client must re-invoke with `_matimo_approved: true` in the arguments. This is by design for destructive operations.
+The call needs a person's approval and the client cannot ask one (it does not support MCP elicitation). Use a client that supports elicitation, pre-approve the tool on the server with `MATIMO_APPROVED_PATTERNS`, or — only if the client confirms every call with its user — start the server with `trustClientApproval: true`. See [Approval over MCP](#approval-over-mcp).
 
 #### Self-signed certificate fails to generate
 

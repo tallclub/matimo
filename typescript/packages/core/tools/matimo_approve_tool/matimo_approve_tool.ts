@@ -6,8 +6,9 @@ import {
   validateToolContent,
   ApprovalManifest,
   getGlobalMatimoLogger,
+  getGlobalMatimoInstance,
 } from '@matimo/core';
-import type { Violation } from '@matimo/core';
+import type { Violation, FunctionToolContext } from '@matimo/core';
 
 interface ApproveParams {
   name: string;
@@ -26,7 +27,7 @@ const UNSAFE_NAME_PATTERN = /[/\\]|\.\.|[\x00-\x1f]/;
 
 export default async function matimoApproveTool(
   params: ApproveParams,
-  context?: { credentials?: Record<string, string> }
+  context?: FunctionToolContext
 ): Promise<ApproveResult> {
   const logger = getGlobalMatimoLogger();
   const toolDir = params.tool_dir || './matimo-tools';
@@ -42,6 +43,20 @@ export default async function matimoApproveTool(
     };
   }
 
+  // When the host identifies the caller, only an admin may approve. The policy
+  // context comes from the host (execute(..., { context }) or the MCP server's
+  // `context` option), never from the agent, so an agent cannot grant itself
+  // the role. Without any context, the human who must confirm this call
+  // (requires_approval, which nothing can pre-approve) is the approver.
+  const caller = context?.policyContext;
+  if (caller && !caller.roles?.includes('admin')) {
+    return {
+      success: false,
+      message:
+        "Approving a tool requires the admin role. The host grants it with execute(..., { context: { roles: ['admin'] } }) or the MCP server's context option.",
+    };
+  }
+
   // Step 1: Read tool definition
   const defPath = path.join(toolDir, params.name, 'definition.yaml');
   if (!fs.existsSync(defPath)) {
@@ -49,6 +64,20 @@ export default async function matimoApproveTool(
   }
 
   const yamlContent = fs.readFileSync(defPath, 'utf-8');
+
+  // An agent may not approve a tool it created itself (matimo_create_tool
+  // records the creating agent as created_by).
+  const createdBy = (yaml.load(yamlContent) as Record<string, unknown> | null)?.created_by;
+  if (
+    typeof createdBy === 'string' &&
+    caller?.agentId !== undefined &&
+    createdBy === caller.agentId
+  ) {
+    return {
+      success: false,
+      message: `Tool "${params.name}" was created by ${createdBy}; someone other than its creator must approve it.`,
+    };
+  }
 
   // Step 2: Parse and validate
   let tool;
@@ -83,8 +112,9 @@ export default async function matimoApproveTool(
   // ever match the tool's own post-approval file — approvals would silently
   // never validate.
   const finalContent = fs.readFileSync(defPath, 'utf-8');
-  const approvalDir = path.resolve(toolDir);
-  const manifest = new ApprovalManifest(approvalDir, context?.credentials?.MATIMO_APPROVAL_SECRET);
+  const manifest =
+    ownerApprovalManifest() ??
+    new ApprovalManifest(path.resolve(toolDir), context?.credentials?.MATIMO_APPROVAL_SECRET);
 
   const hash = manifest.computeHash(finalContent);
   manifest.approve(params.name, hash);
@@ -102,4 +132,18 @@ export default async function matimoApproveTool(
     approvedAt: approval?.approvedAt,
     message: 'Tool approved. Effective after reload or immediately if auto-reload is active.',
   };
+}
+
+/**
+ * The approval manifest of the instance that owns this call. Recording the
+ * approval there means the instance's next reload sees it, signed with the
+ * same secret and stored where that instance looks; a manifest of our own
+ * would sign with a different ephemeral secret when none is configured.
+ */
+function ownerApprovalManifest(): ApprovalManifest | null {
+  try {
+    return getGlobalMatimoInstance().getApprovalManifest();
+  } catch {
+    return null;
+  }
 }

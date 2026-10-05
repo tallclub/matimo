@@ -63,7 +63,8 @@ execution:
       });
 
       // safe-tool uses command executor, so execute it
-      const result = await matimo.execute('safe-tool', {});
+      // command tools need per-call approval by default; this test is not about that
+      const result = await matimo.execute('safe-tool', {}, { approved: true });
       expect(result).toBeDefined();
     });
 
@@ -90,9 +91,11 @@ execution:
         onHITL,
       });
 
-      // This tool should execute fine since it's trusted (loaded from toolPaths)
-      const result = await matimo.execute('rejected-tool', {});
-      expect(result).toBeDefined();
+      // A command tool is high risk, which is at or above the default HITL
+      // threshold (medium) — trusted or not, a rejecting reviewer blocks it.
+      await expect(matimo.execute('rejected-tool', {})).rejects.toThrow(
+        /quarantined and was not approved/
+      );
     });
 
     it('should reject quarantined tools when no HITL callback is set (fail-closed)', async () => {
@@ -152,7 +155,8 @@ execution:
         return true;
       });
 
-      const result = await matimo.execute('post-init-tool', {});
+      // command tools need per-call approval by default; this test is not about that
+      const result = await matimo.execute('post-init-tool', {}, { approved: true });
       expect(result).toBeDefined();
     });
 
@@ -180,9 +184,10 @@ execution:
       // Clear the callback
       matimo.setHITLCallback(null);
 
-      // Tool should still execute since it's trusted
-      const result = await matimo.execute('clear-callback-tool', {});
-      expect(result).toBeDefined();
+      // With no callback left, the quarantined command tool fails closed
+      await expect(matimo.execute('clear-callback-tool', {})).rejects.toThrow(
+        /quarantined and was not approved/
+      );
     });
   });
 

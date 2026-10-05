@@ -54,6 +54,7 @@ load_dotenv(Path(__file__).parent.parent.parent / ".env")
 
 from matimo import (  # noqa: E402
     ApprovalManifest,
+    ApprovalRequest,
     DefaultPolicyEngine,
     Matimo,
     MCPServer,
@@ -61,7 +62,6 @@ from matimo import (  # noqa: E402
     ToolIntegrityTracker,
     classify_risk,
     convert_tools_to_langchain,
-    get_global_approval_handler,
     set_global_matimo_instance,
 )
 from matimo.core.models import PolicyContext  # noqa: E402
@@ -129,10 +129,10 @@ async def _next_stdin_line(prompt: str) -> str:
         return "n"
 
 
-async def interactive_approval(request: dict[str, Any]) -> bool:
-    tool_name = request.get("tool_name", "")
-    description = request.get("description", "N/A") or "N/A"
-    params = request.get("params", {}) or {}
+async def interactive_approval(request: ApprovalRequest) -> bool:
+    tool_name = request.tool_name
+    description = request.description or "N/A"
+    params = request.params or {}
 
     if tool_name in approved_whitelist:
         print(f"    {PASS}  Auto-approved (whitelisted): {tool_name}")
@@ -408,13 +408,14 @@ async def main() -> None:
             log_level="silent",
             untrusted_paths=[temp_dir],
             on_event=lambda event: audit_log.append(event),
+            # Human-in-the-loop: calls to tools with requires_approval: true
+            # prompt in the terminal before they run.
+            on_approval=interactive_approval,
         )
         set_global_matimo_instance(matimo)
         print(f"    {INFO} untrustedPaths: [{temp_dir}]")
 
-        approval_handler = get_global_approval_handler()
-        approval_handler.set_approval_callback(interactive_approval)
-        result("Interactive terminal approval callback installed", PASS)
+        result("Interactive terminal approval callback installed (on_approval)", PASS)
         print(f"    {INFO} Tools with requires_approval will prompt for human consent.")
 
         tools = matimo.list_tools()

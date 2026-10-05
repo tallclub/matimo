@@ -6,9 +6,11 @@ POSTGRESQL TOOLS — HUMAN-IN-THE-LOOP APPROVAL
 
 PATTERN: LangChain ReAct Agent with approval gate for write SQL
 ────────────────────────────────────────────────────────────────────────────
-The LLM suggests SQL queries. Before any INSERT/UPDATE/DELETE/DROP/TRUNCATE
-is executed, the user must explicitly approve it. Read-only queries (SELECT)
-run automatically.
+The LLM suggests SQL queries. Before any statement containing a destructive
+keyword (INSERT, UPDATE, DELETE, DROP, TRUNCATE, ALTER, CREATE, ...) runs, the
+user must explicitly approve it. Matimo itself scans the `sql` parameter and
+sends those calls to the `on_approval` callback passed to Matimo.init();
+read-only queries run without asking.
 
 Use this pattern when:
   ✅ The LLM is generating SQL autonomously
@@ -24,7 +26,6 @@ USAGE:
 
 import asyncio
 import os
-import re
 import sys
 from pathlib import Path
 
@@ -33,23 +34,31 @@ from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langchain_openai import ChatOpenAI
 from matimo_postgres import get_tools_path
 
-from matimo import Matimo
+from matimo import ApprovalCallback, ApprovalRequest, Matimo
 from matimo.integrations.langchain import convert_tools_to_langchain
 
 load_dotenv(Path(__file__).parent.parent.parent / ".env")
 
-# SQL keywords that indicate mutations
-WRITE_PATTERN = re.compile(
-    r"\b(INSERT|UPDATE|DELETE|DROP|TRUNCATE|ALTER|CREATE|REPLACE)\b",
-    re.IGNORECASE,
-)
-
 DEFAULT_TASK = "List all tables and their row counts, then add a test record to the 'logs' table if it exists."
 
 
-def is_write_query(args: dict) -> bool:
-    query = args.get("query", "")
-    return bool(WRITE_PATTERN.search(query))
+def make_approval_callback(auto_approve: bool) -> ApprovalCallback:
+    """Matimo calls this before every statement with a destructive keyword."""
+
+    async def approve(request: ApprovalRequest) -> bool:
+        print(f"    🔴  Write query needs approval: {request.params.get('sql')}")
+        if auto_approve:
+            print("    ✅  Auto-approved")
+            return True
+        try:
+            answer = input("    ⚠️   Execute? [y/N] ")
+        except EOFError:
+            answer = ""
+        approved = answer.strip().lower() == "y"
+        print("    ✅  Approved" if approved else "    🚫  Declined — not executed")
+        return approved
+
+    return approve
 
 
 async def run(task: str, auto_approve: bool = False) -> None:
@@ -67,7 +76,9 @@ async def run(task: str, auto_approve: bool = False) -> None:
         print("❌  PostgreSQL credentials not set in .env")
         sys.exit(1)
 
-    matimo = await Matimo.init(get_tools_path())
+    matimo = await Matimo.init(
+        get_tools_path(), on_approval=make_approval_callback(auto_approve)
+    )
     provider_tools = [t for t in matimo.list_tools() if t.name.startswith("postgres")]
     lc_tools = convert_tools_to_langchain(provider_tools, matimo)
     tool_map = {t.name: t for t in lc_tools}
@@ -91,32 +102,14 @@ async def run(task: str, auto_approve: bool = False) -> None:
         for call in response.tool_calls:
             tool_name = call["name"]
             tool_args = call["args"]
-            write = is_write_query(tool_args)
-
-            print(f"\n{'🔴' if write else '🔵'}  Tool: {tool_name}")
-            print(f"    SQL: {tool_args.get('query', tool_args)}")
-
-            if write:
-                if auto_approve:
-                    print("    ✅  Auto-approved")
-                    approved = True
-                else:
-                    try:
-                        answer = input("    ⚠️   Write query detected. Execute? [y/N] ").strip().lower()
-                        approved = answer == "y"
-                    except EOFError:
-                        approved = False
-
-                if not approved:
-                    result = "Query declined by user — not executed."
-                    print(f"    🚫  {result}")
-                    messages.append(ToolMessage(content=result, tool_call_id=call["id"]))
-                    continue
+            print(f"\n🔵  Tool: {tool_name}")
+            print(f"    SQL: {tool_args.get('sql', tool_args)}")
 
             lc_tool = tool_map.get(tool_name)
             try:
                 result = await lc_tool.ainvoke(tool_args) if lc_tool else f"Tool not found: {tool_name}"
             except Exception as exc:
+                # A declined approval comes back as "Error: ..." text; this catches anything else.
                 result = f"Error: {exc}"
             print(f"    → {str(result)[:200]}")
             messages.append(ToolMessage(content=str(result), tool_call_id=call["id"]))

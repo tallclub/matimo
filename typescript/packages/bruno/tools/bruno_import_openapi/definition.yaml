@@ -2,6 +2,7 @@ name: bruno_import_openapi
 description: Bootstrap a new Bruno collection from an OpenAPI 3.0 specification (YAML or JSON). Enables agents to auto-generate test collections from API specs without manual setup.
 version: '1.0.0'
 status: approved
+risk: medium
 
 parameters:
   spec_source:

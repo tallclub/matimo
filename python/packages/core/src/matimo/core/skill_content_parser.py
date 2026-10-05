@@ -11,6 +11,7 @@ from __future__ import annotations
 import math
 import re
 from dataclasses import dataclass, field
+from typing import Any
 
 from matimo.core.models import SkillContentOptions, SkillSection
 
@@ -71,8 +72,8 @@ def parse_skill_sections(body: str) -> ParsedSkillContent:
     index: dict[str, SkillSection] = {}
 
     # Gather raw segments
-    segments: list[dict] = []
-    current: dict | None = None
+    segments: list[dict[str, Any]] = []
+    current: dict[str, Any] | None = None
     preamble_lines: list[str] = []
     in_code_block = False
 
@@ -203,14 +204,32 @@ def extract_skill_content(
                     parts.append(rendered)
                     current_tokens += tokens
     else:
-        # Include all sections
-        for section in parsed.sections:
-            rendered = render_section(section, 1)
+        # Include all sections in document order (pre-order tree walk),
+        # respecting max_depth and max_tokens per individual section rather
+        # than per top-level subtree. render_section() always renders a
+        # section's full nested subtree as one blob — budgeting at that
+        # granularity means a skill with a single top-level heading wrapping
+        # everything is all-or-nothing: any max_tokens below the total
+        # silently returns no content at all instead of a truncated prefix.
+        def walk(section: SkillSection, depth: int) -> bool:
+            nonlocal current_tokens
+            hashes = "#" * section.level
+            rendered = f"{hashes} {section.heading}\n\n{section.content}"
             tokens = _estimate_tokens(rendered)
-            if within_budget(tokens):
-                parts.append(rendered)
-                current_tokens += tokens
-            else:
+            if not within_budget(tokens):
+                return False  # budget exhausted — stop the whole walk
+
+            parts.append(rendered)
+            current_tokens += tokens
+
+            if options.max_depth is None or depth < options.max_depth:
+                for child in section.children:
+                    if not walk(child, depth + 1):
+                        return False
+            return True
+
+        for section in parsed.sections:
+            if not walk(section, 1):
                 break
 
     return "\n\n".join(parts)

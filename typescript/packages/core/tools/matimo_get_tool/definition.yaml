@@ -1,5 +1,6 @@
 name: matimo_get_tool
 version: '1.0.0'
+risk: low
 description: Retrieve the full definition of a tool — raw YAML content and parsed fields. Use before editing or cloning a tool.
 requires_approval: false
 tags:

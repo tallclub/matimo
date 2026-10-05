@@ -39,7 +39,7 @@ class HubspotService:
     async def create_contact(self, email: str, firstname: str = "", lastname: str = ""):
         ...
 
-    @tool("hubspot-get-companies")
+    @tool("hubspot-list-companies")
     async def get_companies(self, limit: int = 10):
         ...
 

@@ -1,17 +1,34 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { getGlobalMatimoInstance } from '@matimo/core';
 import matimoCreateSkill from '../../../tools/matimo_create_skill/matimo_create_skill';
+
+jest.mock('@matimo/core', () => {
+  const actual = jest.requireActual('@matimo/core');
+  return {
+    ...actual,
+    getGlobalMatimoInstance: jest.fn(actual.getGlobalMatimoInstance),
+  };
+});
+
+const mockGetInstance = getGlobalMatimoInstance as jest.MockedFunction<
+  typeof getGlobalMatimoInstance
+>;
 
 describe('matimo_create_skill', () => {
   let tmpDir: string;
 
   beforeEach(() => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'matimo-create-skill-'));
+    mockGetInstance.mockImplementation(() => {
+      throw new Error('Global MatimoInstance not set.');
+    });
   });
 
   afterEach(() => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
+    jest.resetAllMocks();
   });
 
   it('should create a valid skill on disk', async () => {
@@ -216,5 +233,107 @@ Use pdfplumber to extract text from PDFs.
 
     expect(result.success).toBe(false);
     expect(result.message).toContain('lowercase');
+  });
+
+  describe('global MatimoInstance integration', () => {
+    const content = `---
+name: instance-integration
+description: Skill used to test global instance integration
+---
+
+# Instance Integration
+`;
+
+    it('should fall back to the default target_dir when no global instance is set', async () => {
+      const originalCwd = process.cwd();
+      process.chdir(tmpDir);
+      try {
+        const result = await matimoCreateSkill({ name: 'instance-integration', content });
+
+        expect(result.success).toBe(true);
+        expect(result.path).toBe(
+          path.resolve('./matimo-tools/skills', 'instance-integration', 'SKILL.md')
+        );
+      } finally {
+        process.chdir(originalCwd);
+      }
+    });
+
+    it('should use the instance defaultSkillWriteDir when target_dir is not passed', async () => {
+      mockGetInstance.mockReturnValue({
+        getDefaultSkillWriteDir: () => tmpDir,
+        notifySkillCreated: jest.fn(),
+      } as unknown as ReturnType<typeof getGlobalMatimoInstance>);
+
+      const result = await matimoCreateSkill({ name: 'instance-integration', content });
+
+      expect(result.success).toBe(true);
+      expect(result.path).toBe(path.join(tmpDir, 'instance-integration', 'SKILL.md'));
+    });
+
+    it('should prefer an explicit target_dir over the instance default', async () => {
+      const otherDir = fs.mkdtempSync(path.join(os.tmpdir(), 'matimo-create-skill-other-'));
+      mockGetInstance.mockReturnValue({
+        getDefaultSkillWriteDir: () => otherDir,
+        notifySkillCreated: jest.fn(),
+      } as unknown as ReturnType<typeof getGlobalMatimoInstance>);
+
+      const result = await matimoCreateSkill({
+        name: 'instance-integration',
+        content,
+        target_dir: tmpDir,
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.path).toBe(path.join(tmpDir, 'instance-integration', 'SKILL.md'));
+
+      fs.rmSync(otherDir, { recursive: true, force: true });
+    });
+
+    it('should notify the instance of skill creation on success', async () => {
+      const notifySkillCreated = jest.fn();
+      mockGetInstance.mockReturnValue({
+        getDefaultSkillWriteDir: () => undefined,
+        notifySkillCreated,
+      } as unknown as ReturnType<typeof getGlobalMatimoInstance>);
+
+      await matimoCreateSkill({ name: 'instance-integration', content, target_dir: tmpDir });
+
+      expect(notifySkillCreated).toHaveBeenCalledWith('instance-integration', 'user');
+    });
+
+    it('should not notify the instance when skill creation fails', async () => {
+      const notifySkillCreated = jest.fn();
+      mockGetInstance.mockReturnValue({
+        getDefaultSkillWriteDir: () => undefined,
+        notifySkillCreated,
+      } as unknown as ReturnType<typeof getGlobalMatimoInstance>);
+
+      const result = await matimoCreateSkill({
+        name: 'bad-name-fail',
+        content: '---\nname: mismatch\ndescription: test\n---\n# Content',
+        target_dir: tmpDir,
+      });
+
+      expect(result.success).toBe(false);
+      expect(notifySkillCreated).not.toHaveBeenCalled();
+    });
+
+    it('should tolerate notifySkillCreated throwing', async () => {
+      mockGetInstance.mockReturnValue({
+        getDefaultSkillWriteDir: () => undefined,
+        notifySkillCreated: () => {
+          throw new Error('handler exploded');
+        },
+      } as unknown as ReturnType<typeof getGlobalMatimoInstance>);
+
+      const result = await matimoCreateSkill({
+        name: 'instance-integration',
+        content,
+        target_dir: tmpDir,
+      });
+
+      expect(result.success).toBe(true);
+    });
   });
 });

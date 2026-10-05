@@ -75,6 +75,9 @@ await matimo.execute('calculator', { operation: 'add', a: 1, b: 2 });
 - **`matimo_list_skills`** - List skills in a directory with name, description, and path
 - **`matimo_get_skill`** - Read a skill's full content by name for agent context
 - **`matimo_validate_skill`** - Validate a skill against the Agent Skills specification
+- **`matimo_search_skills`** - Semantically rank skills by relevance to a query (TF-IDF)
+- **`matimo_get_skill_sections`** - Inventory a skill's sections and token costs without loading it
+- **`matimo_get_skill_content`** - Load only specific sections of a skill (token-efficient)
 
 All core tools use **function-based execution** (not shell commands) for better performance and reliability.
 
@@ -178,9 +181,14 @@ try {
 
 **Error codes:**
 - `INVALID_SCHEMA` - Tool definition or parameters invalid
-- `EXECUTION_FAILED` - Tool execution failed (network, timeout, etc.)
-- `AUTH_FAILED` - Authentication/authorization error
+- `EXECUTION_FAILED` - HTTP error other than 401/403/429 (e.g. 400, 404, 500) or a command/function failure
+- `AUTH_FAILED` - Authentication/authorization error, including a live 401/403 response
+- `RATE_LIMIT_EXCEEDED` - HTTP 429 from the target API
+- `TIMEOUT` - Request exceeded the tool's `execution.timeout`
+- `NETWORK_ERROR` - Connection-level failure with no HTTP response at all (DNS, connection refused)
 - `TOOL_NOT_FOUND` - Tool not found in registry
+
+HTTP-sourced errors also carry `details.retryable` (`true` for 429, 5xx, timeouts, and network failures) — see the [Error Codes Reference](../../../docs/api-reference/ERRORS.md) for the complete list.
 
 **Error chaining:**
 The optional `cause` field preserves the original error for debugging:
@@ -285,10 +293,11 @@ execution:
 });
 
 // 2. Approve - re-validates, signs HMAC, updates status to approved
-await matimo.execute('matimo_approve_tool', {
-  name: 'city_lookup',
-  tool_dir: './agent-tools',
-});
+await matimo.execute(
+  'matimo_approve_tool',
+  { name: 'city_lookup', tool_dir: './agent-tools' },
+  { context: { agentId: 'reviewer', roles: ['admin'] } } // approving needs the admin role
+);
 
 // 3. Reload - clears registry, re-reads YAML, re-validates untrusted tools
 await matimo.execute('matimo_reload_tools', {});
@@ -303,27 +312,27 @@ See the full reference: [docs/api-reference/META_TOOLS.md](../../../docs/api-ref
 
 ## ✅ Approval System
 
-Tools with `requires_approval: true` require human confirmation before execution:
+Some calls wait for a person: tools with `requires_approval: true`, HTTP `DELETE` and `type: command` tools (the 0.2.0 secure default, unless the YAML says `requires_approval: false`), and calls whose `sql`/`command` argument contains a destructive keyword. Each instance has its own reviewer; with none, those calls are refused:
 
 ```typescript
-import { getGlobalApprovalHandler } from 'matimo';
+import { MatimoInstance } from 'matimo';
 
-// Interactive terminal approval
-getGlobalApprovalHandler().setApprovalCallback(async (request) => {
-  console.log(`Tool: ${request.toolName}`);
-  console.log(`Params: ${JSON.stringify(request.params)}`);
-  // return true to approve, false to reject
-  return await promptUser('Approve? (y/n)');
+const matimo = await MatimoInstance.init({
+  autoDiscover: true,
+  onApproval: async (request) => {
+    console.log(`Tool: ${request.toolName}`);
+    console.log(`Params: ${JSON.stringify(request.params)}`);
+    return await promptUser('Approve? (y/n)'); // true to approve, false to reject
+  },
 });
 
-// Auto-approve (CI/CD only)
-process.env.MATIMO_AUTO_APPROVE = 'true';
-
-// Pre-approved patterns
-process.env.MATIMO_APPROVED_PATTERNS = 'calculator,weather_*';
+// Or for a single call
+await matimo.execute('delete_post', { id: 1 }, { onApproval: async () => userConfirmed });
 ```
 
-**MCP approval:** MCP clients pass `_matimo_approved: true` in arguments for tools that require approval.
+Tools that are always safe in your setting can skip the question: `MATIMO_APPROVED_PATTERNS="calculator,weather_*"`. `governanceMode: 'legacy'` restores the pre-0.2.0 defaults while you migrate.
+
+**MCP approval:** the MCP server asks the client's user through MCP elicitation. `_matimo_approved: true` in the arguments only counts when the server runs with `trustClientApproval: true`.
 
 See: [docs/api-reference/APPROVAL-SYSTEM.md](../../../docs/api-reference/APPROVAL-SYSTEM.md)
 
@@ -368,6 +377,11 @@ All tool execution includes automatic validation:
 - Function executor validates return value against `output_schema` (for HTTP tools)
 - Invalid responses/returns throw `MatimoError(EXECUTION_FAILED)`
 - Zod provides detailed validation error messages
+
+**Response Size Guardrail:**
+- Every `execute()` call caps the result to an effective byte budget before returning it — this is the one choke point every execution path (direct SDK, LangChain, CrewAI, MCP) funnels through
+- Precedence: this tool's `output_schema.max_response_size` > the instance's `defaultMaxResponseSize` (`MatimoInstance.init()` option) > a built-in 256 KB default
+- Oversized results are truncated, not rejected — arrays/strings/objects each get a size-aware truncation strategy with an explicit marker, never a silent drop
 
 **Example (core `execute` tool):**
 ```yaml

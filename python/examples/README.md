@@ -24,10 +24,16 @@ make slack-factory
 make bruno-complete
 
 # 5. Run an advanced native demo (needs OPENAI_API_KEY)
-make policy-demo
-make skills-demo
+make policy
+make skills
 make meta-flow
-make logger-example    # No API key needed
+
+# 6. Governance and skills demos (no API key needed)
+make approval-modes
+make audit-log
+make response-size
+make skills-registry
+make logger-example
 ```
 
 ---
@@ -40,6 +46,7 @@ Examples are organized into three framework groups plus a set of advanced native
 |-------|---------|-------------|
 | **native/** | Factory & Decorator | Simple scripts, CLIs, class-based agents - no LLM required |
 | **native/policy/**, **native/skills/**, **native/meta_flow/** | Advanced LangChain ReAct demos | Full-featured policy, skills, and meta-tool lifecycle walkthroughs |
+| **native/policy/\*_demo.py**, **native/skills/skills_registry_demo.py** | Plain SDK scripts, no LLM | Approval modes, audit log, response-size guardrail, skills registry |
 | **langchain/** | LangChain ReAct | LLM-driven agents - model decides which tools to call |
 | **crewai/** | CrewAI | Multi-agent workflows with role-based crews |
 | **bruno/** | Bruno CLI testing | API collection lifecycle - create, run, inspect, import (no LLM needed for complete workflow) |
@@ -70,13 +77,17 @@ examples/
 │   │   └── credentials_example.py       ← Per-call credential overrides
 │   │
 │   ├── policy/
-│   │   └── policy_demo.py      ← 11-mission policy + HITL lifecycle demo ✅
+│   │   ├── policy_demo.py      ← 11-mission policy + HITL lifecycle demo ✅
+│   │   ├── approval_modes_demo.py  ← who approves, secure vs legacy, HITL (no API key)
+│   │   ├── audit_log_demo.py       ← hash-chained JSONL audit log (no API key)
+│   │   └── response_size_demo.py   ← response-size guardrail (no API key)
 │   │       # Covers: PolicyEngine, risk classification, draft/deprecated/blocked
 │   │       # tools, content validator, approval workflows, hot-reload atomicity,
 │   │       # programmatic policy checks, access control
 │   │
 │   ├── skills/
-│   │   └── skills_demo.py      ← 6-mission skills lifecycle demo ✅
+│   │   ├── skills_demo.py      ← 6-mission skills lifecycle demo ✅
+│   │   └── skills_registry_demo.py ← register, mount, sections, prompt context (no API key)
 │   │       # Covers: create SKILL.md via agent, list/read skills, apply guidelines,
 │   │       # validate skills, get_skills_metadata(), semantic_search_skills(),
 │   │       # build_relevant_skill_prompt() - progressive disclosure L1/L2
@@ -282,13 +293,26 @@ Phase 4 (no agent): `Matimo.init(skill_paths=[...])` → `get_skills_metadata()`
 
 | Mission | What it shows |
 |---------|--------------|
-| 1 | `weather_fetch` - safe HTTP GET: doctor → create → review → reload → execute |
+| 1 | `weather_fetch` - safe HTTP GET: validate → create → reload → you approve → reload |
 | 2 | `shell_exec` - command type blocked by policy (expect WARN) |
 | 3 | `file_reader` - `cat` command blocked by policy (expect WARN) |
 | 4 | `user_lookup` + `github_stars` - two safe tools, full lifecycle |
 | 5 | List all created tools, execute one |
 
 Phase 3 closes with disk verification (`definition.yaml` exists per tool) and a mission results table.
+
+### Governance demos (no API key needed)
+
+Plain SDK scripts that write throwaway tools to a temp directory, so they run anywhere. Each mirrors a TypeScript example in `typescript/examples/tools/policy/` or `skills/`.
+
+| Script | What it shows |
+|--------|---------------|
+| `native/policy/approval_modes_demo.py` | Which tools ask on every call (`definition_requires_approval`, secure vs legacy); no callback fails closed; instance vs per-call `on_approval`; `requires_approval: false`; `governance_mode="legacy"`; HITL quarantine with `hitl_min_risk_level`; a function tool reading `context.policy_context` |
+| `native/policy/audit_log_demo.py` | `on_event` + `audit_sink=JsonlFileSink(...)`; `tool:executed`, `tool:execution_failed`, `tool:approval_granted`/`_denied`; `verify_audit_log()` before and after an edit; a reopened sink continuing the chain; `redact_secrets()` |
+| `native/policy/response_size_demo.py` | `default_max_response_size` vs `output_schema.max_response_size`; how a list result is cut down with a truncation marker |
+| `native/skills/skills_registry_demo.py` | `register_skill()`, `add_skill_path()` + `reload_skills()`, `get_skill_sections()`, `get_skill_content(SkillContentOptions(sections=...))`, `build_skill_prompt_context()`, `default_skill_write_dir` and the `skill:created` event |
+
+The policy demos call the public JSONPlaceholder test API, which only pretends to delete.
 
 ### `native/logger_example.py` - Structured Logging
 
@@ -315,10 +339,16 @@ make bruno-complete    # 7 tools × 6 workflows (no API key needed)
 make bruno-crewai      # CrewAI agent driving Bruno tools (needs OPENAI_API_KEY)
 
 # ── Advanced Native Demos (requires OPENAI_API_KEY) ──
-make policy-demo       # Policy + HITL lifecycle (11 missions)
-make skills-demo       # Skills lifecycle + progressive disclosure (6 missions)
-make meta-flow         # Meta-tools lifecycle (5 missions)
-make logger-example    # Structured logging (no API key needed)
+make policy           # Policy + HITL lifecycle (11 missions)
+make skills           # Skills lifecycle + progressive disclosure (6 missions)
+make meta-flow        # Meta-tools lifecycle (5 missions)
+
+# ── Governance and skills demos (no API key needed) ──
+make approval-modes   # Who approves, secure vs legacy mode, HITL, policy context
+make audit-log        # Hash-chained JSONL audit log, verify_audit_log, redact_secrets
+make response-size    # Response-size guardrail and truncation marker
+make skills-registry  # register_skill, add_skill_path, sections, prompt context
+make logger-example   # Structured logging
 
 # ── Generic Framework Agents ──
 make agent-langchain   # Multi-provider LangChain ReAct agent

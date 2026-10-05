@@ -340,22 +340,22 @@ For detailed API documentation:
 
 ## 🔒 Approval System
 
-Destructive operations (update, delete) require approval before execution. Configure approval handling programmatically:
+Update (`PATCH`) and delete tools declare `requires_approval: true`, so each call waits for a reviewer. Give the instance one; without it those calls are refused:
 
 ```typescript
-import { getGlobalApprovalHandler } from '@matimo/core';
+import { MatimoInstance } from '@matimo/core';
 
-// Set approval callback
-getGlobalApprovalHandler().setApprovalCallback(async ({ toolName, params }) => {
-  console.log(`Approval required for: ${toolName}`);
-  console.log('Parameters:', params);
-  // Return true to approve, false to deny
-  return true;
+const matimo = await MatimoInstance.init({
+  autoDiscover: true,
+  onApproval: async ({ toolName, params }) => {
+    console.log(`Approval required for: ${toolName}`);
+    console.log('Parameters:', params);
+    return await confirmWithUser(); // true to approve, false to deny
+  },
 });
 
-// Optional: Control auto-approval via environment variables
-// MATIMO_AUTO_APPROVE=true (approve all)
-// MATIMO_APPROVED_PATTERNS=hubspot-update-contact,hubspot-delete-* (approve by pattern)
+// Optional: tools that never ask, by pattern
+// MATIMO_APPROVED_PATTERNS=hubspot-update-contact
 ```
 
 Tools marked with 🔒 will request approval before executing.

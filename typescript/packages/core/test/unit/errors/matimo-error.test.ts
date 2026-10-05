@@ -110,6 +110,7 @@ describe('MatimoError', () => {
       expect(error.details?.statusCode).toBe(404);
       expect(error.details?.details).toEqual({ error: 'Not found' });
       expect(error.details?.originalError).toBe('Request failed');
+      expect(error.details?.retryable).toBe(false);
     });
 
     it('should use default message', () => {
@@ -118,23 +119,93 @@ describe('MatimoError', () => {
       expect(error.message).toBe('HTTP request failed');
     });
 
-    it('should default to 500 status when not provided', () => {
-      const httpError = { message: 'error' };
+    it('should default to 500 status when a response is present with no status', () => {
+      const httpError = { message: 'error', response: {} };
       const error = fromHttpError(httpError);
       expect(error.details?.statusCode).toBe(500);
+      expect(error.code).toBe(ErrorCode.EXECUTION_FAILED);
+      expect(error.details?.retryable).toBe(true);
     });
 
-    it('should handle missing response', () => {
+    it('should classify a missing response as a network-level error, not a fake 500', () => {
+      // No `response` field at all — this is not an HTTP status error, it's a
+      // network/transport failure, so `statusCode` is intentionally absent
+      // rather than faked as 500.
       const httpError = { message: 'Network error' };
       const error = fromHttpError(httpError);
-      expect(error.details?.statusCode).toBe(500);
+      expect(error.details?.statusCode).toBeUndefined();
+      expect(error.code).toBe(ErrorCode.UNKNOWN_ERROR);
       expect(error.details?.originalError).toBe('Network error');
     });
 
-    it('should handle undefined error input', () => {
+    it('should handle undefined error input as an unknown error', () => {
       const error = fromHttpError(undefined);
-      expect(error.details?.statusCode).toBe(500);
+      expect(error.code).toBe(ErrorCode.UNKNOWN_ERROR);
+      expect(error.details?.statusCode).toBeUndefined();
       expect(error.details?.originalError).toBe('');
+    });
+
+    it('should map 401 responses to AUTH_FAILED', () => {
+      const httpError = { response: { status: 401, data: { error: 'unauthorized' } } };
+      const error = fromHttpError(httpError);
+      expect(error.code).toBe(ErrorCode.AUTH_FAILED);
+      expect(error.details?.retryable).toBe(false);
+    });
+
+    it('should map 403 responses to AUTH_FAILED', () => {
+      const httpError = { response: { status: 403 } };
+      const error = fromHttpError(httpError);
+      expect(error.code).toBe(ErrorCode.AUTH_FAILED);
+    });
+
+    it('should map 429 responses to RATE_LIMIT_EXCEEDED and mark retryable', () => {
+      const httpError = { response: { status: 429 } };
+      const error = fromHttpError(httpError);
+      expect(error.code).toBe(ErrorCode.RATE_LIMIT_EXCEEDED);
+      expect(error.details?.retryable).toBe(true);
+    });
+
+    it('should mark 5xx responses retryable but keep them EXECUTION_FAILED', () => {
+      const httpError = { response: { status: 503 } };
+      const error = fromHttpError(httpError);
+      expect(error.code).toBe(ErrorCode.EXECUTION_FAILED);
+      expect(error.details?.retryable).toBe(true);
+    });
+
+    it('should map ECONNABORTED (axios timeout) to TIMEOUT and mark retryable', () => {
+      const httpError = {
+        isAxiosError: true,
+        code: 'ECONNABORTED',
+        message: 'timeout of 5000ms exceeded',
+      };
+      const error = fromHttpError(httpError);
+      expect(error.code).toBe(ErrorCode.TIMEOUT);
+      expect(error.details?.retryable).toBe(true);
+    });
+
+    it('should map ETIMEDOUT to TIMEOUT', () => {
+      const httpError = { code: 'ETIMEDOUT', message: 'connect ETIMEDOUT' };
+      const error = fromHttpError(httpError);
+      expect(error.code).toBe(ErrorCode.TIMEOUT);
+    });
+
+    it('should map other axios errors with no response to NETWORK_ERROR', () => {
+      const httpError = { isAxiosError: true, message: 'Network Error' };
+      const error = fromHttpError(httpError);
+      expect(error.code).toBe(ErrorCode.NETWORK_ERROR);
+      expect(error.details?.retryable).toBe(true);
+    });
+
+    it('should map a Node error code with no response to NETWORK_ERROR', () => {
+      const httpError = { code: 'ECONNREFUSED', message: 'connect ECONNREFUSED' };
+      const error = fromHttpError(httpError);
+      expect(error.code).toBe(ErrorCode.NETWORK_ERROR);
+    });
+
+    it('should classify a plain non-axios error with no response as UNKNOWN_ERROR', () => {
+      const error = fromHttpError(new Error('Something odd happened'));
+      expect(error.code).toBe(ErrorCode.UNKNOWN_ERROR);
+      expect(error.details?.retryable).toBe(false);
     });
 
     it('should not include details when undefined', () => {

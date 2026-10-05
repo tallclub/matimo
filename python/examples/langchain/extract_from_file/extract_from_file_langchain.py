@@ -24,7 +24,6 @@ SETUP:
 
 USAGE:
 ────────────────────────────────────────────────────────────────────────────
-  export MATIMO_AUTO_APPROVE=true
   uv run python langchain/extract_from_file/extract_from_file_langchain.py
 
 ============================================================================
@@ -39,14 +38,26 @@ from dotenv import load_dotenv
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langchain_openai import ChatOpenAI
 
-from matimo import Matimo
+from matimo import ApprovalRequest, Matimo
 from matimo.integrations.langchain import convert_tools_to_langchain
 
 load_dotenv(Path(__file__).parent.parent.parent / ".env")
 
+
+async def approve(request: ApprovalRequest) -> bool:
+    """Ask in the terminal before any tool call that needs approval."""
+    print(f"\n🔒  Approval required — {request.tool_name}: {request.params}")
+    if not sys.stdin.isatty():
+        print(
+            "    ❌  Rejected: no terminal. Pre-approve with "
+            f'MATIMO_APPROVED_PATTERNS="{request.tool_name}"'
+        )
+        return False
+    return input("    Approve? [y/N] ").strip().lower() in ("y", "yes")
+
+
 DEFAULT_TASK = (
-    "Extract the contents of the CSV file created alongside this script "
-    "(sample-report.csv, in the same directory) and tell me how many data "
+    "Extract the contents of the CSV file {file} and tell me how many data "
     "rows and columns it has."
 )
 
@@ -63,7 +74,7 @@ async def main(task: str) -> None:
 
     # ── 1. Initialize Matimo ──────────────────────────────────────────────────
     print("🚀  Initializing Matimo…")
-    matimo = await Matimo.init(auto_discover=True)
+    matimo = await Matimo.init(auto_discover=True, on_approval=approve)
 
     extract_tool = None
     for t in matimo.list_tools():
@@ -80,6 +91,7 @@ async def main(task: str) -> None:
     # ── 2. Create a sample CSV for the agent to extract from ─────────────────
     sample_file = Path(__file__).parent / "sample-report.csv"
     sample_file.write_text("quarter,revenue,region\nQ1,120000,EMEA\nQ2,138000,EMEA\nQ3,151000,APAC\n")
+    task = task.replace("{file}", str(sample_file))
 
     try:
         # ── 3. Convert to LangChain StructuredTools ───────────────────────────

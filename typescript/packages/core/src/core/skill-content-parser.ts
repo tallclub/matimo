@@ -289,16 +289,33 @@ export function extractSkillContent(
       }
     }
   } else {
-    // Include all sections (respecting maxDepth and maxTokens)
-    for (const section of parsed.sections) {
-      const rendered = renderSection(section, 1);
+    // Include all sections in document order (pre-order tree walk),
+    // respecting maxDepth and maxTokens per individual section rather than
+    // per top-level subtree. renderSection() always renders a section's full
+    // nested subtree as one blob — budgeting at that granularity means a
+    // skill with a single top-level heading wrapping everything is
+    // all-or-nothing: any maxTokens below the total silently returns no
+    // content at all instead of a truncated prefix.
+    const walk = (section: SkillSection, depth: number): boolean => {
+      const hashes = '#'.repeat(section.level);
+      const rendered = `${hashes} ${section.heading}\n\n${section.content}`;
       const tokens = estimateTokens(rendered);
-      if (withinBudget(tokens)) {
-        parts.push(rendered);
-        currentTokens += tokens;
-      } else {
-        break; // Stop adding sections once we exceed budget
+      if (!withinBudget(tokens)) {
+        return false; // budget exhausted — stop the whole walk
       }
+      parts.push(rendered);
+      currentTokens += tokens;
+
+      if (maxDepth === undefined || depth < maxDepth) {
+        for (const child of section.children) {
+          if (!walk(child, depth + 1)) return false;
+        }
+      }
+      return true;
+    };
+
+    for (const section of parsed.sections) {
+      if (!walk(section, 1)) break;
     }
   }
 
