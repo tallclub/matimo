@@ -29,8 +29,8 @@
     "tsx": "^4.23.15"
   },
   "devDependencies": {
-    "@types/node": "^25.9.9",
-    "typescript": "^5.9.3"
+    "@types/node": "^26.6.4",
+    "typescript": "^7.0.2"
   },
   "peerDependencies": {
     "matimo": "workspace:*"

@@ -17,6 +17,6 @@
     "@matimo/core": "workspace:*",
     "@types/js-yaml": "^4.0.9",
     "axios": "^1.20.0",
-    "js-yaml": "^4.3.2"
+    "js-yaml": "^5.4.3"
   }
 }
