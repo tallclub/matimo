@@ -15,6 +15,7 @@ from docx import Document
 from pypdf import PdfReader
 
 from matimo.errors import ErrorCode, MatimoError
+from matimo.policy.file_roots import enforce_file_roots
 from matimo.policy.ssrf import is_blocked_url, ssrf_event_hooks
 
 SUPPORTED_FORMATS = ("pdf", "docx", "txt", "csv")
@@ -26,7 +27,7 @@ def _resolve_local_path(file_path: str) -> Path:
     """Expand ~ and resolve relative paths, mirroring the `read` core tool."""
     if file_path.startswith("~"):
         file_path = str(Path.home()) + file_path[1:]
-    return Path(file_path).resolve()
+    return enforce_file_roots(Path(file_path).resolve())
 
 
 def _extension_format(name: str) -> str | None:

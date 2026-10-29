@@ -4,11 +4,13 @@ from __future__ import annotations
 import time
 from pathlib import Path
 
+from matimo.policy.file_roots import enforce_file_roots
+
 
 def _resolve(file_path: str) -> Path:
     if file_path.startswith("~"):
         file_path = str(Path.home()) + file_path[1:]
-    return Path(file_path).resolve()
+    return enforce_file_roots(Path(file_path).resolve())
 
 
 async def run(params: dict) -> dict:  # type: ignore[type-arg]

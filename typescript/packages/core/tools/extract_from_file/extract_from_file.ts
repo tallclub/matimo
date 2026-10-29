@@ -16,6 +16,7 @@ import {
   ssrfHttpAgent,
   ssrfHttpsAgent,
   ssrfBeforeRedirect,
+  resolveToolPath,
 } from '@matimo/core/runtime';
 
 /** Unparseable URLs are refused here: this tool is about to fetch them. */
@@ -61,10 +62,7 @@ interface ExtractFromFileResult {
  * Mirrors the resolution logic used by the `read` core tool.
  */
 function resolveLocalPath(filePath: string): string {
-  if (filePath.startsWith('~')) {
-    return path.join(process.env.HOME || '/', filePath.slice(1));
-  }
-  return path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath);
+  return resolveToolPath(filePath);
 }
 
 /** Detect a supported format from a file name's extension. */
