@@ -937,36 +937,36 @@ class TestRunHttpAsgiHandler:
         assert response_start["status"] == 200
 
     async def test_unknown_path_returns_404(self) -> None:
-        app, _ = await _make_asgi_app()
+        app, _ = await _make_asgi_app(mcp_token="test-token")
         sends: list[dict] = []
 
         async def send(m: dict) -> None:
             sends.append(m)
 
-        scope: dict = {"type": "http", "method": "GET", "path": "/unknown", "headers": []}
+        scope: dict = {"type": "http", "method": "GET", "path": "/unknown", "headers": [(b"authorization", b"Bearer test-token")]}
         await app(scope, AsyncMock(return_value={}), send)
         response_start = next(m for m in sends if m["type"] == "http.response.start")
         assert response_start["status"] == 404
 
     async def test_mcp_path_forwarded_to_session_manager(self) -> None:
-        app, mock_sm = await _make_asgi_app()
+        app, mock_sm = await _make_asgi_app(mcp_token="test-token")
         sends: list[dict] = []
 
         async def send(m: dict) -> None:
             sends.append(m)
 
-        scope: dict = {"type": "http", "method": "POST", "path": "/mcp", "headers": []}
+        scope: dict = {"type": "http", "method": "POST", "path": "/mcp", "headers": [(b"authorization", b"Bearer test-token")]}
         await app(scope, AsyncMock(return_value={}), send)
         mock_sm.handle_request.assert_awaited_once()
 
     async def test_root_path_forwarded_to_session_manager(self) -> None:
-        app, mock_sm = await _make_asgi_app()
+        app, mock_sm = await _make_asgi_app(mcp_token="test-token")
         sends: list[dict] = []
 
         async def send(m: dict) -> None:
             sends.append(m)
 
-        scope: dict = {"type": "http", "method": "POST", "path": "/", "headers": []}
+        scope: dict = {"type": "http", "method": "POST", "path": "/", "headers": [(b"authorization", b"Bearer test-token")]}
         await app(scope, AsyncMock(return_value={}), send)
         mock_sm.handle_request.assert_awaited()
 

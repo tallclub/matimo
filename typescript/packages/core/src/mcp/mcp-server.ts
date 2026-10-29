@@ -38,11 +38,19 @@ interface McpResourceServer {
   ): { remove(): void };
 }
 
+const DEFAULT_HTTP_HOST = '127.0.0.1';
+const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '::1']);
+
 export interface MCPServerOptions {
   /** Transport mode. Default: 'stdio' */
   transport?: 'stdio' | 'http';
   /** HTTP port. Default: 3000. Only used in HTTP mode. */
   port?: number;
+  /**
+   * Interface to bind in HTTP mode. Default: '127.0.0.1' (loopback only). Set '0.0.0.0'
+   * (or a specific address) to accept remote connections, and then use HTTPS.
+   */
+  host?: string;
   /** Allowlist of tool names. If set, only these tools are exposed. */
   tools?: string[];
   /** Denylist of tool names. Excluded from exposure. */
@@ -765,10 +773,19 @@ export class MCPServer {
 
     const url = `${protocol}://localhost:${this.options.port}/mcp`;
 
+    const bindHost = this.options.host ?? DEFAULT_HTTP_HOST;
+    if (!LOOPBACK_HOSTS.has(bindHost) && !useHttps) {
+      logger.warn(
+        `MCP server is binding ${bindHost} over plain HTTP: the bearer token and tool traffic ` +
+          'are readable on the network. Use HTTPS or keep the default loopback host.'
+      );
+    }
+
     await new Promise<void>((resolve) => {
-      httpServer.listen(this.options.port, () => {
+      httpServer.listen(this.options.port, bindHost, () => {
         logger.info(`Matimo MCP server started (${protocol.toUpperCase()})`, {
           transport: protocol,
+          host: bindHost,
           port: this.options.port,
           tools: this.filteredTools.length,
           authenticated: true,

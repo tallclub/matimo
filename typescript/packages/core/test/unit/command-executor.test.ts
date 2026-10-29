@@ -350,4 +350,34 @@ describe('CommandExecutor', () => {
       );
     });
   });
+
+  describe('parameter placeholders', () => {
+    const run = (args: string[], params: Record<string, unknown>) =>
+      new CommandExecutor().execute(
+        {
+          name: 'tpl',
+          version: '1.0.0',
+          description: 'Test',
+          parameters: {},
+          execution: { type: 'command' as const, command: NODE, args },
+        },
+        params
+      ) as Promise<{ stdout: string; success: boolean }>;
+
+    it('substitutes every occurrence of a placeholder', async () => {
+      const result = await run(['-e', ECHO_ARGS_SCRIPT, '{who}-{who}'], { who: 'x' });
+      expect(result.stdout).toBe('x-x');
+    });
+
+    it('treats parameter keys literally, never as a regular expression', async () => {
+      // A model-chosen key such as ".*" must not match every placeholder.
+      const result = await run(['-e', ECHO_ARGS_SCRIPT, '{a}{b}'], { '.*': 'BOOM', a: '1', b: '2' });
+      expect(result.stdout).toBe('12');
+    });
+
+    it('does not interpret $ sequences in values', async () => {
+      const result = await run(['-e', ECHO_ARGS_SCRIPT, '{v}'], { v: '$&$1' });
+      expect(result.stdout).toBe('$&$1');
+    });
+  });
 });
