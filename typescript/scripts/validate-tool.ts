@@ -5,7 +5,7 @@
 
 import fs from 'fs';
 import path from 'path';
-import yaml from 'js-yaml';
+import * as yaml from 'js-yaml';
 import { fileURLToPath } from 'url';
 import { validateToolDefinition, validateProviderDefinition } from '../packages/core/src/core/schema';
 

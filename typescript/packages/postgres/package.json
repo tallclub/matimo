@@ -21,6 +21,7 @@
     "matimo": "workspace:*"
   },
   "devDependencies": {
-    "@types/pg": "^8.23.1"
+    "@types/pg": "^8.23.1",
+    "js-yaml": "^5.4.2"
   }
 }

@@ -52,9 +52,6 @@ importers:
       '@types/jest':
         specifier: ^30.0.0
         version: 30.0.0
-      '@types/js-yaml':
-        specifier: ^4.0.9
-        version: 4.0.9
       '@types/node':
         specifier: ^25.9.9
         version: 25.9.9
@@ -73,6 +70,9 @@ importers:
       jest:
         specifier: ^30.5.2
         version: 30.5.2(@types/node@25.9.9)(ts-node@10.9.2)
+      js-yaml:
+        specifier: ^5.4.2
+        version: 5.4.2
       langchain:
         specifier: ^1.5.15
         version: 1.5.15(@langchain/core@1.2.14)
@@ -464,6 +464,9 @@ importers:
       '@types/pg':
         specifier: ^8.23.1
         version: 8.23.1
+      js-yaml:
+        specifier: ^5.4.2
+        version: 5.4.2
 
   packages/slack:
     dependencies:
@@ -7480,7 +7483,6 @@ packages:
     hasBin: true
     dependencies:
       argparse: 2.0.1
-    dev: false
 
   /jscodeshift@17.4.0:
     resolution: {integrity: sha512-i3ESKiiTsGynxzTg5BhsZViD0ai72/6SsI1efDZxG6/5KCoElsmquxtyhXK5lpEgoO7MTNpYkjFEdEL97SkBNg==}
