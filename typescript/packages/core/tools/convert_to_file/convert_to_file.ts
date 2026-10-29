@@ -17,6 +17,7 @@ import { marked } from 'marked';
 import PDFDocument from 'pdfkit';
 import { Document, Packer, Paragraph, HeadingLevel } from 'docx';
 import { MatimoError, ErrorCode } from '@matimo/core';
+import { resolveToolPath } from '@matimo/core/runtime';
 
 type SourceFormat = 'json' | 'csv' | 'markdown' | 'text';
 type TargetFormat = 'pdf' | 'docx' | 'csv' | 'json' | 'txt';
@@ -66,10 +67,7 @@ interface ConvertToFileResult {
  * Mirrors the resolution logic used by the `read` / `extract_from_file` core tools.
  */
 function resolveLocalPath(filePath: string): string {
-  if (filePath.startsWith('~')) {
-    return path.join(process.env.HOME || '/', filePath.slice(1));
-  }
-  return path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath);
+  return resolveToolPath(filePath);
 }
 
 // ── CSV helpers (hand-rolled, no external dependency — mirrors extract_from_file) ──

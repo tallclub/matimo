@@ -7,6 +7,9 @@ import re
 import time
 from pathlib import Path
 
+from matimo.errors import MatimoError
+from matimo.policy.file_roots import enforce_file_roots
+
 logger = logging.getLogger("matimo")
 
 ALWAYS_EXCLUDE = {"node_modules", ".git", "dist", "build", "__pycache__", ".venv", ".mypy_cache"}
@@ -15,7 +18,7 @@ ALWAYS_EXCLUDE = {"node_modules", ".git", "dist", "build", "__pycache__", ".venv
 def _resolve_dir(directory: str) -> Path:
     if directory.startswith("~"):
         directory = str(Path.home()) + directory[1:]
-    return Path(directory).resolve()
+    return enforce_file_roots(Path(directory).resolve())
 
 
 def _matches_pattern(path: Path, file_pattern: str) -> bool:
@@ -60,6 +63,10 @@ async def run(params: dict) -> dict:  # type: ignore[type-arg]
 
     for fp in sorted(resolved_dir.rglob("*")):
         if not fp.is_file():
+            continue
+        try:
+            enforce_file_roots(fp.resolve())  # symlinks may point outside MATIMO_FILE_ROOTS
+        except MatimoError:
             continue
         rel = fp.relative_to(resolved_dir)
         if _excluded(rel, exclude_patterns):

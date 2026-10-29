@@ -8,6 +8,7 @@ import fs from 'fs';
 import path from 'path';
 import { glob } from 'glob';
 import { MatimoError, ErrorCode, getGlobalMatimoLogger } from '@matimo/core';
+import { resolveToolPath } from '@matimo/core/runtime';
 
 interface SearchMatch {
   filePath: string;
@@ -78,11 +79,7 @@ export default async function searchTool(params: SearchParams): Promise<SearchRe
   }
 
   // Resolve directory
-  const resolvedDir = directory.startsWith('~')
-    ? path.join(process.env.HOME || '/', directory.slice(1))
-    : path.isAbsolute(directory)
-    ? directory
-    : path.resolve(process.cwd(), directory);
+  const resolvedDir = resolveToolPath(directory);
 
   if (!fs.existsSync(resolvedDir)) {
     logger.error('Search tool: Directory not found', {
@@ -144,6 +141,13 @@ export default async function searchTool(params: SearchParams): Promise<SearchRe
   // Search each file
   for (const filePath of files) {
     if (matches.length >= safeMaxResults) break;
+
+    // A symlink inside the searched directory may point outside MATIMO_FILE_ROOTS.
+    try {
+      resolveToolPath(filePath);
+    } catch {
+      continue;
+    }
 
     try {
 

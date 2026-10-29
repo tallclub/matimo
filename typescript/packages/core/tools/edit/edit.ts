@@ -5,8 +5,8 @@
  */
 
 import fs from 'fs';
-import path from 'path';
 import { MatimoError, ErrorCode } from '@matimo/core';
+import { resolveToolPath } from '@matimo/core/runtime';
 
 interface EditParams {
   filePath: string;
@@ -56,11 +56,7 @@ export default async function editTool(params: EditParams): Promise<EditResult> 
   }
 
   // Resolve path
-  const resolvedPath = filePath.startsWith('~')
-    ? path.join(process.env.HOME || '/', filePath.slice(1))
-    : path.isAbsolute(filePath)
-    ? filePath
-    : path.resolve(process.cwd(), filePath);
+  const resolvedPath = resolveToolPath(filePath);
 
   // Validate file exists
   if (!fs.existsSync(resolvedPath)) {
