@@ -96,7 +96,7 @@ function result(label: string, status: string, detail?: string): void {
  * provider-package tools from the LangChain binding to stay under the cap.
  */
 function forLangChain(tools: ToolDefinition[]): ToolDefinition[] {
-  return tools.filter((t) => !/\/node_modules\/@matimo\/(?!core\/)/.test(t._definitionPath ?? ''));
+  return tools.filter((t) => !/[\\/]node_modules[\\/]@matimo[\\/](?!core[\\/])/.test(t._definitionPath ?? ''));
 }
 
 // ─── Interactive Terminal Approval ──────────────────────────────────────
