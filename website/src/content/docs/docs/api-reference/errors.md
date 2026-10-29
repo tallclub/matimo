@@ -1,5 +1,6 @@
 ---
 title: "API Error Codes Reference"
+description: "Reference for the error codes the Matimo SDK returns, what each one means and how to handle it, in TypeScript and Python."
 ---
 Complete reference of error codes returned by Matimo SDK.
 

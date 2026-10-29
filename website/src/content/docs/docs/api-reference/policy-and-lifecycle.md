@@ -1,5 +1,6 @@
 ---
 title: "Policy Engine & Tool Lifecycle Guide"
+description: "The Matimo policy engine and tool lifecycle: risk classification, security rules, human approval, the draft to approved flow, the hash-chained audit log and hot-reload."
 ---
 > Complete developer and agent guide for Matimo's policy engine, tool creation, approval flow, hot-reload, and MCP integration.
 

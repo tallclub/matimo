@@ -1,5 +1,6 @@
 ---
-title: "or"
+title: "Release Notes"
+description: "Release notes for Matimo OSS, TypeScript and Python: what changed, breaking changes, upgrade steps and known differences between the SDKs."
 ---
 ## v0.3.0 (TypeScript) - Node 22.19+ and Security Patches 
 

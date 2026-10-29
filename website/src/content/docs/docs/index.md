@@ -1,5 +1,6 @@
 ---
 title: "Matimo Documentation"
+description: "Documentation for Matimo OSS: open-source, policy-governed tool execution for AI agents, in TypeScript and Python. Quick start, API reference and guides."
 ---
 ![Matimo Logo](../../../assets/logo.png)
 

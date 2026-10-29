@@ -1,5 +1,6 @@
 ---
 title: "Bruno CLI Integration"
+description: "The @matimo/bruno and matimo-bruno provider packages: run and test Bruno API collections as Matimo tools."
 ---
 Matimo ships a first-class **Bruno CLI** provider package (`@matimo/bruno` / `matimo-bruno`) that exposes all aspects of the [Bruno](https://www.usebruno.com/) API testing lifecycle as callable Matimo tools.
 

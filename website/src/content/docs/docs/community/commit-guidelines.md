@@ -1,5 +1,6 @@
 ---
 title: "Commit Guidelines: Conventional Commits"
+description: "How to write Conventional Commits for Matimo: allowed types, scopes, examples and what the commit hooks check."
 ---
 Guidelines for writing clear, semantic commit messages.
 

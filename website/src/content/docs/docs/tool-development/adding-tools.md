@@ -1,5 +1,6 @@
 ---
 title: "Adding Tools to Matimo"
+description: "Create and publish a new @matimo/<provider> package: layout, tool definitions, tests and registration."
 ---
 Tools in Matimo are organized as **independent npm packages** in the `packages/` directory. This guide walks you through creating and publishing a new tool provider.
 

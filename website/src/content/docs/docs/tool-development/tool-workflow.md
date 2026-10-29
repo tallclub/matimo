@@ -1,5 +1,6 @@
 ---
 title: "Tool Development Workflow"
+description: "The step-by-step process for adding a tool to Matimo and submitting it, with tests and examples in both SDKs."
 ---
 The step-by-step process for adding a tool to Matimo and submitting it. Every tool ships in **both** SDKs with tests and examples. [ADDING_TOOLS.md](/docs/tool-development/adding-tools/) has the detail for each step; this page is the checklist.
 

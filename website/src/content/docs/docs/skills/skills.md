@@ -1,5 +1,6 @@
 ---
 title: "Skills System"
+description: "Skills are SKILL.md knowledge files that teach an agent how to do something. How to write, load and search them, and how agents load them on demand."
 ---
 > Complete guide to the Matimo Skills System, what skills are, how they are structured, how agents create and use them, and how they comply with the Agent Skills specification.
 

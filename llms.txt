@@ -51,6 +51,7 @@ Matimo is open source (MIT). It is designed for agent-driven use under human ove
 - [README](./README.md): full overview, installation, integration patterns, quick examples
 - [Why Matimo OSS](./docs/why-matimo.md): what it does, who it is for, how it differs from a tool library or hosted gateway, and its limits
 - [Matimo OSS 0.2.0: tool governance, on by default](./docs/blog/2026-10-01-matimo-0-2-0-tool-governance.md): what changed and why
+- [Use cases](https://matimo.dev/docs/use-cases/): [require approval for risky calls](https://matimo.dev/docs/use-cases/approve-risky-calls/), [serve tools over MCP](https://matimo.dev/docs/use-cases/serve-tools-over-mcp/), [let an agent write tools safely](https://matimo.dev/docs/use-cases/agent-writes-tools/)
 - [Getting Started, Quick Start](./docs/getting-started/QUICK_START.md): minimal working setup
 - [Getting Started, Your First Tool](./docs/getting-started/YOUR_FIRST_TOOL.md): write and register a tool
 - [SDK API Reference](./docs/api-reference/SDK.md): full SDK surface

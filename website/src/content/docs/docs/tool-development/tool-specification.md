@@ -1,5 +1,6 @@
 ---
 title: "Tool Specification: YAML Schema"
+description: "The Matimo tool YAML schema: name, parameters, execution, authentication, output and risk fields, with examples."
 ---
 Complete guide to writing Matimo tools in YAML.
 

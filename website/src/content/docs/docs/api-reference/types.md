@@ -1,5 +1,6 @@
 ---
 title: "TypeScript Type Definitions Reference"
+description: "Type definitions for the Matimo TypeScript SDK: tool definitions, parameters, execution configs, policy and audit types."
 ---
 Complete type definitions for the Matimo TypeScript SDK.
 

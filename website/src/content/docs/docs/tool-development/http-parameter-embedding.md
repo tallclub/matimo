@@ -1,5 +1,6 @@
 ---
 title: "HTTP Parameter Embedding: Core Matimo Design"
+description: "How the Matimo HTTP executor places parameters in the URL, query, headers and request body."
 ---
 > **Core Principle:** "Define once in YAML, embed correctly at execution time"
 

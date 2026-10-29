@@ -1,5 +1,6 @@
 ---
-title: "TF-IDF Semantic Search in Matimo Skills"
+title: "TF-IDF Skill Search in Matimo"
+description: "How Matimo ranks skills with TF-IDF keyword relevance: the algorithm, scoring, limits and how to plug in your own search provider."
 ---
 ## Overview
 

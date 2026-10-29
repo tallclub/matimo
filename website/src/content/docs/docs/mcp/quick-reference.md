@@ -1,5 +1,6 @@
 ---
 title: "Provider Packages with Copilot: Quick Reference"
+description: "One-page quick reference for the contributor workflow that builds a Matimo provider package with Copilot."
 ---
 One page for the contributor workflow in [SETUP_GUIDE.md](/docs/mcp/setup-guide/).
 

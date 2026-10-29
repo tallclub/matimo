@@ -1,5 +1,6 @@
 ---
 title: "Testing Tools"
+description: "Test a Matimo tool in both SDKs: validate the YAML, run it against mocked HTTP, and cover approval and error paths without calling a live API."
 ---
 How to test a Matimo tool definition in both SDKs: validate the YAML, check the definition, run it against mocked HTTP, and test the approval and error paths. Unit tests never call a live API.
 

@@ -1,5 +1,6 @@
 ---
 title: "Composio Integration"
+description: "Why and how Matimo wraps the Composio catalog: 449 governed tools across 14 toolkits in the TypeScript package @matimo/composio."
 ---
 
 # @matimo/composio: Governed Access to Composio's Tool Catalog

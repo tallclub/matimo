@@ -1,5 +1,6 @@
 ---
 title: "Building Provider Packages with Copilot and Matimo's MCP Server"
+description: "Set up VS Code Copilot Chat and the Matimo Tool Creator agent to build a provider package in both SDKs."
 ---
 This guide sets up the contributor workflow in this repository: VS Code Copilot Chat runs the **Matimo Tool Creator** agent (`.github/agents/matimo-tool-creator-refactored.agent.md`), which writes a provider package in both SDKs and checks its work with tools from Matimo's own MCP server.
 

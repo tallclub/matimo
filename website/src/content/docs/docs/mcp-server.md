@@ -1,5 +1,6 @@
 ---
 title: "Matimo MCP Server"
+description: "Serve your Matimo tools to Claude Desktop, Cursor, Windsurf or any MCP client with one command. Transports, client config, approval and security."
 ---
 Expose your Matimo tools to AI assistants via the [Model Context Protocol](https://modelcontextprotocol.io/). One command gives Claude Desktop, Cursor, Windsurf, or any MCP client access to Slack, GitHub, Gmail, Notion, HubSpot, and more.
 

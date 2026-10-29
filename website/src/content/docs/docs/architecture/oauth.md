@@ -1,5 +1,6 @@
 ---
 title: "OAuth2 and Credentials in Matimo"
+description: "How Matimo puts a credential into a tool call, and the OAuth2 helpers for getting a token, in both SDKs."
 ---
 How Matimo gets a token into a tool call, and the OAuth2 helpers it provides for obtaining one. Both SDKs work the same way; Python names are snake_case.
 

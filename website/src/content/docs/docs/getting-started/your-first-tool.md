@@ -1,5 +1,6 @@
 ---
 title: "Your First Tool: Step by Step"
+description: "Write a YAML tool, load it and run it with Matimo, step by step, in TypeScript and Python."
 ---
 Execute your first Matimo tool in 5 minutes.
 

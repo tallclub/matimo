@@ -110,7 +110,7 @@ const why = [
   ['Community tools', 'A growing set of @matimo/* provider packages.'],
   ['Agent self-extension', 'Agents build new tools at runtime, checked by policy.'],
   ['Safe by default', 'Risky tools ask first. When your host passes agent context, an agent cannot approve its own creations.'],
-  ['Open source', 'MIT licensed, with the source and tests on GitHub.'],
+  ['Open source', 'MIT licensed, with about 4,700 tests across both SDKs (2,825 TypeScript run, 1,886 Python collected, counted 2026-10-29).'],
 ];
 const cli = [
   { title: 'Environment diagnostics', cmd: 'npx matimo doctor', body: 'Checks versions, installed @matimo/* packages, missing environment variables and YAML validity.' },
@@ -126,7 +126,7 @@ const resources = [
   { title: 'Examples', body: 'Runnable LangChain, CrewAI, MCP and native examples.', href: 'https://github.com/tallclub/matimo/tree/main/typescript/examples' },
 ];
 const ready = [
-  ['Tested', 'A pre-push hook runs both test suites. TypeScript coverage floors are 95% lines, 97% functions and 87% branches; Python core must stay at 95%.'],
+  ['Tested', 'About 4,700 tests across both SDKs. A pre-push hook runs both test suites. TypeScript coverage floors are 95% lines, 97% functions and 87% branches; Python core must stay at 95%.'],
   ['Security controls', 'Secret isolation, command-injection prevention, integrity tracking and a fail-closed policy engine. No compliance certifications are held.'],
   ['153 native tools', '129 provider tools in 10 packages plus 24 core tools (15 of them meta-tools), and 449 more through Composio (TypeScript only).'],
   ['Governance built in', 'Risk tiers, quarantine, approval manifests and an audit trail you can use in a compliance review.'],
@@ -268,6 +268,10 @@ parameters:
         <a class="primary" href="/docs/getting-started/quick-start/">Quick start</a>
         <a class="secondary" href="https://github.com/tallclub/matimo">Star on GitHub</a>
       </div>
+      <p class="paths">
+        <span>Building with agents? <a href="/docs/use-cases/serve-tools-over-mcp/">Serve tools to Claude Desktop</a></span>
+        <span>Responsible for what agents can do? <a href="/docs/use-cases/approve-risky-calls/">Require approval for risky calls</a></span>
+      </p>
       <div class="install" data-install>
         <div class="tabs" role="tablist">
           <button role="tab" aria-selected="true" data-cmd="npm install matimo">npm (TypeScript)</button>
@@ -535,11 +539,10 @@ npx matimo mcp --tool-paths ./tools</code></pre>
 
     <section class="wrap cta-band">
       <h2>Ready to govern your agents' tools?</h2>
-      <p>Start in minutes, then join the community building with Matimo.</p>
+      <p>Install it, run your first tool and see the approval gate in about five minutes.</p>
       <div class="buttons">
-        <a class="primary" href="/docs/getting-started/quick-start/">Start now</a>
-        <a class="secondary" href="/docs/">Full documentation</a>
-        <a class="secondary" href="https://discord.gg/3JPt4mxWDV">Join Discord</a>
+        <a class="primary" href="/docs/getting-started/quick-start/">Quick start</a>
+        <a class="secondary" href="/docs/">Documentation</a>
       </div>
     </section>
 
@@ -614,6 +617,8 @@ npx matimo mcp --tool-paths ./tools</code></pre>
   .lede { max-width: 44rem; margin: 0 auto 2rem; color: var(--mt-muted); font-size: 1.15rem; }
   .buttons { display: flex; gap: .8rem; justify-content: center; flex-wrap: wrap; }
   .primary, .secondary { text-decoration: none; padding: .7rem 1.2rem; border-radius: 10px; font-weight: 600; }
+  .paths { display: flex; flex-wrap: wrap; justify-content: center; gap: .4rem 1.75rem; margin: 1.25rem auto 0; max-width: 46rem; font-size: .9rem; color: var(--mt-muted); }
+  .paths a { color: var(--mt-accent-hi); text-underline-offset: 3px; }
   .primary { background: var(--mt-accent-btn); color: #fff; }
   .primary:hover { background: var(--mt-accent-hi); }
   .secondary { border: 1px solid var(--mt-border); }

@@ -1,5 +1,6 @@
 ---
 title: "Troubleshooting & FAQ"
+description: "Common Matimo problems and fixes, including governance and approval behavior, installation, credentials and upgrading from 0.1.x."
 ---
 Common issues and solutions for Matimo 0.2.0 (TypeScript & Python). Upgrading from 0.1.x? Start with [Governance in 0.2.0](#governance-in-020).
 

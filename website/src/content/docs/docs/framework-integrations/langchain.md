@@ -1,5 +1,6 @@
 ---
 title: "LangChain Integration"
+description: "Convert Matimo tools to LangChain StructuredTool objects in TypeScript and Python, with the same policy and approval checks."
 ---
 Matimo integrates with LangChain for both **Python** and **TypeScript**. Both SDKs expose a single `convert_tools_to_langchain` / `convertToolsToLangChain` function that wraps any Matimo tool as a LangChain `StructuredTool`.
 

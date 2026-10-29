@@ -1,5 +1,6 @@
 ---
 title: "Provider Configuration Guide"
+description: "Configure OAuth2 provider endpoints for Matimo in YAML instead of code."
 ---
 ## Overview
 

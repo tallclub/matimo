@@ -9,7 +9,7 @@ export default defineConfig({
       plugins: [starlightLinksValidator({ errorOnRelativeLinks: false })],
       title: 'Matimo',
       description:
-        'Open-source tool governance for AI agents: risk-checked calls, human approval for risky ones, and a verifiable audit log. TypeScript and Python. MIT licensed.',
+        'Open-source tool governance for AI agents: risk-checked calls, human approval for risky ones, and a tamper-evident audit log. TypeScript and Python. MIT licensed.',
       logo: { src: './src/assets/logo.png', alt: 'Matimo' },
       favicon: '/favicon.png',
       social: [
@@ -45,6 +45,15 @@ export default defineConfig({
             { label: 'Installation', slug: 'docs/getting-started/installation' },
             { label: 'Quick start', slug: 'docs/getting-started/quick-start' },
             { label: 'Your first tool', slug: 'docs/getting-started/your-first-tool' },
+          ],
+        },
+        {
+          label: 'Use cases',
+          items: [
+            { label: 'Overview', slug: 'docs/use-cases' },
+            { label: 'Require approval for risky calls', slug: 'docs/use-cases/approve-risky-calls' },
+            { label: 'Serve tools over MCP', slug: 'docs/use-cases/serve-tools-over-mcp' },
+            { label: 'Let an agent write tools', slug: 'docs/use-cases/agent-writes-tools' },
           ],
         },
         { label: 'Guides', items: [{ autogenerate: { directory: 'docs/user-guide' } }] },

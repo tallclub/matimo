@@ -1,5 +1,6 @@
 ---
 title: "CrewAI Integration"
+description: "Convert Matimo tools to CrewAI BaseTool objects for multi-agent crews, with the same policy and approval checks."
 ---
 Matimo integrates seamlessly with **CrewAI** for multi-agent orchestration. Convert any Matimo tool to a CrewAI `BaseTool` with a single function call.
 

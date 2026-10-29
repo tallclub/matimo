@@ -1,5 +1,6 @@
 ---
 title: "System Architecture Overview"
+description: "How the Matimo monorepo is organised and how the registry, executors, policy engine and provider packages fit together."
 ---
 Understand how Matimo's monorepo structure works and how components interact.
 

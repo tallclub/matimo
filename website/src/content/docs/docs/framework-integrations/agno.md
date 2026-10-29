@@ -1,5 +1,6 @@
 ---
 title: "Agno Integration"
+description: "Use Matimo tools in Agno agents, teams and workflows (Python). Convert a tool to an Agno Function or hand an agent a governed toolkit."
 ---
 Matimo integrates with **[Agno](https://docs.agno.com)** for agents, teams and workflows. Convert any Matimo tool to an Agno `Function`, or hand an agent a whole governed toolkit with one call.
 

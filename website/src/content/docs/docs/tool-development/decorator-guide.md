@@ -1,5 +1,6 @@
 ---
 title: "Decorator Guide: Calling Tools with `@tool`"
+description: "Call Matimo tools from a class with the @tool decorator in TypeScript and Python. Tools are still defined in YAML."
 ---
 `@tool('<tool-name>')` turns a method into a call to an existing Matimo tool. The method body is ignored: calling the method runs `matimo.execute('<tool-name>', params)`, with the same policy, approval and audit checks as any other call.
 

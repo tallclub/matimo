@@ -1,5 +1,6 @@
 ---
 title: "Vercel AI SDK Integration"
+description: "Wrap Matimo tools for the Vercel AI SDK with exported helpers. Each call still goes through matimo.execute(), so policy and audit apply."
 ---
 > **Not yet implemented.** `convertToolsToVercelAI` does not exist in the current SDK, the export
 > is commented out in `typescript/packages/core/src/index.ts` and `integrations/vercel-ai.ts` was

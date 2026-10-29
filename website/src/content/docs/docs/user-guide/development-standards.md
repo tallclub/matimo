@@ -1,5 +1,6 @@
 ---
 title: "Development Standards: Code Quality Rules"
+description: "Code quality rules for contributing to Matimo, covering both the Python and TypeScript SDKs."
 ---
 Code quality standards and best practices for Matimo. Covers both **Python** and **TypeScript** SDKs.
 

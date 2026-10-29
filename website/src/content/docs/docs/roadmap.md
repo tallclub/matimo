@@ -1,5 +1,6 @@
 ---
 title: "Matimo Roadmap"
+description: "What Matimo OSS has shipped and what is planned next, with links to the release notes."
 ---
 ## Current Status
 

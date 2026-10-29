@@ -1,5 +1,6 @@
 ---
 title: "Matimo Logger Integration (TypeScript & Python)"
+description: "How Matimo logs in TypeScript (Winston) and Python (stdlib logging): structured JSON output, log levels and secret redaction."
 ---
 ## Overview
 

@@ -1,5 +1,6 @@
 ---
 title: "API Reference: Complete SDK"
+description: "Complete reference for the Matimo SDK in TypeScript and Python: initialising, executing, listing and searching tools, skills, events and options."
 ---
 Complete reference for the Matimo SDK in **TypeScript** and **Python**. For a simpler introduction, see [Quick Start](/docs/getting-started/quick-start/) or [SDK Patterns](/docs/user-guide/sdk-patterns/).
 

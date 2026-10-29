@@ -1,5 +1,6 @@
 ---
 title: "Authentication"
+description: "Give Matimo tools their credentials through environment variables, .env files, per-call overrides or OAuth2, with {NAME} placeholders in YAML."
 ---
 Tools that call an authenticated API name their credential in the YAML (for example `Authorization: 'Bearer {GITHUB_TOKEN}'`). Matimo fills it in at call time; you supply the value through the environment or per call.
 

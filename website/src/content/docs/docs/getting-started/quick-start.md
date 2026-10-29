@@ -1,5 +1,6 @@
 ---
 title: "Quick Start: 5 Minutes"
+description: "Install Matimo, run your first tool and see the approval gate in about five minutes, in TypeScript or Python."
 ---
 Get Matimo up and running in 5 minutes. Available in **TypeScript** and **Python**.
 

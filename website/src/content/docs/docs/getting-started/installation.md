@@ -1,5 +1,6 @@
 ---
 title: "Installation & Setup"
+description: "Install Matimo for TypeScript (npm, pnpm) or Python (pip), add provider packages and check your setup."
 ---
 ## Choose Your SDK
 

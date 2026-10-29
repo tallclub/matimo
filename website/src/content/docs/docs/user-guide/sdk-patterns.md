@@ -1,5 +1,6 @@
 ---
 title: "SDK Usage Patterns"
+description: "The three main ways to use the Matimo SDK, from the simple factory to decorators and framework integrations, in TypeScript and Python."
 ---
 Learn the three main ways to use Matimo SDK, from simplest to most powerful. Both **TypeScript** and **Python** SDKs support all three patterns.
 

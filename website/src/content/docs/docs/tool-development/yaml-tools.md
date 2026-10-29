@@ -1,5 +1,6 @@
 ---
 title: "YAML Tool Specification"
+description: "Write Matimo tools in YAML: HTTP and command tools, parameters, templates and validation."
 ---
 Complete guide to writing Matimo tools in YAML format.
 

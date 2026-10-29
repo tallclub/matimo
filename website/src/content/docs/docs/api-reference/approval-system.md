@@ -1,5 +1,6 @@
 ---
 title: "Approval System"
+description: "Which Matimo tool calls need a human, who answers, and how approvals are signed, remembered and expire. Covers DELETE and shell tools and approval patterns."
 ---
 Some tool calls should not run until a person says yes: deleting data, running a shell command, approving a tool an agent wrote. Matimo's approval system decides **which calls need a human**, and **who answers**. It works the same way in the TypeScript and Python SDKs and for every provider.
 

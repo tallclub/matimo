@@ -1,5 +1,6 @@
 ---
 title: "Contributor Guides: Provider Packages with Copilot and MCP"
+description: "Contributor guides for building new Matimo provider packages with VS Code Copilot and the Matimo MCP server."
 ---
 These guides cover one workflow: building a new provider package in this repository with VS Code Copilot's **Matimo Tool Creator** agent, which checks its work with tools from Matimo's own MCP server.
 

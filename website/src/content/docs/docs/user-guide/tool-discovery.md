@@ -1,5 +1,6 @@
 ---
 title: "Tool Discovery & Filtering"
+description: "Load Matimo tools, then find them by name, tag, text or definition."
 ---
 Load tools, then find the ones you need by name, tag, text or definition.
 

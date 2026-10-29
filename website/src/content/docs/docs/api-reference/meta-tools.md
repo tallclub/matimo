@@ -1,5 +1,6 @@
 ---
 title: "Meta-Tools Reference"
+description: "Reference for the 15 Matimo meta-tools that let an agent search, create, validate, approve and reload tools and skills at runtime."
 ---
 > Complete reference for all built-in Matimo meta-tools, the tools that manage other tools.
 
