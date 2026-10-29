@@ -10,11 +10,8 @@ This module mirrors the TypeScript `@matimo/core/mcp` implementation and maintai
 - **Skill resources** - exposes Matimo skills as MCP resources (`skills://name`)
 - **HTTP transport** - Streamable HTTP with bearer-token auth, CORS, health endpoint
 - **Stdio transport** - stdio server for Claude Desktop integration
-- **mcp SDK 1.x/2.x compatibility** - mcp 2.0 replaced `Server`'s decorator-based
-  handler registration with constructor callables; `server.py` detects the
-  installed SDK's major version (`_mcp_major_version()`) and builds the server
-  via `_build_server_v1()` (decorators, mcp<2.0) or `_build_server_v2()`
-  (`on_list_tools=`/`on_call_tool=`/... constructor kwargs, mcp>=2.0)
+- **mcp SDK 2.x** - requires `mcp>=2.0`; `server.py` builds the `Server` with
+  `on_list_tools=`/`on_call_tool=`/... constructor callables (`_build_server()`)
 
 ---
 
@@ -180,31 +177,22 @@ embedding application provides a server-trusted approval signal.
 
 **Solution:** Register skills as MCP resources so clients can browse them like files:
 
-On mcp<2.0 this is registered post-construction via decorators
-(`_register_skill_resources_v1`); on mcp>=2.0 the same mapping is built as a
-pair of constructor callables instead (`_build_skill_resource_handlers_v2`),
-since `@server.list_resources()`/`@server.read_resource()` no longer exist.
+The mapping is built as a pair of `Server` constructor callables
+(`_build_skill_resource_handlers`), only when at least one skill exists:
 
 ```python
-def _register_skill_resources_v1(self, server: Any) -> None:
-    skills = self._matimo.list_skills()
-    
-    @server.list_resources()  # MCP: resources/list
-    async def handle_list_resources() -> list[Resource]:
-        return [
-            Resource(
-                uri=AnyUrl(f"skills://{s.name}"),
-                name=s.name,
-                description=s.description,
-                mimeType="text/markdown"
-            )
-            for s in skills
-        ]
-    
-    @server.read_resource()  # MCP: resources/read
-    async def handle_read_resource(uri: Any) -> str:
-        skill_name = str(uri).removeprefix("skills://")
-        return self._matimo.get_skill_content(skill_name)
+async def on_list_resources(ctx, params):  # MCP: resources/list
+    return ListResourcesResult(resources=[
+        Resource(uri=f"skills://{s.name}", name=s.name,
+                 description=s.description, mime_type="text/markdown")
+        for s in self._matimo.list_skills()
+    ])
+
+async def on_read_resource(ctx, params):  # MCP: resources/read
+    skill_name = str(params.uri).removeprefix("skills://")
+    content = self._matimo.get_skill_content(skill_name)
+    return ReadResourceResult(contents=[TextResourceContents(
+        uri=params.uri, mime_type="text/markdown", text=content)])
 ```
 
 **Result:**
@@ -286,11 +274,8 @@ async def _run_http(self, server: Any) -> None:
 2. await server.start()
    ├─ Suppress logging (clean stdout for JSON-RPC)
    ├─ Import MCP SDK
-   ├─ Create MCP Server instance
-   ├─ Register @server.list_tools() handler
-   ├─ Register @server.call_tool() handler
-   ├─ Register @server.list_resources() handler
-   ├─ Register @server.read_resource() handler
+   ├─ Build Server with on_list_tools / on_call_tool callables
+   ├─ Add on_list_resources / on_read_resource callables (only if skills exist)
    ├─ Load all tools: [slack_send_message, slack_post_reaction, ...]
    ├─ Filter by allowlist/denylist: [slack_send_message, slack_post_reaction]
    ├─ Extract auth placeholders: {SLACK_BOT_TOKEN}
@@ -483,7 +468,7 @@ If a tool name matches both `tools` (allowlist) and `exclude_tools` (denylist), 
 | Auth param filtering | ✅ `isAuthParameter()` | ✅ `_is_auth_parameter()` | Parity |
 | Approval via elicitation | ✅ `createElicitationApprovalCallback()` | ✅ `create_elicitation_approval_callback()` | Parity |
 | Pre-resolved secrets | ✅ `seedEnvironmentSecrets()` | ✅ `_seed_environment_secrets()` | Parity |
-| Skill resources | ✅ `registerSkillResources()` | ✅ `_register_skill_resources_v1()` / `_build_skill_resource_handlers_v2()` | Parity |
+| Skill resources | ✅ `registerSkillResources()` | ✅ `_build_skill_resource_handlers()` | Parity |
 | HTTP transport | ✅ `StreamableHTTPServerTransport` + sessions | ✅ `StreamableHTTPSessionManager` + stateless | Parity |
 | Stdio logging suppression | ✅ `logLevel: 'silent'` | ✅ `logging.setLevel(CRITICAL+1)` | Parity |
 | Test coverage | 95%+ | 95%+ | Parity |
@@ -540,9 +525,9 @@ uv run pytest packages/core/tests/unit/test_mcp_server.py -v
 **Solution:**
 
 ```bash
-pip install matimo[mcp]
+pip install "matimo[mcp]"
 # or
-pip install mcp>=1.0
+pip install "mcp>=2.0"
 ```
 
 ### Issue: "Auth token mismatch" in HTTP mode

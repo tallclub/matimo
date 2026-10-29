@@ -16,6 +16,7 @@ Security hardening from a repository audit. Read the behaviour changes before up
 - TypeScript `execute` runs the command without a shell (`execFile`), as the Python tool already did. Shell builtins such as `dir` and `echo` are not available on Windows. Newline, CR and NUL are rejected
 - Network tools (`web`, `web_scraper`, `extract_from_file`) and HTTP tools refuse hostnames that resolve to internal addresses. Set `MATIMO_ALLOW_PRIVATE_DNS=true` if a tool must reach an internal service by DNS name
 - A function tool's `execution.code` must stay inside the tool's directory
+- Python MCP server now requires `mcp>=2.0` (the `matimo[mcp]` extra, `matimo-cli` and `matimo-core` pins moved from `>=1.28.1`). The mcp 1.x decorator-based code path is removed. Run `pip install -U "mcp>=2.0"` if you installed `mcp` 1.x yourself. The TypeScript server is unchanged (`@modelcontextprotocol/sdk` has no 2.x release)
 
 ### 🔒 Security
 - SSRF check: blocks all of `127.0.0.0/8`, IPv4-mapped and NAT64 IPv6, unique-local and link-local IPv6 (including `fd00:ec2::254`), `100.64.0.0/10`, `[::]`, trailing-dot hosts and legacy numeric hosts. The four separate copies of the check now share one classifier
@@ -33,8 +34,11 @@ Security hardening from a repository audit. Read the behaviour changes before up
 
 ### 🐛 Fixes
 - `pnpm validate-tools` no longer fails when pnpm hoists js-yaml 5.x (#196)
+- TypeScript approval manifest: saving could fail on Windows with `EPERM` when two writers renamed over `.matimo-approvals.json` at once. Temp names are now unique, the rename retries on `EPERM`/`EBUSY`/`EACCES`, and a failed save removes its temp file
+- TypeScript examples `policy:demo`, `skills:demo` and `meta:flow` sent all 153 tools to OpenAI on Windows (limit 128) because their provider-tool filter only matched `/` in paths. It now matches both `/` and `\` separators
 
 ### 🔧 Maintenance
+- Python MCP tests run against the real mcp 2.x SDK (in-memory client), and the legacy mcp 1.x tests are gone
 - Every GitHub Action pinned to a commit SHA; `tool-validation.yml` brought off v2/v3 actions; CI fails on high-severity `pnpm audit` and `pip-audit` findings
 
 ---

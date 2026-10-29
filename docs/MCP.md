@@ -1303,10 +1303,12 @@ Error: `MatimoError(EXECUTION_FAILED): MCP Python SDK not installed. Install wit
 **Solution:**
 
 ```bash
-pip install matimo[mcp]
+pip install "matimo[mcp]"
 # or explicitly
-pip install mcp>=1.0
+pip install "mcp>=2.0"
 ```
+
+The Python MCP server requires `mcp` 2.0 or newer. If you installed `mcp` 1.x, upgrade it with `pip install -U "mcp>=2.0"`.
 
 ### No tools discovered
 
