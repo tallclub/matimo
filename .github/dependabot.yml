@@ -86,3 +86,15 @@ updates:
       - "dependencies"
       - "python"
       - "examples"
+
+  # Website (Astro + Starlight) — one grouped PR per week
+  - package-ecosystem: "npm"
+    directory: "/website"
+    schedule:
+      interval: "weekly"
+    groups:
+      website-npm:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "chore(deps)"
