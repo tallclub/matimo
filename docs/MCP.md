@@ -626,6 +626,7 @@ matimo mcp setup              Run the setup wizard
 |------|-------|---------|-------------|
 | `--transport` | `-t` | `stdio` | Transport mode: `stdio` or `http` |
 | `--port` | `-p` | `3000` | HTTP port (only with `--transport http`) |
+| `--host` | | `127.0.0.1` | Interface to bind (only with `--transport http`). Use `0.0.0.0` in containers or for remote clients, and then use HTTPS |
 | `--tools` | | all | Comma-separated allowlist of tool names |
 | `--exclude` | | none | Comma-separated denylist of tool names |
 | `--token` | | auto | Bearer token for HTTP mode. Auto-generated if not set. Also reads `MATIMO_MCP_TOKEN` env var. |
@@ -738,7 +739,6 @@ Known gaps against the spec (tracked for a future release):
 | Gap | Spec requirement | Impact |
 |-----|-----------------|--------|
 | `Origin` header not validated | [Spec §2.0.1](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#security-warning): servers **MUST** validate `Origin` to prevent DNS rebinding | Local-only servers using `--self-signed` are lower risk; production servers behind a reverse proxy should add `Origin` validation at the proxy layer |
-| Binds to all interfaces (`0.0.0.0`) | Spec §2.0.1: servers **SHOULD** bind to `127.0.0.1` when running locally | Avoid exposing the port publicly without a firewall rule or reverse proxy |
 | `MCP-Protocol-Version` header not enforced | [Spec §2.7](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#protocol-version-header): invalid version must return `400` | No impact with current MCP SDK clients; all known clients send a valid version |
 
 ### HTTPS
@@ -790,7 +790,8 @@ RUN npm install -g @matimo/core @matimo/cli @matimo/slack @matimo/github
 
 EXPOSE 3000
 
-CMD ["matimo", "mcp", "--transport", "http", "--port", "3000", "--self-signed"]
+# Bind all interfaces inside the container; the default is loopback only
+CMD ["matimo", "mcp", "--transport", "http", "--host", "0.0.0.0", "--port", "3000", "--self-signed"]
 ```
 
 ```bash

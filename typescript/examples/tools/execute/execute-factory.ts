@@ -41,7 +41,8 @@ async function executeExample() {
 
   try {
     // Example 1: List files in current directory
-    const listCommand = isWindows ? 'dir' : 'ls';
+    // The execute tool runs without a shell, so `dir`/`cd` (cmd built-ins) do not exist on Windows.
+    const listCommand = isWindows ? `node -p "fs.readdirSync('.').join(' ')"` : 'ls';
     console.info(`1. Running: ${listCommand}\n`);
     const lsResult = await matimo.execute('execute', {
       command: listCommand,
@@ -52,7 +53,7 @@ async function executeExample() {
     console.info('---\n');
 
     // Example 2: Get current working directory
-    const pwdCommand = isWindows ? 'cd' : 'pwd';
+    const pwdCommand = isWindows ? 'node -p process.cwd()' : 'pwd';
     console.info(`2. Running: ${pwdCommand}\n`);
     const pwdResult = await matimo.execute('execute', {
       command: pwdCommand,

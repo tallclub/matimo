@@ -14,6 +14,25 @@ sql:
   - MERGE
   - GRANT
   - REVOKE
+  # Statements/functions that escape plain row access (file read/write, OS commands,
+  # remote connections, session control) and so need a human even inside a SELECT
+  - COPY
+  - PROGRAM
+  - CALL
+  - DO $$
+  - DO LANGUAGE
+  - VACUUM
+  - REINDEX
+  - PG_READ_FILE
+  - PG_READ_BINARY_FILE
+  - PG_LS_DIR
+  - PG_STAT_FILE
+  - LO_IMPORT
+  - LO_EXPORT
+  - DBLINK
+  - SET_CONFIG
+  - PG_TERMINATE_BACKEND
+  - PG_CANCEL_BACKEND
 
 file:
   - EDIT

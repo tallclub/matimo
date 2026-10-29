@@ -23,6 +23,10 @@ DEFAULT_DESTRUCTIVE_KEYWORDS: list[str] = [
     "INSERT", "UPSERT", "REPLACE", "MERGE", "GRANT", "REVOKE",
     "EDIT", "WRITE", "APPEND", "REMOVE", "PURGE", "RENAME", "SHUTDOWN",
     "EXECUTE", "EXEC",
+    # SQL escape hatches: file/OS/remote access and session control, even inside a SELECT
+    "COPY", "PROGRAM", "CALL", "DO $$", "DO LANGUAGE", "VACUUM", "REINDEX", "PG_READ_FILE",
+    "PG_READ_BINARY_FILE", "PG_LS_DIR", "PG_STAT_FILE", "LO_IMPORT", "LO_EXPORT", "DBLINK",
+    "SET_CONFIG", "PG_TERMINATE_BACKEND", "PG_CANCEL_BACKEND",
 ]
 
 

@@ -1,6 +1,30 @@
 import { Client } from 'pg';
 import { MatimoError, ErrorCode } from '@matimo/core/runtime';
 
+/**
+ * TLS mode from MATIMO_POSTGRES_SSL: disable (default, or sslmode in the URL), require
+ * (encrypted, certificate not verified), verify-ca / verify-full (certificate verified).
+ */
+function sslOptions(): true | { rejectUnauthorized: boolean } | undefined {
+  const mode = (process.env.MATIMO_POSTGRES_SSL ?? '').trim().toLowerCase();
+  switch (mode) {
+    case '':
+    case 'disable':
+      return undefined;
+    case 'require':
+      return { rejectUnauthorized: false };
+    case 'verify-ca':
+    case 'verify-full':
+      return true;
+    default:
+      throw new MatimoError(
+        `Invalid MATIMO_POSTGRES_SSL '${mode}'. Use disable, require, verify-ca or verify-full.`,
+        ErrorCode.EXECUTION_FAILED,
+        { toolName: 'postgres-execute-sql' }
+      );
+  }
+}
+
 export default async function (input: Record<string, unknown>) {
   const sql = (input.sql as string) || '';
   const params = (input.params as unknown) as unknown[] | undefined;
@@ -38,7 +62,8 @@ export default async function (input: Record<string, unknown>) {
     );
   }
 
-  const client = new Client({ connectionString });
+  const ssl = sslOptions();
+  const client = new Client(ssl === undefined ? { connectionString } : { connectionString, ssl });
   try {
     await client.connect();
     const result = await client.query(sql, (params ?? []) as unknown[]);

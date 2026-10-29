@@ -11,6 +11,23 @@ from urllib.parse import quote_plus
 from matimo.errors import ErrorCode, MatimoError
 
 
+_SSL_MODES = {"require", "verify-ca", "verify-full"}
+
+
+def _ssl_mode() -> str | None:
+    """TLS mode from MATIMO_POSTGRES_SSL: disable (default), require, verify-ca, verify-full."""
+    mode = os.environ.get("MATIMO_POSTGRES_SSL", "").strip().lower()
+    if mode in ("", "disable"):
+        return None
+    if mode not in _SSL_MODES:
+        raise MatimoError(
+            f"Invalid MATIMO_POSTGRES_SSL '{mode}'. Use disable, require, verify-ca or verify-full.",
+            ErrorCode.EXECUTION_FAILED,
+            {"tool_name": "postgres-execute-sql"},
+        )
+    return mode
+
+
 async def run(params: dict[str, Any]) -> dict[str, Any]:
     sql: str = params.get("sql", "").strip()
     query_params: list | None = params.get("params")
@@ -57,11 +74,16 @@ async def run(params: dict[str, Any]) -> dict[str, Any]:
 
     conn = None
     try:
-        conn = await asyncpg.connect(connection_string)
+        ssl_mode = _ssl_mode()
+        if ssl_mode:
+            conn = await asyncpg.connect(connection_string, ssl=ssl_mode)
+        else:
+            conn = await asyncpg.connect(connection_string)
 
         # Set search_path if schema is specified
         if schema:
-            await conn.execute(f"SET search_path TO {schema}")
+            # Bound parameter, never interpolated: `schema` is chosen by the model.
+            await conn.execute("SELECT set_config('search_path', $1, false)", schema)
 
         rows = await conn.fetch(sql, *(query_params or []))
         return {
