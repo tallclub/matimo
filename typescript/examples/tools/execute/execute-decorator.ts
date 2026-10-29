@@ -66,7 +66,8 @@ async function decoratorExample() {
     console.info('---\n');
 
     // Example 2: List directory
-    const listCommand = isWindows ? 'dir' : 'ls';
+    // No shell is involved, so `dir` (a cmd built-in) does not exist on Windows.
+    const listCommand = isWindows ? `node -p "fs.readdirSync('.').join(' ')"` : 'ls';
     console.info(`2. Running command: ${listCommand}\n`);
     const result2 = await executor.listDirectory(listCommand);
     console.info('Success:', (result2 as any).success);
