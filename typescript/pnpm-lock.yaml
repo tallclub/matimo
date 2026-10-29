@@ -10,17 +10,17 @@ overrides:
   fast-xml-parser: ^5.7.0
   form-data: '>=4.0.6'
   ws: '>=8.21.0'
-  undici: 8.11.2
+  undici: '>=8.12.2'
   tmp: '>=0.2.6'
   protobufjs@^7.2.5: ^7.6.4
   protobufjs@^8.0.1: ^8.7.1
   '@grpc/grpc-js': '>=1.14.4'
   hono: '>=4.13.7'
-  qs: '>=6.15.2'
+  qs: '>=6.16.1'
   proxy-addr: '>=2.0.8'
   handlebars: '>=4.7.10'
-  fast-uri: '>=3.1.8'
-  ip-address: '>=10.7.1'
+  fast-uri: '>=4.2.3'
+  ip-address: '>=10.7.4'
   yaml@2.3.4: ^2.8.3
   csv-parse@5.6.0: '>=7.0.2'
   js-yaml@^4.1.0: ^4.3.0
@@ -28,6 +28,9 @@ overrides:
   '@babel/core': ^7.29.6
   nanoid@3.3.8: ^3.3.18
   '@faker-js/faker@^9.7.0': ^10.5.0
+  body-parser: '>=2.4.0'
+  zod: '>=4.6.6'
+  '@azure/msal-node': '>=7.1.0'
 
 importers:
 
@@ -192,8 +195,8 @@ importers:
         specifier: workspace:*
         version: link:../..
       zod:
-        specifier: ^4.6.5
-        version: 4.6.6
+        specifier: '>=4.6.6'
+        version: 4.6.7
     devDependencies:
       '@types/node':
         specifier: ^25.9.9
@@ -265,7 +268,7 @@ importers:
         version: 3.1044.0
       '@modelcontextprotocol/sdk':
         specifier: ^1.31.0
-        version: 1.32.0(zod@4.6.6)
+        version: 1.32.0(zod@4.6.7)
       '@mozilla/readability':
         specifier: ^0.6.0
         version: 0.6.0
@@ -315,8 +318,8 @@ importers:
         specifier: ^2.9.1
         version: 2.9.1
       zod:
-        specifier: ^4.6.5
-        version: 4.6.6
+        specifier: '>=4.6.6'
+        version: 4.6.7
     devDependencies:
       '@commitlint/cli':
         specifier: ^20.5.3
@@ -1461,7 +1464,7 @@ packages:
       '@azure/core-util': 1.14.0
       '@azure/logger': 1.4.0
       '@azure/msal-browser': 5.24.0
-      '@azure/msal-node': 6.0.1
+      '@azure/msal-node': 7.1.2
       open: 10.2.0
       tslib: 2.8.1
     transitivePeerDependencies:
@@ -1520,21 +1523,21 @@ packages:
       '@azure/msal-common': 16.14.2
     dev: false
 
-  /@azure/msal-common@16.14.1:
-    resolution: {integrity: sha512-Or6xhPNyi4zHW25158yxBoyxuCqNSPa5YBVqfF1J5Ks4MJWBo/USXdp05DQIPu1Zli00YZu6t0+h6KvHJealxQ==}
-    engines: {node: '>=0.8.0'}
-    dev: false
-
   /@azure/msal-common@16.14.2:
     resolution: {integrity: sha512-HOBR0Gfo39TMrkxNG8k6cfjRkrRjXZc3JQs3ebMWQc9S4cihuknMYra3sgmzbZB752oQBqBN9+WF7c826p2vIQ==}
     engines: {node: '>=0.8.0'}
     dev: false
 
-  /@azure/msal-node@6.0.1:
-    resolution: {integrity: sha512-ixSO1Y/kCVRthRs+hSx/5qkwaunX1/RAePhlMN0wIpIQ4WEZ6AREGGnGd1AP0qspHVsAwzWQKGubpjh50JyJIQ==}
+  /@azure/msal-common@16.15.0:
+    resolution: {integrity: sha512-lwdLb1B9Q5nEhPLVIKe78XH5wFMN15fCiDkY7ylPDSWZuWcD93G3jpJajrKhO3CQld8SLKz0sHiOi24mxdvtsg==}
+    engines: {node: '>=0.8.0'}
+    dev: false
+
+  /@azure/msal-node@7.1.2:
+    resolution: {integrity: sha512-52hKQLGpEQzwNufIXG1SPVU+wQ3RIe7Rp2+g+VdAmZojCAZ6yCdGEffzQEQ6RnBZGBEs40nl14rWBmfJpCoHsg==}
     engines: {node: '>=20'}
     dependencies:
-      '@azure/msal-common': 16.14.1
+      '@azure/msal-common': 16.15.0
       jsonwebtoken: 9.0.3
     dev: false
 
@@ -3043,7 +3046,7 @@ packages:
       langsmith: 0.10.8
       mustache: 4.2.0
       p-queue: 6.6.2
-      zod: 4.6.5
+      zod: 4.6.7
     transitivePeerDependencies:
       - '@opentelemetry/api'
       - '@opentelemetry/exporter-trace-otlp-proto'
@@ -3077,29 +3080,12 @@ packages:
       p-queue: 9.3.3
       p-retry: 7.1.1
 
-  /@langchain/langgraph@1.4.19(@langchain/core@1.2.14)(zod@4.6.5):
-    resolution: {integrity: sha512-wfT1Nyfwnu/N56piXRXxX6SQQ48ju6rqkGOQPD3/9laSB91ht+pVnq97/3FKO+LybvXfXKiBkfxyIlumdBhIQQ==}
-    engines: {node: '>=18'}
-    peerDependencies:
-      '@langchain/core': ^1.1.48
-      zod: ^3.25.32 || ^4.2.0
-    dependencies:
-      '@langchain/core': 1.2.14
-      '@langchain/langgraph-checkpoint': 1.1.5(@langchain/core@1.2.14)
-      '@langchain/langgraph-sdk': 1.12.1(@langchain/core@1.2.14)
-      '@langchain/protocol': 0.0.19
-      '@standard-schema/spec': 1.1.0
-      zod: 4.6.5
-    transitivePeerDependencies:
-      - react
-      - react-dom
-
   /@langchain/langgraph@1.4.19(@langchain/core@1.2.14)(zod@4.6.7):
     resolution: {integrity: sha512-wfT1Nyfwnu/N56piXRXxX6SQQ48ju6rqkGOQPD3/9laSB91ht+pVnq97/3FKO+LybvXfXKiBkfxyIlumdBhIQQ==}
     engines: {node: '>=18'}
     peerDependencies:
       '@langchain/core': ^1.1.48
-      zod: ^3.25.32 || ^4.2.0
+      zod: '>=4.6.6'
     dependencies:
       '@langchain/core': 1.2.14
       '@langchain/langgraph-checkpoint': 1.1.5(@langchain/core@1.2.14)
@@ -3110,7 +3096,6 @@ packages:
     transitivePeerDependencies:
       - react
       - react-dom
-    dev: false
 
   /@langchain/mcp-adapters@1.1.4(@langchain/core@1.2.14)(@langchain/langgraph@1.4.19):
     resolution: {integrity: sha512-6E8ULWoI9w+lxydeb8yHILyEluonZ4JS42OwSLL1k/RvG/trjGuLYm7P9gE+/pFOxLuNk9wHZ7BLfGju4tcJEQ==}
@@ -3121,9 +3106,9 @@ packages:
     dependencies:
       '@langchain/core': 1.2.14
       '@langchain/langgraph': 1.4.19(@langchain/core@1.2.14)(zod@4.6.7)
-      '@modelcontextprotocol/sdk': 1.32.0(zod@4.6.5)
+      '@modelcontextprotocol/sdk': 1.32.0(zod@4.6.7)
       debug: 4.4.3
-      zod: 4.6.5
+      zod: 4.6.7
     optionalDependencies:
       extended-eventsource: 1.7.0
     transitivePeerDependencies:
@@ -3139,8 +3124,8 @@ packages:
     dependencies:
       '@langchain/core': 1.2.14
       js-tiktoken: 1.0.21
-      openai: 7.27.0(zod@4.6.5)
-      zod: 4.6.5
+      openai: 7.27.0(zod@4.6.7)
+      zod: 4.6.7
     transitivePeerDependencies:
       - '@aws-sdk/credential-provider-node'
       - '@smithy/hash-node'
@@ -3156,12 +3141,12 @@ packages:
     resolution: {integrity: sha512-Y28PR25bHXUg88kCV7nivXrP2Nj2RueZ3/l/jdx6J9f8J4nsEGcgX0Qe6lt7Pa+J79+kPiJU3LguR6O/6zrLOw==}
     dev: false
 
-  /@modelcontextprotocol/sdk@1.32.0(zod@4.6.5):
+  /@modelcontextprotocol/sdk@1.32.0(zod@4.6.7):
     resolution: {integrity: sha512-8BviX/hK4Gd2eL1KdTwm0gfl4d3wdoErW0Jd00h6nomUAtk6IJk5vwQJc6kfWtJTzN5OEV/lgIiJKI8fiDGAlA==}
     engines: {node: '>=18'}
     peerDependencies:
       '@cfworker/json-schema': ^4.1.1
-      zod: ^3.25 || ^4.0
+      zod: '>=4.6.6'
     peerDependenciesMeta:
       '@cfworker/json-schema':
         optional: true
@@ -3181,39 +3166,8 @@ packages:
       json-schema-typed: 8.0.2
       pkce-challenge: 5.0.1
       raw-body: 3.0.2
-      zod: 4.6.5
-      zod-to-json-schema: 3.25.2(zod@4.6.5)
-    transitivePeerDependencies:
-      - supports-color
-    dev: false
-
-  /@modelcontextprotocol/sdk@1.32.0(zod@4.6.6):
-    resolution: {integrity: sha512-8BviX/hK4Gd2eL1KdTwm0gfl4d3wdoErW0Jd00h6nomUAtk6IJk5vwQJc6kfWtJTzN5OEV/lgIiJKI8fiDGAlA==}
-    engines: {node: '>=18'}
-    peerDependencies:
-      '@cfworker/json-schema': ^4.1.1
-      zod: ^3.25 || ^4.0
-    peerDependenciesMeta:
-      '@cfworker/json-schema':
-        optional: true
-    dependencies:
-      '@hono/node-server': 2.1.3(hono@4.13.13)
-      ajv: 8.20.0
-      ajv-formats: 3.0.1(ajv@8.20.0)
-      content-type: 1.0.5
-      cors: 2.8.6
-      cross-spawn: 7.0.6
-      eventsource: 3.0.7
-      eventsource-parser: 3.1.1
-      express: 5.2.1
-      express-rate-limit: 8.7.0(express@5.2.1)
-      hono: 4.13.13
-      jose: 6.2.12
-      json-schema-typed: 8.0.2
-      pkce-challenge: 5.0.1
-      raw-body: 3.0.2
-      zod: 4.6.6
-      zod-to-json-schema: 3.25.2(zod@4.6.6)
+      zod: 4.6.7
+      zod-to-json-schema: 3.25.2(zod@4.6.7)
     transitivePeerDependencies:
       - supports-color
     dev: false
@@ -4648,7 +4602,7 @@ packages:
       js-yaml: 4.3.2
       jsesc: 3.1.0
       lodash: 4.18.1
-      qs: 6.16.0
+      qs: 6.17.1
       socks-proxy-agent: 8.0.5
       xmlbuilder: 15.1.1
       yargs: 17.7.3
@@ -4862,7 +4816,7 @@ packages:
     resolution: {integrity: sha512-Thbli+OlOj+iMPYFBVBfJ3OmCAnaSyNn4M1vz9T6Gka5Jt9ba/HIR56joy65tY6kx/FCF5VXNB819Y7/GUrBGA==}
     dependencies:
       fast-deep-equal: 3.1.3
-      fast-uri: 4.2.2
+      fast-uri: 4.2.3
       json-schema-traverse: 1.0.0
       require-from-string: 2.0.2
 
@@ -5113,8 +5067,8 @@ packages:
       readable-stream: 3.6.2
     dev: true
 
-  /body-parser@2.3.0:
-    resolution: {integrity: sha512-2cGmJupaNgg+QUwVLAucDuWuoMZ6EX9iHDRswZ5lsNYEmwPaRknMPCLZz07yTzVq/83p4o/wzbDZbBrTvGGTIw==}
+  /body-parser@2.4.0:
+    resolution: {integrity: sha512-Ifk1KcLrxaGt1occQagQNFNNOqRt1LFuehEnHHzB8Z6cRgIxRU1TBaiIsUiCdA+gy5PL7Y1IX31DNKkRmxtXjQ==}
     engines: {node: '>=18'}
     dependencies:
       bytes: 3.1.2
@@ -5123,7 +5077,7 @@ packages:
       http-errors: 2.0.1
       iconv-lite: 0.7.3
       on-finished: 2.4.1
-      qs: 6.16.0
+      qs: 6.17.1
       raw-body: 3.0.2
       type-is: 2.1.0
     transitivePeerDependencies:
@@ -5331,7 +5285,7 @@ packages:
       parse5: 7.3.0
       parse5-htmlparser2-tree-adapter: 7.1.0
       parse5-parser-stream: 7.1.2
-      undici: 8.11.2
+      undici: 8.12.3
       whatwg-mimetype: 4.0.0
     dev: false
 
@@ -6176,7 +6130,7 @@ packages:
     dependencies:
       debug: 4.4.3
       express: 5.2.1
-      ip-address: 10.7.3
+      ip-address: 10.7.5
     transitivePeerDependencies:
       - supports-color
     dev: false
@@ -6186,7 +6140,7 @@ packages:
     engines: {node: '>= 18'}
     dependencies:
       accepts: 2.0.0
-      body-parser: 2.3.0
+      body-parser: 2.4.0
       content-disposition: 1.1.0
       content-type: 1.0.5
       cookie: 0.7.2
@@ -6205,7 +6159,7 @@ packages:
       once: 1.4.0
       parseurl: 1.3.3
       proxy-addr: 2.0.8
-      qs: 6.16.0
+      qs: 6.17.1
       range-parser: 1.3.0
       router: 2.2.0
       send: 1.2.1
@@ -6238,8 +6192,8 @@ packages:
     resolution: {integrity: sha512-DCXu6Ifhqcks7TZKY3Hxp3y6qphY5SJZmrWMDrKcERSOXWQdMhU9Ig/PYrzyw/ul9jOIyh0N4M0tbC5hodg8dw==}
     dev: true
 
-  /fast-uri@4.2.2:
-    resolution: {integrity: sha512-EwVpUMzLVNOmcWW0zi5G3JJwkopB6XXjnVvNBGfqrMMsVew2hkQWl5e/pe/CfYUeS6jt4cIO2MnamEW7v/7wPw==}
+  /fast-uri@4.2.3:
+    resolution: {integrity: sha512-I1PXwP5eAhlNlcdpjt9CgB59op2ZvZfxw+BkqGFVIUOgNpCVTcTqp3HhTX7brxj5vsip+nSY4nTvff+eIA76hg==}
 
   /fast-xml-builder@1.1.9:
     resolution: {integrity: sha512-jcyKVSEX13iseJqg7n/KWw+xnu/7fdrZ333Fac54KjHDIELVCfDDJXYIm6DTJ0Su4gSzrhqiK0DzY/wZbF40mw==}
@@ -6860,8 +6814,8 @@ packages:
     engines: {node: ^20.17.0 || >=22.9.0}
     dev: true
 
-  /ip-address@10.7.3:
-    resolution: {integrity: sha512-A1kdq/tSb5QjvKvAMgIoEvDBIgL7qaqVP/jkvSwYYRZ9iEzvPpopxp2wQfu3SuZRHtpHNxMn8Fs0bS+gf5Xmwg==}
+  /ip-address@10.7.5:
+    resolution: {integrity: sha512-t2v0rkILYv9WXmSL7TpAaU3HXgaFYOPUcH3QHgwQ++gpJuH3bqyMy4Fvt/DJCTKwzH3Cf+bAp5W/mFL39KPLzA==}
     engines: {node: '>= 12'}
     dev: false
 
@@ -7665,10 +7619,10 @@ packages:
       '@langchain/core': ^1.2.14
     dependencies:
       '@langchain/core': 1.2.14
-      '@langchain/langgraph': 1.4.19(@langchain/core@1.2.14)(zod@4.6.5)
+      '@langchain/langgraph': 1.4.19(@langchain/core@1.2.14)(zod@4.6.7)
       '@langchain/langgraph-checkpoint': 1.1.5(@langchain/core@1.2.14)
       langsmith: 0.10.8
-      zod: 4.6.5
+      zod: 4.6.7
     transitivePeerDependencies:
       - '@opentelemetry/api'
       - '@opentelemetry/exporter-trace-otlp-proto'
@@ -8179,16 +8133,16 @@ packages:
       wsl-utils: 0.1.0
     dev: false
 
-  /openai@7.27.0(zod@4.6.5):
+  /openai@7.27.0(zod@4.6.7):
     resolution: {integrity: sha512-QDo1FvnRDZn15YwGVOhT9vpyypDiLphkd/7a4mcURWf5upMoEetgA6o4DJeII+ZZkC6m6DvlilCwii3+ynDcTw==}
     engines: {node: '>=22.0.0'}
     peerDependencies:
       '@aws-sdk/credential-provider-node': '>=3.972.0 <4'
       '@smithy/hash-node': '>=4.3.0 <5'
       '@smithy/signature-v4': '>=5.4.0 <6'
-      undici: 8.11.2
+      undici: '>=8.12.2'
       ws: '>=8.21.0'
-      zod: ^3.25 || ^4.0
+      zod: '>=4.6.6'
     peerDependenciesMeta:
       '@aws-sdk/credential-provider-node':
         optional: true
@@ -8203,7 +8157,7 @@ packages:
       zod:
         optional: true
     dependencies:
-      zod: 4.6.5
+      zod: 4.6.7
     dev: false
 
   /option@0.2.4:
@@ -8663,8 +8617,8 @@ packages:
     resolution: {integrity: sha512-oTUZM/NAZS8p7ANR3SHh30kXB+zK2r2BPcEn/awJIbOvq82WoMN4p62AWWp3Hhw50G0xMsw1mhIBLqHw64EcNQ==}
     dev: true
 
-  /qs@6.16.0:
-    resolution: {integrity: sha512-h6fhOIaRrID2CbEY2fqs+7t+UXZo+MLAnU5gRIq85uFtdiUPCdsApMlHhXogKVM4HM2DVbIjGNTTYH2OcmP1vA==}
+  /qs@6.17.1:
+    resolution: {integrity: sha512-jd3COkaKVgGUW+ZHyEHCG9bH7RoaaiWuMgzsIBjUMVjLAaWGWpoUAVwljVvBHxRu/2qEHnadLGZrkutYUBPQJA==}
     engines: {node: '>=0.6'}
     dependencies:
       es-define-property: 1.0.1
@@ -9019,7 +8973,7 @@ packages:
     resolution: {integrity: sha512-e0VyvkVTwVYViNovRkZ9aodhxVlyoMn7eJhVUPxZ+eK9P/7CBkxvvsBOHqFPEH416726W8tLXXXjKwqgTErrCQ==}
     engines: {node: '>= 10.0.0', npm: '>= 3.0.0'}
     dependencies:
-      ip-address: 10.7.3
+      ip-address: 10.7.5
       smart-buffer: 4.2.0
     dev: false
 
@@ -9498,8 +9452,8 @@ packages:
     resolution: {integrity: sha512-KTDyRTYX8sWmKXAikPHHSyc63CRPETMctyjKFupcC6OBLXT3xsN0e9aF7m+mIXutFWpUXuedtowG7iLOzp0kQg==}
     dev: false
 
-  /undici@8.11.2:
-    resolution: {integrity: sha512-u4UB2/IrKdU6lFxumHmmo1a3fCQO5tzQllRorfoRS63txhrB7xTpSn1PftwC4qEHkOaqP95fCWW4lJzwErwzhQ==}
+  /undici@8.12.3:
+    resolution: {integrity: sha512-+fdndUTwBP86cVjihTp21hZHo7d6oj1c/47XPA3lL8mM0XHs+C4EkcjmgRsFnFk2f/UONGDy9ItBItmXsLOQHw==}
     engines: {node: '>=22.19.0'}
     dev: false
 
@@ -9852,29 +9806,13 @@ packages:
       toposort: 2.0.2
     dev: false
 
-  /zod-to-json-schema@3.25.2(zod@4.6.5):
+  /zod-to-json-schema@3.25.2(zod@4.6.7):
     resolution: {integrity: sha512-O/PgfnpT1xKSDeQYSCfRI5Gy3hPf91mKVDuYLUHZJMiDFptvP41MSnWofm8dnCm0256ZNfZIM7DSzuSMAFnjHA==}
     peerDependencies:
-      zod: ^3.25.28 || ^4
+      zod: '>=4.6.6'
     dependencies:
-      zod: 4.6.5
-    dev: false
-
-  /zod-to-json-schema@3.25.2(zod@4.6.6):
-    resolution: {integrity: sha512-O/PgfnpT1xKSDeQYSCfRI5Gy3hPf91mKVDuYLUHZJMiDFptvP41MSnWofm8dnCm0256ZNfZIM7DSzuSMAFnjHA==}
-    peerDependencies:
-      zod: ^3.25.28 || ^4
-    dependencies:
-      zod: 4.6.6
-    dev: false
-
-  /zod@4.6.5:
-    resolution: {integrity: sha512-v5l/aFXZQeai4awLbOpSoHecE9UiMrnfx75tEXLjNonXVARxQ5mOeipTjROUchszUNCqnE+hqAMujRsRHsut2Q==}
-
-  /zod@4.6.6:
-    resolution: {integrity: sha512-4UmzQUF5fxvfcYHlbjBmejU+w+hbDnWFx4aS8kBx7nPBHcO2SqPbpAG8snbdg+Xse4pRefR98hgjFgIMCI/UhA==}
+      zod: 4.6.7
     dev: false
 
   /zod@4.6.7:
     resolution: {integrity: sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg==}
-    dev: false
