@@ -6,6 +6,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
+## [Unreleased]
+
+Security hardening from a repository audit. Read the behaviour changes before upgrading.
+
+### ⚠️ Behaviour changes
+- MCP HTTP servers (both SDKs) bind `127.0.0.1` by default instead of all interfaces. Containers and remote clients need `--host 0.0.0.0` (`host` / `host=` option) and should use HTTPS
+- Python's MCP HTTP server now requires a bearer token like the TypeScript one: it reads `MATIMO_MCP_TOKEN`, or generates a token and prints it to stderr. It used to run unauthenticated when no token was passed
+- TypeScript `execute` runs the command without a shell (`execFile`), as the Python tool already did. Shell builtins such as `dir` and `echo` are not available on Windows. Newline, CR and NUL are rejected
+- Network tools (`web`, `web_scraper`, `extract_from_file`) and HTTP tools refuse hostnames that resolve to internal addresses. Set `MATIMO_ALLOW_PRIVATE_DNS=true` if a tool must reach an internal service by DNS name
+- A function tool's `execution.code` must stay inside the tool's directory
+
+### 🔒 Security
+- SSRF check: blocks all of `127.0.0.0/8`, IPv4-mapped and NAT64 IPv6, unique-local and link-local IPv6 (including `fd00:ec2::254`), `100.64.0.0/10`, `[::]`, trailing-dot hosts and legacy numeric hosts. The four separate copies of the check now share one classifier
+- Redirects are re-validated on every hop; TypeScript also pins the connection to the address it checked
+- The `web` tool had no SSRF check at all; it has one now
+- Python `postgres-execute-sql` interpolated `schema` into `SET search_path`; it is now a bound parameter
+- Approval is now requested for SQL that reaches files, the OS or other servers (`COPY`, `pg_read_file`, `lo_export`, `dblink`, `DO $$`, `CALL`, ...)
+- Dependencies: `undici` override raised from an exact `8.11.2` to `>=8.12.2`, plus `body-parser`, `zod`, `@azure/msal-node`; `python/examples/mcp` lockfile upgraded (`aiohttp`, `mcp`, `pillow`, `pyjwt`, `pypdf`, `urllib3`, ...)
+- Known and unfixed: `chromadb` (via `crewai`, optional extra only) has advisories with no fixed release
+
+### ✨ Features
+- `MATIMO_FILE_ROOTS` confines `read`, `edit`, `search`, `convert_to_file` and `extract_from_file` to listed directories, resolving symlinks. Off unless set
+- `MATIMO_POSTGRES_SSL` (`disable`, `require`, `verify-ca`, `verify-full`) for the Postgres tool
+- `matimo mcp --host`
+
+### 🐛 Fixes
+- `pnpm validate-tools` no longer fails when pnpm hoists js-yaml 5.x (#196)
+
+### 🔧 Maintenance
+- Every GitHub Action pinned to a commit SHA; `tool-validation.yml` brought off v2/v3 actions; CI fails on high-severity `pnpm audit` and `pip-audit` findings
+
+---
 ## [typescript/v0.3.0] - 2026-10-13
 
 Node 22.19 or newer is now required. Node 18 and 20 are no longer supported.

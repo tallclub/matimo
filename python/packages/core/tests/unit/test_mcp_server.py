@@ -944,10 +944,15 @@ class TestRunHttpAsgiHandler:
             sends.append(m)
 
         scope: dict = {
+
             "type": "http",
+
             "method": "GET",
+
             "path": "/unknown",
+
             "headers": [(b"authorization", b"Bearer test-token")],
+
         }
         await app(scope, AsyncMock(return_value={}), send)
         response_start = next(m for m in sends if m["type"] == "http.response.start")
@@ -961,10 +966,15 @@ class TestRunHttpAsgiHandler:
             sends.append(m)
 
         scope: dict = {
+
             "type": "http",
+
             "method": "POST",
+
             "path": "/mcp",
+
             "headers": [(b"authorization", b"Bearer test-token")],
+
         }
         await app(scope, AsyncMock(return_value={}), send)
         mock_sm.handle_request.assert_awaited_once()
@@ -977,10 +987,15 @@ class TestRunHttpAsgiHandler:
             sends.append(m)
 
         scope: dict = {
+
             "type": "http",
+
             "method": "POST",
+
             "path": "/",
+
             "headers": [(b"authorization", b"Bearer test-token")],
+
         }
         await app(scope, AsyncMock(return_value={}), send)
         mock_sm.handle_request.assert_awaited()
