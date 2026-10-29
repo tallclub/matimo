@@ -22,6 +22,7 @@ export default defineConfig({
         { tag: 'link', attrs: { rel: 'alternate', type: 'text/plain', href: '/llms.txt', title: 'Matimo for LLMs (llms.txt)' } },
         { tag: 'link', attrs: { rel: 'alternate', type: 'text/plain', href: '/llms-full.txt', title: 'Matimo full documentation for LLMs' } },
       ],
+      routeMiddleware: './src/routeData.ts',
       editLink: { baseUrl: 'https://github.com/tallclub/matimo/edit/main/website/' },
       customCss: [
         '@fontsource-variable/inter',

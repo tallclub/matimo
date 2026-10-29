@@ -5,7 +5,6 @@ Disallow: /node_modules/
 Disallow: /dist/
 Disallow: /.git/
 Disallow: /tmp/
-Disallow: *.json
 
 # ── Traditional Search Engines ────────────────────────────────────────────────
 User-agent: Googlebot
@@ -13,7 +12,6 @@ Allow: /
 
 User-agent: Bingbot
 Allow: /
-Crawl-delay: 1
 
 # ── AI Search & LLM Crawlers — explicitly allowed for AI/dev search visibility ─
 User-agent: GPTBot
