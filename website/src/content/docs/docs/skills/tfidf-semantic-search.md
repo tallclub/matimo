@@ -3,9 +3,9 @@ title: "TF-IDF Semantic Search in Matimo Skills"
 ---
 ## Overview
 
-Matimo uses **TF-IDF (Term Frequency–Inverse Document Frequency)** as the default semantic search engine for discovering and ranking skills. This document explains the algorithm, its implementation, practical usage, and when to consider alternatives.
+Matimo uses **TF-IDF (Term Frequency–Inverse Document Frequency)** as the default search engine for discovering and ranking skills by keyword relevance. It matches words, not meaning. This document explains the algorithm, its implementation, practical usage, and when to consider alternatives.
 
-**Key takeaway:** TF-IDF provides lightweight, zero-dependency semantic search suitable for 10–200 skills. For larger deployments or specialized ranking, you can plug in OpenAI, Cohere, or custom embedding providers.
+**Key takeaway:** TF-IDF provides lightweight, zero-dependency keyword-relevance search suitable for 10–200 skills. For larger deployments or specialized ranking, you can plug in OpenAI, Cohere, or custom embedding providers.
 
 ---
 
@@ -570,4 +570,4 @@ if (cached) {
 
 ## Conclusion
 
-TF-IDF in Matimo enables lightweight, deterministic semantic search perfect for discovering skills. For 10–200 skills, it's production-ready. For larger deployments or specialized use cases (synonyms, multilingual, semantic nuance), plug in a neural embedding provider and enjoy the same API surface.
+TF-IDF in Matimo enables lightweight, deterministic keyword-relevance search for discovering skills. For 10–200 skills, it's production-ready. For larger deployments or specialized use cases (synonyms, multilingual, semantic nuance), plug in a neural embedding provider and enjoy the same API surface.

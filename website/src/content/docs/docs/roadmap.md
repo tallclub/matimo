@@ -18,7 +18,7 @@ title: "Matimo Roadmap"
 - Factory and decorator patterns, plus adapters for LangChain (both SDKs), and CrewAI and Agno (Python)
 - Policy engine with risk classification, content rules, human-in-the-loop approval, signed approval manifests, and an audit log
 - 15 meta-tools that let an agent create, validate, approve and hot-reload tools and skills
-- Skills system with TF-IDF semantic search
+- Skills system with TF-IDF keyword-relevance search
 - MCP server over stdio and Streamable HTTP, with secrets from the environment, `.env` files, Vault or AWS Secrets Manager
 - CLI: `install`, `list`, `search`, `mcp`, `mcp setup`, `doctor`, `review`, `help`, `version`
 
