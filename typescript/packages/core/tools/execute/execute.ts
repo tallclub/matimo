@@ -1,14 +1,15 @@
 /**
  * Execute Tool - Execute shell commands with full output capture
- * LangChain-style: uses exec() directly from same process
- * Cross-platform: Windows (cmd.exe), Unix/Linux/Mac (sh/bash)
+ * Runs the command WITHOUT a shell (execFile on a parsed argv), matching the Python SDK.
+ * Shell operators, redirection and expansion do not work; builtins such as `dir` or `echo`
+ * are not executables and are unavailable on Windows (use `node`, `git`, ... instead).
  */
 
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { MatimoError, ErrorCode, getGlobalMatimoLogger } from '@matimo/core/runtime';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 /**
  * Basic injection detection - checks for common shell metacharacters
@@ -18,6 +19,7 @@ function detectCommandInjection(command: string): boolean {
   // Common injection patterns: command chaining, redirection, substitution
   // Note: $\w+ pattern is handled separately below
   const dangerousPatterns = [
+    /[\r\n\0]/, // Newline / CR / NUL: command separators in sh, never legitimate in one command
     /;/,      // Command separator
     /\|/,     // Pipe
     /&/,      // Background/AND
@@ -50,6 +52,57 @@ function detectCommandInjection(command: string): boolean {
   }
 
   return false;
+}
+
+/**
+ * Split a command line into argv the way a POSIX shell would for quoting only:
+ * whitespace separates arguments, single and double quotes group, and a
+ * backslash escapes the next character (not on Windows, where it is a path
+ * separator). No expansion, globbing, or operators are interpreted.
+ */
+function splitCommand(command: string): string[] {
+  const args: string[] = [];
+  let current = '';
+  let inArg = false;
+  let quote: '"' | "'" | null = null;
+  const backslashEscapes = process.platform !== 'win32';
+
+  for (let i = 0; i < command.length; i++) {
+    const ch = command[i];
+    if (quote) {
+      if (ch === quote) {
+        quote = null;
+      } else if (ch === '\\' && quote === '"' && backslashEscapes && '"\\'.includes(command[i + 1] ?? '')) {
+        current += command[++i];
+      } else {
+        current += ch;
+      }
+      continue;
+    }
+    if (ch === '"' || ch === "'") {
+      quote = ch;
+      inArg = true;
+    } else if (ch === '\\' && backslashEscapes && i + 1 < command.length) {
+      current += command[++i];
+      inArg = true;
+    } else if (/\s/.test(ch)) {
+      if (inArg) {
+        args.push(current);
+        current = '';
+        inArg = false;
+      }
+    } else {
+      current += ch;
+      inArg = true;
+    }
+  }
+  if (quote) {
+    throw new MatimoError('Unterminated quote in command', ErrorCode.INVALID_PARAMETER, {
+      reason: 'Command has an unmatched quote character',
+    });
+  }
+  if (inArg) args.push(current);
+  return args;
 }
 
 interface ExecuteParams {
@@ -111,17 +164,23 @@ export default async function executeCommand(
   // every call. Asking again here would prompt twice and bypass a
   // per-instance callback.
 
+  const argv = splitCommand(command);
+  if (argv.length === 0) {
+    throw new MatimoError('Command required', ErrorCode.INVALID_PARAMETER, {
+      reason: 'No command provided',
+    });
+  }
+
   try {
-    // SECURITY WARNING: This tool executes arbitrary shell commands directly.
-    // The 'command' parameter is passed to exec() without sanitization, creating
-    // a command injection vulnerability if user input is not properly validated.
-    // Basic injection detection is performed above, but this is NOT foolproof.
-    // Only use with trusted input or implement additional validation layers.
-    // exec() auto-selects shell: cmd.exe on Windows, /bin/sh on Unix
-    const { stdout, stderr } = await execAsync(command, {
+    // No shell: argv[0] is executed directly, so metacharacters in arguments are
+    // inert. The injection check above stays as defence in depth and for parity
+    // with the Python SDK. Approval is still the primary control.
+    const [file, ...args] = argv;
+    const { stdout, stderr } = await execFileAsync(file, args, {
       cwd,
       timeout,
       maxBuffer: 10 * 1024 * 1024, // 10MB buffer for large outputs
+      windowsHide: true,
     });
 
     const duration = Date.now() - startTime;
@@ -152,13 +211,16 @@ export default async function executeCommand(
     const errorObj = error as Record<string, unknown> & { 
       killed?: boolean;
       signal?: string;
-      code?: number;
+      code?: number | string;
       stdout?: string;
       stderr?: string;
       message?: string;
     };
     
     const isTimeout = errorObj.killed || errorObj.signal === 'SIGTERM';
+    // Spawn failures (e.g. ENOENT) carry a string code and no stderr: report exit code 1
+    // and surface the message so the agent can see what went wrong.
+    const exitCode = isTimeout ? -1 : typeof errorObj.code === 'number' ? errorObj.code || 1 : 1;
 
     // If it's already a MatimoError, re-throw it
     if (error instanceof MatimoError) {
@@ -172,7 +234,7 @@ export default async function executeCommand(
     logger.warn('Execute tool: Command execution failed', {
       command: command.substring(0, 100),
       duration,
-      exitCode: isTimeout ? -1 : (errorObj.code || 1),
+      exitCode,
       isTimeout,
       errorMessage: errorObj.message ? errorObj.message.substring(0, 100) : 'Unknown error',
       stderrLength: stderrStr.length,
@@ -182,9 +244,9 @@ export default async function executeCommand(
     // This allows the agent to see what went wrong
     return {
       success: false,
-      exitCode: isTimeout ? -1 : (errorObj.code || 1),
+      exitCode,
       stdout: stdoutStr.trim(),
-      stderr: stderrStr.trim(),
+      stderr: stderrStr.trim() || (typeof errorObj.code === 'string' ? (errorObj.message ?? '') : ''),
       command,
       duration,
     };

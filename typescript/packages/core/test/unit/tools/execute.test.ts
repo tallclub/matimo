@@ -77,12 +77,13 @@ describe('Execute Tool', () => {
       expect(fs.existsSync(executeImplPath)).toBe(true);
     });
 
-    it('implementation should use exec from child_process', () => {
+    it('implementation should use execFile (no shell) from child_process', () => {
       const executeImplPath = path.join(coreToolsPath, 'execute', 'execute.ts');
       const content = fs.readFileSync(executeImplPath, 'utf-8');
 
       expect(content).toContain('child_process');
-      expect(content).toContain('exec');
+      expect(content).toContain('execFile');
+      expect(content).not.toMatch(/(?<![A-Za-z])exec[(]/);
     });
 
     it('implementation should export default async function', () => {
@@ -186,17 +187,17 @@ describe('Injection Detection', () => {
 
     it('should allow safe environment variables', async () => {
       // These should not throw
-      const result = await executeCommand({ command: 'echo $HOME' });
+      const result = await executeCommand({ command: 'node --version $HOME' });
       expect(result.success).toBe(true);
     });
 
     it('should allow safe environment variables like PATH', async () => {
-      const result = await executeCommand({ command: 'echo $PATH' });
+      const result = await executeCommand({ command: 'node --version $PATH' });
       expect(result.success).toBe(true);
     });
 
     it('should allow safe environment variables like USER', async () => {
-      const result = await executeCommand({ command: 'echo $USER' });
+      const result = await executeCommand({ command: 'node --version $USER' });
       expect(result.success).toBe(true);
     });
 
@@ -207,16 +208,35 @@ describe('Injection Detection', () => {
     });
 
     it('should allow legitimate commands without injection', async () => {
-      const result = await executeCommand({ command: 'echo "hello world"' });
+      const result = await executeCommand({ command: `node -p "'hello world'"` });
       expect(result.success).toBe(true);
-      // cmd.exe's `echo` does not strip quotes the way POSIX sh does, so the
-      // literal quotes survive in stdout on Windows.
-      const expected = process.platform === 'win32' ? '"hello world"' : 'hello world';
-      expect(result.stdout.trim()).toBe(expected);
+      // Quoted arguments are grouped by the splitter; no shell is involved.
+      expect(result.stdout.trim()).toBe('hello world');
+    });
+
+    it('rejects a newline-separated second command', async () => {
+      const command = 'node --version' + String.fromCharCode(10) + 'whoami';
+      await expect(executeCommand({ command })).rejects.toThrow('Command injection detected');
+    });
+
+    it('rejects a carriage-return-separated second command', async () => {
+      const command = 'node --version' + String.fromCharCode(13) + 'whoami';
+      await expect(executeCommand({ command })).rejects.toThrow('Command injection detected');
+    });
+
+    it('reports a missing executable as a failed result, not a throw', async () => {
+      const result = await executeCommand({ command: 'matimo-no-such-binary-xyz --flag' });
+      expect(result.success).toBe(false);
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain('ENOENT');
+    });
+
+    it('rejects an unterminated quote', async () => {
+      await expect(executeCommand({ command: `node -p "'oops` })).rejects.toThrow('Unterminated quote');
     });
 
     it('should allow commands with quotes', async () => {
-      const result = await executeCommand({ command: 'echo "safe command"' });
+      const result = await executeCommand({ command: `node -p "'safe command'"` });
       expect(result.success).toBe(true);
     });
   });

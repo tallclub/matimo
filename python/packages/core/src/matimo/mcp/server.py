@@ -16,6 +16,9 @@ import fnmatch
 import hmac
 import json as _json
 import logging
+import os
+import secrets
+import sys
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
@@ -64,6 +67,9 @@ class MCPServerOptions:
     # Transport: 'stdio' (default for Claude Desktop) or 'http'
     transport: str = "stdio"
     port: int = 3100
+    # Interface to bind in HTTP mode. Default loopback only; set "0.0.0.0" (or a
+    # specific address) to accept remote connections, and then use HTTPS.
+    host: str = "127.0.0.1"
 
     # Tool filtering
     tools: list[str] | None = None          # allowlist; None = all
@@ -72,7 +78,8 @@ class MCPServerOptions:
     # Secret resolution
     secret_resolver: Any | None = None      # SecretResolverChain instance
 
-    # HTTP mode auth token (Bearer)
+    # HTTP mode auth token (Bearer). Also reads MATIMO_MCP_TOKEN. If neither is set,
+    # a random token is generated: HTTP mode is never unauthenticated.
     mcp_token: str | None = None
 
     # Matimo instance paths (if creating the server standalone)
@@ -121,6 +128,11 @@ class MCPServer:
         # Resolved auth secrets held in memory — never written to process.env.
         # Populated by _seed_environment_secrets() during start().
         self._resolved_secrets: dict[str, str] = {}
+        self._active_token: str | None = None
+
+    def get_active_token(self) -> str | None:
+        """The bearer token in force in HTTP mode (available once serving starts)."""
+        return self._active_token
 
     async def start(self) -> None:
         """Start the MCP server on the configured transport."""
@@ -263,7 +275,24 @@ class MCPServer:
             StreamableHTTPSessionManager,
         )
 
-        mcp_token = self._options.mcp_token
+        mcp_token = (
+            self._options.mcp_token
+            or os.environ.get("MATIMO_MCP_TOKEN")
+            or secrets.token_urlsafe(32)
+        )
+        self._active_token = mcp_token
+        if not self._options.mcp_token and not os.environ.get("MATIMO_MCP_TOKEN"):
+            # The user needs this to connect, so it goes to stderr rather than the log.
+            print(
+                f"Matimo MCP: auto-generated bearer token: {mcp_token}",
+                file=sys.stderr,
+            )
+        if self._options.host not in ("127.0.0.1", "localhost", "::1"):
+            logger.warning(
+                "MCP server is binding %s: the bearer token and tool traffic are readable "
+                "on the network unless you terminate TLS in front of it.",
+                self._options.host,
+            )
         session_manager = StreamableHTTPSessionManager(server, stateless=True)
 
         # Pure-ASGI handler: no Starlette required for the routing layer, which
@@ -304,7 +333,7 @@ class MCPServer:
                 return
 
             # Bearer token auth (health endpoint is exempt)
-            if path != "/health" and mcp_token:
+            if path != "/health":
                 headers = {
                     k.decode("latin-1").lower(): v.decode("latin-1")
                     for k, v in scope.get("headers", [])
@@ -365,7 +394,7 @@ class MCPServer:
 
         config = uvicorn.Config(
             asgi_app,
-            host="0.0.0.0",  # noqa: S104
+            host=self._options.host,
             port=self._options.port,
             log_level="info",
             timeout_keep_alive=65,

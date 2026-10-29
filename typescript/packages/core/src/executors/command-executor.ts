@@ -142,9 +142,9 @@ export class CommandExecutor {
   private templateString(str: string, params: Record<string, unknown>): string {
     let result = str;
     for (const [key, value] of Object.entries(params)) {
-      const placeholder = `{${key}}`;
-      const replacement = String(value);
-      result = result.replace(new RegExp(placeholder, 'g'), () => replacement);
+      // Literal replace: parameter keys come from the model, so they must never be
+      // interpreted as a regular expression.
+      result = result.split(`{${key}}`).join(String(value));
     }
     return result;
   }

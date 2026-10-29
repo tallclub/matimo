@@ -45,6 +45,7 @@ Commands:
 MCP Options:
   --transport <type>    Transport mode: stdio (default) or http
   --port <number>       HTTP port (default: 3000)
+  --host <address>      HTTP bind address (default: 127.0.0.1, loopback only)
   --tools <list>        Comma-separated tool allowlist
   --exclude <list>      Comma-separated tool denylist
   --secrets <list>      Secret resolvers: env,dotenv,vault,aws
