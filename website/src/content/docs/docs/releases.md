@@ -1255,7 +1255,7 @@ Special thanks to all contributors and alpha testers who helped make Matimo prod
 
 **Python SDK Release** (`matimo-core 0.1.0a14`)
 
-This is the official Python SDK. It shares the YAML format and policy rules with the TypeScript SDK (see known differences, e.g. meta-tools and Composio are TypeScript-first), plus Python-specific optimizations:
+This is the official Python SDK. It shares the YAML format and policy rules with the TypeScript SDK (see known differences, e.g. Composio is TypeScript only), plus Python-specific optimizations:
 
 - **Full SDK Implementation**, All core SDK features in Python (asyncio-based, Pydantic v2)
 - **Python 3.11 & 3.12**, Type-safe, fully tested across versions

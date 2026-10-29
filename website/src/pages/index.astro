@@ -33,7 +33,7 @@ const featureGroups = [
     ['YAML-first tools', 'Define a tool once and run it from TypeScript, Python and any framework.'],
     ['Hot-reload registry', 'Add or change tools at runtime without restarting your application.'],
     ['Schema validation', 'Zod in TypeScript and Pydantic in Python for tool definitions and types.'],
-    ['Dual SDKs', 'TypeScript (Node 22.19+) and Python (3.11+) share the YAML format and policy rules. Meta-tools and Composio are TypeScript-first.'],
+    ['Dual SDKs', 'TypeScript (Node 22.19+) and Python (3.11+) share the YAML format, policy rules and meta-tools. Composio is TypeScript only.'],
   ] },
   { title: '129 ready-made tools', items: [
     ['Slack and Gmail', 'Messages, channels and threads. Send, read and draft email.'],
@@ -102,7 +102,7 @@ server = MCPServer(matimo, MCPServerOptions(transport="stdio"))
 await server.start()` },
 ];
 const why = [
-  ['Dual SDKs', 'TypeScript and Python share the YAML format and policy rules. Meta-tools and Composio are TypeScript-first.'],
+  ['Dual SDKs', 'TypeScript and Python share the YAML format, policy rules and meta-tools. Composio is TypeScript only.'],
   ['No tool duplication', 'Define once in YAML and use it from every framework.'],
   ['Framework freedom', 'LangChain, CrewAI, MCP or your own loop, with the same tools.'],
   ['Faster start', 'Ready-made Slack, GitHub, Gmail, Notion and more from day one.'],
@@ -143,7 +143,7 @@ const compare = {
   rows: [
     ['Where it runs', 'In your process', "On the vendor's servers", 'In your process (TypeScript or Python)'],
     ['Checks before a call', 'You write them', "The vendor's rules", 'Risk class, policy file and human approval, built in'],
-    ['Agent creates its own tool', 'Not covered', 'Varies', 'Starts as a draft; needs approval before it runs (TypeScript)'],
+    ['Agent creates its own tool', 'Not covered', 'Varies', 'Starts as a draft; needs approval before it runs'],
     ['Record of what ran', 'Your own logging', "The vendor's logs", 'A hash-chained file you hold, with a verifier that shows edits'],
     ['Tool definition', 'Code per framework', "The vendor's catalog", 'One YAML for every framework, plus your own tools'],
     ['Third-party catalogs', 'Not covered', 'Their own', 'Wrap one, such as Composio, under the same policy'],
@@ -233,10 +233,24 @@ async def main():
     print(result)
 
 asyncio.run(main())`,
-    create: `# TypeScript only today.
-# The 15 meta-tools, including matimo_create_tool, were verified with the
-# TypeScript SDK. A plain "pip install matimo" 0.2.0 did not include them.
-# Use the TypeScript tab for this example.`,
+    create: `await matimo.execute('matimo_create_tool', {
+    'name': 'fetch-weather',
+    'yaml_content': """
+name: fetch-weather
+version: "1.0.0"
+description: Get current weather for a city
+execution:
+  type: http
+  method: GET
+  url: https://wttr.in/{city}?format=j1
+parameters:
+  city:
+    type: string
+    required: true
+""",
+})
+# The tool is now a draft. A human reviews it:
+#   matimo review approve fetch-weather`,
   },
 };
 ---
@@ -265,8 +279,8 @@ asyncio.run(main())`,
       <ul class="points">
         <li><b>Governed by default.</b> DELETE and shell tools ask a human before they run. When your host passes agent context, an agent cannot approve its own tool.</li>
         <li><b>A log that shows edits.</b> Each entry is linked to the one before it, so an edit or removal is detected. It does not prevent one.</li>
-        <li><b>Self-extending (TypeScript).</b> Meta-tools let agents draft new capabilities mid-conversation, approved by someone else.</li>
-        <li><b>Runs in your process.</b> MIT licensed. Same YAML and policy rules in TypeScript and Python. Meta-tools and Composio are TypeScript-first.</li>
+        <li><b>Self-extending.</b> Meta-tools let agents draft new capabilities mid-conversation, approved by someone else.</li>
+        <li><b>Runs in your process.</b> MIT licensed. Same YAML, policy rules and meta-tools in TypeScript and Python. Composio is TypeScript only.</li>
       </ul>
     </section>
 
@@ -277,7 +291,7 @@ asyncio.run(main())`,
     <section class="wrap videosec" id="watch">
       <p class="eyebrow">Watch</p>
       <h2>Agent-written tool to audit log in 60 seconds</h2>
-      <p class="sub">A short walkthrough built from real recorded runs of npm matimo 0.3.0 and PyPI matimo 0.2.0. Recorded against published versions; some behavior may differ in the next release. Meta-tools are shown in TypeScript; Python does not include them. The narration is synthetic.</p>
+      <p class="sub">A short walkthrough built from real recorded runs of npm matimo 0.3.0 and PyPI matimo 0.2.0. Recorded against published versions; some behavior may differ in the next release. The narration is synthetic.</p>
       <div class="vframe">
         <video controls preload="none" playsinline poster={poster.src} width="1280" height="720" aria-describedby="video-transcript">
           <source src="/video/matimo-oss-overview.mp4" type="video/mp4" />
@@ -319,7 +333,7 @@ asyncio.run(main())`,
 
     <section class="wrap demo" data-tabgroup>
       <h2>Run a tool. Let an agent write one.</h2>
-      <p class="sub">Running a tool works the same way in both SDKs. Creating a tool at runtime (meta-tools) is TypeScript only today. An agent-created tool starts as a draft and needs approval before it runs.</p>
+      <p class="sub">The same call in both SDKs. An agent-created tool starts as a draft and needs approval before it runs.</p>
       <div class="panel">
         <div class="bar">
           <div class="tabs" role="tablist" aria-label="Language">
