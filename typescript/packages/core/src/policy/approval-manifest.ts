@@ -237,9 +237,31 @@ export class ApprovalManifest {
     const json = JSON.stringify(data, null, 2);
     const tempPath = path.join(
       dir,
-      `${path.basename(this.manifestPath)}.tmp-${process.pid}-${Date.now()}`
+      `${path.basename(this.manifestPath)}.tmp-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
     );
     fs.writeFileSync(tempPath, json, 'utf-8');
-    fs.renameSync(tempPath, this.manifestPath);
+
+    // On Windows, rename over an existing file can fail transiently (EPERM/EBUSY/EACCES)
+    // when another process or handle touches the target. Retry briefly before giving up.
+    const maxAttempts = 10;
+    for (let attempt = 1; ; attempt++) {
+      try {
+        fs.renameSync(tempPath, this.manifestPath);
+        return;
+      } catch (err) {
+        const code = (err as NodeJS.ErrnoException).code;
+        const transient = code === 'EPERM' || code === 'EBUSY' || code === 'EACCES';
+        if (!transient || attempt >= maxAttempts) {
+          try {
+            fs.unlinkSync(tempPath);
+          } catch {
+            // best-effort cleanup
+          }
+          throw err;
+        }
+        // Synchronous backoff (this method is sync); ~5ms * attempt
+        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 5 * attempt);
+      }
+    }
   }
 }
