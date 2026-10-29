@@ -37,7 +37,7 @@ Expose your Matimo tools to AI assistants via the [Model Context Protocol](https
 
 ## SDK Selection: TypeScript vs Python
 
-**Both TypeScript and Python SDKs are fully supported with 100% feature parity.**
+**Both TypeScript and Python SDKs serve MCP; see known differences in the release notes.**
 
 | Feature | TypeScript | Python |
 |---------|-----------|--------|
@@ -1069,7 +1069,7 @@ A tool call then flows like this:
 
 ### Python Implementation Details
 
-The Python MCP implementation mirrors TypeScript with full feature parity:
+The Python MCP implementation follows the TypeScript one; both SDKs serve MCP (see known differences in the release notes):
 
 #### Core Features
 

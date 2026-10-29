@@ -11,7 +11,7 @@ const pillars = [
   { title: 'Policy engine', body: 'Every tool call, built-in, third-party or agent-created, is risk-classified (low to critical) and checked against deterministic rules before it runs.', href: '/docs/api-reference/policy-and-lifecycle/' },
   { title: 'Human-in-the-loop', body: 'Calls at or above your risk threshold pause for approval. HTTP DELETE and shell tools ask before every call, with signed approval manifests.', href: '/docs/api-reference/approval-system/' },
   { title: 'Self-extending agents', body: '15 meta-tools let an agent write a new YAML tool, validate it, get it approved and hot-reload it mid-conversation, under the same governance.', href: '/docs/api-reference/meta-tools/' },
-  { title: 'One definition, every framework', body: 'Define a tool once in YAML. Run it from TypeScript, Python, LangChain, CrewAI, Agno or any MCP client with identical policy enforcement.', href: '/docs/framework-integrations/langchain/' },
+  { title: 'One definition, every framework', body: 'Define a tool once in YAML. Run it from TypeScript, Python, LangChain, CrewAI, Agno or any MCP client with the same policy enforcement.', href: '/docs/framework-integrations/langchain/' },
 ];
 const stats = [
   ['129', 'ready-made tools'],
@@ -33,7 +33,7 @@ const featureGroups = [
     ['YAML-first tools', 'Define a tool once and run it from TypeScript, Python and any framework.'],
     ['Hot-reload registry', 'Add or change tools at runtime without restarting your application.'],
     ['Schema validation', 'Zod in TypeScript and Pydantic in Python for tool definitions and types.'],
-    ['Dual SDKs', 'TypeScript (Node 22.19+) and Python (3.11+) with the same concepts and policy behavior.'],
+    ['Dual SDKs', 'TypeScript (Node 22.19+) and Python (3.11+) share the YAML format and policy rules. Meta-tools and Composio are TypeScript-first.'],
   ] },
   { title: '129 ready-made tools', items: [
     ['Slack and Gmail', 'Messages, channels and threads. Send, read and draft email.'],
@@ -46,16 +46,16 @@ const featureGroups = [
   { title: 'Policy engine and governance', items: [
     ['Risk classification', 'Every call is rated low, medium, high or critical with configurable policies.'],
     ['Approval gates', 'Human-in-the-loop approval for sensitive operations, with signed manifests.'],
-    ['Audit trail', 'A hash-chained event log with secrets redacted, so you can verify what agents did.'],
+    ['Audit trail', 'A hash-chained event log with secrets redacted. An edit or removed line is detected; it is not prevented.'],
     ['Content validation', 'Pattern-based rules on agent-created tools before they can be approved.'],
     ['Integrity tracking', 'Hash-based tamper detection so approved tools cannot change silently.'],
     ['Approval expiry', 'Approvals carry a time limit and lapse on their own.'],
   ] },
   { title: 'Skills and self-extension', items: [
-    ['Semantic skill search', 'TF-IDF discovery of domain knowledge by natural-language query.'],
+    ['Skill search', 'TF-IDF keyword-relevance discovery of domain knowledge.'],
     ['Skill library', 'Markdown SKILL.md files with YAML frontmatter, loaded only when relevant.'],
     ['15 meta-tools', 'Create, validate, approve and reload tools and skills at runtime.'],
-    ['Agent self-extension', 'An agent can draft a tool, but a different party must approve it.'],
+    ['Agent self-extension', 'An agent can draft a tool. When your host passes agent context, the agent cannot approve its own tool.'],
   ] },
   { title: 'Integrations', items: [
     ['LangChain', 'Convert tools to StructuredTool and add Matimo to existing agents.'],
@@ -102,15 +102,15 @@ server = MCPServer(matimo, MCPServerOptions(transport="stdio"))
 await server.start()` },
 ];
 const why = [
-  ['Dual SDKs', 'Full TypeScript and Python support with the same concepts in both.'],
+  ['Dual SDKs', 'TypeScript and Python share the YAML format and policy rules. Meta-tools and Composio are TypeScript-first.'],
   ['No tool duplication', 'Define once in YAML and use it from every framework.'],
   ['Framework freedom', 'LangChain, CrewAI, MCP or your own loop, with the same tools.'],
   ['Faster start', 'Ready-made Slack, GitHub, Gmail, Notion and more from day one.'],
   ['Type safe', 'TypeScript types and Python hints, with Zod and Pydantic validation.'],
   ['Community tools', 'A growing set of @matimo/* provider packages.'],
   ['Agent self-extension', 'Agents build new tools at runtime, checked by policy.'],
-  ['Safe by default', 'Risky tools ask first. Agents cannot approve their own creations.'],
-  ['Open source', 'MIT licensed, with about 4,700 tests across both SDKs.'],
+  ['Safe by default', 'Risky tools ask first. When your host passes agent context, an agent cannot approve its own creations.'],
+  ['Open source', 'MIT licensed, with the source and tests on GitHub.'],
 ];
 const cli = [
   { title: 'Environment diagnostics', cmd: 'npx matimo doctor', body: 'Checks versions, installed @matimo/* packages, missing environment variables and YAML validity.' },
@@ -121,30 +121,30 @@ const resources = [
   { title: 'Quick start', body: 'A five-minute walkthrough with TypeScript and Python side by side.', href: '/docs/getting-started/quick-start/' },
   { title: 'Create your first tool', body: 'Build HTTP and command tools in YAML with validation.', href: '/docs/getting-started/your-first-tool/' },
   { title: 'API reference', body: 'SDK, policy, approval, meta-tools, errors and logging.', href: '/docs/api-reference/sdk/' },
-  { title: 'Skills system', body: 'Domain knowledge for agents, with semantic search.', href: '/docs/skills/skills/' },
+  { title: 'Skills system', body: 'Domain knowledge for agents, with TF-IDF search.', href: '/docs/skills/skills/' },
   { title: 'Architecture', body: 'How the registry, executors and policy engine fit together.', href: '/docs/architecture/overview/' },
   { title: 'Examples', body: 'Runnable LangChain, CrewAI, MCP and native examples.', href: 'https://github.com/tallclub/matimo/tree/main/typescript/examples' },
 ];
 const ready = [
-  ['Tested', 'About 4,700 tests across both SDKs. CI enforces 95% coverage on the TypeScript core and the Python matimo-core.'],
-  ['Security conscious', 'Secret isolation, command-injection prevention, integrity tracking and a fail-closed policy engine.'],
-  ['153 native tools', '129 provider tools in 10 packages plus 24 core tools, and 449 more through Composio.'],
-  ['Governance built in', 'Risk tiers, quarantine, approval manifests and an audit trail for compliance review.'],
-  ['One definition', 'The same YAML runs in both SDKs, so teams can ship together.'],
+  ['Tested', 'A pre-push hook enforces coverage floors of 95% lines, 97% functions and 87% branches (see CONTRIBUTING.md).'],
+  ['Security controls', 'Secret isolation, command-injection prevention, integrity tracking and a fail-closed policy engine. No compliance certifications are held.'],
+  ['129 provider tools', '129 tools in 10 provider packages, plus 449 more through Composio (TypeScript only).'],
+  ['Governance built in', 'Risk tiers, quarantine, approval manifests and an audit trail you can use in a compliance review.'],
+  ['One definition', 'The same YAML tool definition is used by both SDKs.'],
   ['Open source', 'MIT licensed. Releases on npm (0.4.0) and PyPI (0.2.0).'],
 ];
 const gatePoints = [
   ['Every action is rated', 'Before a tool runs, Matimo rates it low, medium, high or critical using rules you can read.'],
   ['Risky ones wait for a human', 'Deleting data or running a shell command pauses until a person approves. If nobody answers, it is refused.'],
-  ['A log you can trust', 'Each entry is linked to the one before it, so an edited or removed line is detected.'],
+  ['A log that shows edits', 'Each entry is linked to the one before it, so an edit or removal is detected. It does not prevent one.'],
 ];
 const compare = {
   cols: ['', 'A plain tool library', 'A hosted tool gateway', 'Matimo OSS'],
   rows: [
     ['Where it runs', 'In your process', "On the vendor's servers", 'In your process (TypeScript or Python)'],
     ['Checks before a call', 'You write them', "The vendor's rules", 'Risk class, policy file and human approval, built in'],
-    ['Agent creates its own tool', 'Not covered', 'Varies', 'Starts as a draft; someone else must approve it'],
-    ['Record of what ran', 'Your own logging', "The vendor's logs", 'A hash-chained file you hold, with a verifier'],
+    ['Agent creates its own tool', 'Not covered', 'Varies', 'Starts as a draft; needs approval before it runs (TypeScript)'],
+    ['Record of what ran', 'Your own logging', "The vendor's logs", 'A hash-chained file you hold, with a verifier that shows edits'],
     ['Tool definition', 'Code per framework', "The vendor's catalog", 'One YAML for every framework, plus your own tools'],
     ['Third-party catalogs', 'Not covered', 'Their own', 'Wrap one, such as Composio, under the same policy'],
   ],
@@ -233,54 +233,40 @@ async def main():
     print(result)
 
 asyncio.run(main())`,
-    create: `await matimo.execute('matimo_create_tool', {
-    'name': 'fetch-weather',
-    'yaml_content': """
-name: fetch-weather
-version: "1.0.0"
-description: Get current weather for a city
-execution:
-  type: http
-  method: GET
-  url: https://wttr.in/{city}?format=j1
-parameters:
-  city:
-    type: string
-    required: true
-""",
-})
-# The tool is now a draft. A human reviews it:
-#   matimo review approve fetch-weather`,
+    create: `# TypeScript only today.
+# The 15 meta-tools, including matimo_create_tool, were verified with the
+# TypeScript SDK. A plain "pip install matimo" 0.2.0 did not include them.
+# Use the TypeScript tab for this example.`,
   },
 };
 ---
 <Landing
-  title="Matimo: governance for AI agent tools"
-  description="Open-source tool governance for AI agents: risk-checked calls, human approval for risky ones, and a verifiable audit log. TypeScript and Python. MIT licensed."
+  title="Matimo OSS: open-source governance for AI agent tools"
+  description="Open-source tool governance for AI agents: risk-checked calls, human approval for risky ones, and a tamper-evident audit log. TypeScript and Python. MIT licensed."
 >
   <Nav />
   <main>
     <section class="hero wrap">
       <p class="eyebrow">Open source · MIT · TypeScript and Python</p>
       <h1>Let agents use tools.<br /><span>Stay in control of what they do.</span></h1>
-      <p class="lede">Matimo is the governance layer for AI agent tools. Every call is risk-checked, every risky one is approved by a human, and every result lands on a log you can verify.</p>
+      <p class="lede">Matimo is the governance layer for AI agent tools. Every call is risk-checked, every risky one is approved by a human, and every result lands on a tamper-evident log.</p>
       <div class="buttons">
         <a class="primary" href="/docs/getting-started/quick-start/">Quick start</a>
         <a class="secondary" href="https://github.com/tallclub/matimo">Star on GitHub</a>
       </div>
       <div class="install" data-install>
         <div class="tabs" role="tablist">
-          <button role="tab" aria-selected="true" data-cmd="pip install matimo">Python</button>
-          <button role="tab" aria-selected="false" data-cmd="npm install matimo">npm</button>
-          <button role="tab" aria-selected="false" data-cmd="pnpm add matimo">pnpm</button>
+          <button role="tab" aria-selected="true" data-cmd="npm install matimo">npm (TypeScript)</button>
+          <button role="tab" aria-selected="false" data-cmd="pnpm add matimo">pnpm (TypeScript)</button>
+          <button role="tab" aria-selected="false" data-cmd="pip install matimo">pip (Python)</button>
         </div>
-        <div class="cmd"><code><span class="prompt">$</span> <span data-out>pip install matimo</span></code><button class="copy" data-copy aria-label="Copy command">Copy</button></div>
+        <div class="cmd"><code><span class="prompt">$</span> <span data-out>npm install matimo</span></code><button class="copy" data-copy aria-label="Copy command">Copy</button></div>
       </div>
       <ul class="points">
-        <li><b>Governed by default.</b> DELETE and shell tools ask a human before they run, and an agent cannot approve a tool it created.</li>
-        <li><b>Verifiable audit log.</b> Hash-chained, with secrets redacted.</li>
-        <li><b>Self-extending.</b> Meta-tools let agents create new capabilities mid-conversation, approved by someone else.</li>
-        <li><b>Runs in your process.</b> MIT licensed, identical in TypeScript and Python.</li>
+        <li><b>Governed by default.</b> DELETE and shell tools ask a human before they run. When your host passes agent context, an agent cannot approve its own tool.</li>
+        <li><b>A log that shows edits.</b> Each entry is linked to the one before it, so an edit or removal is detected. It does not prevent one.</li>
+        <li><b>Self-extending (TypeScript).</b> Meta-tools let agents draft new capabilities mid-conversation, approved by someone else.</li>
+        <li><b>Runs in your process.</b> MIT licensed. Same YAML and policy rules in TypeScript and Python. Meta-tools and Composio are TypeScript-first.</li>
       </ul>
     </section>
 
@@ -291,7 +277,7 @@ parameters:
     <section class="wrap videosec" id="watch">
       <p class="eyebrow">Watch</p>
       <h2>Agent-written tool to audit log in 60 seconds</h2>
-      <p class="sub">A short walkthrough built from real recorded runs of npm matimo 0.3.0 and PyPI matimo 0.2.0. The narration is synthetic.</p>
+      <p class="sub">A short walkthrough built from real recorded runs of npm matimo 0.3.0 and PyPI matimo 0.2.0. Recorded against published versions; some behavior may differ in the next release. Meta-tools are shown in TypeScript; Python does not include them. The narration is synthetic.</p>
       <div class="vframe">
         <video controls preload="none" playsinline poster={poster.src} width="1280" height="720" aria-describedby="video-transcript">
           <source src="/video/matimo-oss-overview.mp4" type="video/mp4" />
@@ -333,12 +319,12 @@ parameters:
 
     <section class="wrap demo" data-tabgroup>
       <h2>Run a tool. Let an agent write one.</h2>
-      <p class="sub">The same call in both SDKs. An agent-created tool starts as a draft and needs approval before it runs.</p>
+      <p class="sub">Running a tool works the same way in both SDKs. Creating a tool at runtime (meta-tools) is TypeScript only today. An agent-created tool starts as a draft and needs approval before it runs.</p>
       <div class="panel">
         <div class="bar">
           <div class="tabs" role="tablist" aria-label="Language">
-            <button role="tab" aria-selected="true" data-lang="py">Python</button>
-            <button role="tab" aria-selected="false" data-lang="ts">TypeScript</button>
+            <button role="tab" aria-selected="true" data-lang="ts">TypeScript</button>
+            <button role="tab" aria-selected="false" data-lang="py">Python</button>
           </div>
           <div class="tabs" role="tablist" aria-label="Example">
             <button role="tab" aria-selected="true" data-kind="run">Run a tool</button>
@@ -347,7 +333,7 @@ parameters:
         </div>
         {(['py', 'ts'] as const).flatMap((lang) =>
           (['run', 'create'] as const).map((kind) => (
-            <pre data-lang={lang} data-kind={kind} hidden={!(lang === 'py' && kind === 'run')}><code>{hero[lang][kind]}</code></pre>
+            <pre data-lang={lang} data-kind={kind} hidden={!(lang === 'ts' && kind === 'run')}><code>{hero[lang][kind]}</code></pre>
           ))
         )}
       </div>
@@ -449,7 +435,7 @@ parameters:
 
     <section class="wrap" id="patterns">
       <h2>Four integration patterns</h2>
-      <p class="sub">Pick what fits. Both SDKs support all four.</p>
+      <p class="sub">Pick what fits. Each pattern is shown in both SDKs.</p>
       <div class="patterns">
         {patterns.map((p, i) => (
           <div class="pattern" data-pattern>
@@ -516,14 +502,14 @@ parameters:
 
     <section class="wrap agents" id="for-agents">
       <p class="eyebrow">For AI agents</p>
-      <h2>Are you an agent? This was built for you.</h2>
-      <p class="sub">Matimo lets an agent call real services and write its own tools while a human approves what runs. Everything below is plain text, no JavaScript needed.</p>
+      <h2>Machine-readable docs for agents</h2>
+      <p class="sub">Matimo is designed for agent-driven use under human oversight. Everything below is plain text, no JavaScript needed.</p>
       <div class="grid">
         <a class="card" href="/llms.txt"><h3>llms.txt</h3><p>What Matimo is, when to use it, how to install it, and where it stops.</p></a>
         <a class="card" href="/llms-full.txt"><h3>llms-full.txt</h3><p>The core documentation in one file, ready to load into context.</p></a>
         <a class="card" href="https://github.com/tallclub/matimo/blob/main/AGENTS.md"><h3>AGENTS.md</h3><p>Setup, test and commit conventions for coding agents working in the repo.</p></a>
       </div>
-      <pre class="agentcode"><code>npm install @matimo/core     # TypeScript
+      <pre class="agentcode"><code>npm install matimo           # TypeScript: core plus the CLI (@matimo/core is core only)
 pip install matimo           # Python
 npx matimo mcp --tool-paths ./tools   # serve tools to MCP clients</code></pre>
     </section>
@@ -540,7 +526,7 @@ npx matimo mcp --tool-paths ./tools   # serve tools to MCP clients</code></pre>
 
     <section class="wrap cta-band">
       <h2>Need a hosted runtime on top?</h2>
-      <p>Matimo Workbench builds on this governance layer with a visual builder and managed runtime.</p>
+      <p>Matimo Workbench uses Matimo OSS as its tool layer, with a visual builder and managed runtime.</p>
       <a class="secondary" href="https://matimo.ai">Explore Matimo Workbench</a>
     </section>
   </main>
@@ -552,7 +538,7 @@ npx matimo mcp --tool-paths ./tools   # serve tools to MCP clients</code></pre>
   if (box) {
     const out = box.querySelector('[data-out]');
     const tabs = box.querySelectorAll('[role=tab]');
-    let cmd = 'pip install matimo';
+    let cmd = 'npm install matimo';
     tabs.forEach((t) => t.addEventListener('click', () => {
       tabs.forEach((x) => x.setAttribute('aria-selected', String(x === t)));
       cmd = t.getAttribute('data-cmd') ?? cmd;
@@ -573,7 +559,7 @@ npx matimo mcp --tool-paths ./tools   # serve tools to MCP clients</code></pre>
   // Hero demo: language x example
   const demo = document.querySelector('[data-tabgroup]');
   if (demo) {
-    const state = { lang: 'py', kind: 'run' };
+    const state = { lang: 'ts', kind: 'run' };
     const render = () => {
       demo.querySelectorAll('[data-lang][role=tab]').forEach((b) => b.setAttribute('aria-selected', String(b.getAttribute('data-lang') === state.lang)));
       demo.querySelectorAll('[data-kind][role=tab]').forEach((b) => b.setAttribute('aria-selected', String(b.getAttribute('data-kind') === state.kind)));
