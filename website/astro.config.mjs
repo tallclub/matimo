@@ -1,6 +1,7 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 import starlightLinksValidator from 'starlight-links-validator';
+import { gaHead } from './src/analytics.mjs';
 
 export default defineConfig({
   site: 'https://matimo.dev',
@@ -17,6 +18,7 @@ export default defineConfig({
         { icon: 'discord', label: 'Discord', href: 'https://discord.gg/3JPt4mxWDV' },
       ],
       head: [
+        ...gaHead(process.env.PUBLIC_GA_ID),
         { tag: 'link', attrs: { rel: 'alternate', type: 'text/plain', href: '/llms.txt', title: 'Matimo for LLMs (llms.txt)' } },
         { tag: 'link', attrs: { rel: 'alternate', type: 'text/plain', href: '/llms-full.txt', title: 'Matimo full documentation for LLMs' } },
       ],

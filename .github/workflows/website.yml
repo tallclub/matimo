@@ -35,6 +35,9 @@ jobs:
       - run: pnpm install --frozen-lockfile
       # Fails the build on broken internal links (starlight-links-validator)
       - run: pnpm build
+        env:
+          # Set the repository variable GA_MEASUREMENT_ID (G-XXXXXXXXXX) to enable Google Analytics. Unset means none.
+          PUBLIC_GA_ID: ${{ vars.GA_MEASUREMENT_ID }}
       - uses: actions/upload-pages-artifact@v3
         if: github.event_name != 'pull_request'
         with:

@@ -2,6 +2,8 @@
 import '@fontsource-variable/inter';
 import '@fontsource-variable/jetbrains-mono';
 import '../styles/tokens.css';
+import { gaId, gaInline } from '../analytics.mjs';
+const ga = gaId(import.meta.env.PUBLIC_GA_ID ?? process.env.PUBLIC_GA_ID);
 const { title, description } = Astro.props;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 const jsonLd = {
@@ -28,6 +30,8 @@ const jsonLd = {
     <link rel="alternate" type="text/plain" href="/llms.txt" title="Matimo for LLMs (llms.txt)" />
     <link rel="alternate" type="text/plain" href="/llms-full.txt" title="Matimo full documentation for LLMs" />
     <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+    {ga && <script is:inline async src={`https://www.googletagmanager.com/gtag/js?id=${ga}`}></script>}
+    {ga && <script is:inline set:html={gaInline(ga)} />}
     <meta property="og:type" content="website" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
