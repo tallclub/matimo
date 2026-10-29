@@ -239,10 +239,10 @@ class TestMCPServerGetMcpTools:
         tool = result[0]
         assert tool.title == "My Tool"
         assert tool.annotations is not None
-        assert tool.annotations.readOnlyHint is True
-        assert tool.annotations.destructiveHint is False
-        assert tool.annotations.idempotentHint is True
-        assert tool.annotations.openWorldHint is True
+        assert tool.annotations.read_only_hint is True
+        assert tool.annotations.destructive_hint is False
+        assert tool.annotations.idempotent_hint is True
+        assert tool.annotations.open_world_hint is True
 
 
 # ---------------------------------------------------------------------------
@@ -604,42 +604,7 @@ class TestMCPServerStart:
             await server.start()
             mock_serve.assert_called_once()
 
-    async def test_start_stdio_covers_handler_callbacks(self) -> None:
-        """Cover lines 96, 103 (registered callbacks) and 106 (stdio dispatch)."""
-        registered: dict[str, Any] = {}
-
-        def capture_list_tools() -> Any:  # noqa: ANN401  # test helper mimics MCP decorator factory
-            def decorator(fn: Any) -> Any:  # noqa: ANN401
-                registered["list_tools"] = fn
-                return fn
-            return decorator
-
-        def capture_call_tool() -> Any:  # noqa: ANN401  # test helper mimics MCP decorator factory
-            def decorator(fn: Any) -> Any:  # noqa: ANN401
-                registered["call_tool"] = fn
-                return fn
-            return decorator
-
-        mock_server_instance = MagicMock()
-        mock_server_instance.list_tools.side_effect = capture_list_tools
-        mock_server_instance.call_tool.side_effect = capture_call_tool
-        mock_server_class = MagicMock(return_value=mock_server_instance)
-
-        matimo_inst = _make_matimo_mock(tools=[_make_tool("t")])
-        server = MCPServer(matimo_inst, MCPServerOptions(transport="stdio"))
-        server._run_stdio = AsyncMock()  # type: ignore[method-assign]
-
-        with patch("mcp.server.Server", mock_server_class):
-            await server.start()
-
-        server._run_stdio.assert_awaited_once()  # line 106 covered
-
-        # Invoke the captured callbacks to cover lines 96 and 103
-        list_result = await registered["list_tools"]()
-        assert isinstance(list_result, list)  # line 96 covered
-
-        call_result = await registered["call_tool"]("t", {})
-        assert isinstance(call_result, list)  # line 103 covered
+    async def test_run_stdio_runs_server(self) -> None:
         """Cover _run_stdio body (lines 115-120) by mocking the stdio transport."""
         from contextlib import asynccontextmanager
 
@@ -663,14 +628,13 @@ class TestMCPServerStart:
 
 
 # ---------------------------------------------------------------------------
-# _mcp_major_version() / _build_server_v2() — mcp>=2.0 constructor-callback API
+# _build_server() — mcp>=2.0 constructor-callback API
 #
 # mcp 2.0 removed the @server.list_tools()/@server.call_tool()/
 # @server.list_resources()/@server.read_resource() decorators entirely,
 # replacing them with on_list_tools=/on_call_tool=/on_list_resources=/
-# on_read_resource= constructor kwargs on Server (see _build_server_v2 in
-# mcp/server.py). These tests force that branch via _mcp_major_version even
-# though the pinned dev dependency is mcp 1.x, using the real mcp.types
+# on_read_resource= constructor kwargs on Server (see _build_server in
+# mcp/server.py). # though the pinned dev dependency is mcp 1.x, using the real mcp.types
 # models (present and structurally identical in both 1.x and 2.x) rather
 # than mocking them, so the callbacks are exercised against genuine
 # pydantic validation.
@@ -690,7 +654,6 @@ class TestMCPServerBuildV2:
         server._run_stdio = AsyncMock()  # type: ignore[method-assign]
 
         with (
-            patch("matimo.mcp.server._mcp_major_version", return_value=2),
             patch("mcp.server.Server", side_effect=fake_server_ctor),
         ):
             await server.start()
@@ -699,7 +662,7 @@ class TestMCPServerBuildV2:
         assert "on_list_tools" in captured
         assert "on_call_tool" in captured
         # No skills registered on this Matimo mock -> resource handlers omitted,
-        # mirroring _register_skill_resources_v1's early return when empty.
+        # (skills are only exposed as resources when there is at least one).
         assert "on_list_resources" not in captured
         assert "on_read_resource" not in captured
 
@@ -735,7 +698,6 @@ class TestMCPServerBuildV2:
         server._run_stdio = AsyncMock()  # type: ignore[method-assign]
 
         with (
-            patch("matimo.mcp.server._mcp_major_version", return_value=2),
             patch("mcp.server.Server", side_effect=fake_server_ctor),
         ):
             await server.start()
@@ -746,7 +708,7 @@ class TestMCPServerBuildV2:
             None, mcp_types.CallToolRequestParams(name="t", arguments={})
         )
         assert isinstance(call_result, mcp_types.CallToolResult)
-        assert call_result.isError is True
+        assert call_result.is_error is True
         matimo_inst.execute.assert_awaited_once()
 
     async def test_start_v2_registers_skill_resource_handlers_when_skills_exist(self) -> None:
@@ -767,7 +729,6 @@ class TestMCPServerBuildV2:
         server._run_stdio = AsyncMock()  # type: ignore[method-assign]
 
         with (
-            patch("matimo.mcp.server._mcp_major_version", return_value=2),
             patch("mcp.server.Server", side_effect=fake_server_ctor),
         ):
             await server.start()
@@ -806,7 +767,6 @@ class TestMCPServerBuildV2:
         server._run_stdio = AsyncMock()  # type: ignore[method-assign]
 
         with (
-            patch("matimo.mcp.server._mcp_major_version", return_value=2),
             patch("mcp.server.Server", side_effect=fake_server_ctor),
         ):
             await server.start()
@@ -817,27 +777,6 @@ class TestMCPServerBuildV2:
             None, mcp_types.ReadResourceRequestParams(uri="skills://demo-skill")
         )
         assert "unavailable" in read_result.contents[0].text
-
-
-class TestMcpMajorVersion:
-    def test_defaults_to_1_when_version_lookup_fails(self) -> None:
-        from matimo.mcp.server import _mcp_major_version
-
-        with patch("importlib.metadata.version", side_effect=Exception("boom")):
-            assert _mcp_major_version() == 1
-
-    def test_parses_major_version_from_installed_package(self) -> None:
-        from matimo.mcp.server import _mcp_major_version
-
-        with patch("importlib.metadata.version", return_value="2.2.0"):
-            assert _mcp_major_version() == 2
-        with patch("importlib.metadata.version", return_value="1.28.1"):
-            assert _mcp_major_version() == 1
-
-
-# ---------------------------------------------------------------------------
-# create_mcp_server factory
-# ---------------------------------------------------------------------------
 
 
 class TestCreateMcpServer:
@@ -1101,122 +1040,6 @@ class TestRunHttpAsgiHandler:
         scope: dict = {"type": "lifespan"}
         await app(scope, receive, send)
         assert sends == []
-
-
-# ---------------------------------------------------------------------------
-# MCPServer._register_skill_resources_v1
-# ---------------------------------------------------------------------------
-
-
-class TestRegisterSkillResources:
-    def test_early_return_when_no_skills(self) -> None:
-        matimo = _make_matimo_mock()
-        matimo.list_skills.return_value = []
-        server = MCPServer(matimo, MCPServerOptions())
-        mock_server_obj = MagicMock()
-        server._register_skill_resources_v1(mock_server_obj)
-        mock_server_obj.list_resources.assert_not_called()
-        mock_server_obj.read_resource.assert_not_called()
-
-    def test_early_return_when_mcp_not_installed(self) -> None:
-        matimo = _make_matimo_mock()
-        skill = MagicMock()
-        skill.name = "my-skill"
-        matimo.list_skills.return_value = [skill]
-        server = MCPServer(matimo, MCPServerOptions())
-        mock_server_obj = MagicMock()
-
-        with patch.dict("sys.modules", {"mcp": None, "mcp.types": None}):
-            server._register_skill_resources_v1(mock_server_obj)
-
-        mock_server_obj.list_resources.assert_not_called()
-
-    async def test_registers_handlers_and_invokes_them(self) -> None:
-        skill = MagicMock()
-        skill.name = "my-skill"
-        skill.description = "A test skill"
-
-        matimo = _make_matimo_mock()
-        matimo.list_skills.return_value = [skill]
-        matimo.get_skill_content.return_value = "# Skill Content"
-
-        server = MCPServer(matimo, MCPServerOptions())
-
-        registered_handlers: dict[str, Any] = {}
-        mock_server_obj = MagicMock()
-
-        def capture_list_resources() -> Any:
-            def decorator(fn: Any) -> Any:
-                registered_handlers["list_resources"] = fn
-                return fn
-            return decorator
-
-        def capture_read_resource() -> Any:
-            def decorator(fn: Any) -> Any:
-                registered_handlers["read_resource"] = fn
-                return fn
-            return decorator
-
-        mock_server_obj.list_resources.side_effect = capture_list_resources
-        mock_server_obj.read_resource.side_effect = capture_read_resource
-
-        mock_mcp_types = MagicMock()
-        mock_mcp_types.Resource.side_effect = lambda **kw: MagicMock(**kw)
-
-        with patch.dict("sys.modules", {"mcp.types": mock_mcp_types}):
-            server._register_skill_resources_v1(mock_server_obj)
-
-        assert "list_resources" in registered_handlers
-        assert "read_resource" in registered_handlers
-
-        # Invoke list_resources — pydantic.AnyUrl is available in the test env
-        resources = await registered_handlers["list_resources"]()
-        assert isinstance(resources, list)
-
-        # Invoke read_resource — returns skill content
-        uri_mock = MagicMock()
-        uri_mock.__str__ = MagicMock(return_value="skills://my-skill")
-        result = await registered_handlers["read_resource"](uri_mock)
-        assert result == "# Skill Content"
-
-    async def test_read_resource_returns_unavailable_when_content_none(self) -> None:
-        skill = MagicMock()
-        skill.name = "empty-skill"
-        skill.description = None
-
-        matimo = _make_matimo_mock()
-        matimo.list_skills.return_value = [skill]
-        matimo.get_skill_content.return_value = None  # skill has no content
-
-        server = MCPServer(matimo, MCPServerOptions())
-
-        registered_handlers: dict[str, Any] = {}
-        mock_server_obj = MagicMock()
-
-        def capture_read_resource() -> Any:
-            def decorator(fn: Any) -> Any:
-                registered_handlers["read_resource"] = fn
-                return fn
-            return decorator
-
-        def capture_list_resources() -> Any:
-            def decorator(fn: Any) -> Any:
-                return fn
-            return decorator
-
-        mock_server_obj.list_resources.side_effect = capture_list_resources
-        mock_server_obj.read_resource.side_effect = capture_read_resource
-
-        mock_mcp_types = MagicMock()
-
-        with patch.dict("sys.modules", {"mcp.types": mock_mcp_types}):
-            server._register_skill_resources_v1(mock_server_obj)
-
-        uri_mock = MagicMock()
-        uri_mock.__str__ = MagicMock(return_value="skills://empty-skill")
-        result = await registered_handlers["read_resource"](uri_mock)
-        assert "unavailable" in result
-
 
 
 class TestBearerTokenMatches:
