@@ -509,9 +509,14 @@ asyncio.run(main())`,
         <a class="card" href="/llms-full.txt"><h3>llms-full.txt</h3><p>The core documentation in one file, ready to load into context.</p></a>
         <a class="card" href="https://github.com/tallclub/matimo/blob/main/AGENTS.md"><h3>AGENTS.md</h3><p>Setup, test and commit conventions for coding agents working in the repo.</p></a>
       </div>
-      <pre class="agentcode"><code>npm install matimo           # TypeScript: core plus the CLI (@matimo/core is core only)
-pip install matimo           # Python
-npx matimo mcp --tool-paths ./tools   # serve tools to MCP clients</code></pre>
+      <pre class="agentcode"><code># TypeScript: core plus the CLI
+npm install matimo
+# TypeScript: core only
+npm install @matimo/core
+# Python
+pip install matimo
+# Serve tools to MCP clients
+npx matimo mcp --tool-paths ./tools</code></pre>
     </section>
 
     <section class="wrap cta-band">
