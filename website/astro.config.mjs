@@ -72,6 +72,7 @@ export default defineConfig({
             { label: 'Releases', slug: 'docs/releases' },
             { label: 'Roadmap', slug: 'docs/roadmap' },
             { label: 'Commit guidelines', slug: 'docs/community/commit-guidelines' },
+            { label: 'Privacy', link: '/privacy/' },
             { label: 'Matimo 0.2.0 release post', slug: 'docs/blog/2026-10-01-matimo-0-2-0-tool-governance' },
           ],
         },

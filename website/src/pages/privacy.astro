@@ -1,0 +1,63 @@
+---
+import Landing from '../layouts/Landing.astro';
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
+const updated = '2026-10-29';
+---
+<Landing
+  title="Privacy: Matimo OSS website"
+  description="What the Matimo OSS website collects, why, who receives it, and how to opt out."
+>
+  <Nav />
+  <main class="wrap legal">
+    <p class="eyebrow">Privacy</p>
+    <h1>Privacy notice for matimo.dev</h1>
+    <p class="meta">Last updated {updated}</p>
+
+    <p>This notice covers the Matimo OSS website: matimo.dev and its documentation. It is run by <a href="https://roaiq.com">roaiq Technologies</a>. Questions: <a href="mailto:info@roaiq.com">info@roaiq.com</a>.</p>
+
+    <h2>What this notice does not cover</h2>
+    <ul>
+      <li>The Matimo OSS software itself. The SDK source in the repository contains no analytics or telemetry code. What your tools send is up to the tools you configure.</li>
+      <li>Matimo Workbench at matimo.ai, and roaiq.com, which have their own notices.</li>
+      <li>Sites we link to: GitHub, npm, PyPI and Discord each have their own privacy policies.</li>
+    </ul>
+
+    <h2>What we collect</h2>
+    <p>We do not run user accounts, forms, comments or advertising trackers on this site. We collect:</p>
+    <ul>
+      <li><b>Usage statistics, with Google Analytics 4.</b> Pages viewed, the page you came from, approximate location (country or city level), browser, device type and screen size, and how long a page was open. Google Analytics sets cookies to tell visits apart. We use this to see which pages help and which do not, and to decide what to write next.</li>
+      <li><b>Hosting logs.</b> The site is hosted on GitHub Pages. GitHub receives your IP address and request details when you load a page, under <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">GitHub's privacy statement</a>. We do not receive those logs.</li>
+      <li><b>A theme setting.</b> The documentation stores your light or dark choice in your browser's local storage. It stays on your device.</li>
+    </ul>
+
+    <h2>What we do not load from other companies</h2>
+    <p>Fonts, images, the demo video and the documentation search are served from this site. The search index runs in your browser. Nothing you type into search is sent to us.</p>
+
+    <h2>Your choices</h2>
+    <ul>
+      <li><b>Do Not Track.</b> If your browser sends Do Not Track, the analytics script does not run.</li>
+      <li><b>Visitors in the EEA, the UK and Switzerland.</b> Analytics storage is denied by default for you, so Google Analytics runs without cookies. We do not yet show a consent banner.</li>
+      <li><b>Block it yourself.</b> A content blocker or Google's <a href="https://tools.google.com/dlpage/gaoptout">browser opt-out add-on</a> stops Google Analytics.</li>
+      <li><b>Ask us.</b> Write to <a href="mailto:info@roaiq.com">info@roaiq.com</a> to ask what we hold about you or to ask us to delete it. We hold only the aggregate statistics Google Analytics reports to us, so we usually cannot tie a record to one person.</li>
+    </ul>
+
+    <h2>Google</h2>
+    <p>Google Analytics is provided by Google, which processes the data it collects for us under <a href="https://policies.google.com/privacy">Google's privacy policy</a>. Data may be processed outside your country.</p>
+
+    <h2>Changes</h2>
+    <p>If we change what the site collects, we will update this page and its date. Earlier versions are in the <a href="https://github.com/tallclub/matimo/commits/main/website/src/pages/privacy.astro">repository history</a>.</p>
+  </main>
+  <Footer />
+</Landing>
+
+<style>
+  .legal { max-width: 46rem; padding-top: 4rem; }
+  .eyebrow { color: var(--mt-accent-hi); font-size: .8rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+  .legal h1 { font-size: 2.2rem; line-height: 1.2; margin: .4rem 0 .5rem; }
+  .legal h2 { font-size: 1.2rem; margin: 2.2rem 0 .6rem; }
+  .meta { color: var(--mt-muted); margin-bottom: 1.5rem; font-size: .9rem; }
+  .legal p, .legal li { color: var(--mt-text); }
+  .legal ul { padding-left: 1.25rem; display: grid; gap: .6rem; margin: .6rem 0; }
+  .legal a { color: var(--mt-accent-hi); text-underline-offset: 3px; }
+</style>
