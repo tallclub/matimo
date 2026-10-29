@@ -8,3 +8,5 @@
 export { MatimoError, ErrorCode } from '../errors/matimo-error.js';
 export { getGlobalMatimoLogger } from '../logging/index.js';
 export { getGlobalApprovalHandler } from '../approval/approval-handler.js';
+export { isBlockedUrl } from '../policy/ssrf.js';
+export { ssrfHttpAgent, ssrfHttpsAgent, ssrfBeforeRedirect } from '../executors/ssrf-guard.js';

@@ -9,7 +9,17 @@ import path from 'path';
 import axios from 'axios';
 import pdfParse from 'pdf-parse';
 import mammoth from 'mammoth';
-import { MatimoError, ErrorCode } from '@matimo/core';
+import {
+  MatimoError,
+  ErrorCode,
+  isBlockedUrl as isBlockedHostUrl,
+  ssrfHttpAgent,
+  ssrfHttpsAgent,
+  ssrfBeforeRedirect,
+} from '@matimo/core/runtime';
+
+/** Unparseable URLs are refused here: this tool is about to fetch them. */
+const isBlockedUrl = (url: string): boolean => isBlockedHostUrl(url, true);
 
 type SupportedFormat = 'pdf' | 'docx' | 'txt' | 'csv';
 type RequestedFormat = 'auto' | SupportedFormat;
@@ -55,36 +65,6 @@ function resolveLocalPath(filePath: string): string {
     return path.join(process.env.HOME || '/', filePath.slice(1));
   }
   return path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath);
-}
-
-/**
- * SSRF guard for the fileUrl input. Mirrors isBlockedUrl() in
- * packages/core/src/policy/default-policy.ts so remote fetches applied by this
- * tool are held to the same bar Matimo's policy engine uses for agent-proposed
- * HTTP tools (blocks localhost, loopback, link-local/AWS metadata, and RFC1918
- * private ranges).
- */
-function isBlockedUrl(url: string): boolean {
-  let hostname: string;
-  try {
-    hostname = new URL(url).hostname.toLowerCase();
-  } catch {
-    return true;
-  }
-  // Node's URL.hostname keeps IPv6 literals bracketed (e.g. "[::1]") — strip
-  // the brackets so the comparisons below match the bare address.
-  if (hostname.startsWith('[') && hostname.endsWith(']')) {
-    hostname = hostname.slice(1, -1);
-  }
-  return (
-    hostname === 'localhost' ||
-    hostname === '127.0.0.1' ||
-    hostname === '::1' ||
-    hostname.startsWith('169.254.') || // link-local / AWS metadata
-    hostname.startsWith('10.') ||
-    hostname.startsWith('192.168.') ||
-    /^172\.(1[6-9]|2\d|3[01])\./.test(hostname)
-  );
 }
 
 /** Detect a supported format from a file name's extension. */
@@ -260,6 +240,10 @@ async function loadRemoteFile(
       maxBodyLength: maxSizeBytes,
       headers: { 'User-Agent': 'Matimo/1.0 (AI Agent Tool SDK)' },
       validateStatus: () => true,
+      httpAgent: ssrfHttpAgent,
+      httpsAgent: ssrfHttpsAgent,
+      maxRedirects: 5,
+      beforeRedirect: ssrfBeforeRedirect,
     });
   } catch (error) {
     throw new MatimoError('HTTP request failed', ErrorCode.NETWORK_ERROR, {

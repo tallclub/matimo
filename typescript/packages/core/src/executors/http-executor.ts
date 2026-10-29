@@ -3,9 +3,13 @@ import { ToolDefinition } from '../core/schema.js';
 import { applyParameterEncodings } from '../encodings/parameter-encoding.js';
 import { MatimoError, ErrorCode, fromHttpError } from '../errors/matimo-error.js';
 import { isSSRFTarget } from '../policy/content-validator.js';
+import { ssrfBeforeRedirect, ssrfHttpAgent, ssrfHttpsAgent } from './ssrf-guard.js';
 
 /** Coarse upstream ceiling (bytes) on request/response body size, independent of the JSON-level response-size guardrail. */
 const HTTP_MAX_CONTENT_LENGTH_BYTES = 50 * 1024 * 1024; // 50 MB
+
+/** Redirect hops followed per request; each hop is re-checked by the SSRF guard. */
+const HTTP_MAX_REDIRECTS = 5;
 
 /**
  * HttpExecutor - Executes HTTP requests
@@ -91,6 +95,12 @@ export class HttpExecutor {
       // pathologically huge download before it's even fully buffered.
       maxContentLength: HTTP_MAX_CONTENT_LENGTH_BYTES,
       maxBodyLength: HTTP_MAX_CONTENT_LENGTH_BYTES,
+      // Connect-time SSRF guard: the agents refuse hostnames that resolve to internal
+      // addresses, and beforeRedirect re-validates every redirect hop.
+      httpAgent: ssrfHttpAgent,
+      httpsAgent: ssrfHttpsAgent,
+      maxRedirects: HTTP_MAX_REDIRECTS,
+      beforeRedirect: ssrfBeforeRedirect,
     };
 
     if (Object.keys(templatedHeaders).length > 0) {

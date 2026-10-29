@@ -4,22 +4,13 @@ Mirrors: packages/core/src/policy/content-validator.ts
 """
 from __future__ import annotations
 
-import ipaddress
 import re
 from dataclasses import dataclass
 from urllib.parse import urlparse
 
 from matimo.core.models import ToolDefinition
+from matimo.policy.ssrf import is_blocked_hostname
 from matimo.policy.types import PolicyConfig, RiskLevel
-
-# Internal / metadata service hostnames that SSRF protection blocks
-_SSRF_BLOCKED = {
-    "localhost",
-    "169.254.169.254",  # AWS/GCP metadata
-    "metadata.google.internal",
-    "100.100.100.200",  # Alibaba Cloud metadata
-    "fd00:ec2::254",    # AWS IPv6 metadata
-}
 
 _PLACEHOLDER_RE = re.compile(r"\{([^}]+)\}")
 
@@ -183,23 +174,10 @@ def _check_ssrf(url: str) -> str | None:
     except Exception:
         return None
 
-    # Strip placeholders before resolving
+    # Strip placeholders before classifying
     host_clean = re.sub(r"\{[^}]+\}", "", host).strip(".")
-
-    if host_clean in _SSRF_BLOCKED or host_clean == "0":
+    if host_clean and is_blocked_hostname(host_clean):
         return host_clean
-
-    # Internal and local name suffixes, as in TypeScript isSSRFTarget()
-    if host_clean.endswith((".internal", ".local", ".localhost")):
-        return host_clean
-
-    # Block private IP ranges
-    try:
-        addr = ipaddress.ip_address(host_clean)
-        if addr.is_private or addr.is_loopback or addr.is_link_local or addr.is_unspecified:
-            return host_clean
-    except ValueError:
-        pass
 
     return None
 
