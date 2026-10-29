@@ -1,0 +1,13 @@
+/* Shared design tokens: used by both the landing page and Starlight docs so they blend. */
+:root {
+  --mt-accent: #ff3d7f;
+  --mt-accent-hi: #ff7aa8;
+  --mt-accent-lo: #b3124f;
+  --mt-bg: #08080b;
+  --mt-bg-raised: #101015;
+  --mt-border: #23232c;
+  --mt-text: #ececf1;
+  --mt-muted: #9a9aa8;
+  --mt-font: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mt-mono: 'JetBrains Mono Variable', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+}

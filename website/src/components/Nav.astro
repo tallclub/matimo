@@ -1,0 +1,36 @@
+---
+import { Image } from 'astro:assets';
+import logo from '../assets/logo.png';
+const links = [
+  { href: '/docs/', label: 'Docs' },
+  { href: '/docs/getting-started/quick-start/', label: 'Quick start' },
+  { href: '/docs/api-reference/policy-and-lifecycle/', label: 'Governance' },
+  { href: '/docs/releases/', label: 'Release notes' },
+];
+---
+<header class="nav">
+  <div class="wrap row">
+    <a href="/" class="brand"><Image src={logo} alt="" width={28} height={28} /><span>Matimo</span></a>
+    <nav>
+      {links.map((l) => <a href={l.href}>{l.label}</a>)}
+    </nav>
+    <div class="actions">
+      <a class="gh" href="https://github.com/tallclub/matimo" rel="noopener">GitHub</a>
+      <a class="cta" href="/docs/getting-started/quick-start/">Get started</a>
+    </div>
+  </div>
+</header>
+<style>
+  .nav { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--mt-bg) 80%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--mt-border); }
+  .row { display: flex; align-items: center; gap: 1.5rem; height: 3.6rem; }
+  .brand { display: flex; align-items: center; gap: .6rem; font-weight: 650; text-decoration: none; font-size: 1.1rem; }
+  .brand img { border-radius: 6px; }
+  nav { display: flex; gap: 1.4rem; margin-left: 1rem; flex: 1; }
+  nav a { color: var(--mt-muted); text-decoration: none; font-size: .92rem; }
+  nav a:hover { color: var(--mt-text); }
+  .actions { display: flex; align-items: center; gap: 1rem; }
+  .gh { color: var(--mt-muted); text-decoration: none; font-size: .92rem; }
+  .cta { background: var(--mt-accent); color: #fff; text-decoration: none; font-size: .9rem; font-weight: 600; padding: .45rem .9rem; border-radius: 8px; }
+  .cta:hover { background: var(--mt-accent-hi); }
+  @media (max-width: 760px) { nav, .gh { display: none; } .actions { margin-left: auto; } }
+</style>

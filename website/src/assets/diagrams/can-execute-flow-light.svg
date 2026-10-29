@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 514" width="900" height="514" role="img" aria-label="policy.canExecute returns allowed, pending approval or false. Allowed executes, false throws POLICY_DENIED, and pending approval goes to the approval manifest or onHITL callback, which either executes or throws POLICY_DENIED.">
+  <title>policy.canExecute returns allowed, pending approval or false. Allowed executes, false throws POLICY_DENIED, and pending approval goes to the approval manifest or onHITL callback, which either executes or throws POLICY_DENIED.</title>
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1 L9 5 L1 9 z" fill="#5c5c6a"/></marker>
+    <style>
+      .bg { fill: #f4f4f8; }
+      .box { fill: #ffffff; stroke: #d4d4de; stroke-width: 1.2; }
+      .box.accent { fill: #fff1f6; stroke: #d6205f; stroke-width: 1.4; }
+      .box.ok { fill: #effaf5; stroke: #168a60; stroke-width: 1.3; }
+      .box.bad { fill: #fff1f1; stroke: #d93a3a; stroke-width: 1.3; }
+      .chip { fill: #ececf2; stroke: #d4d4de; stroke-width: 1; }
+      .pill { fill: #ececf2; stroke: #d4d4de; stroke-width: 1; }
+      .pill.ok { stroke: #168a60; } .pill.bad { stroke: #d93a3a; }
+      .h { font: 650 15.5px 'Inter Variable', Inter, system-ui, 'Segoe UI', sans-serif; fill: #14141a; }
+      .h.accent { fill: #b3124f; } .h.ok { fill: #0f6b4a; } .h.bad { fill: #a32424; }
+      .hs { font: 650 14px 'Inter Variable', Inter, system-ui, 'Segoe UI', sans-serif; fill: #14141a; }
+      .t { font: 400 13.5px 'Inter Variable', Inter, system-ui, 'Segoe UI', sans-serif; fill: #2c2c38; }
+      .sub { fill: #5c5c6a; }
+      .m { font: 400 12.5px 'JetBrains Mono Variable', ui-monospace, Menlo, Consolas, monospace; fill: #2c2c38; }
+      .pt { font: 600 12px 'Inter Variable', Inter, system-ui, 'Segoe UI', sans-serif; fill: #2c2c38; }
+      .pt.ok { fill: #0f6b4a; } .pt.bad { fill: #a32424; }
+      .ln { stroke: #5c5c6a; stroke-width: 1.5; fill: none; }
+    </style>
+  </defs>
+  <rect class="bg" width="900" height="514" rx="18"/>
+  <rect class="box" x="20" y="20" width="860" height="48" rx="12"/><text class="h" x="38" y="49">matimo.execute('tool_name', params)</text><path class="ln" d="M450 68 V96" marker-end="url(#ar)"/><rect class="box" x="20" y="96" width="860" height="48" rx="12"/><text class="h" x="38" y="125">policy.canExecute(context, tool)</text><path class="ln" d="M450 144 V170" marker-end="url(#ar)"/><path class="ln" d="M450 170 V184"/><path class="ln" d="M123.5 184 H776.5"/><path class="ln" d="M123.5 184 V206" marker-end="url(#ar)"/><rect class="pill ok" x="87.4" y="206" width="72.19999999999999" height="24" rx="12"/><text class="pt ok" x="123.5" y="222" text-anchor="middle">allowed</text><path class="ln" d="M123.5 230 V252" marker-end="url(#ar)"/><rect class="box ok" x="20" y="252" width="207" height="48" rx="12"/><text class="h ok" x="38" y="281">Execute</text><path class="ln" d="M450 184 V206" marker-end="url(#ar)"/><rect class="pill" x="384.2" y="206" width="131.6" height="24" rx="12"/><text class="pt" x="450" y="222" text-anchor="middle">pending_approval</text><path class="ln" d="M450 230 V252" marker-end="url(#ar)"/><rect class="box" x="243" y="252" width="414" height="67" rx="12"/><text class="h" x="261" y="281">Quarantined</text><text class="t" x="261" y="304">approval manifest or onHITL callback</text><path class="ln" d="M450 319 V345" marker-end="url(#ar)"/><path class="ln" d="M450 345 V359"/><path class="ln" d="M342.5 359 H557.5"/><path class="ln" d="M342.5 359 V381" marker-end="url(#ar)"/><rect class="pill ok" x="303.1" y="381" width="78.8" height="24" rx="12"/><text class="pt ok" x="342.5" y="397" text-anchor="middle">approved</text><path class="ln" d="M342.5 405 V427" marker-end="url(#ar)"/><rect class="box ok" x="243" y="427" width="199" height="48" rx="12"/><text class="h ok" x="261" y="456">Execute</text><path class="ln" d="M557.5 359 V381" marker-end="url(#ar)"/><rect class="pill bad" x="468.6" y="381" width="177.79999999999998" height="24" rx="12"/><text class="pt bad" x="557.5" y="397" text-anchor="middle">rejected or no callback</text><path class="ln" d="M557.5 405 V427" marker-end="url(#ar)"/><rect class="box bad" x="458" y="427" width="199" height="67" rx="12"/><text class="h bad" x="476" y="456">Throw POLICY_DENIED</text><text class="t" x="476" y="479">tool:quarantine_rejected</text><path class="ln" d="M776.5 184 V206" marker-end="url(#ar)"/><rect class="pill bad" x="747" y="206" width="59" height="24" rx="12"/><text class="pt bad" x="776.5" y="222" text-anchor="middle">false</text><path class="ln" d="M776.5 230 V252" marker-end="url(#ar)"/><rect class="box bad" x="673" y="252" width="207" height="48" rx="12"/><text class="h bad" x="691" y="281">Throw POLICY_DENIED</text>
+</svg>

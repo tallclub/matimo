@@ -1,0 +1,54 @@
+---
+import '@fontsource-variable/inter';
+import '@fontsource-variable/jetbrains-mono';
+import '../styles/tokens.css';
+const { title, description } = Astro.props;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareSourceCode',
+  name: 'Matimo',
+  description,
+  url: 'https://matimo.dev/',
+  codeRepository: 'https://github.com/tallclub/matimo',
+  license: 'https://opensource.org/licenses/MIT',
+  programmingLanguage: ['TypeScript', 'Python'],
+  runtimePlatform: 'Node.js, Python',
+};
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" href="/favicon.png" />
+    <link rel="alternate" type="text/plain" href="/llms.txt" title="Matimo for LLMs (llms.txt)" />
+    <link rel="alternate" type="text/plain" href="/llms-full.txt" title="Matimo full documentation for LLMs" />
+    <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content="https://matimo.dev/assets/matimo-logo.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>
+<style is:global>
+  * { box-sizing: border-box; margin: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--mt-bg);
+    color: var(--mt-text);
+    font-family: var(--mt-font);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: inherit; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 1.25rem; }
+</style>

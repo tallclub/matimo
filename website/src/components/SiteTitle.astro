@@ -1,0 +1,32 @@
+---
+import { Image } from 'astro:assets';
+import logo from '../assets/logo.png';
+import config from 'virtual:starlight/user-config';
+---
+
+<a href="/" class="site-title">
+  <Image src={logo} alt="" width={28} height={28} />
+  <span>Matimo</span>
+  <span class="tag">docs</span>
+</a>
+
+<style>
+  .site-title {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    text-decoration: none;
+    color: var(--sl-color-white);
+    font-weight: 650;
+    font-size: 1.1rem;
+  }
+  img { border-radius: 6px; }
+  .tag {
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: var(--sl-color-gray-3);
+    border: 1px solid var(--sl-color-hairline);
+    padding: 0.05rem 0.4rem;
+    border-radius: 999px;
+  }
+</style>

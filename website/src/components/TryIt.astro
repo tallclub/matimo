@@ -1,0 +1,138 @@
+---
+// Replay of a real run. Output and hashes were captured from the Python SDK
+// (matimo 0.2.0) with two tools: add_numbers (requires_approval: false) and
+// clear_cache (a command tool, so it asks first). Nothing here executes code.
+const code = `from matimo import Matimo, MatimoError, JsonlFileSink, verify_audit_log
+
+async def on_approval(request):
+    return await ask_a_human(request)   # you decide
+
+matimo = await Matimo.init(
+    "./tools",
+    on_approval=on_approval,
+    audit_sink=JsonlFileSink("./audit.jsonl"),
+)
+
+await matimo.execute("add_numbers", {"a": 2, "b": 3})
+await matimo.execute("clear_cache", {"path": "./build"})
+
+verify_audit_log("./audit.jsonl")`;
+
+const data = {
+  first: [
+    ['cmd', '>>> await matimo.execute("add_numbers", {"a": 2, "b": 3})'],
+    ['out', "{'success': True, 'stdout': '5', 'stderr': '', 'exit_code': 0}"],
+    ['note', 'allowed: requires_approval is false for this tool'],
+    ['cmd', '>>> await matimo.execute("clear_cache", {"path": "./build"})'],
+    ['warn', 'paused: command tools ask before every call'],
+  ],
+  approve: [
+    ['ok', 'approved by you'],
+    ['out', "{'success': True, 'stdout': 'cleared ./build', 'stderr': '', 'exit_code': 0}"],
+    ['cmd', '>>> verify_audit_log("./audit.jsonl")'],
+    ['out', 'AuditLogVerification(valid=True, entries=3)'],
+    ['log', 'seq 1  tool:executed          add_numbers  f73e96a3  prev 00000000'],
+    ['log', 'seq 2  tool:approval_granted  clear_cache  fabd55a7  prev f73e96a3'],
+    ['log', 'seq 3  tool:executed          clear_cache  026103d7  prev fabd55a7'],
+  ],
+  deny: [
+    ['bad', 'denied by you'],
+    ['err', 'MatimoError: EXECUTION_FAILED: Operation rejected by approval handler: clear_cache'],
+    ['cmd', '>>> verify_audit_log("./audit.jsonl")'],
+    ['out', 'AuditLogVerification(valid=True, entries=2)'],
+    ['log', 'seq 1  tool:executed         add_numbers  02ac2333  prev 00000000'],
+    ['log', 'seq 2  tool:approval_denied  clear_cache  629b9a0d  prev 02ac2333'],
+  ],
+};
+---
+<section class="wrap tryit" data-tryit data-lines={JSON.stringify(data)}>
+  <h2>Try it: approve or deny a risky call</h2>
+  <p class="sub">A replay of a real run of the Python SDK. Press Run, then choose what the human reviewer does. Nothing is executed in your browser.</p>
+  <div class="split">
+    <pre class="src"><code>{code}</code></pre>
+    <div class="term" aria-live="polite">
+      <div class="head"><span>python demo.py</span><span class="badge">recorded run</span></div>
+      <div class="body" data-body>
+        <p class="idle">Press Run to start.</p>
+      </div>
+      <div class="actions">
+        <button class="run" data-run>Run</button>
+        <button class="yes" data-approve hidden>Approve</button>
+        <button class="no" data-deny hidden>Deny</button>
+        <button class="reset" data-reset hidden>Run again</button>
+      </div>
+    </div>
+  </div>
+  <p class="foot">Want the real thing? <a href="/docs/getting-started/quick-start/">Run it locally in five minutes</a>.</p>
+</section>
+
+<script>
+  const root = document.querySelector<HTMLElement>('[data-tryit]');
+  if (root) {
+    const data = JSON.parse(root.dataset.lines ?? '{}') as Record<string, [string, string][]>;
+    const body = root.querySelector<HTMLElement>('[data-body]')!;
+    const q = (s: string) => root.querySelector<HTMLButtonElement>(s)!;
+    const run = q('[data-run]'), yes = q('[data-approve]'), no = q('[data-deny]'), reset = q('[data-reset]');
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const wait = (ms: number) => new Promise((r) => setTimeout(r, reduce ? 0 : ms));
+    const show = (el: HTMLElement, on: boolean) => { el.hidden = !on; };
+    async function play(lines: [string, string][]) {
+      for (const [kind, text] of lines) {
+        const p = document.createElement('p');
+        p.className = kind;
+        p.textContent = text;
+        body.appendChild(p);
+        body.scrollTop = body.scrollHeight;
+        await wait(kind === 'cmd' ? 450 : 250);
+      }
+    }
+    run.addEventListener('click', async () => {
+      body.textContent = '';
+      show(run, false);
+      await play(data.first);
+      show(yes, true);
+      show(no, true);
+      yes.focus();
+    });
+    const decide = (key: 'approve' | 'deny') => async () => {
+      show(yes, false);
+      show(no, false);
+      await play(data[key]);
+      show(reset, true);
+      reset.focus();
+    };
+    yes.addEventListener('click', decide('approve'));
+    no.addEventListener('click', decide('deny'));
+    reset.addEventListener('click', () => {
+      body.innerHTML = '<p class="idle">Press Run to start.</p>';
+      show(reset, false);
+      show(run, true);
+      run.focus();
+    });
+  }
+</script>
+
+<style>
+  .tryit .sub { color: var(--mt-muted); margin-bottom: 1.5rem; max-width: 46rem; }
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; align-items: stretch; }
+  pre.src { margin: 0; background: var(--mt-bg-raised); border: 1px solid var(--mt-border); border-radius: 12px; padding: 1.1rem; overflow-x: auto; font-family: var(--mt-mono); font-size: .8rem; line-height: 1.55; }
+  .term { display: flex; flex-direction: column; border: 1px solid var(--mt-border); border-radius: 12px; background: var(--mt-bg-raised); overflow: hidden; min-width: 0; }
+  .head { display: flex; justify-content: space-between; align-items: center; padding: .55rem .9rem; border-bottom: 1px solid var(--mt-border); font-family: var(--mt-mono); font-size: .8rem; color: var(--mt-muted); }
+  .badge { border: 1px solid var(--mt-border); border-radius: 999px; padding: .05rem .6rem; font-size: .72rem; }
+  .body { flex: 1; min-height: 17rem; max-height: 22rem; overflow-y: auto; padding: .9rem; font-family: var(--mt-mono); font-size: .78rem; line-height: 1.5; }
+  .body :global(p) { margin: 0 0 .35rem; white-space: pre-wrap; word-break: break-word; }
+  .body :global(.idle), .body :global(.note), .body :global(.log) { color: var(--mt-muted); }
+  .body :global(.cmd) { color: var(--mt-accent-hi); }
+  .body :global(.warn) { color: #b7791f; font-weight: 600; }
+  .body :global(.ok) { color: #2f855a; font-weight: 600; }
+  .body :global(.bad), .body :global(.err) { color: #c53030; }
+  .body :global(.bad) { font-weight: 600; }
+  .actions { display: flex; gap: .6rem; padding: .7rem .9rem; border-top: 1px solid var(--mt-border); }
+  .actions button { font: inherit; font-size: .85rem; font-weight: 600; padding: .4rem 1rem; border-radius: 8px; border: 1px solid var(--mt-border); background: none; color: var(--mt-text); cursor: pointer; }
+  .actions button[hidden] { display: none; }
+  .run, .yes { background: var(--mt-accent) !important; border-color: var(--mt-accent) !important; color: #fff !important; }
+  .no:hover, .reset:hover { border-color: var(--mt-muted); }
+  .foot { margin-top: 1rem; color: var(--mt-muted); font-size: .9rem; }
+  .foot a { color: var(--mt-accent-hi); }
+  @media (max-width: 760px) { .split { grid-template-columns: 1fr; } }
+</style>
