@@ -10,7 +10,7 @@ const links = [
 ---
 <header class="nav">
   <div class="wrap row">
-    <a href="/" class="brand"><Image src={logo} alt="" width={28} height={28} /><span>Matimo</span></a>
+    <a href="/" class="brand"><Image src={logo} alt="" width={28} height={28} densities={[1, 2]} /><span>Matimo</span></a>
     <nav>
       {links.map((l) => <a href={l.href}>{l.label}</a>)}
     </nav>
@@ -30,7 +30,7 @@ const links = [
   nav a:hover { color: var(--mt-text); }
   .actions { display: flex; align-items: center; gap: 1rem; }
   .gh { color: var(--mt-muted); text-decoration: none; font-size: .92rem; }
-  .cta { background: var(--mt-accent); color: #fff; text-decoration: none; font-size: .9rem; font-weight: 600; padding: .45rem .9rem; border-radius: 8px; }
+  .cta { background: var(--mt-accent-btn); color: #fff; text-decoration: none; font-size: .9rem; font-weight: 600; padding: .45rem .9rem; border-radius: 8px; }
   .cta:hover { background: var(--mt-accent-hi); }
   @media (max-width: 760px) { nav, .gh { display: none; } .actions { margin-left: auto; } }
 </style>

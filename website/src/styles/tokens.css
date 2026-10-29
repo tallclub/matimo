@@ -3,6 +3,8 @@
   --mt-accent: #ff3d7f;
   --mt-accent-hi: #ff7aa8;
   --mt-accent-lo: #b3124f;
+  /* Fill for buttons with white text: #fff on --mt-accent is only 3.4:1, this is 4.9:1 (WCAG AA). */
+  --mt-accent-btn: #d81b60;
   --mt-bg: #08080b;
   --mt-bg-raised: #101015;
   --mt-border: #23232c;
