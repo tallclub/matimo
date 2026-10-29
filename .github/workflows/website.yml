@@ -1,0 +1,58 @@
+name: Website
+
+on:
+  push:
+    branches: [main]
+    paths: ['website/**', '.github/workflows/website.yml']
+  pull_request:
+    paths: ['website/**', '.github/workflows/website.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+defaults:
+  run:
+    working-directory: website
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 8
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: website/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      # Fails the build on broken internal links (starlight-links-validator)
+      - run: pnpm build
+        env:
+          # GA_MEASUREMENT_ID can override the production measurement ID.
+          PUBLIC_GA_ID: ${{ vars.GA_MEASUREMENT_ID || 'G-F3D9W5CGH4' }}
+      - uses: actions/upload-pages-artifact@v3
+        if: github.event_name != 'pull_request'
+        with:
+          path: website/dist
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,102 @@
+---
+import Landing from '../layouts/Landing.astro';
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
+const updated = '2026-10-29';
+---
+<Landing
+  title="Privacy: Matimo OSS website"
+  description="What the Matimo OSS website collects, why, who receives it, how long it is kept and how to say no."
+>
+  <Nav />
+  <main class="wrap legal">
+    <p class="eyebrow">Privacy</p>
+    <h1>Privacy notice for matimo.dev</h1>
+    <p class="meta">Last updated {updated}</p>
+
+    <p>This notice covers the Matimo OSS website: matimo.dev and its documentation. It is run by <a href="https://roaiq.com">roaiq Technologies</a> ("we"), which decides why and how the data described here is used. Contact for any privacy question or request: <a href="mailto:info@roaiq.com">info@roaiq.com</a>.</p>
+
+    <h2>What this notice does not cover</h2>
+    <ul>
+      <li>The Matimo OSS software itself. The SDK source in the repository contains no analytics or telemetry code. What your tools send is up to the tools you configure.</li>
+      <li>Matimo Workbench at matimo.ai and roaiq.com, which have their own notices.</li>
+      <li>Sites we link to: GitHub, npm, PyPI and Discord each have their own privacy policies.</li>
+    </ul>
+
+    <h2>What we collect, and why</h2>
+    <p>We have no user accounts, forms, comments or advertising trackers on this site. There are three things to know about.</p>
+    <ul>
+      <li>
+        <b>Usage statistics (Google Analytics 4), only if you accept.</b>
+        We use it to count visits and see which pages help, so we can decide what to write and fix next.
+        If you accept, Google Analytics records the pages you view, the page you came from, approximate location, browser, device type, screen size and how long a page was open.
+        It sets two cookies in your browser: <code>_ga</code>, which tells visitors apart, and <code>_ga_&lt;container-id&gt;</code>, which keeps session state.
+        Google's default lifetime for both is 2 years, and some browsers shorten it.
+        <b>Until you press "Accept analytics", your browser makes no request to Google and sets no analytics cookie.</b>
+        We set Google Analytics to keep event-level data for 14 months or less. Aggregated reports, which do not identify a visitor, may be kept longer.
+      </li>
+      <li>
+        <b>Hosting logs.</b>
+        The site is hosted on GitHub Pages. GitHub receives your IP address and request details when you load a page, under <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">GitHub's privacy statement</a>. We do not receive those logs.
+      </li>
+      <li>
+        <b>Your analytics choice and a theme setting.</b>
+        Your choice about analytics and, in the documentation, your light or dark theme are stored in your browser's local storage. They stay on your device.
+      </li>
+    </ul>
+    <p>Fonts, images, the demo video and the documentation search are served from this site. The search index runs in your browser, and nothing you type into search is sent to us.</p>
+
+    <h2>Legal basis</h2>
+    <p>We use analytics only on the basis of your consent. If you do not consent, we do not use it. Where the EU or UK General Data Protection Regulation applies, that basis is Article 6(1)(a). Hosting by GitHub is covered by GitHub's own notice.</p>
+
+    <h2>Your choices</h2>
+    <ul>
+      <li><b>Say no.</b> Press "Decline" on the banner. Analytics stays off, and any Google Analytics cookie already set by this site is removed. Declining does not limit what you can read or use.</li>
+      <li><b>Change your mind at any time.</b> Withdrawing is as easy as accepting. Use the button below, or clear this site's data in your browser. Withdrawing does not affect use of your data before you withdrew.</li>
+      <li><b>Do Not Track.</b> If your browser sends Do Not Track, we do not show the banner and do not measure you.</li>
+      <li><b>Block it yourself.</b> A content blocker or Google's <a href="https://tools.google.com/dlpage/gaoptout">browser opt-out add-on</a> also stops Google Analytics.</li>
+    </ul>
+    <p data-consent-controls hidden>
+      <button type="button" class="change" data-consent-open>Change my analytics choice</button>
+    </p>
+
+    <h2>Your rights</h2>
+    <p>Depending on where you live, laws such as India's Digital Personal Data Protection Act, 2023, the EU and UK General Data Protection Regulations and similar laws may give you rights over personal data about you. These can include the right to know what is held, to have it corrected or erased, to withdraw consent, to object, and to have a complaint handled.</p>
+    <p>Write to <a href="mailto:info@roaiq.com">info@roaiq.com</a> to use any of them. We hold only the aggregate statistics Google Analytics reports to us, so we usually cannot link a record to one person, and we will tell you if that is the case. If you are not satisfied with our answer, you can complain to the data protection authority where you live, for example the Data Protection Board of India, the UK Information Commissioner's Office, or your national authority in the EEA.</p>
+
+    <h2>Google</h2>
+    <p>If you accept analytics, Google processes the data it collects on our behalf under <a href="https://policies.google.com/privacy">Google's privacy policy</a> and its <a href="https://business.safety.google/adsprocessorterms/">data processing terms</a>. Google may process data outside your country, including outside India, the EEA and the UK, under the transfer safeguards described in those terms. Google is the only recipient of analytics data. We do not sell personal data.</p>
+
+    <h2>Children</h2>
+    <p>This site is written for software developers and is not directed at children. We do not knowingly track children.</p>
+
+    <h2>Changes</h2>
+    <p>If we change what the site collects, we will update this page and its date, and ask for your choice again where the law requires it. Earlier versions are in the <a href="https://github.com/tallclub/matimo/commits/main/website/src/pages/privacy.astro">repository history</a>.</p>
+  </main>
+  <Footer />
+</Landing>
+
+<script>
+  // Show the choice button only when analytics is configured for this build.
+  const w = window as unknown as { matimoAnalytics?: { open: () => void } };
+  const box = document.querySelector<HTMLElement>('[data-consent-controls]');
+  if (box && w.matimoAnalytics) {
+    box.hidden = false;
+    box.querySelector('[data-consent-open]')?.addEventListener('click', () => w.matimoAnalytics?.open());
+  }
+</script>
+
+<style>
+  .legal { max-width: 46rem; padding-top: 4rem; }
+  .eyebrow { color: var(--mt-accent-hi); font-size: .8rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+  .legal h1 { font-size: 2.2rem; line-height: 1.2; margin: .4rem 0 .5rem; }
+  .legal h2 { font-size: 1.2rem; margin: 2.2rem 0 .6rem; }
+  .meta { color: var(--mt-muted); margin-bottom: 1.5rem; font-size: .9rem; }
+  .legal p, .legal li { color: var(--mt-text); }
+  .legal p + p { margin-top: .8rem; }
+  .legal ul { padding-left: 1.25rem; display: grid; gap: .6rem; margin: .6rem 0; }
+  .legal a { color: var(--mt-accent-hi); text-underline-offset: 3px; }
+  .legal code { font-family: var(--mt-mono); font-size: .85em; }
+  .change { font: inherit; font-weight: 600; padding: .55rem .9rem; border-radius: 8px; border: 1px solid var(--mt-border); background: var(--mt-bg-raised); color: var(--mt-text); cursor: pointer; }
+  .change:hover { border-color: var(--mt-accent-hi); }
+</style>

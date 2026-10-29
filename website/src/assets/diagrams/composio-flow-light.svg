@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 392" width="800" height="392" role="img" aria-label="An agent calls matimo.execute on a Composio tool. MatimoInstance runs the policy check, the optional onHITL callback and the HTTP executor against the Composio REST API, which forwards to your connected services such as Jira, Google Drive and Teams.">
+  <title>An agent calls matimo.execute on a Composio tool. MatimoInstance runs the policy check, the optional onHITL callback and the HTTP executor against the Composio REST API, which forwards to your connected services such as Jira, Google Drive and Teams.</title>
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1 L9 5 L1 9 z" fill="#5c5c6a"/></marker>
+    <style>
+      .bg { fill: #f4f4f8; }
+      .box { fill: #ffffff; stroke: #d4d4de; stroke-width: 1.2; }
+      .box.accent { fill: #fff1f6; stroke: #d6205f; stroke-width: 1.4; }
+      .box.ok { fill: #effaf5; stroke: #168a60; stroke-width: 1.3; }
+      .box.bad { fill: #fff1f1; stroke: #d93a3a; stroke-width: 1.3; }
+      .chip { fill: #ececf2; stroke: #d4d4de; stroke-width: 1; }
+      .pill { fill: #ececf2; stroke: #d4d4de; stroke-width: 1; }
+      .pill.ok { stroke: #168a60; } .pill.bad { stroke: #d93a3a; }
+      .h { font: 650 15.5px 'Inter Variable', Inter, system-ui, 'Segoe UI', sans-serif; fill: #14141a; }
+      .h.accent { fill: #b3124f; } .h.ok { fill: #0f6b4a; } .h.bad { fill: #a32424; }
+      .hs { font: 650 14px 'Inter Variable', Inter, system-ui, 'Segoe UI', sans-serif; fill: #14141a; }
+      .t { font: 400 13.5px 'Inter Variable', Inter, system-ui, 'Segoe UI', sans-serif; fill: #2c2c38; }
+      .sub { fill: #5c5c6a; }
+      .m { font: 400 12.5px 'JetBrains Mono Variable', ui-monospace, Menlo, Consolas, monospace; fill: #2c2c38; }
+      .pt { font: 600 12px 'Inter Variable', Inter, system-ui, 'Segoe UI', sans-serif; fill: #2c2c38; }
+      .pt.ok { fill: #0f6b4a; } .pt.bad { fill: #a32424; }
+      .ln { stroke: #5c5c6a; stroke-width: 1.5; fill: none; }
+    </style>
+  </defs>
+  <rect class="bg" width="800" height="392" rx="18"/>
+  <rect class="box" x="20" y="20" width="760" height="67" rx="12"/><text class="h" x="38" y="49">Your agent</text><text class="m" x="38" y="72">matimo.execute('composio_jira_create_issue', { ... })</text><path class="ln" d="M400 87 V113" marker-end="url(#ar)"/><rect class="box accent" x="20" y="113" width="760" height="109" rx="12"/><text class="h accent" x="38" y="142">MatimoInstance.execute()</text><text class="t" x="38" y="165">1. PolicyEngine.canExecute(): the risk gate (custom or default)</text><text class="t" x="38" y="186">2. onHITL callback: human approval, once you configure it</text><text class="t" x="38" y="207">3. HttpExecutor: POST /v3/tools/execute/JIRA_CREATE_ISSUE</text><path class="ln" d="M400 222 V248" marker-end="url(#ar)"/><rect class="box" x="20" y="248" width="760" height="48" rx="12"/><text class="h" x="38" y="277">Composio REST API</text><path class="ln" d="M400 296 V324" marker-end="url(#ar)"/><text class="t sub" x="410" y="314" style="font-size:12px">forwards to your connected Jira, Drive, Teams, etc.</text><rect class="box ok" x="20" y="324" width="760" height="48" rx="12"/><text class="h ok" x="38" y="353">Jira Cloud, Google, Microsoft, ...</text>
+</svg>

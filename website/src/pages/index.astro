@@ -1,0 +1,714 @@
+---
+import Landing from '../layouts/Landing.astro';
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
+import TryIt from '../components/TryIt.astro';
+import { Image } from 'astro:assets';
+import gate from '../assets/diagrams/policy-gate-dark.svg';
+import poster from '../assets/video-poster.jpg';
+
+const pillars = [
+  { title: 'Policy engine', body: 'Every tool call, built-in, third-party or agent-created, is risk-classified (low to critical) and checked against deterministic rules before it runs.', href: '/docs/api-reference/policy-and-lifecycle/' },
+  { title: 'Human-in-the-loop', body: 'Calls at or above your risk threshold pause for approval. HTTP DELETE and shell tools ask before every call, with signed approval manifests.', href: '/docs/api-reference/approval-system/' },
+  { title: 'Self-extending agents', body: '15 meta-tools let an agent write a new YAML tool, validate it, get it approved and hot-reload it mid-conversation, under the same governance.', href: '/docs/api-reference/meta-tools/' },
+  { title: 'One definition, every framework', body: 'Define a tool once in YAML. Run it from TypeScript, Python, LangChain, CrewAI, Agno or any MCP client with the same policy enforcement.', href: '/docs/framework-integrations/langchain/' },
+];
+const stats = [
+  ['129', 'ready-made tools'],
+  ['449', 'governed Composio tools (TypeScript)'],
+  ['15', 'meta-tools'],
+  ['2', 'SDKs: TypeScript and Python'],
+];
+const providers = ['Slack', 'GitHub', 'Gmail', 'Microsoft', 'Notion', 'PostgreSQL', 'HubSpot', 'Mailchimp', 'Twilio', 'Bruno'];
+const runs = [
+  { title: 'LangChain', body: 'Convert tools to StructuredTool instantly. Works with ReAct, function-calling agents and any LangChain executor.', href: '/docs/framework-integrations/langchain/' },
+  { title: 'CrewAI', body: 'Convert to BaseTool with async support. Multi-agent crews and hierarchical workflows use the same governed tools.', href: '/docs/framework-integrations/crewai/' },
+  { title: 'Claude Desktop and MCP', body: 'Run Matimo as an MCP server. Claude Desktop, Cursor and any MCP client see all your tools. One command: npx matimo mcp.', href: '/docs/mcp-server/' },
+  { title: 'Custom agents', body: 'Native SDK for your own agent loop. Factory pattern, decorator pattern or direct calls, whichever fits.', href: '/docs/architecture/overview/' },
+  { title: 'CLI', body: 'List, search, install and review tools from the terminal, in both SDKs.', href: '/docs/getting-started/quick-start/' },
+  { title: 'Any model provider', body: 'OpenAI, Anthropic, Google, Ollama. Matimo sits on the tool side, so it does not care which model calls it.', href: '/docs/why-matimo/' },
+];
+const featureGroups = [
+  { title: 'Core SDK', items: [
+    ['YAML-first tools', 'Define a tool once and run it from TypeScript, Python and any framework.'],
+    ['Hot-reload registry', 'Add or change tools at runtime without restarting your application.'],
+    ['Schema validation', 'Zod in TypeScript and Pydantic in Python for tool definitions and types.'],
+    ['Dual SDKs', 'TypeScript (Node 22.19+) and Python (3.11+) share the YAML format, policy rules and meta-tools. Composio is TypeScript only.'],
+  ] },
+  { title: '129 ready-made tools', items: [
+    ['Slack and Gmail', 'Messages, channels and threads. Send, read and draft email.'],
+    ['GitHub', 'Issues, pull requests, repositories, code search and workflows.'],
+    ['Notion and HubSpot', 'Pages and databases. Contacts, deals and companies.'],
+    ['PostgreSQL', 'Parameterized SQL execution behind the policy engine.'],
+    ['Mailchimp and Twilio', 'Campaigns and audiences. SMS and MMS.'],
+    ['Microsoft and Bruno', 'Microsoft 365 tools and API-collection testing tools.'],
+  ] },
+  { title: 'Policy engine and governance', items: [
+    ['Risk classification', 'Every call is rated low, medium, high or critical with configurable policies.'],
+    ['Approval gates', 'Human-in-the-loop approval for sensitive operations, with signed manifests.'],
+    ['Audit trail', 'A hash-chained event log with secrets redacted. An edit or removed line is detected; it is not prevented.'],
+    ['Content validation', 'Pattern-based rules on agent-created tools before they can be approved.'],
+    ['Integrity tracking', 'Hash-based tamper detection so approved tools cannot change silently.'],
+    ['Approval expiry', 'Approvals carry a time limit and lapse on their own.'],
+  ] },
+  { title: 'Skills and self-extension', items: [
+    ['Skill search', 'TF-IDF keyword-relevance discovery of domain knowledge.'],
+    ['Skill library', 'Markdown SKILL.md files with YAML frontmatter, loaded only when relevant.'],
+    ['15 meta-tools', 'Create, validate, approve and reload tools and skills at runtime.'],
+    ['Agent self-extension', 'An agent can draft a tool. When your host passes agent context, the agent cannot approve its own tool.'],
+  ] },
+  { title: 'Integrations', items: [
+    ['LangChain', 'Convert tools to StructuredTool and add Matimo to existing agents.'],
+    ['CrewAI and Agno', 'Convert to framework tools with the same policy enforcement.'],
+    ['MCP server', 'stdio and HTTP transports for Claude Desktop, Cursor and other clients.'],
+    ['Composio catalog', '449 governed tools across 14 toolkits (TypeScript, @matimo/composio).'],
+  ] },
+  { title: 'Auth and secrets', items: [
+    ['OAuth2 support', 'Provider-agnostic OAuth2 with token handling for Google, GitHub, Slack and others.'],
+    ['Placeholder credentials', 'Credentials are injected at call time through {NAME} placeholders, not stored in tool files.'],
+    ['Redacted logging', 'Secrets are redacted in audit events and error output.'],
+  ] },
+];
+const patterns = [
+  { title: 'Factory pattern', body: 'Load tools and execute by name. Good for scripts, CLIs and quick prototypes.',
+    ts: `const matimo = await MatimoInstance.init({ autoDiscover: true });
+await matimo.execute('tool-name', params);`,
+    py: `matimo = await Matimo.init(auto_discover=True)
+result = await matimo.execute('tool-name', params)` },
+  { title: 'Decorator pattern', body: 'Class-based approach. The @tool decorator executes the named tool for you.',
+    ts: `class Agent {
+  @tool('tool-name')
+  async myMethod(param: string) {
+    // executed through Matimo
+  }
+}`,
+    py: `class Agent:
+    @tool('tool-name')
+    async def my_method(self, param):
+        pass  # executed through Matimo` },
+  { title: 'Framework integration', body: 'Convert Matimo tools to LangChain or CrewAI tools automatically.',
+    ts: `import { convertToolsToLangChain } from '@matimo/core';
+const tools = await convertToolsToLangChain(matimo.listTools(), matimo);`,
+    py: `from matimo import convert_tools_to_langchain
+tools = convert_tools_to_langchain(matimo.list_tools(), matimo)` },
+  { title: 'MCP server', body: 'Run Matimo as a standalone MCP server for Claude Desktop, Cursor and any MCP client.',
+    ts: `# stdio (Claude Desktop)
+npx matimo mcp
+# HTTP (remote agents)
+npx matimo mcp --transport http`,
+    py: `from matimo.mcp.server import MCPServer, MCPServerOptions
+
+server = MCPServer(matimo, MCPServerOptions(transport="stdio"))
+await server.start()` },
+];
+const why = [
+  ['Dual SDKs', 'TypeScript and Python share the YAML format, policy rules and meta-tools. Composio is TypeScript only.'],
+  ['No tool duplication', 'Define once in YAML and use it from every framework.'],
+  ['Framework freedom', 'LangChain, CrewAI, MCP or your own loop, with the same tools.'],
+  ['Faster start', 'Ready-made Slack, GitHub, Gmail, Notion and more from day one.'],
+  ['Type safe', 'TypeScript types and Python hints, with Zod and Pydantic validation.'],
+  ['Community tools', 'A growing set of @matimo/* provider packages.'],
+  ['Agent self-extension', 'Agents build new tools at runtime, checked by policy.'],
+  ['Safe by default', 'Risky tools ask first. When your host passes agent context, an agent cannot approve its own creations.'],
+  ['Open source', 'MIT licensed, with about 4,700 tests across both SDKs (2,825 TypeScript run, 1,886 Python collected, counted 2026-10-29).'],
+];
+const cli = [
+  { title: 'Environment diagnostics', cmd: 'npx matimo doctor', body: 'Checks versions, installed @matimo/* packages, missing environment variables and YAML validity.' },
+  { title: 'Approval workflows', cmd: 'npx matimo review list', body: 'Lists tools waiting for approval or in quarantine. Approve or reject from the terminal.' },
+  { title: 'MCP setup', cmd: 'npx matimo mcp setup', body: 'Generates and writes the Claude Desktop configuration in one command.' },
+];
+const resources = [
+  { title: 'Quick start', body: 'A five-minute walkthrough with TypeScript and Python side by side.', href: '/docs/getting-started/quick-start/' },
+  { title: 'Create your first tool', body: 'Build HTTP and command tools in YAML with validation.', href: '/docs/getting-started/your-first-tool/' },
+  { title: 'API reference', body: 'SDK, policy, approval, meta-tools, errors and logging.', href: '/docs/api-reference/sdk/' },
+  { title: 'Skills system', body: 'Domain knowledge for agents, with TF-IDF search.', href: '/docs/skills/skills/' },
+  { title: 'Architecture', body: 'How the registry, executors and policy engine fit together.', href: '/docs/architecture/overview/' },
+  { title: 'Examples', body: 'Runnable LangChain, CrewAI, MCP and native examples.', href: 'https://github.com/tallclub/matimo/tree/main/typescript/examples' },
+];
+const ready = [
+  ['Tested', 'About 4,700 tests across both SDKs. A pre-push hook runs both test suites. TypeScript coverage floors are 95% lines, 97% functions and 87% branches; Python core must stay at 95%.'],
+  ['Security controls', 'Secret isolation, command-injection prevention, integrity tracking and a fail-closed policy engine. No compliance certifications are held.'],
+  ['153 native tools', '129 provider tools in 10 packages plus 24 core tools (15 of them meta-tools), and 449 more through Composio (TypeScript only).'],
+  ['Governance built in', 'Risk tiers, quarantine, approval manifests and an audit trail you can use in a compliance review.'],
+  ['One definition', 'The same YAML tool definition is used by both SDKs.'],
+  ['Open source', 'MIT licensed. Releases on npm (0.4.0) and PyPI (0.2.0).'],
+];
+const gatePoints = [
+  ['Every action is rated', 'Before a tool runs, Matimo rates it low, medium, high or critical using rules you can read.'],
+  ['Risky ones wait for a human', 'Deleting data or running a shell command pauses until a person approves. If nobody answers, it is refused.'],
+  ['A log that shows edits', 'Each entry is linked to the one before it, so an edit or removal is detected. It does not prevent one.'],
+];
+const compare = {
+  cols: ['', 'A plain tool library', 'A hosted tool gateway', 'Matimo OSS'],
+  rows: [
+    ['Where it runs', 'In your process', "On the vendor's servers", 'In your process (TypeScript or Python)'],
+    ['Checks before a call', 'You write them', "The vendor's rules", 'Risk class, policy file and human approval, built in'],
+    ['Agent creates its own tool', 'Not covered', 'Varies', 'Starts as a draft; needs approval before it runs'],
+    ['Record of what ran', 'Your own logging', "The vendor's logs", 'A hash-chained file you hold, with a verifier that shows edits'],
+    ['Tool definition', 'Code per framework', "The vendor's catalog", 'One YAML for every framework, plus your own tools'],
+    ['Third-party catalogs', 'Not covered', 'Their own', 'Wrap one, such as Composio, under the same policy'],
+  ],
+};
+const buildSteps = [
+  { title: 'Write a tool in YAML', body: 'Describe an internal API or command once: parameters, URL, headers. No SDK code and no per-framework wrapper.' },
+  { title: 'Set your policy', body: 'Keep your rules in a policy.yaml under version control. The policy reference lists the fields it supports.' },
+  { title: 'Serve it over MCP', body: 'Point the MCP server at your tool directory. Claude Desktop, Cursor and any MCP client see only what you expose.' },
+  { title: 'Approve and audit', body: 'Route risky calls to your reviewers and keep the audit log where your security team can verify it.' },
+];
+const control = [
+  'Private tool directories, or your own @yourco/* provider package',
+  'Allow and deny lists for what the MCP server exposes',
+  'Bearer token and TLS for the HTTP transport',
+  'Secrets from environment, .env, Vault or AWS Secrets Manager',
+  'Credentials injected at call time through {NAME} placeholders',
+  'An audit file you own, with no vendor in the call path',
+];
+const toolYaml = `# tools/crm_lookup_customer/definition.yaml
+name: crm_lookup_customer
+version: "1.0.0"
+description: Look up a customer in the internal CRM
+parameters:
+  customer_id:
+    type: string
+    description: The customer ID
+    required: true
+execution:
+  type: http
+  method: GET
+  url: https://crm.internal.example.com/api/customers/{customer_id}
+  headers:
+    Authorization: Bearer {CRM_API_TOKEN}
+
+# policy.yaml (fields are listed in the policy reference)
+allowedDomains:
+  - crm.internal.example.com
+allowedHttpMethods:
+  - GET
+  - POST`;
+const mcpCmd = `# stdio for Claude Desktop or Cursor, with your own tools
+npx matimo mcp --tool-paths ./tools
+
+# a shared server with TLS and Vault-backed secrets
+npx matimo mcp --transport http \\
+  --cert cert.pem --key key.pem \\
+  --secrets vault --tool-paths ./tools`;
+const hero = {
+  ts: {
+    run: `import { MatimoInstance } from 'matimo';
+
+const matimo = await MatimoInstance.init({ autoDiscover: true });
+const result = await matimo.execute('slack_send_channel_message', {
+  channel: '#general',
+  text: 'Hello Matimo!',
+});`,
+    create: `await matimo.execute('matimo_create_tool', {
+  name: 'fetch-weather',
+  yaml_content: \`
+name: fetch-weather
+version: "1.0.0"
+description: Get current weather for a city
+execution:
+  type: http
+  method: GET
+  url: https://wttr.in/{city}?format=j1
+parameters:
+  city:
+    type: string
+    required: true
+\`,
+});
+// The tool is now a draft. A human reviews it:
+//   npx matimo review approve fetch-weather`,
+  },
+  py: {
+    run: `import asyncio
+from matimo import Matimo
+
+async def main():
+    matimo = await Matimo.init(auto_discover=True)
+    result = await matimo.execute('slack_send_channel_message', {
+        'channel': '#general',
+        'text': 'Hello Matimo!',
+    })
+    print(result)
+
+asyncio.run(main())`,
+    create: `await matimo.execute('matimo_create_tool', {
+    'name': 'fetch-weather',
+    'yaml_content': """
+name: fetch-weather
+version: "1.0.0"
+description: Get current weather for a city
+execution:
+  type: http
+  method: GET
+  url: https://wttr.in/{city}?format=j1
+parameters:
+  city:
+    type: string
+    required: true
+""",
+})
+# The tool is now a draft. A human reviews it:
+#   matimo review approve fetch-weather`,
+  },
+};
+---
+<Landing
+  title="Matimo OSS: open-source governance for AI agent tools"
+  description="Open-source tool governance for AI agents: risk-checked calls, human approval for risky ones, and a tamper-evident audit log. TypeScript and Python. MIT licensed."
+>
+  <Nav />
+  <main>
+    <section class="hero wrap">
+      <p class="eyebrow">Open source · MIT · TypeScript and Python</p>
+      <h1>Let agents use tools.<br /><span>Stay in control of what they do.</span></h1>
+      <p class="lede">Matimo is the governance layer for AI agent tools. Every call is risk-checked, every risky one is approved by a human, and every result lands on a tamper-evident log.</p>
+      <div class="buttons">
+        <a class="primary" href="/docs/getting-started/quick-start/">Quick start</a>
+        <a class="secondary" href="https://github.com/tallclub/matimo">Star on GitHub</a>
+      </div>
+      <p class="paths">
+        <span>Building with agents? <a href="/docs/use-cases/serve-tools-over-mcp/">Serve tools to Claude Desktop</a></span>
+        <span>Responsible for what agents can do? <a href="/docs/use-cases/approve-risky-calls/">Require approval for risky calls</a></span>
+      </p>
+      <div class="install" data-install>
+        <div class="tabs" role="tablist">
+          <button role="tab" aria-selected="true" data-cmd="npm install matimo">npm (TypeScript)</button>
+          <button role="tab" aria-selected="false" data-cmd="pnpm add matimo">pnpm (TypeScript)</button>
+          <button role="tab" aria-selected="false" data-cmd="pip install matimo">pip (Python)</button>
+        </div>
+        <div class="cmd"><code><span class="prompt">$</span> <span data-out>npm install matimo</span></code><button class="copy" data-copy aria-label="Copy command">Copy</button></div>
+      </div>
+      <ul class="points">
+        <li><b>Governed by default.</b> DELETE and shell tools ask a human before they run. When your host passes agent context, an agent cannot approve its own tool.</li>
+        <li><b>A log that shows edits.</b> Each entry is linked to the one before it, so an edit or removal is detected. It does not prevent one.</li>
+        <li><b>Self-extending.</b> Meta-tools let agents draft new capabilities mid-conversation, approved by someone else.</li>
+        <li><b>Runs in your process.</b> MIT licensed. Same YAML, policy rules and meta-tools in TypeScript and Python. Composio is TypeScript only.</li>
+      </ul>
+    </section>
+
+    <section class="wrap stats">
+      {stats.map(([n, l]) => <div><b>{n}</b><span>{l}</span></div>)}
+    </section>
+
+    <section class="wrap videosec" id="watch">
+      <p class="eyebrow">Watch</p>
+      <h2>Agent-written tool to audit log in 60 seconds</h2>
+      <p class="sub">A short walkthrough built from real recorded runs of npm matimo 0.3.0 and PyPI matimo 0.2.0. Recorded against published versions; some behavior may differ in the next release. The narration is synthetic.</p>
+      <div class="vframe">
+        <video controls preload="none" playsinline poster={poster.src} width="1280" height="720" aria-describedby="video-transcript">
+          <source src="/video/matimo-oss-overview.mp4" type="video/mp4" />
+          Your browser cannot play this video. The transcript below has the same content.
+        </video>
+      </div>
+      <details class="transcript" id="video-transcript">
+        <summary>Read the transcript</summary>
+        <p>Your agent just wrote a tool. Did anyone read it first? In TypeScript, Matimo gives your agent fifteen meta-tools. It can search tools, read skills, and write a new tool itself. It starts as a draft. Call it now, and it does not exist. Approve it, and it runs. Risky calls ask first too. HTTP deletes and shell commands wait for approval. One command serves every tool, yours and the built-ins, to MCP clients. Executions are chained into an audit log. Edit one value and verification finds the line. Open source, MIT. npm install matimo. Your agent's next tool waits for you.</p>
+      </details>
+    </section>
+
+    <section class="wrap feature">
+      <div class="ftext">
+        <p class="eyebrow left">The core idea</p>
+        <h2>Your AI agent asks before it does anything risky</h2>
+        <p class="sub">Matimo sits between your agent and its tools. Safe actions run right away, risky ones wait for a person to say yes, and everything is written to a log you can check later.</p>
+        <ul class="fpoints">
+          {gatePoints.map(([t, b]) => <li><b>{t}.</b> {b}</li>)}
+        </ul>
+        <a class="link" href="/docs/api-reference/policy-and-lifecycle/">How the policy gate works →</a>
+      </div>
+      <div class="fvisual">
+        <Image src={gate} alt="The agent calls matimo.execute and the policy gate checks it with the approval handler, content validator, risk classifier, integrity tracker and approval manifest before an allowed call reaches the tool executor." sizes="(max-width: 900px) 100vw, 560px" />
+      </div>
+    </section>
+
+    <section class="wrap">
+      <h2>Governance first, then everything else</h2>
+      <div class="grid">
+        {pillars.map((p) => (
+          <a class="card" href={p.href}>
+            <h3>{p.title}</h3>
+            <p>{p.body}</p>
+          </a>
+        ))}
+      </div>
+    </section>
+
+    <section class="wrap demo" data-tabgroup>
+      <h2>Run a tool. Let an agent write one.</h2>
+      <p class="sub">The same call in both SDKs. An agent-created tool starts as a draft and needs approval before it runs.</p>
+      <div class="panel">
+        <div class="bar">
+          <div class="tabs" role="tablist" aria-label="Language">
+            <button role="tab" aria-selected="true" data-lang="ts">TypeScript</button>
+            <button role="tab" aria-selected="false" data-lang="py">Python</button>
+          </div>
+          <div class="tabs" role="tablist" aria-label="Example">
+            <button role="tab" aria-selected="true" data-kind="run">Run a tool</button>
+            <button role="tab" aria-selected="false" data-kind="create">Create a tool</button>
+          </div>
+        </div>
+        {(['py', 'ts'] as const).flatMap((lang) =>
+          (['run', 'create'] as const).map((kind) => (
+            <pre data-lang={lang} data-kind={kind} hidden={!(lang === 'ts' && kind === 'run')}><code>{hero[lang][kind]}</code></pre>
+          ))
+        )}
+      </div>
+      <a class="link" href="/docs/getting-started/quick-start/">Read the quick start →</a>
+    </section>
+
+    <TryIt />
+
+    <section class="wrap" id="different">
+      <h2>How Matimo is different</h2>
+      <p class="sub">Most agent tooling stops at "here are functions to call". Matimo adds the checks before a call and the record after it, and keeps both in your hands.</p>
+      <div class="tablewrap">
+        <table class="cmp">
+          <thead><tr>{compare.cols.map((c, i) => <th class={i === 3 ? 'us' : ''}>{c}</th>)}</tr></thead>
+          <tbody>
+            {compare.rows.map((r) => (
+              <tr>{r.map((c, i) => i === 0 ? <th scope="row">{c}</th> : <td class={i === 3 ? 'us' : ''}>{c}</td>)}</tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p class="note">These are general categories, not named products. <a href="/docs/why-matimo/">Why Matimo</a> also lists what Matimo does not do, including compliance certifications, which it has none of.</p>
+    </section>
+
+    <section class="wrap" id="build">
+      <h2>Build your own tools and MCP server</h2>
+      <p class="sub">Enterprises rarely need only public APIs. Matimo is built for your internal ones: define the tool, set the rules, expose it over MCP, and keep the evidence.</p>
+      <div class="steps">
+        {buildSteps.map((b, i) => (
+          <div class="plain"><h3><span class="num">{i + 1}</span>{b.title}</h3><p>{b.body}</p></div>
+        ))}
+      </div>
+      <div class="two">
+        <pre><code>{toolYaml}</code></pre>
+        <pre><code>{mcpCmd}</code></pre>
+      </div>
+      <h3 class="ctl">What stays under your control</h3>
+      <ul class="checks">
+        {control.map((c) => <li>{c}</li>)}
+      </ul>
+      <p class="links">
+        <a class="link" href="/docs/tool-development/adding-tools/">Package your own tools →</a>
+        <a class="link" href="/docs/mcp-server/">MCP server guide →</a>
+        <a class="link" href="/docs/api-reference/policy-and-lifecycle/">Policy reference →</a>
+      </p>
+    </section>
+
+    <section class="wrap">
+      <h2>Ready-made tools, and room for your own</h2>
+      <p class="sub">129 provider tools in 10 packages, plus 449 governed Composio tools in TypeScript. Add your own in a YAML file.</p>
+      <ul class="chips">
+        {providers.map((p) => <li>{p}</li>)}
+        <li class="accent">Your own tools</li>
+      </ul>
+    </section>
+
+    <section class="wrap">
+      <h2>Works everywhere</h2>
+      <p class="sub">Deploy to any framework or agent runtime without rewriting a tool.</p>
+      <div class="grid">
+        {runs.map((r) => (
+          <a class="card" href={r.href}>
+            <h3>{r.title}</h3>
+            <p>{r.body}</p>
+          </a>
+        ))}
+      </div>
+    </section>
+
+    <section class="wrap" id="features">
+      <h2>Complete feature set</h2>
+      <p class="sub">Everything needed to run agent tools in production.</p>
+      {featureGroups.map((g, i) => (
+        <div class="group">
+          <h3><span class="num">{i + 1}</span>{g.title}</h3>
+          <div class="mini">
+            {g.items.map(([t, b]) => (
+              <div>
+                <h4>{t}</h4>
+                <p>{b}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </section>
+
+    <section class="wrap">
+      <h2>Why teams choose Matimo</h2>
+      <div class="grid why">
+        {why.map(([t, b]) => (
+          <div class="plain">
+            <h3>{t}</h3>
+            <p>{b}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <section class="wrap" id="patterns">
+      <h2>Four integration patterns</h2>
+      <p class="sub">Pick what fits. Each pattern is shown in both SDKs.</p>
+      <div class="patterns">
+        {patterns.map((p, i) => (
+          <div class="pattern" data-pattern>
+            <h3><span class="num">{i + 1}</span>{p.title}</h3>
+            <p>{p.body}</p>
+            <div class="tabs" role="tablist">
+              <button role="tab" aria-selected="true" data-p="py">Python</button>
+              <button role="tab" aria-selected="false" data-p="ts">TypeScript</button>
+            </div>
+            <pre data-p="py"><code>{p.py}</code></pre>
+            <pre data-p="ts" hidden><code>{p.ts}</code></pre>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <section class="wrap" id="cli">
+      <h2>Developer CLI</h2>
+      <p class="sub">Environment setup, validation and approval workflows from the terminal. Run it with <code>npx matimo</code> or, in Python, <code>matimo</code>.</p>
+      <div class="grid">
+        {cli.map((c) => (
+          <div class="plain">
+            <h3>{c.title}</h3>
+            <code class="cmdline">{c.cmd}</code>
+            <p>{c.body}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <section class="wrap">
+      <h2>Quick start resources</h2>
+      <div class="grid">
+        {resources.map((r) => (
+          <a class="card" href={r.href}>
+            <h3>{r.title}</h3>
+            <p>{r.body}</p>
+          </a>
+        ))}
+        <a class="card" href="https://discord.gg/3JPt4mxWDV">
+          <h3>Discord community</h3>
+          <p>Ask maintainers, share tools and follow releases.</p>
+        </a>
+      </div>
+    </section>
+
+    <section class="wrap">
+      <h2>Production ready</h2>
+      <div class="grid why">
+        {ready.map(([t, b]) => (
+          <div class="plain">
+            <h3>{t}</h3>
+            <p>{b}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <section class="wrap fw">
+      <h2>Works with the frameworks you already use</h2>
+      <ul class="chips">{['LangChain', 'CrewAI', 'Agno', 'MCP', 'Claude Desktop', 'Cursor'].map((f) => <li>{f}</li>)}</ul>
+      <a class="link" href="/docs/why-matimo/">Why Matimo →</a>
+    </section>
+
+    <section class="wrap agents" id="for-agents">
+      <p class="eyebrow">For AI agents</p>
+      <h2>Machine-readable docs for agents</h2>
+      <p class="sub">Matimo is designed for agent-driven use under human oversight. Everything below is plain text, no JavaScript needed.</p>
+      <div class="grid">
+        <a class="card" href="/llms.txt"><h3>llms.txt</h3><p>What Matimo is, when to use it, how to install it, and where it stops.</p></a>
+        <a class="card" href="/llms-full.txt"><h3>llms-full.txt</h3><p>The core documentation in one file, ready to load into context.</p></a>
+        <a class="card" href="https://github.com/tallclub/matimo/blob/main/AGENTS.md"><h3>AGENTS.md</h3><p>Setup, test and commit conventions for coding agents working in the repo.</p></a>
+      </div>
+      <pre class="agentcode"><code># TypeScript: core plus the CLI
+npm install matimo
+# TypeScript: core only
+npm install @matimo/core
+# Python
+pip install matimo
+# Serve tools to MCP clients
+npx matimo mcp --tool-paths ./tools</code></pre>
+    </section>
+
+    <section class="wrap cta-band">
+      <h2>Ready to govern your agents' tools?</h2>
+      <p>Install it, run your first tool and see the approval gate in about five minutes.</p>
+      <div class="buttons">
+        <a class="primary" href="/docs/getting-started/quick-start/">Quick start</a>
+        <a class="secondary" href="/docs/">Documentation</a>
+      </div>
+    </section>
+
+    <section class="wrap cta-band">
+      <h2>Need a hosted runtime on top?</h2>
+      <p>Matimo Workbench uses Matimo OSS as its tool layer, with a visual builder and managed runtime.</p>
+      <a class="secondary" href="https://matimo.ai">Explore Matimo Workbench</a>
+    </section>
+  </main>
+  <Footer />
+</Landing>
+
+<script>
+  const box = document.querySelector('[data-install]');
+  if (box) {
+    const out = box.querySelector('[data-out]');
+    const tabs = box.querySelectorAll('[role=tab]');
+    let cmd = 'npm install matimo';
+    tabs.forEach((t) => t.addEventListener('click', () => {
+      tabs.forEach((x) => x.setAttribute('aria-selected', String(x === t)));
+      cmd = t.getAttribute('data-cmd') ?? cmd;
+      if (out) out.textContent = cmd;
+    }));
+    const copy = box.querySelector('[data-copy]');
+    copy?.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(cmd);
+        copy.textContent = 'Copied';
+        setTimeout(() => (copy.textContent = 'Copy'), 1500);
+      } catch {
+        /* clipboard unavailable */
+      }
+    });
+  }
+
+  // Hero demo: language x example
+  const demo = document.querySelector('[data-tabgroup]');
+  if (demo) {
+    const state = { lang: 'ts', kind: 'run' };
+    const render = () => {
+      demo.querySelectorAll('[data-lang][role=tab]').forEach((b) => b.setAttribute('aria-selected', String(b.getAttribute('data-lang') === state.lang)));
+      demo.querySelectorAll('[data-kind][role=tab]').forEach((b) => b.setAttribute('aria-selected', String(b.getAttribute('data-kind') === state.kind)));
+      demo.querySelectorAll('pre').forEach((p) => {
+        p.hidden = !(p.getAttribute('data-lang') === state.lang && p.getAttribute('data-kind') === state.kind);
+      });
+    };
+    demo.querySelectorAll('[role=tab]').forEach((b) => b.addEventListener('click', () => {
+      const l = b.getAttribute('data-lang');
+      const k = b.getAttribute('data-kind');
+      if (l) state.lang = l;
+      if (k) state.kind = k;
+      render();
+    }));
+  }
+
+  // Integration patterns: per-card language tabs
+  document.querySelectorAll('[data-pattern]').forEach((card) => {
+    const tabs = card.querySelectorAll('[role=tab]');
+    tabs.forEach((t) => t.addEventListener('click', () => {
+      const want = t.getAttribute('data-p');
+      tabs.forEach((x) => x.setAttribute('aria-selected', String(x === t)));
+      card.querySelectorAll('pre').forEach((p) => { p.hidden = p.getAttribute('data-p') !== want; });
+    }));
+  });
+</script>
+
+<style>
+  .hero { padding: 6rem 1.25rem 3rem; text-align: center; background: radial-gradient(60rem 22rem at 50% -4rem, color-mix(in srgb, var(--mt-accent) 22%, transparent), transparent 70%); }
+  .eyebrow { color: var(--mt-accent-hi); font-size: .85rem; letter-spacing: .08em; text-transform: uppercase; font-weight: 600; }
+  h1 { font-size: clamp(2.3rem, 6vw, 4rem); line-height: 1.08; letter-spacing: -.03em; margin: 1rem 0; font-weight: 750; }
+  h1 span { color: var(--mt-muted); }
+  .lede { max-width: 44rem; margin: 0 auto 2rem; color: var(--mt-muted); font-size: 1.15rem; }
+  .buttons { display: flex; gap: .8rem; justify-content: center; flex-wrap: wrap; }
+  .primary, .secondary { text-decoration: none; padding: .7rem 1.2rem; border-radius: 10px; font-weight: 600; }
+  .paths { display: flex; flex-wrap: wrap; justify-content: center; gap: .4rem 1.75rem; margin: 1.25rem auto 0; max-width: 46rem; font-size: .9rem; color: var(--mt-muted); }
+  .paths a { color: var(--mt-accent-hi); text-underline-offset: 3px; }
+  .primary { background: var(--mt-accent-btn); color: #fff; }
+  .primary:hover { background: var(--mt-accent-hi); }
+  .secondary { border: 1px solid var(--mt-border); }
+  .secondary:hover { border-color: var(--mt-muted); }
+  .install { max-width: 30rem; margin: 2.5rem auto 0; text-align: left; border: 1px solid var(--mt-border); background: var(--mt-bg-raised); border-radius: 12px; overflow: hidden; }
+  .tabs { display: flex; }
+  .install .tabs { border-bottom: 1px solid var(--mt-border); }
+  .tabs button { background: none; border: 0; color: var(--mt-muted); padding: .6rem 1rem; font: inherit; font-size: .85rem; cursor: pointer; }
+  .tabs button[aria-selected='true'] { color: var(--mt-text); box-shadow: inset 0 -2px var(--mt-accent); }
+  .cmd { display: flex; align-items: center; justify-content: space-between; padding: .9rem 1rem; font-family: var(--mt-mono); font-size: .95rem; }
+  .prompt { color: var(--mt-accent-hi); }
+  .copy { background: none; border: 1px solid var(--mt-border); color: var(--mt-muted); border-radius: 6px; padding: .2rem .6rem; font: inherit; font-size: .8rem; cursor: pointer; }
+  .copy:hover { color: var(--mt-text); }
+  .points { list-style: none; padding: 0; max-width: 46rem; margin: 2rem auto 0; display: grid; gap: .5rem; text-align: left; color: var(--mt-muted); font-size: .95rem; }
+  .points b { color: var(--mt-text); }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-top: 3rem; text-align: center; }
+  .stats b { display: block; font-size: 2.2rem; letter-spacing: -.02em; }
+  .stats span { color: var(--mt-muted); font-size: .9rem; }
+  h2 { font-size: clamp(1.6rem, 3.5vw, 2.2rem); letter-spacing: -.02em; margin: 5rem 0 1rem; }
+  .sub { color: var(--mt-muted); margin-bottom: 1.5rem; max-width: 46rem; }
+  .sub code, .cmdline { font-family: var(--mt-mono); font-size: .85em; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1rem; margin-top: 1.5rem; }
+  .card, .plain { display: block; text-decoration: none; padding: 1.4rem; border: 1px solid var(--mt-border); border-radius: 14px; background: var(--mt-bg-raised); transition: border-color .15s, transform .15s; }
+  .card:hover { border-color: var(--mt-accent); transform: translateY(-2px); }
+  .plain { transition: none; }
+  .card h3, .plain h3 { margin: .2rem 0 .4rem; font-size: 1.05rem; }
+  .card p, .plain p { color: var(--mt-muted); font-size: .95rem; }
+  .why { grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); }
+  .cmdline { display: block; margin: .3rem 0 .6rem; color: var(--mt-accent-hi); }
+  pre { background: var(--mt-bg-raised); border: 1px solid var(--mt-border); border-radius: 12px; padding: 1.2rem; overflow-x: auto; font-family: var(--mt-mono); font-size: .85rem; line-height: 1.55; margin: 0; }
+  pre[hidden] { display: none; }
+  .demo .panel { border: 1px solid var(--mt-border); border-radius: 14px; background: var(--mt-bg-raised); overflow: hidden; margin-bottom: 1rem; }
+  .demo .bar { display: flex; justify-content: space-between; flex-wrap: wrap; border-bottom: 1px solid var(--mt-border); }
+  .demo pre { border: 0; border-radius: 0; }
+  .link { color: var(--mt-accent-hi); text-decoration: none; font-weight: 600; }
+  .chips { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: .6rem; margin: 0 0 1.2rem; }
+  .chips li { border: 1px solid var(--mt-border); border-radius: 999px; padding: .35rem .9rem; color: var(--mt-muted); }
+  .chips li.accent { border-color: var(--mt-accent); color: var(--mt-accent-hi); }
+  .group { margin-top: 2rem; }
+  .group > h3 { font-size: 1.15rem; display: flex; align-items: center; gap: .6rem; margin-bottom: .8rem; }
+  .num { display: inline-grid; place-items: center; width: 1.6rem; height: 1.6rem; border-radius: 50%; background: var(--mt-accent-btn); color: #fff; font-size: .8rem; font-weight: 700; }
+  .mini { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: .8rem; }
+  .mini > div { border: 1px solid var(--mt-border); border-radius: 12px; padding: 1rem 1.1rem; background: var(--mt-bg-raised); }
+  .mini h4 { font-size: .95rem; margin-bottom: .25rem; }
+  .mini p { color: var(--mt-muted); font-size: .88rem; }
+  .patterns { display: grid; grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr)); gap: 1rem; }
+  .pattern { border: 1px solid var(--mt-border); border-radius: 14px; padding: 1.2rem; background: var(--mt-bg-raised); min-width: 0; }
+  .pattern h3 { display: flex; align-items: center; gap: .6rem; font-size: 1.05rem; margin-bottom: .4rem; }
+  .pattern p { color: var(--mt-muted); font-size: .92rem; margin-bottom: .8rem; }
+  .pattern pre { background: var(--mt-bg); }
+  .eyebrow.left { text-align: left; }
+  .videosec { margin-top: 4rem; text-align: center; }
+  .videosec .sub { margin-left: auto; margin-right: auto; }
+  .vframe { max-width: 960px; margin: 1.75rem auto 0; border: 1px solid var(--mt-border, rgba(255,255,255,.12)); border-radius: 14px; overflow: hidden; background: #000; box-shadow: 0 20px 60px rgba(232,52,28,.18); }
+  .vframe video { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; }
+  .transcript { max-width: 960px; margin: 1rem auto 0; text-align: left; font-size: .95rem; }
+  .transcript summary { cursor: pointer; color: var(--mt-accent-hi); font-weight: 600; }
+  .transcript p { margin-top: .6rem; line-height: 1.6; }
+  .feature { display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem; align-items: center; margin-top: 4rem; }
+  .feature h2 { margin-top: .4rem; }
+  .fpoints { list-style: none; padding: 0; display: grid; gap: .7rem; margin: 0 0 1.4rem; color: var(--mt-muted); }
+  .fpoints b { color: var(--mt-text); }
+  .fvisual img { width: 100%; height: auto; border-radius: 14px; border: 1px solid var(--mt-border); }
+  .tablewrap { overflow-x: auto; border: 1px solid var(--mt-border); border-radius: 14px; }
+  .cmp { width: 100%; border-collapse: collapse; font-size: .92rem; min-width: 44rem; }
+  .cmp th, .cmp td { text-align: left; padding: .8rem 1rem; border-bottom: 1px solid var(--mt-border); vertical-align: top; }
+  .cmp thead th { background: var(--mt-bg-raised); color: var(--mt-muted); font-weight: 600; }
+  .cmp tbody th { font-weight: 600; }
+  .cmp td { color: var(--mt-muted); }
+  .cmp tr:last-child th, .cmp tr:last-child td { border-bottom: 0; }
+  .cmp .us { background: color-mix(in srgb, var(--mt-accent) 10%, transparent); color: var(--mt-text); }
+  .cmp thead th.us { color: var(--mt-accent-hi); }
+  .note { color: var(--mt-muted); font-size: .88rem; margin-top: .8rem; }
+  .note a { color: var(--mt-accent-hi); }
+  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 1rem; margin-bottom: 1.2rem; }
+  .steps h3 { display: flex; align-items: center; gap: .6rem; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; align-items: start; }
+  .two pre { min-width: 0; }
+  .ctl { margin: 2rem 0 .8rem; font-size: 1.1rem; }
+  .checks { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); gap: .6rem 1.5rem; color: var(--mt-muted); font-size: .95rem; }
+  .checks li { padding-left: 1.4rem; position: relative; }
+  .checks li::before { content: ''; position: absolute; left: .2rem; top: .55rem; width: .5rem; height: .5rem; border-radius: 50%; background: var(--mt-accent); }
+  .links { display: flex; flex-wrap: wrap; gap: 1.5rem; margin-top: 1.5rem; }
+  .agents .sub { color: var(--mt-muted); max-width: 46rem; margin-bottom: 1.4rem; }
+  .agentcode { margin-top: 1.2rem; padding: 1rem 1.2rem; border: 1px solid var(--mt-border); border-radius: 12px; overflow-x: auto; font-family: var(--mt-mono); font-size: 0.9rem; }
+  .cta-band { text-align: center; }
+  .cta-band p { color: var(--mt-muted); margin-bottom: 1.2rem; }
+  @media (max-width: 760px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .patterns { grid-template-columns: 1fr; }
+    .feature, .two { grid-template-columns: 1fr; }
+  }
+</style>

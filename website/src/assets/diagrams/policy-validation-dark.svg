@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 740 324" width="740" height="324" role="img" aria-label="policy.yaml becomes a PolicyConfig. When an agent proposes a tool, the ContentValidator uses that config to check the 9 rules plus the policy settings, and the tool either passes or is blocked.">
+  <title>policy.yaml becomes a PolicyConfig. When an agent proposes a tool, the ContentValidator uses that config to check the 9 rules plus the policy settings, and the tool either passes or is blocked.</title>
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1 L9 5 L1 9 z" fill="#9a9aa8"/></marker>
+    <style>
+      .bg { fill: #0b0b10; }
+      .box { fill: #14141b; stroke: #2a2a35; stroke-width: 1.2; }
+      .box.accent { fill: #1a0f15; stroke: #ff3d7f; stroke-width: 1.4; }
+      .box.ok { fill: #0f1a15; stroke: #3ddc97; stroke-width: 1.3; }
+      .box.bad { fill: #1a1010; stroke: #ff5c5c; stroke-width: 1.3; }
+      .chip { fill: #1b1b24; stroke: #2a2a35; stroke-width: 1; }
+      .pill { fill: #1b1b24; stroke: #2a2a35; stroke-width: 1; }
+      .pill.ok { stroke: #3ddc97; } .pill.bad { stroke: #ff5c5c; }
+      .h { font: 650 15.5px 'Inter Variable', Inter, system-ui, 'Segoe UI', sans-serif; fill: #ececf1; }
+      .h.accent { fill: #ff7aa8; } .h.ok { fill: #7ae7b9; } .h.bad { fill: #ff8a8a; }
+      .hs { font: 650 14px 'Inter Variable', Inter, system-ui, 'Segoe UI', sans-serif; fill: #ececf1; }
+      .t { font: 400 13.5px 'Inter Variable', Inter, system-ui, 'Segoe UI', sans-serif; fill: #c4c4d0; }
+      .sub { fill: #9a9aa8; }
+      .m { font: 400 12.5px 'JetBrains Mono Variable', ui-monospace, Menlo, Consolas, monospace; fill: #c4c4d0; }
+      .pt { font: 600 12px 'Inter Variable', Inter, system-ui, 'Segoe UI', sans-serif; fill: #c4c4d0; }
+      .pt.ok { fill: #7ae7b9; } .pt.bad { fill: #ff8a8a; }
+      .ln { stroke: #9a9aa8; stroke-width: 1.5; fill: none; }
+    </style>
+  </defs>
+  <rect class="bg" width="740" height="324" rx="18"/>
+  <rect class="box" x="20" y="20" width="328" height="67" rx="12"/><text class="h" x="38" y="49">policy.yaml</text><path class="ln" d="M354 53.5 H386" marker-end="url(#ar)"/><rect class="box" x="392" y="20" width="328" height="67" rx="12"/><text class="h" x="410" y="49">PolicyConfig</text><text class="t" x="410" y="72">settings the validator uses</text><path class="ln" d="M370 87 V115" marker-end="url(#ar)"/><text class="t sub" x="380" y="105" style="font-size:12px">configures</text><rect class="box" x="20" y="115" width="204" height="67" rx="12"/><text class="h" x="38" y="144">Agent proposes tool</text><path class="ln" d="M230 148.5 H262" marker-end="url(#ar)"/><rect class="box" x="268" y="115" width="204" height="67" rx="12"/><text class="h" x="286" y="144">ContentValidator</text><text class="t" x="286" y="167">uses PolicyConfig</text><path class="ln" d="M478 148.5 H510" marker-end="url(#ar)"/><rect class="box" x="516" y="115" width="204" height="67" rx="12"/><text class="h" x="534" y="144">Check 9 rules</text><text class="t" x="534" y="167">plus policy settings</text><path class="ln" d="M370 182 V208" marker-end="url(#ar)"/><path class="ln" d="M370 208 V222"/><path class="ln" d="M191 222 H549"/><path class="ln" d="M191 222 V256" marker-end="url(#ar)"/><rect class="box ok" x="20" y="256" width="342" height="48" rx="12"/><text class="h ok" x="38" y="285">Pass</text><path class="ln" d="M549 222 V256" marker-end="url(#ar)"/><rect class="box bad" x="378" y="256" width="342" height="48" rx="12"/><text class="h bad" x="396" y="285">Blocked</text>
+</svg>

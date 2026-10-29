@@ -1,0 +1,32 @@
+<footer>
+  <div class="wrap row">
+    <p>Matimo OSS is MIT licensed. Built by <a href="https://roaiq.com">roaiq Technologies</a> and contributors.</p>
+    <p class="links">
+      <a href="https://github.com/tallclub/matimo">GitHub</a>
+      <a href="https://discord.gg/3JPt4mxWDV">Discord</a>
+      <a href="https://www.npmjs.com/package/matimo">npm</a>
+      <a href="https://pypi.org/project/matimo/">PyPI</a>
+      <a href="https://matimo.ai">Matimo Workbench</a>
+      <a href="/privacy/">Privacy</a>
+      <button type="button" class="settings" data-consent-open hidden>Analytics settings</button>
+    </p>
+  </div>
+</footer>
+<script>
+  // Shown only when analytics is configured for this build (the consent script defines matimoAnalytics).
+  const w = window as unknown as { matimoAnalytics?: { open: () => void } };
+  const btn = document.querySelector<HTMLButtonElement>('footer [data-consent-open]');
+  if (btn && w.matimoAnalytics) {
+    btn.hidden = false;
+    btn.addEventListener('click', () => w.matimoAnalytics?.open());
+  }
+</script>
+<style>
+  .settings { background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; }
+  .settings:hover { color: var(--mt-text); }
+  footer { border-top: 1px solid var(--mt-border); margin-top: 6rem; padding: 2rem 0; color: var(--mt-muted); font-size: .9rem; }
+  .row { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+  .links { display: flex; gap: 1.2rem; flex-wrap: wrap; }
+  a { text-decoration: none; }
+  a:hover { color: var(--mt-text); }
+</style>
