@@ -5,7 +5,14 @@
  */
 
 import axios, { AxiosRequestConfig, AxiosError } from 'axios';
-import { MatimoError, ErrorCode } from '@matimo/core/runtime';
+import {
+  MatimoError,
+  ErrorCode,
+  isBlockedUrl,
+  ssrfHttpAgent,
+  ssrfHttpsAgent,
+  ssrfBeforeRedirect,
+} from '@matimo/core/runtime';
 
 interface WebParams {
   url: string;
@@ -65,6 +72,13 @@ export default async function webTool(params: WebParams): Promise<WebResult> {
     });
   }
 
+  if (isBlockedUrl(url, true)) {
+    throw new MatimoError('URL targets a blocked internal address', ErrorCode.POLICY_DENIED, {
+      url,
+      reason: 'localhost, private, link-local and metadata addresses are not reachable',
+    });
+  }
+
   const requestConfig: AxiosRequestConfig = {
     method: method.toUpperCase() || 'GET',
     url,
@@ -77,6 +91,9 @@ export default async function webTool(params: WebParams): Promise<WebResult> {
       ...(headers || {}),
     },
     validateStatus: () => true, // Don't throw on any status code
+    httpAgent: ssrfHttpAgent,
+    httpsAgent: ssrfHttpsAgent,
+    beforeRedirect: ssrfBeforeRedirect,
   };
 
   if (body && ['POST', 'PUT', 'PATCH'].includes(method.toUpperCase())) {

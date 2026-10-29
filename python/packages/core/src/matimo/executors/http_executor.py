@@ -17,6 +17,7 @@ from matimo.core.models import HttpExecution, ToolDefinition
 from matimo.encodings.parameter_encoding import apply_parameter_encodings
 from matimo.errors import ErrorCode, MatimoError, from_http_error
 from matimo.policy.content_validator import is_ssrf_target
+from matimo.policy.ssrf import ssrf_event_hooks
 
 logger = logging.getLogger("matimo")
 
@@ -142,7 +143,9 @@ class HttpExecutor:
         timeout_s = timeout_ms / 1000.0
 
         try:
-            async with httpx.AsyncClient(timeout=timeout_s) as client, client.stream(
+            async with httpx.AsyncClient(
+                timeout=timeout_s, event_hooks=ssrf_event_hooks()
+            ) as client, client.stream(
                 method=exec_cfg.method,
                 url=url,
                 headers=headers,

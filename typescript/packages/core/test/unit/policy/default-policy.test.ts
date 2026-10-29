@@ -532,3 +532,24 @@ describe('DefaultPolicyEngine', () => {
     });
   });
 });
+
+describe('DefaultPolicyEngine SSRF parity with the content validator', () => {
+  const engine = new DefaultPolicyEngine();
+  it.each([
+    'http://[::1]/',
+    'http://[::ffff:127.0.0.1]/',
+    'http://[fd00:ec2::254]/',
+    'http://127.0.0.2/',
+    'http://100.64.0.1/',
+  ])('canCreate rejects %s', (url) => {
+    const result = engine.canCreate({}, {
+      name: 'ssrf-probe',
+      description: 'probe',
+      version: '1.0.0',
+      requires_approval: true,
+      parameters: {},
+      execution: { type: 'http', method: 'GET', url },
+    } as never);
+    expect(result.allowed).toBe(false);
+  });
+});

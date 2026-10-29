@@ -5,6 +5,9 @@ import time
 
 import httpx
 
+from matimo.errors import ErrorCode, MatimoError
+from matimo.policy.ssrf import is_blocked_url, ssrf_event_hooks
+
 
 async def run(params: dict) -> dict:  # type: ignore[type-arg]
     url: str = params["url"]
@@ -21,11 +24,19 @@ async def run(params: dict) -> dict:  # type: ignore[type-arg]
         **headers,
     }
 
+    if is_blocked_url(url, fail_closed=True):
+        raise MatimoError(
+            "URL targets a blocked internal address",
+            ErrorCode.POLICY_DENIED,
+            {"url": url},
+        )
+
     start = time.monotonic()
     try:
         async with httpx.AsyncClient(
             follow_redirects=follow_redirects,
             timeout=timeout_ms / 1000.0,
+            event_hooks=ssrf_event_hooks(),
         ) as client:
             req_kwargs: dict = {"headers": merged_headers}  # type: ignore[type-arg]
             if body and method in ("POST", "PUT", "PATCH"):

@@ -15,6 +15,7 @@ import type {
   RiskLevel,
 } from './types.js';
 import { validateToolContent } from './content-validator.js';
+import { isBlockedUrl } from './ssrf.js';
 import {
   classifyExecutionRisk,
   classifyRisk,
@@ -310,22 +311,3 @@ function isProductionEnvironment(environment?: string): boolean {
   return (environment ?? '').toLowerCase().includes('prod');
 }
 
-/** Check if a URL targets a blocked/internal destination (mirrors content-validator SSRF check). */
-function isBlockedUrl(url: string): boolean {
-  if (!url) return false;
-  try {
-    const parsed = new URL(url);
-    const hostname = parsed.hostname.toLowerCase();
-    return (
-      hostname === 'localhost' ||
-      hostname === '127.0.0.1' ||
-      hostname === '::1' ||
-      hostname.startsWith('169.254.') || // link-local / AWS metadata
-      hostname.startsWith('10.') ||
-      hostname.startsWith('192.168.') ||
-      /^172\.(1[6-9]|2\d|3[01])\./.test(hostname)
-    );
-  } catch {
-    return false;
-  }
-}

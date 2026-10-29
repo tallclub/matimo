@@ -41,6 +41,10 @@ describe('HttpExecutor', () => {
         timeout: undefined,
         maxContentLength: 50 * 1024 * 1024,
         maxBodyLength: 50 * 1024 * 1024,
+        maxRedirects: 5,
+        httpAgent: expect.anything(),
+        httpsAgent: expect.anything(),
+        beforeRedirect: expect.any(Function),
       });
     });
 
@@ -80,6 +84,10 @@ describe('HttpExecutor', () => {
         timeout: undefined,
         maxContentLength: 50 * 1024 * 1024,
         maxBodyLength: 50 * 1024 * 1024,
+        maxRedirects: 5,
+        httpAgent: expect.anything(),
+        httpsAgent: expect.anything(),
+        beforeRedirect: expect.any(Function),
       });
     });
 

@@ -8,6 +8,7 @@
 import type { ToolDefinition } from '../core/schema.js';
 import type { ValidationResult, ValidationContext, Violation } from './types.js';
 import { extractAuthPlaceholders } from '../mcp/tool-converter.js';
+import { isBlockedHostname } from './ssrf.js';
 
 const DEFAULT_ALLOWED_HTTP_METHODS = ['GET', 'POST'];
 const DEFAULT_PROTECTED_NAMESPACES = ['matimo_'];
@@ -164,7 +165,9 @@ function cleanUrlPlaceholders(url: string): string {
 
 /**
  * Check if a URL targets an internal/metadata network (SSRF protection).
- * Handles IPv4, IPv6, and common internal hostnames.
+ * Handles IPv4, IPv6 (including IPv4-mapped, ULA, link-local), trailing-dot and
+ * internal-suffix hostnames. It does not resolve DNS; the HTTP executor does
+ * that at connect time.
  */
 export function isSSRFTarget(url: string): boolean {
   let hostname: string;
@@ -177,39 +180,7 @@ export function isSSRFTarget(url: string): boolean {
     return false;
   }
 
-  // Strip IPv6 brackets
-  if (hostname.startsWith('[') && hostname.endsWith(']')) {
-    hostname = hostname.slice(1, -1);
-  }
-
-  // Exact matches
-  if (
-    hostname === 'localhost' ||
-    hostname === '127.0.0.1' ||
-    hostname === '::1' ||
-    hostname === '0.0.0.0' ||
-    hostname === '0'
-  ) {
-    return true;
-  }
-
-  // AWS/cloud metadata endpoint
-  if (hostname === '169.254.169.254') {
-    return true;
-  }
-
-  // Private IPv4 ranges
-  if (hostname.startsWith('169.254.')) return true;
-  if (hostname.startsWith('10.')) return true;
-  if (hostname.startsWith('192.168.')) return true;
-  if (/^172\.(1[6-9]|2\d|3[01])\./.test(hostname)) return true;
-
-  // Internal/local domain suffixes
-  if (hostname.endsWith('.internal')) return true;
-  if (hostname.endsWith('.local')) return true;
-  if (hostname.endsWith('.localhost')) return true;
-
-  return false;
+  return isBlockedHostname(hostname);
 }
 
 /**

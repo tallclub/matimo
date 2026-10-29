@@ -25,6 +25,7 @@ from markdownify import MarkdownConverter
 from readability import Document
 
 from matimo.errors import ErrorCode, MatimoError
+from matimo.policy.ssrf import is_blocked_url, ssrf_event_hooks
 
 DEFAULT_MAX_PAGES = 20
 MAX_MAX_PAGES = 100
@@ -41,25 +42,6 @@ ROBOTS_USER_AGENT = "matimo"
 MAX_REDIRECTS = 5
 
 
-def _is_blocked_url(url: str) -> bool:
-    """SSRF guard mirroring is_blocked_url() in matimo.policy.default_policy.
-
-    Blocks localhost, loopback, link-local/AWS metadata, and RFC1918 private
-    ranges so outbound fetches are held to the same bar Matimo's policy engine
-    applies to agent-proposed HTTP tools.
-    """
-    hostname = (urlparse(url).hostname or "").lower()
-    if not hostname:
-        return True
-    if hostname in ("localhost", "127.0.0.1", "::1"):
-        return True
-    if hostname.startswith("169.254."):
-        return True
-    if hostname.startswith("10.") or hostname.startswith("192.168."):
-        return True
-    return bool(re.match(r"^172\.(1[6-9]|2\d|3[01])\.", hostname))
-
-
 def _validate_url(url: str) -> ParseResult:
     parsed = urlparse(url)
     if parsed.scheme not in ("http", "https") or not parsed.netloc:
@@ -68,7 +50,7 @@ def _validate_url(url: str) -> ParseResult:
             ErrorCode.INVALID_PARAMETER,
             {"url": url, "reason": "url must be a valid http or https URL"},
         )
-    if _is_blocked_url(url):
+    if is_blocked_url(url, fail_closed=True):
         raise MatimoError(
             "URL targets a blocked internal/metadata address",
             ErrorCode.INVALID_PARAMETER,
@@ -170,7 +152,7 @@ def _is_allowed_by_robots(disallow: list[str], allow: list[str], pathname: str) 
 
 async def _fetch_robots_rules(origin: str, timeout_s: float) -> tuple[list[str], list[str]]:
     try:
-        async with httpx.AsyncClient(timeout=min(timeout_s, 5.0)) as client:
+        async with httpx.AsyncClient(timeout=min(timeout_s, 5.0), event_hooks=ssrf_event_hooks()) as client:
             response = await client.get(
                 f"{origin}/robots.txt",
                 headers={"User-Agent": f"Matimo/1.0 (AI Agent Tool SDK; {ROBOTS_USER_AGENT})"},
@@ -191,7 +173,9 @@ async def _fetch_page(url: str, max_size_bytes: float, timeout_s: float) -> tupl
     Returns (resolved_url, html, status_code, content_type).
     """
     current_url = url
-    async with httpx.AsyncClient(follow_redirects=False, timeout=timeout_s) as client:
+    async with httpx.AsyncClient(
+        follow_redirects=False, timeout=timeout_s, event_hooks=ssrf_event_hooks()
+    ) as client:
         for _ in range(MAX_REDIRECTS + 1):
             try:
                 response = await client.get(
@@ -215,7 +199,7 @@ async def _fetch_page(url: str, max_size_bytes: float, timeout_s: float) -> tupl
                         {"url": url},
                     )
                 next_url = urljoin(current_url, location)
-                if _is_blocked_url(next_url):
+                if is_blocked_url(next_url, fail_closed=True):
                     raise MatimoError(
                         "Redirect targets a blocked internal/metadata address",
                         ErrorCode.INVALID_PARAMETER,
