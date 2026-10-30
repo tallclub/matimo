@@ -879,7 +879,15 @@ class Matimo:
         if exec_type == "function":
             # Function tools also get the caller's PolicyContext (e.g. so
             # matimo_approve_tool can check the approver's role and identity).
-            return await self._function_executor.execute(tool, params, credentials, context)
+            # The instance is also exposed to the tool so meta-tools such as
+            # matimo_list_skills see this instance without a global registration.
+            from matimo.decorators import _executing_instance
+
+            token = _executing_instance.set(self)
+            try:
+                return await self._function_executor.execute(tool, params, credentials, context)
+            finally:
+                _executing_instance.reset(token)
         raise MatimoError(
             f"Unknown execution type: '{exec_type}'",
             ErrorCode.EXECUTION_FAILED,
