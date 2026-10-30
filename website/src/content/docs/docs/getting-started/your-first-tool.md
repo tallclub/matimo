@@ -100,13 +100,10 @@ from matimo import Matimo
 async def main():
     m = await Matimo.init(auto_discover=True)
 
-    print("
-Available Tools:
-")
+    print("\nAvailable Tools:\n")
     for tool in m.list_tools():
         print(f"  - {tool.name}")
-        print(f"    {tool.description}
-")
+        print(f"    {tool.description}\n")
 
 asyncio.run(main())
 ```
@@ -326,8 +323,7 @@ from matimo import Matimo
 async def main():
     # 1. Initialize
     m = await Matimo.init(auto_discover=True)
-    print(f"Loaded {len(m.list_tools())} tools
-")
+    print(f"Loaded {len(m.list_tools())} tools\n")
 
     # 2. List tools
     print("Available tools:")
@@ -336,12 +332,10 @@ async def main():
 
     # 3. Get tool
     calc = m.get_tool("calculator")
-    print(f"
-Tool: {calc.name}")
+    print(f"\nTool: {calc.name}")
 
     # 4. Execute
-    print("
-Executing calculator...")
+    print("\nExecuting calculator...")
     result = await m.execute("calculator", {"operation": "add", "a": 5, "b": 3})
     print("Result:", result["result"])  # 8.0
 

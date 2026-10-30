@@ -1,26 +1,30 @@
-# Your First Tool — Step by Step
+# Your First Tool: Step by Step
 
 Execute your first Matimo tool in 5 minutes.
 
 ## Prerequisites
 
-- ✅ Matimo installed (`npm install matimo` — see [Installation](./installation.md))
-- ✅ Node.js v22.19+
+- Matimo installed, see [Installation](installation.md):
+  - **TypeScript**: `npm install matimo` and Node.js v22.19+
+  - **Python**: `pip install matimo` and Python 3.11+
+
+Every step shows both SDKs. Pick one and follow it through.
 
 This guide uses `calculator`, one of the core tools that ship with Matimo.
 
 ## Step 1: Initialize Matimo
 
+### TypeScript
+
 Create `first-tool.ts`:
 
 ```typescript
-import { MatimoInstance } from 'matimo';
 
 async function main() {
   // Load Matimo's core tools, plus any @matimo/* provider packages you installed
   const m = await MatimoInstance.init({ autoDiscover: true });
 
-  console.log(`✅ Loaded ${m.listTools().length} tools`);
+  console.log(`Loaded ${m.listTools().length} tools`);
 }
 
 main().catch(console.error);
@@ -35,19 +39,36 @@ npx tsx first-tool.ts
 **Output:**
 
 ```
-✅ Loaded 24 tools
+Loaded 24 tools
 ```
 
 (24 core tools; each provider package you install adds its own.)
+
+### Python
+
+Create `first_tool.py`:
+
+```python
+from matimo import Matimo
+
+async def main():
+    # Load Matimo's core tools, plus any matimo-* provider packages you installed
+    m = await Matimo.init(auto_discover=True)
+
+    print(f"Loaded {len(m.list_tools())} tools")
+
+asyncio.run(main())
+```
+
+Run it with `python first_tool.py`. You get the 24 core tools plus the tools of every `matimo-*` provider package installed in that environment (a plain `pip install matimo` prints `Loaded 24 tools`). On first run Matimo also logs a `MATIMO_APPROVAL_SECRET` warning, explained in [Quick Start](QUICK_START.md#the-matimo_approval_secret-warning).
 
 ---
 
 ## Step 2: List Available Tools
 
-Update `first-tool.ts`:
+**TypeScript**: update `first-tool.ts`:
 
 ```typescript
-import { MatimoInstance } from 'matimo';
 
 async function main() {
   const m = await MatimoInstance.init({ autoDiscover: true });
@@ -55,7 +76,7 @@ async function main() {
   // List all tools
   const tools = m.listTools();
 
-  console.log('\n📦 Available Tools:\n');
+  console.log('\nAvailable Tools:\n');
   tools.forEach((tool) => {
     console.log(`  • ${tool.name}`);
     console.log(`    ${tool.description}\n`);
@@ -65,10 +86,26 @@ async function main() {
 main().catch(console.error);
 ```
 
+**Python**: update `first_tool.py`:
+
+```python
+from matimo import Matimo
+
+async def main():
+    m = await Matimo.init(auto_discover=True)
+
+    print("\nAvailable Tools:\n")
+    for tool in m.list_tools():
+        print(f"  - {tool.name}")
+        print(f"    {tool.description}\n")
+
+asyncio.run(main())
+```
+
 **Output:**
 
 ```
-📦 Available Tools:
+Available Tools:
 
   • calculator
     Perform arithmetic operations. Two mutually exclusive modes are supported: ...
@@ -89,6 +126,14 @@ const tool = m.getTool('calculator');
 console.log(`Tool: ${tool.name}`);
 console.log(`Description: ${tool.description}`);
 console.log(`Parameters:`, tool.parameters);
+```
+
+```python
+tool = m.get_tool("calculator")
+
+print(f"Tool: {tool.name}")
+print(f"Description: {tool.description}")
+print("Parameters:", list(tool.parameters))  # operation, a, b, expression, precision
 ```
 
 **Output:**
@@ -120,6 +165,13 @@ console.log('Result:', result);
 // Output: Result: { result: 8, operation: 'add', original_operation: 'add', operands: { a: 5, b: 3 } }
 ```
 
+```python
+result = await m.execute("calculator", {"operation": "add", "a": 5, "b": 3})
+
+print("Result:", result)
+# Result: {'result': 8.0, 'operation': 'add', 'original_operation': 'add', 'operands': {'a': 5.0, 'b': 3.0}}
+```
+
 ### Execute Different Operations
 
 ```typescript
@@ -138,6 +190,12 @@ console.log('10 * 5 =', mul.result); // 50
 // Divide
 const div = await m.execute('calculator', { operation: 'divide', a: 10, b: 5 });
 console.log('10 / 5 =', div.result); // 2
+```
+
+```python
+for op in ("add", "subtract", "multiply", "divide"):
+    r = await m.execute("calculator", {"operation": op, "a": 10, "b": 5})
+    print(f"10 {op} 5 =", r["result"])  # 15.0, 5.0, 50.0, 2.0
 ```
 
 ---
@@ -165,7 +223,28 @@ try {
 }
 ```
 
-See [Error Codes](../api-reference/ERRORS.md) for all possible errors.
+```python
+from matimo import MatimoError
+
+# Python raises on a tool failure, including division by zero
+try:
+    await m.execute("calculator", {"operation": "divide", "a": 10, "b": 0})
+except MatimoError as error:
+    print(error.code)  # EXECUTION_FAILED
+
+# Unknown tools, bad parameters and policy refusals raise too
+try:
+    await m.execute("no_such_tool", {})
+except MatimoError as error:
+    if error.code == "TOOL_NOT_FOUND":
+        print("Tool not found:", error)
+    elif error.code == "INVALID_PARAMETER":
+        print("Invalid parameters:", error.details)
+    else:
+        print("Error:", error.code, error)
+```
+
+The two SDKs differ here: TypeScript returns `{ success: false, ... }` when the calculator hits a division by zero, while Python raises `MatimoError`. See [Error Codes](../api-reference/ERRORS.md) for all possible errors.
 
 ---
 
@@ -180,31 +259,32 @@ See [Error Codes](../api-reference/ERRORS.md) for all possible errors.
 
 ## Complete Example
 
+### TypeScript
+
 ```typescript
-import { MatimoInstance } from 'matimo';
 
 async function main() {
   // 1. Initialize
   const m = await MatimoInstance.init({ autoDiscover: true });
-  console.log(`✅ Loaded ${m.listTools().length} tools\n`);
+  console.log(`Loaded ${m.listTools().length} tools\n`);
 
   // 2. List tools
   const tools = m.listTools();
-  console.log('📦 Available tools:');
+  console.log('Available tools:');
   tools.forEach((t) => console.log(`  - ${t.name}`));
 
   // 3. Get tool
   const calc = m.getTool('calculator');
-  console.log(`\n🔧 Tool: ${calc.name}`);
+  console.log(`\nTool: ${calc.name}`);
 
   // 4. Execute
-  console.log('\n⚙️  Executing calculator...');
+  console.log('\nExecuting calculator...');
   const result = await m.execute('calculator', {
     operation: 'add',
     a: 5,
     b: 3,
   });
-  console.log('✅ Result:', result.result);
+  console.log('Result:', result.result);
 }
 
 main().catch(console.error);
@@ -213,16 +293,43 @@ main().catch(console.error);
 **Output:**
 
 ```
-✅ Loaded 24 tools
+Loaded 24 tools
 
-📦 Available tools:
+Available tools:
   - calculator
   - convert_to_file
   - edit
   ... (more tools)
 
-🔧 Tool: calculator
+Tool: calculator
 
-⚙️ Executing calculator...
-✅ Result: 8
+Executing calculator...
+Result: 8
+```
+
+### Python
+
+```python
+from matimo import Matimo
+
+async def main():
+    # 1. Initialize
+    m = await Matimo.init(auto_discover=True)
+    print(f"Loaded {len(m.list_tools())} tools\n")
+
+    # 2. List tools
+    print("Available tools:")
+    for t in m.list_tools():
+        print(f"  - {t.name}")
+
+    # 3. Get tool
+    calc = m.get_tool("calculator")
+    print(f"\nTool: {calc.name}")
+
+    # 4. Execute
+    print("\nExecuting calculator...")
+    result = await m.execute("calculator", {"operation": "add", "a": 5, "b": 3})
+    print("Result:", result["result"])  # 8.0
+
+asyncio.run(main())
 ```

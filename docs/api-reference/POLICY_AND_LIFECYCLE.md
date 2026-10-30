@@ -639,6 +639,19 @@ The `no-ssrf` rule blocks URLs targeting:
 > so a call that resolves `{host}` to `169.254.169.254` at execution time is still blocked with a
 > `POLICY_DENIED` error, even though the tool definition itself validated cleanly.
 
+### Execution-time network and file safeguards
+
+These checks run when a tool executes, whatever its trust level, and are separate from the 9 content rules above.
+
+| Safeguard | What it does | Setting |
+|-----------|--------------|---------|
+| Resolved-address check | HTTP tools and the `web`, `web_scraper` and `extract_from_file` tools refuse a hostname that resolves to an internal address: loopback (all of `127.0.0.0/8`), private ranges, link-local, carrier-grade NAT (`100.64.0.0/10`), IPv4-mapped and NAT64 IPv6, and unique-local IPv6. TypeScript connects to the address it checked, so a DNS answer cannot change between the check and the connection | `MATIMO_ALLOW_PRIVATE_DNS=true` lets a tool reach an internal service by DNS name. Literal internal IPs, internal suffixes such as `*.internal` and redirects to them stay blocked |
+| Redirect re-check | Every redirect hop is validated again before the next request is made | none |
+| File roots | `read`, `edit`, `search`, `convert_to_file` and `extract_from_file` refuse a path whose real location, after resolving symlinks, is outside the listed directories | `MATIMO_FILE_ROOTS` is a list of directories separated by `:` (POSIX) or `;` (Windows). Unset means no confinement |
+| Function code location | A function tool's `execution.code` must stay inside the tool's own directory | none |
+
+A refused network or file call throws `POLICY_DENIED`. A function tool whose code lies outside its directory fails with an execution error. Both SDKs apply the same rules.
+
 ### Violation Severities
 
 | Severity | Meaning | Effect |

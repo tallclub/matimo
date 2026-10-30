@@ -6,11 +6,11 @@ description: "What Matimo OSS has shipped and what is planned next, with links t
 
 | | TypeScript | Python |
 |---|---|---|
-| Latest release | **0.4.0** (release date to be confirmed) | **0.2.0** (2026-10-04) |
+| Latest release | **0.4.0** (2026-10-30) | **0.4.0** (2026-10-30) |
 | Install | `npm install matimo` | `pip install matimo` |
 | Runtime | Node 22.19+ | Python 3.11+ |
 
-0.3.0 raised the Node floor to 22.19 and patched the open security advisories. The Python SDK has no 0.3.0 release; its latest is 0.2.0. The previous release, **0.2.0** (both SDKs), made governance **secure by default**: HTTP DELETE and command tools ask a human, each instance has its own approval callback, MCP servers ask the client's user through elicitation, and a hash-chained audit log records every call. See [Release Notes](/docs/releases/) and the [migration guide](/docs/api-reference/policy-and-lifecycle/#upgrading-to-020).
+0.4.0 puts both SDKs on one version number (Python has no 0.3.0) and hardens security: HTTP MCP servers bind `127.0.0.1` by default, the Python MCP server needs a bearer token, network tools refuse hostnames that resolve to internal addresses, redirects are re-checked on every hop, and `execute` takes `args` and an opt-in `shell` that always asks a human. 0.3.0 raised the Node floor to 22.19. **0.2.0** (both SDKs) made governance **secure by default**: HTTP DELETE and command tools ask a human, each instance has its own approval callback, MCP servers ask the client's user through elicitation, and a hash-chained audit log records every call. See [Release Notes](/docs/releases/) and the [migration guide](/docs/api-reference/policy-and-lifecycle/#upgrading-to-020).
 
 ### What ships today
 
@@ -28,7 +28,7 @@ description: "What Matimo OSS has shipped and what is planned next, with links t
 - `@matimo/composio`: 449 governed tools across 14 Composio toolkits (Jira, Linear, Asana, Google Workspace, Microsoft 365 and more). **TypeScript only today**
 
 **Quality**
-- About 4,700 tests pass across the two SDKs: 2,825 in TypeScript and 1,883 in Python (3 skipped), plus shared conformance fixtures that both must satisfy
+- About 5,100 tests pass across the two SDKs: 3,031 in TypeScript and 2,097 in Python (3 skipped), plus shared conformance fixtures that both must satisfy
 - CI enforces a 95% coverage floor on TypeScript core and on `matimo-core` (Python)
 
 ---
@@ -47,6 +47,7 @@ description: "What Matimo OSS has shipped and what is planned next, with links t
 | 2026-08-30 | TypeScript `0.1.8`, Python `0.1.3` | A real policy engine is always on, and the self-extension approval flow works end to end |
 | 2026-10-04 | `0.2.0` (both) | Secure by default, per-instance approval, audit log, MCP elicitation |
 | 2026-10-13 | TypeScript `0.3.0` | Node 22.19+, security advisories patched, Composio toolkit version |
+| 2026-10-30 | `0.4.0` (both) | One version for both SDKs, security hardening, `execute` `args` and `shell`, `MATIMO_FILE_ROOTS` |
 
 Per-release details are in [Release Notes](/docs/releases/).
 
@@ -57,7 +58,6 @@ Per-release details are in [Release Notes](/docs/releases/).
 These items are open today. Each was checked against the code when this page was last updated.
 
 **Security hardening**
-- [ ] SSRF checks on every redirect hop and on the resolved IP address, not only the URL
 - [ ] Command tools run with a minimal environment instead of the parent process's
 - [ ] Function tools run out of process, with a timeout that stops them
 

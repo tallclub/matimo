@@ -188,9 +188,9 @@ const response = await agent.invoke({
 
 **File:** [slack-langchain.ts](slack-langchain.ts)
 
-## 🎯 Available Slack Tools (19 Total)
+## 🎯 Available Slack Tools (16 Total)
 
-All patterns have access to these 19 Slack tools:
+All patterns have access to these 16 Slack tools:
 
 ### Messaging
 - `slack-send-message` - Send to channel
@@ -205,9 +205,7 @@ All patterns have access to these 19 Slack tools:
 - `slack_set_channel_topic` - Set description
 
 ### Files
-- `slack_upload_file` - Upload file (modern API)
-- `slack_upload_file_v2` - Get upload URL
-- `slack_complete_file_upload` - Complete upload
+- `slack_upload_file` - Request an upload URL (step 1 of Slack's two-step upload, see the package README)
 
 ### Reading
 - `slack_get_channel_history` - Get messages
@@ -253,7 +251,7 @@ export TEST_CHANNEL=C123456   # Default channel to use
 
 ## 📊 Test Suite
 
-Comprehensive test for all 19 tools:
+Comprehensive test for all 16 tools:
 
 ```bash
 pnpm slack:test-all

@@ -276,8 +276,8 @@ async def _run_http(self, server: Any) -> None:
    ├─ Import MCP SDK
    ├─ Build Server with on_list_tools / on_call_tool callables
    ├─ Add on_list_resources / on_read_resource callables (only if skills exist)
-   ├─ Load all tools: [slack_send_message, slack_post_reaction, ...]
-   ├─ Filter by allowlist/denylist: [slack_send_message, slack_post_reaction]
+   ├─ Load all tools: [slack_send_channel_message, slack_add_reaction, ...]
+   ├─ Filter by allowlist/denylist: [slack_send_channel_message, slack_add_reaction]
    ├─ Extract auth placeholders: {SLACK_BOT_TOKEN}
    ├─ Resolve via SecretResolverChain: {SLACK_BOT_TOKEN: "xoxb-abc123"}
    ├─ Store in _resolved_secrets
@@ -291,7 +291,7 @@ async def _run_http(self, server: Any) -> None:
    ├─ Strips auth params from inputSchema
    ├─ Returns: [
    │   {
-   │     name: "slack_send_message",
+   │     name: "slack_send_channel_message",
    │     description: "Send a message to a Slack channel",
    │     inputSchema: {
    │       type: "object",
@@ -308,14 +308,14 @@ async def _run_http(self, server: Any) -> None:
    └─ Client receives tool list
       ↓
 5. Client calls: tools/call with {
-     name: "slack_send_message",
+     name: "slack_send_channel_message",
      arguments: {channel: "#general", text: "Hello"}
    }
-   ├─ Handler calls _call_tool("slack_send_message", {...})
+   ├─ Handler calls _call_tool("slack_send_channel_message", {...})
    ├─ Checks requires_approval (false for this tool)
    ├─ Gets pre-resolved credentials from _resolved_secrets
    ├─ Calls: matimo.execute(
-   │   "slack_send_message",
+   │   "slack_send_channel_message",
    │   {channel: "#general", text: "Hello"},
    │   credentials={SLACK_BOT_TOKEN: "xoxb-abc123"},
    │   approved=False
@@ -439,8 +439,8 @@ The `tools` and `exclude_tools` options support **Unix shell-style wildcard patt
 tools = [
     "slack_*",                    # All Slack tools
     "github_create_*",            # All GitHub create_* tools
-    "notion_database_*",          # All Notion database tools
-    "gmail_send",                 # Exact match (no wildcards)
+    "notion_*",                   # All Notion tools
+    "gmail-send-email",           # Exact match (no wildcards)
 ]
 
 # Exclude patterns

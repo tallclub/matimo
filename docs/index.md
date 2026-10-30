@@ -20,11 +20,11 @@ Give your agents **129 production-ready tools** to start (plus a governed 449-to
 - 🤝 **Human-in-the-Loop (HITL)** — Critical tools require human approval before execution with configurable timeouts and audit trails
 - 🌐 **Universal Integration** — One YAML definition works across TypeScript, Python, LangChain, CrewAI, Claude MCP, OpenAI
 
-New here? Read [Why Matimo OSS](why-matimo) and [what changed in 0.2.0](blog/2026-10-01-matimo-0-2-0-tool-governance).
+New here? Read [Why Matimo OSS](why-matimo.md) and [what changed in 0.2.0](blog/2026-10-01-matimo-0-2-0-tool-governance.md).
 
-Complete documentation for Matimo **0.3.0** (TypeScript `@matimo/core` 0.3.0 and Python `matimo` 0.2.0).
+Complete documentation for Matimo **0.4.0** (TypeScript `@matimo/core` and Python `matimo`, both 0.4.0).
 
-> **New in 0.3.0:** Node 22.19+ is now required, and the open security advisories are patched. See the [release notes](./RELEASES.md).
+> **New in 0.4.0:** TypeScript and Python now share one version number. HTTP MCP servers bind `127.0.0.1` by default and the Python one needs a bearer token (set `MATIMO_MCP_TOKEN`), `execute` takes `args` and an opt-in `shell` that always asks a human, network tools refuse hostnames that resolve to internal addresses, and `MATIMO_FILE_ROOTS` can confine the file tools. Read the [release notes](RELEASES.md) before upgrading.
 >
 > **Since 0.2.0 — secure by default.** HTTP DELETE and command tools ask a human before every call, each instance has its own approval callback (`onApproval`), MCP servers ask the client's user through elicitation, every call emits events you can keep in a tamper-evident audit log, and both SDKs enforce the same rules. Upgrading? Read the [migration guide](./api-reference/POLICY_AND_LIFECYCLE.md#upgrading-to-020).
 
@@ -57,10 +57,11 @@ Complete documentation for Matimo **0.3.0** (TypeScript `@matimo/core` 0.3.0 and
 ### Python Getting Started
 
 1. **[Quick Start](./getting-started/QUICK_START.md#python-sdk)** — 5-minute setup with `pip install matimo`
-2. **[LangChain Integration](./framework-integrations/LANGCHAIN.md#python-langchain-integration)** — Build ReAct agents
-3. **[CrewAI Integration](./framework-integrations/CREWAI.md)** — Multi-agent orchestration
-4. **[Agno Integration](./framework-integrations/AGNO.md)** — Governed Agno agents, teams and workflows
-5. **[API Reference](./api-reference/SDK.md#python-sdk--matimo-api)** — Python SDK documentation
+2. **[Your First Tool](getting-started/YOUR_FIRST_TOOL.md)**: Run the built-in calculator step by step (TypeScript and Python)
+3. **[LangChain Integration](framework-integrations/LANGCHAIN.md#python-langchain-integration)**: Build ReAct agents
+4. **[CrewAI Integration](framework-integrations/CREWAI.md)**: Multi-agent orchestration
+5. **[Agno Integration](framework-integrations/AGNO.md)**: Governed Agno agents, teams and workflows
+6. **[API Reference](api-reference/SDK.md#python-sdk--matimo-api)**: Python SDK documentation
 
 ### 📦 **Installation & Requirements**
 
@@ -155,7 +156,7 @@ Complete documentation for Matimo **0.3.0** (TypeScript `@matimo/core` 0.3.0 and
   - `matimo_list_skills` — List skills in a directory
   - `matimo_get_skill` — Read a skill's content by name
   - `matimo_validate_skill` — Validate a skill against the Agent Skills spec
-  - `matimo_search_skills` — Semantically rank skills by relevance (TF-IDF)
+  - `matimo_search_skills`: Rank skills by keyword relevance (TF-IDF)
   - `matimo_get_skill_sections` — Inventory a skill's sections and token costs
   - `matimo_get_skill_content` — Load only specific sections of a skill
 
@@ -220,7 +221,7 @@ Complete documentation for Matimo **0.3.0** (TypeScript `@matimo/core` 0.3.0 and
 
 3. **[Development Standards](./user-guide/DEVELOPMENT_STANDARDS.md)** — Code quality requirements
    - TypeScript strictness
-   - Testing coverage (TypeScript floors enforced; Python informational)
+   - Testing coverage (95% floors enforced in CI on TypeScript core and `matimo-core`)
    - ESLint / ruff and Prettier
    - JSDoc documentation
 
@@ -451,7 +452,7 @@ See [MCP.md](./MCP.md) for client configuration, HTTP mode and Python.
 ### Code Quality
 
 - **TypeScript**: Strict mode enforced (no `any`)
-- **Testing**: TypeScript coverage floors enforced (lines 95%, functions 97%, branches 87%, statements 95%); Python coverage is reported, not enforced
+- **Testing**: TypeScript coverage floors enforced (lines 95%, functions 97%, branches 87%, statements 95%); CI also enforces a 95% floor on `matimo-core` (Python)
 - **Linting**: ESLint with automatic formatting
 - **Documentation**: JSDoc comments for all public APIs
 

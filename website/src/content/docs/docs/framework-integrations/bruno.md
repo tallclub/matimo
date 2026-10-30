@@ -343,7 +343,7 @@ make bruno-crewai
 
 ## Requirements
 
-- **Bruno CLI** (`bru`), install globally: `npm install -g @usebruno/cli`
+- **Bruno CLI** (`bru`), install globally: `npm install -g @usebruno/cli`. The Matimo packages (`@matimo/bruno`, `matimo-bruno`) only call the `bru` on your PATH and do not bundle it
 - **`bru` version**: 1.x or later (tested with 3.1.3)
 - No API key required for `bruno:complete` / `make bruno-complete`
 - `OPENAI_API_KEY` required for LangChain and CrewAI agent examples

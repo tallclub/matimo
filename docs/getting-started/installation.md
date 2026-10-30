@@ -36,10 +36,11 @@ pip install "matimo[agno]"
 # With CrewAI integration
 pip install "matimo[crewai]"
 
-# With all optional extras
+# With several extras (also available: mcp, dotenv, vault, aws, or all)
 pip install "matimo[langchain,crewai]"
 ```
 
+pip install "matimo[all]"
 Provider packages are published separately:
 
 ```bash
@@ -97,7 +98,7 @@ uv run python test_install.py
 
 ### Requirements
 
-- **Node.js**: v18.0.0 or higher
+- **Node.js**: v22.19.0 or higher
 - **pnpm**: v8.15.0 or higher (preferred package manager)
 - **Git**: For cloning the repository
 
@@ -106,7 +107,7 @@ uv run python test_install.py
 ### Option 1: From npm (Recommended for Users)
 
 ```bash
-# Install the complete SDK (includes core + all tools)
+# Install the SDK (core + CLI). Provider packages such as @matimo/slack install separately
 npm install matimo
 # or with pnpm (recommended)
 pnpm add matimo
@@ -201,7 +202,7 @@ uv pip show matimo
 ### Node.js Version Error
 
 ```bash
-node --version  # Should be v18.0.0 or higher
+node --version  # Should be v22.19.0 or higher
 ```
 
 If lower, install Node.js 22.19+ from [nodejs.org](https://nodejs.org/)
@@ -231,7 +232,7 @@ If issues persist, check [Troubleshooting Guide](../troubleshooting/FAQ.md)
 
 | Component  | Requirement                |
 | ---------- | -------------------------- |
-| Node.js    | ≥ 18.0.0                   |
+| Node.js    | ≥ 22.19.0                  |
 | pnpm       | ≥ 8.15.0                   |
 | TypeScript | ≥ 5.0 (included)           |
 | Disk Space | ~500MB (with node_modules) |

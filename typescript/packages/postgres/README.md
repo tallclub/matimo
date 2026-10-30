@@ -48,6 +48,12 @@ export MATIMO_POSTGRES_PASSWORD="password"
 export MATIMO_POSTGRES_DB="dbname"
 ```
 
+**Encrypted connections (TLS)**
+```bash
+export MATIMO_POSTGRES_SSL="verify-full"   # disable (default), require, verify-ca or verify-full
+```
+`require` encrypts but does not verify the server certificate. Use `verify-ca` or `verify-full` for any database that is not on the same host. An unknown value is rejected.
+
 ### 2. Use in Code
 
 ```typescript
@@ -128,16 +134,14 @@ const result = await matimo.execute('postgres-execute-sql', {
 
 The tool automatically detects destructive operations:
 
-| Operation | Detected | Auto-Approved | Requires Approval |
-|-----------|----------|---------------|-------------------|
-| SELECT | ✅ | ✅ Yes | ❌ No |
-| INSERT | ✅ | ✅ Yes| ❌ No|
-| UPDATE | ✅ | ❌ No | ✅ Yes |
-| DELETE | ✅ | ❌ No | ✅ Yes |
-| CREATE | ✅ | ❌ No | ✅ Yes |
-| DROP | ✅ | ❌ No | ✅ Yes |
-| ALTER | ✅ | ❌ No | ✅ Yes |
-| TRUNCATE | ✅ | ❌ No | ✅ Yes |
+| SQL | Needs approval |
+|-----|----------------|
+| Plain `SELECT` | No |
+| `INSERT`, `UPDATE`, `DELETE`, `MERGE`, `CREATE`, `DROP`, `ALTER`, `TRUNCATE`, `GRANT`, `REVOKE` | Yes |
+| `COPY`, `DO`, `CALL`, `VACUUM`, `REINDEX` | Yes |
+| A `SELECT` that reaches files, the OS or other servers: `pg_read_file`, `pg_ls_dir`, `lo_import`, `lo_export`, `dblink`, `set_config`, `pg_terminate_backend` | Yes |
+
+The list lives in `destructive-keywords.yaml` in `@matimo/core`. Approval is requested before the query reaches the database.
 
 ### Approval Methods
 

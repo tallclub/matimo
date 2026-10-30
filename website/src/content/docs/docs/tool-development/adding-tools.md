@@ -495,13 +495,13 @@ parameters:
 
 ### Error Handling
 
-Always include retry logic for reliability:
+You can declare retry settings so the intent is recorded with the tool, but neither SDK applies them yet: a failed call is not retried. Handle `RATE_LIMIT_EXCEEDED` and `retryable` errors in the caller (see [Errors](/docs/api-reference/errors/)).
 
 ```yaml
 error_handling:
-  retry: 2 # Number of retries
-  backoff_type: exponential # exponential or linear
-  initial_delay_ms: 1000 # Starting delay in ms
+  retry: 2 # accepted, not yet applied
+  backoff_type: exponential # exponential, linear or fixed
+  initial_delay_ms: 1000
 ```
 
 ### Output Schema

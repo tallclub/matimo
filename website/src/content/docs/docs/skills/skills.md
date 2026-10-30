@@ -685,7 +685,7 @@ console.log(response.content);
 ```
 
 **The agent workflow:**
-1. LLM calls `matimo_list_skills` → gets names/descriptions of all 8 provider skills + 6 core skills
+1. LLM calls `matimo_list_skills` → gets names/descriptions of all 10 native provider skills + 6 core skills
 2. LLM calls `matimo_get_skill('slack')` → loads full Slack domain knowledge (channels, messages, threads, etc.)
 3. LLM now has context to correctly call `slack_send_channel_message` with the right parameters
 4. No skill content is wasted on providers the agent doesn't need

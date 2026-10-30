@@ -518,7 +518,7 @@ npx tsc --noEmit
 
 ## Support
 
-- [Full Documentation](https://github.com/tallclub/matimo/blob/main/docs/./)
+- [Full Documentation](/docs/)
 - [GitHub Discussions](https://github.com/tallclub/matimo/discussions)
 - [Report Issues](https://github.com/tallclub/matimo/issues)
 - [Contributing](https://github.com/tallclub/matimo/blob/main/CONTRIBUTING.md)

@@ -77,7 +77,7 @@ payment = await matimo.execute('stripe_create_payment', {'amount': 5000, 'curren
 
 **Other SDKs give agents a toolbox. Matimo gives them a workshop - with safety guardrails.**
 
-🎯 **0.2.0 - secure by default** - DELETE and command tools ask a human, per-instance approval callbacks, MCP elicitation, a hash-chained audit log, and one set of rules enforced identically by both SDKs · 4,400+ tests across TypeScript and Python · see [CHANGELOG](./CHANGELOG.md) and the [migration guide](./docs/api-reference/POLICY_AND_LIFECYCLE.md#upgrading-to-020)
+🎯 **0.4.0 - one version for both SDKs, hardened** - HTTP MCP servers bind localhost by default, network tools refuse internal addresses, `execute` takes `args` and an opt-in `shell` that always asks a human, and DELETE and command tools still ask before every call (secure by default since 0.2.0) · 5,100+ tests across TypeScript and Python · see the [CHANGELOG](./CHANGELOG.md) for the behaviour changes to read before upgrading
 
 [📖 Documentation](./docs) · [🚀 Quick Start](./docs/getting-started/QUICK_START.md) · [📚 API Reference](./docs/api-reference/SDK.md) · [🛠️ Add Tools](./docs/tool-development/ADDING_TOOLS.md) · [🤖 Examples](./typescript/examples) ([Python](./python/examples))
 
@@ -157,7 +157,7 @@ Matimo ships with built-in support for:
 - **Framework Support**: Factory pattern, Decorator pattern, LangChain, CrewAI, Agno
 - **TypeScript SDK**: Full type safety and IDE support
 - **Python SDK**: The same policy engine, approval rules and YAML tools as TypeScript - factory pattern, decorator, LangChain, CrewAI, Agno, MCP (the Composio catalog and a few instance methods are TypeScript-only; see [SDK.md](./docs/api-reference/SDK.md))
-- **Agent Skills System**: [SKILL.md](https://agentskills.io) knowledge files with semantic search, content chunking, and progressive disclosure
+- **Agent Skills System**: [SKILL.md](https://agentskills.io) knowledge files with TF-IDF keyword-relevance search, content chunking, and progressive disclosure
 - **Policy Engine**: 9 security rules, HITL quarantine, hot-reload, SHA-256 integrity tracking, HMAC approvals, audit events
 
 ## Why Matimo?
@@ -282,7 +282,7 @@ const content = matimo.getSkillContent('postgres', {
   maxTokens: 500,
 });
 
-// Semantic search across all skills
+// Relevance search (TF-IDF) across all skills
 const results = await matimo.semanticSearchSkills('How do I handle rate limiting?');
 ```
 

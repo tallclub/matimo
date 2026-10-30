@@ -120,21 +120,23 @@ python -c "from matimo.integrations.langchain import convert_tools_to_langchain;
 
 **Error**: `RuntimeError: asyncio.run() cannot be called from a running event loop`
 
-**Solution**:
+**Solution**: Jupyter already runs an event loop, so use top-level `await` instead of `asyncio.run()`:
 
 ```python
-# In Jupyter, install nest_asyncio
-pip install nest_asyncio
-
-# Then in your notebook:
-import nest_asyncio
-nest_asyncio.apply()
-
-# Now asyncio.run() works in Jupyter
-import asyncio
 from matimo import Matimo
 
-matimo = await Matimo.init()  # Works now!
+matimo = await Matimo.init()
+```
+
+If you have to call `asyncio.run()` (for example in code shared with a script), install `nest_asyncio` and apply it first:
+
+```bash
+pip install nest_asyncio
+```
+
+```python
+import nest_asyncio
+nest_asyncio.apply()
 ```
 
 #### Q: CrewAI tools not executing
@@ -763,7 +765,7 @@ Still stuck? Try:
 
 1. **GitHub Issues**: [Search issues](https://github.com/tallclub/matimo/issues)
 2. **GitHub Discussions**: [Ask questions](https://github.com/tallclub/matimo/discussions)
-3. **Documentation**: [Full docs](https://github.com/tallclub/matimo/blob/main/docs/./)
+3. **Documentation**: [Full docs](/docs/)
 4. **Examples**: [See examples](https://github.com/tallclub/matimo/blob/main/typescript/examples/)
 
 ---

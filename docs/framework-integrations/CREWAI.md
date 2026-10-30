@@ -353,7 +353,7 @@ nest_asyncio.apply()  # Allow nested event loops
 
 ## Best Practices
 
-1. **Filter tools by provider** — Don't load all 110+ tools; be specific
+1. **Filter tools by provider**, Don't load all 153 native tools; be specific
    ```python
    slack_tools = [t for t in matimo.list_tools() if 'slack' in t.name]
    ```

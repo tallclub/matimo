@@ -65,7 +65,7 @@ const validationErr = createValidationError('Missing required parameter', { para
 
 const executionErr = createExecutionError('Tool returned error 500', {
   statusCode: 500,
-  tool: 'gmail-send',
+  tool: 'gmail-send-email',
 });
 
 // Direct instantiation

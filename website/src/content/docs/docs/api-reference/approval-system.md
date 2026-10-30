@@ -45,6 +45,8 @@ When a call needs approval, Matimo checks these in order and uses the first that
 
 `matimo_approve_tool` is never pre-approved, whatever the patterns or `MATIMO_AUTO_APPROVE` say: approving a tool lets agent-written YAML run, so a person always sees it.
 
+An `execute` call that passes a `shell` is held to the same rule, because the command then runs through that shell and pipes, redirection and expansion are live. Nothing skips it: not `MATIMO_AUTO_APPROVE`, not `MATIMO_APPROVED_PATTERNS` (not even `*`), not `approved: true` (including the MCP server's `trustClientApproval`). With no `onApproval` configured the call is rejected. `execute` without a `shell` runs the command directly, with no shell, and is pre-approved like any other tool.
+
 ### Per-instance callback (recommended)
 
 ```typescript
@@ -93,11 +95,11 @@ Comma-separated globs (`*` matches anything), case-insensitive. A matching tool 
 
 ### `MATIMO_AUTO_APPROVE`
 
-`MATIMO_AUTO_APPROVE=true` approves every request unseen (except `matimo_approve_tool`); each instance logs a warning when it starts with it on. It is meant for throwaway test environments only. For CI, prefer an `onApproval` that encodes the test's intent, or `MATIMO_APPROVED_PATTERNS` listing the tools the test may run.
+`MATIMO_AUTO_APPROVE=true` approves every request unseen (except `matimo_approve_tool` and `execute` calls that pass a `shell`); each instance logs a warning when it starts with it on. It is meant for throwaway test environments only. For CI, prefer an `onApproval` that encodes the test's intent, or `MATIMO_APPROVED_PATTERNS` listing the tools the test may run.
 
 ### Skipping the prompt for one call
 
-`execute(tool, params, { approved: true })` (`approved=True`) skips the approval prompt for that call, for a host that has already confirmed the call through its own UI. It skips **only** the prompt: policy denials, draft gates and HITL quarantine still apply.
+`execute(tool, params, { approved: true })` (`approved=True`) skips the approval prompt for that call, for a host that has already confirmed the call through its own UI. It skips **only** the prompt: policy denials, draft gates and HITL quarantine still apply. The one prompt it cannot skip is an `execute` call that passes a `shell`, which always asks.
 
 ## What the reviewer sees
 
@@ -140,7 +142,7 @@ An MCP server asks the person behind the client through an MCP elicitation reque
 | Variable | Effect |
 |----------|--------|
 | `MATIMO_APPROVED_PATTERNS` | Comma-separated globs of tools that never ask |
-| `MATIMO_AUTO_APPROVE` | `true` approves everything except `matimo_approve_tool`, with a warning, test environments only |
+| `MATIMO_AUTO_APPROVE` | `true` approves everything except `matimo_approve_tool` and `execute` calls with a `shell`, with a warning, test environments only |
 | `MATIMO_APPROVAL_SCAN_ALL_PARAMS` | `true` scans every string argument for destructive keywords |
 | `MATIMO_APPROVAL_SECRET` | HMAC secret that signs approvals. Without it each process makes a temporary one and approvals do not persist. Required when `NODE_ENV` or `MATIMO_ENV` is `production` |
 | `MATIMO_ENV` | Set to `production` to make `MATIMO_APPROVAL_SECRET` mandatory (both SDKs also read `NODE_ENV`) |
@@ -203,6 +205,7 @@ async def test_asks_before_deleting() -> None:
 | A DELETE tool started asking after upgrading | Secure mode, new in 0.2.0 | Add an `onApproval`, set `requires_approval: false` on the tool, or use `governanceMode: 'legacy'` while migrating |
 | A custom keyword in `destructive-keywords.yaml` never triggers | It is lower-case | Write it in upper case |
 | `matimo_approve_tool` asks even with `MATIMO_AUTO_APPROVE=true` | By design | A person must approve every tool approval |
+| `execute` asks even with `MATIMO_AUTO_APPROVE=true` | By design, when the call passes a `shell` | A person must approve every shell call; drop `shell` to run the command directly |
 
 ## See Also
 

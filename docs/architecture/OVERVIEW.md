@@ -32,6 +32,15 @@ typescript/examples/tools/        # Per-provider examples (factory, decorator, L
 python/examples/                  # native/, langchain/, crewai/, mcp/
 ```
 
+The Python side mirrors the TypeScript layout. Replace `typescript/packages/core/src` with `python/packages/core/src/matimo` (a package per concern: `instance.py`, `core/`, `executors/`, `policy/`, `approval/`, `auth/`, `mcp/`, `integrations/`, `tools/`):
+
+```
+python/packages/core              # matimo-core on PyPI
+python/packages/matimo            # "matimo" meta-package: pulls in matimo-core and matimo-cli
+python/packages/cli               # matimo-cli
+python/packages/<provider>        # matimo-slack, matimo-gmail, matimo-github, ... (no composio)
+```
+
 **Key principle:** Each package installs on its own from npm or PyPI. A tool's YAML is the single source of truth for both SDKs.
 
 ## High-Level Runtime Architecture
@@ -140,6 +149,8 @@ python/examples/                  # native/, langchain/, crewai/, mcp/
 * Recommended for AI agents with automatic tool selection
 ```
 
+Read it top to bottom. Your code reaches Matimo through one of four entry points, and every one lands in the same `MatimoInstance`. Nothing reaches an executor without passing the policy gate: untrusted tools are validated when they load, and every call is risk-classified, gated, and approved by a human where required. Tool and skill definitions are loaded into the orchestrator at init and on reload.
+
 ---
 
 ## Component Layers
@@ -174,6 +185,24 @@ class Agent {
   @tool('calculator')
   async calculate(...) { }
 }
+```
+
+**Python**:
+
+```python
+from matimo import Matimo, tool
+
+# Factory pattern
+m = await Matimo.init(auto_discover=True)
+result = await m.execute("calculator", {"operation": "add", "a": 5, "b": 3})
+
+# Decorator pattern
+class Agent:
+    def __init__(self, matimo: Matimo) -> None:
+        self._matimo = matimo
+
+    @tool("calculator")
+    async def calculate(self, operation: str, a: float, b: float): ...
 ```
 
 ### 3. Core Orchestration (packages/core/src)
@@ -326,7 +355,7 @@ Built-in tools that manage the tool lifecycle from within the agent. They are al
 | `matimo_list_skills` | List available SKILL.md files |
 | `matimo_get_skill` | Read a skill by name |
 | `matimo_validate_skill` | Validate a skill against the Agent Skills spec |
-| `matimo_search_skills` | Semantically rank skills by relevance to a query (TF-IDF) |
+| `matimo_search_skills` | Rank skills by keyword relevance to a query (TF-IDF) |
 | `matimo_get_skill_sections` | Inventory a skill's sections and token costs without loading it |
 | `matimo_get_skill_content` | Load only specific sections of a skill (token-efficient) |
 | `matimo_get_tool` | Read one tool's YAML and parsed definition |
@@ -688,6 +717,8 @@ interface ProviderDefinition {
 ```
 
 ---
+
+In Python the same shapes are Pydantic models in `matimo.core.models` (`ToolDefinition`, `Parameter`, `HttpExecution`, `CommandExecution`, `FunctionExecution`, `ProviderDefinition`), validated when the YAML loads, as Zod does in TypeScript. They accept extra keys, such as `notes:`, which the TypeScript schema drops.
 
 ## Validation Pipeline
 

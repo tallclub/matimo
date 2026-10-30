@@ -22,9 +22,9 @@ Give your agents **129 production-ready tools** to start (plus a governed 449-to
 
 New here? Read [Why Matimo OSS](/docs/why-matimo/) and [what changed in 0.2.0](/docs/blog/2026-10-01-matimo-0-2-0-tool-governance/).
 
-Complete documentation for Matimo **0.4.0** (TypeScript `@matimo/core` 0.4.0 and Python `matimo` 0.2.0).
+Complete documentation for Matimo **0.4.0** (TypeScript `@matimo/core` and Python `matimo`, both 0.4.0).
 
-> **Upgrading:** Node 22.19+ is required (since 0.3.0). See the [release notes](/docs/releases/) for what changed in each version.
+> **New in 0.4.0:** TypeScript and Python now share one version number. HTTP MCP servers bind `127.0.0.1` by default and the Python one needs a bearer token (set `MATIMO_MCP_TOKEN`), `execute` takes `args` and an opt-in `shell` that always asks a human, network tools refuse hostnames that resolve to internal addresses, and `MATIMO_FILE_ROOTS` can confine the file tools. Read the [release notes](/docs/releases/) before upgrading.
 >
 > **Since 0.2.0, secure by default.** HTTP DELETE and command tools ask a human before every call, each instance has its own approval callback (`onApproval`), MCP servers ask the client's user through elicitation, every call emits events you can keep in a tamper-evident audit log, and both SDKs enforce the same rules. Upgrading? Read the [migration guide](/docs/api-reference/policy-and-lifecycle/#upgrading-to-020).
 

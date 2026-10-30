@@ -28,7 +28,7 @@ In Copilot Chat, choose **Matimo Tool Creator** and describe the provider and it
 | `matimo_list_skills`, `matimo_get_skill` | `name` | No |
 | `web` | URL | No |
 | `search`, `read` | `query`, `directory` / `filePath` | **Yes** |
-| `execute` | `command` | **Yes** |
+| `execute` | `command`, optional `args`, `cwd`, `timeout`, `shell` | **Yes**, and always when `shell` is set |
 | `edit` | `filePath`, `operation`, `content` | **Yes** |
 | `matimo_create_skill` | `name`, `content`, `target_dir` | **Yes** |
 | `matimo_reload_tools` | n/a | **Yes** |
