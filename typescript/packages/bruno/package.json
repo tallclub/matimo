@@ -12,8 +12,7 @@
     "build": "tsc"
   },
   "dependencies": {
-    "@matimo/core": "workspace:*",
-    "@usebruno/cli": "^4.2.0"
+    "@matimo/core": "workspace:*"
   },
   "peerDependencies": {
     "matimo": "workspace:*"

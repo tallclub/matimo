@@ -7,7 +7,7 @@
 import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
-import pdfParse from 'pdf-parse';
+import { getDocumentProxy, extractText } from 'unpdf';
 import mammoth from 'mammoth';
 import {
   MatimoError,
@@ -270,11 +270,16 @@ async function loadRemoteFile(
 }
 
 async function extractPdf(buffer: Buffer): Promise<{ text: string; metadata: ExtractMetadata }> {
-  const result = await pdfParse(buffer);
+  const pdf = await getDocumentProxy(new Uint8Array(buffer));
+  const result = await extractText(pdf, { mergePages: true });
   const text = result.text ?? '';
   return {
     text,
-    metadata: { page_count: result.numpages, word_count: countWords(text), char_count: text.length },
+    metadata: {
+      page_count: result.totalPages,
+      word_count: countWords(text),
+      char_count: text.length,
+    },
   };
 }
 
