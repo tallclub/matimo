@@ -31,17 +31,21 @@ cat > package.json << 'EOF'
   "name": "@matimo/github",
   "version": "0.1.0",
   "description": "GitHub repository and issue management tools for Matimo",
+  "license": "MIT",
   "type": "module",
-  "files": ["tools", "definition.yaml"],
-  "dependencies": {
+  "files": ["tools", "skills", "README.md", "definition.yaml"],
+  "peerDependencies": {
+    "matimo": "workspace:*"
+  },
+  "devDependencies": {
     "@matimo/core": "workspace:*"
   }
 }
 EOF
 
 # Create tool directories
-mkdir -p tools/github-create-issue
-mkdir -p tools/github-list-repos
+mkdir -p tools/create-issue
+mkdir -p tools/list-repositories
 ```
 
 ## Step 2: Define Your Tools as YAML
@@ -50,7 +54,7 @@ Each tool gets its own directory with a `definition.yaml` file.
 
 ### Example: GitHub Create Issue
 
-Create `packages/github/tools/github-create-issue/definition.yaml`:
+Create `packages/github/tools/create-issue/definition.yaml`:
 
 ```yaml
 name: github_create_issue
@@ -110,18 +114,13 @@ output_schema:
     - id
     - number
     - title
-
-error_handling:
-  retry: 2
-  backoff_type: exponential
-  initial_delay_ms: 1000
 ```
 
 ### Tool Definition Structure
 
 **Required fields:**
 
-- `name` - Unique tool identifier (lowercase, hyphens)
+- `name` - Unique tool identifier (lowercase; see [naming](TOOL_SPECIFICATION.md#name))
 - `description` - What the tool does
 - `version` - Semantic version
 - `parameters` - Input schema with types, required flags
@@ -131,35 +130,31 @@ error_handling:
 
 - `authentication` - Auth method (api_key, bearer, oauth2, basic)
 - `output_schema` - Response validation schema
-- `error_handling` - Retry policy and backoff strategy
+- `error_handling` - Retry policy. Accepted and stored, but not applied by the executors yet
 - `examples` - Usage examples
 
 See [Tool Specification](./TOOL_SPECIFICATION.md) for complete schema.
 
-## Step 3: Add Provider Configuration
+## Step 3: Add Provider Configuration (OAuth2 only)
 
-Create `packages/github/definition.yaml` with provider metadata:
+A `definition.yaml` at the package root is a **provider manifest**. It is not a tool and it does not list your tools (Matimo finds them in `tools/`). Add one only if your tools use OAuth2 and you want `OAuth2Handler` to know the authorization and token URLs. This is the shape `@matimo/github` ships:
 
 ```yaml
-# Provider configuration
-provider: github
-description: GitHub repository and issue management tools
+name: github-provider
+type: provider
 version: '1.0.0'
 
-tools:
-  - github-create-issue
-  - github-list-repos
-  - github-get-issue
-  - github-create-pull-request
+description: GitHub OAuth2 provider configuration
 
-authentication:
-  type: oauth2
-  provider: github
-  scopes:
-    - repo
-    - issues
-    - pull_requests
+provider:
+  name: github
+  displayName: GitHub
+  endpoints:
+    authorizationUrl: https://github.com/login/oauth/authorize
+    tokenUrl: https://github.com/login/oauth/access_token
 ```
+
+A tool refers to it with `authentication: { type: oauth2, provider: github }`. Tools that take an API key or token in a header (see [Tool Specification](TOOL_SPECIFICATION.md#authentication)) don't need a manifest.
 
 ## Step 4: Test & Validate
 
@@ -239,7 +234,8 @@ const result = await matimo.execute('github-create-issue', {
   body: 'This would be a great addition!',
 });
 
-console.log(`Issue #${result.number} created: ${result.url}`);
+const issue = (result as { data: { number: number; html_url: string } }).data;
+console.log(`Issue #${issue.number} created: ${issue.html_url}`);
 ```
 
 ## Auto-Discovery Mechanism
@@ -280,11 +276,11 @@ Output:
 
   📍 @matimo/slack
      Slack workspace tools
-     Tools: slack-send-message, slack-list-channels, slack-get-messages, ...
+     Tools: slack_send_channel_message, slack-list-channels, slack_get_channel_history, ...
 
   📍 @matimo/github
      GitHub repository and issue management tools
-     Tools: github-create-issue, github-list-repos, github-get-issue, ...
+     Tools: github-create-issue, github-list-repositories, github-get-issue, ...
 
 Total: 2 packages installed
 ```
@@ -315,14 +311,14 @@ matimo install twilio notion hubspot
 ```
 packages/github/
 ├── tools/
-│   ├── github-create-issue/
+│   ├── create-issue/
 │   │   ├── definition.yaml          # Tool definition
 │   │   └── (index.ts - optional)    # Custom logic if needed
-│   ├── github-list-repos/
+│   ├── list-repositories/
 │   │   └── definition.yaml
-│   └── github-get-issue/
+│   └── get-issue/
 │       └── definition.yaml
-├── definition.yaml                  # Provider metadata
+├── definition.yaml                  # Provider manifest (OAuth2 endpoints), optional
 ├── package.json                     # npm package config
 ├── tsconfig.json                    # TypeScript config (if needed)
 └── README.md                        # Provider documentation
@@ -497,13 +493,13 @@ parameters:
 
 ### Error Handling
 
-Always include retry logic for reliability:
+You can declare retry settings so the intent is recorded with the tool, but neither SDK applies them yet: a failed call is not retried. Handle `RATE_LIMIT_EXCEEDED` and `retryable` errors in the caller (see [Errors](../api-reference/ERRORS.md)).
 
 ```yaml
 error_handling:
-  retry: 2 # Number of retries
-  backoff_type: exponential # exponential or linear
-  initial_delay_ms: 1000 # Starting delay in ms
+  retry: 2 # accepted, not yet applied
+  backoff_type: exponential # exponential, linear or fixed
+  initial_delay_ms: 1000
 ```
 
 ### Output Schema

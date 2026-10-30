@@ -10,15 +10,15 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
         with:
           node-version: 22.x
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1  # v4
         with:
           version: 8
 
@@ -28,7 +28,7 @@ jobs:
         run: |
           echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
         name: Setup pnpm cache
         with:
           path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
@@ -37,7 +37,7 @@ jobs:
             ${{ runner.os }}-pnpm-store-
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
         working-directory: typescript
 
       - name: Validate tools
@@ -53,12 +53,12 @@ jobs:
         working-directory: typescript
 
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
         with:
           python-version: '3.11'
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v2
+        uses: astral-sh/setup-uv@caf0cab7a618c569241d31dcd442f54681755d39  # v3
 
       - name: Validate Python tools
         run: uv run python scripts/validate_tools.py

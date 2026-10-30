@@ -1,0 +1,36 @@
+@import './tokens.css';
+
+/* Starlight theme: dark-first, one accent. Starlight's dark values live on :root and its
+   light values on :root[data-theme='light'], so every variable overridden for dark needs a
+   light counterpart below or the light theme ends up half dark. */
+:root {
+  --sl-font: var(--mt-font);
+  --sl-font-mono: var(--mt-mono);
+  --sl-color-accent-low: #3a0a1d;
+  --sl-color-accent: var(--mt-accent-lo);
+  --sl-color-accent-high: var(--mt-accent-hi);
+  --sl-color-black: var(--mt-bg);
+  --sl-color-gray-6: var(--mt-bg-raised);
+  --sl-color-gray-5: var(--mt-border);
+  --sl-color-hairline: var(--mt-border);
+  --sl-content-width: 46rem;
+}
+:root[data-theme='light'] {
+  --sl-color-accent-low: #ffd9e6;
+  --sl-color-accent: #d6205f;
+  --sl-color-accent-high: #8a0f3b;
+  --sl-color-black: #ffffff;
+  --sl-color-gray-6: #f6f6f9;
+  --sl-color-gray-5: #e4e4ea;
+  --sl-color-hairline: #e4e4ea;
+}
+.sl-markdown-content :not(pre) > code { border-radius: 6px; }
+.sl-markdown-content pre { border-radius: 10px; }
+header.header { backdrop-filter: blur(8px); }
+
+/* Diagrams ship as a light and a dark SVG (see scripts/diagrams.mjs); show the one that matches the theme. */
+.sl-markdown-content img[src$='.svg'] { display: block; max-width: 100%; height: auto; margin: 1.5rem auto; border-radius: 14px; border: 1px solid var(--sl-color-hairline); }
+.sl-markdown-content img[src*='-light.'] { display: none; }
+:root[data-theme='light'] .sl-markdown-content img[src*='-light.'] { display: block; }
+:root[data-theme='light'] .sl-markdown-content img[src*='-dark.'] { display: none; }
+.sl-markdown-content img[alt='Matimo Logo'] { width: 250px; margin: 1.25rem auto; border-radius: 8px; }

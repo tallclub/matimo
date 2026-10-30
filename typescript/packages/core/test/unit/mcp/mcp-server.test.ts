@@ -126,7 +126,7 @@ const mockHttpsListen: jest.Mock = jest.fn();
 const mockHttpsClose: jest.Mock = jest.fn();
 const mockHttpsServerInstance = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  listen: (port: any, cb: any) => mockHttpsListen(port, cb),
+  listen: (port: any, host: any, cb: any) => mockHttpsListen(port, host, cb),
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   close: (cb: any) => mockHttpsClose(cb),
 };
@@ -901,6 +901,27 @@ describe('MCPServer — HTTP transport', () => {
     return server;
   }
 
+  describe('bind address', () => {
+    function boundAddress(server: MCPServer): string {
+      const httpSrv = (server as unknown as { httpServer: http.Server }).httpServer;
+      const addr = httpSrv.address();
+      if (addr && typeof addr === 'object') return addr.address;
+      throw new Error('Server not listening');
+    }
+
+    it('binds loopback only by default', async () => {
+      const server = await startHttpServer();
+      expect(boundAddress(server)).toBe('127.0.0.1');
+      await server.stop();
+    });
+
+    it('binds the configured host when one is given', async () => {
+      const server = await startHttpServer(undefined, { host: '0.0.0.0' });
+      expect(boundAddress(server)).toBe('0.0.0.0');
+      await server.stop();
+    });
+  });
+
   describe('token resolution', () => {
     it('should return null from getActiveToken() before start', () => {
       const server = new MCPServer({ transport: 'http', port: 0 });
@@ -1214,7 +1235,7 @@ describe('MCPServer — HTTPS / TLS error paths', () => {
     jest.clearAllMocks();
     mockListTools.mockReturnValue([createTestTool()]);
     // Default: https listen and close call their callbacks immediately (simulating bound/closed server)
-    mockHttpsListen.mockImplementation((port: number, cb: () => void) => cb());
+    mockHttpsListen.mockImplementation((_port: number, _host: string, cb: () => void) => cb());
     mockHttpsClose.mockImplementation((cb: () => void) => cb());
   });
 

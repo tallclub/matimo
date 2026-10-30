@@ -28,18 +28,26 @@ USAGE:
 AVAILABLE EXECUTE TOOL PARAMETERS:
 ────────────────────────────────────────────────────────────────────────────
   command   (str, required) - Command to execute (e.g., "git --version")
+  args      (list, optional) - Extra arguments appended to the command, one argument each
+  cwd       (str, optional) - Working directory
   timeout   (int, optional) - Timeout in milliseconds (default: 30000)
+  shell     (str, optional) - Run the command through this shell (e.g. "/bin/sh").
+                              Opt-in; every such call needs a human approval that
+                              MATIMO_AUTO_APPROVE, MATIMO_APPROVED_PATTERNS and
+                              approved=True cannot skip.
 
 NOTE ON CROSS-PLATFORM COMMANDS:
 ────────────────────────────────────────────────────────────────────────────
-  Unlike the TypeScript SDK's `execute` tool (which runs commands through a
-  real shell — cmd.exe on Windows, sh elsewhere), the Python `execute` tool
-  spawns the command directly via asyncio.create_subprocess_exec() with no
-  shell involved. That means shell built-ins (`ls`, `pwd`, `dir`, `cd`,
-  `echo`) and pipes are not available — `command` must name a real,
-  installed executable. This example uses `git`, which is a real executable
-  on every platform, so the same commands work identically on Windows,
-  macOS, and Linux.
+  By default (in both the Python and the TypeScript SDK) `execute` spawns the
+  command directly with no shell involved. That means shell built-ins (`ls`,
+  `pwd`, `dir`, `cd`, `echo`) and pipes are not available, `command` must
+  name a real, installed executable. This example uses `git`, which is a real
+  executable on every platform, so the same commands work identically on
+  Windows, macOS, and Linux.
+
+  When you do need a pipe or redirection, pass `shell` (Example 7). That call
+  is always shown to a human, even with MATIMO_AUTO_APPROVE or
+  MATIMO_APPROVED_PATTERNS set.
 
 ============================================================================
 """
@@ -60,7 +68,9 @@ async def approve(request: ApprovalRequest) -> bool:
     execute declares requires_approval: true, so every call is shown to a human
     first. Pre-approve it for scripts and CI with MATIMO_APPROVED_PATTERNS="execute".
     """
-    print(f"\n🔒 Approval required — {request.tool_name}: {request.params.get('command')} {' '.join(request.params.get('args') or [])}")
+    shell = request.params.get("shell")
+    via = f" (through shell: {shell}; this call always asks)" if shell else ""
+    print(f"\n🔒 Approval required: {request.tool_name}: {request.params.get('command')} {' '.join(request.params.get('args') or [])}{via}")
     if not sys.stdin.isatty():
         print('   ❌ Rejected: no terminal. Pre-approve with MATIMO_APPROVED_PATTERNS="execute"')
         return False
@@ -174,6 +184,46 @@ async def main() -> None:
         except Exception as e:
             print(f"Error in Example 5: {e}")
         print("---\n")
+
+        # Example 6: `args` are appended to the command, one argument each, so a
+        # value with spaces or quotes needs no escaping.
+        print("6️⃣  Running: git log -1 --format=<subject> (args as a list)\n")
+        try:
+            args_result: Dict[str, Any] = await matimo.execute(
+                "execute",
+                {
+                    "command": "git",
+                    "args": ["log", "-1", "--format=Last commit: %s"],
+                    "timeout": 15000,
+                }
+            )
+            print(f"Success: {args_result.get('success', False)}")
+            print(f"Output: {args_result.get('stdout', '').strip()}")
+        except Exception as e:
+            print(f"Error in Example 6: {e}")
+        print("---\n")
+
+        # Example 7: opt in to a shell for a pipe. The command is a full shell
+        # line, so this call ALWAYS asks a human: MATIMO_AUTO_APPROVE,
+        # MATIMO_APPROVED_PATTERNS and approved=True do not apply, and with no
+        # approval callback it is rejected. Skipped when there is no terminal.
+        if sys.stdin.isatty():
+            shell = "cmd" if sys.platform == "win32" else "/bin/sh"
+            line = (
+                'git rev-list HEAD | find /c /v ""'
+                if sys.platform == "win32"
+                else "git rev-list HEAD | wc -l"
+            )
+            print(f"7️⃣  Running through {shell}: {line}\n")
+            try:
+                shell_result: Dict[str, Any] = await matimo.execute(
+                    "execute", {"command": line, "shell": shell, "timeout": 15000}
+                )
+                print(f"Success: {shell_result.get('success', False)}")
+                print(f"Commit count: {shell_result.get('stdout', '').strip()}")
+            except Exception as e:
+                print(f"Example 7 not run: {e}")
+            print("---\n")
 
     except Exception as error:
         print(f"❌  Error executing command: {error}\n")

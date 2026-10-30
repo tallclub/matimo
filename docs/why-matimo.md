@@ -15,11 +15,11 @@ Giving an agent a tool is easy. The questions that follow are harder: who approv
 ## What Matimo OSS does
 
 - **Classifies every call by risk** (low, medium, high, critical) and checks it against deterministic security rules.
-- **Asks a human for risky calls.** Since 0.2.0, HTTP `DELETE` and shell-command tools ask before every call unless the tool says otherwise. With nobody to answer, the call is refused. See [Approval System](api-reference/APPROVAL-SYSTEM).
-- **Stops an agent approving its own tool.** Roles such as `admin` are set by your application, never read from the agent's text. See [Where roles come from](api-reference/POLICY_AND_LIFECYCLE#where-roles-come-from).
+- **Asks a human for risky calls.** Since 0.2.0, HTTP `DELETE` and shell-command tools ask before every call unless the tool says otherwise. With nobody to answer, the call is refused. See [Approval System](api-reference/APPROVAL-SYSTEM.md).
+- **Stops an agent approving its own tool.** Roles such as `admin` are set by your application, never read from the agent's text. See [Where roles come from](api-reference/POLICY_AND_LIFECYCLE.md#where-roles-come-from).
 - **Writes an audit log you can verify.** Each event is chained to the previous one by SHA-256, with secrets redacted, and `verifyAuditLog()` finds an edited, removed or reordered line.
 - **Defines a tool once** in YAML and runs it in TypeScript, Python, LangChain, CrewAI, Agno and MCP, with the same rules in each. Shared fixtures in `conformance/` keep both SDKs aligned.
-- **Lets agents extend themselves safely:** a new tool starts as a draft, is validated, and must be approved by someone other than the agent that created it. See [Meta-Tools](api-reference/META_TOOLS).
+- **Lets agents extend themselves safely:** a new tool starts as a draft, is validated, and must be approved by someone other than the agent that created it. See [Meta-Tools](api-reference/META_TOOLS.md).
 
 It ships 129 tools across 10 provider packages (Slack, Gmail, GitHub, Notion, HubSpot, Postgres, Twilio, Mailchimp, Microsoft Graph, Bruno), plus built-in tools and 15 meta-tools.
 
@@ -42,7 +42,7 @@ It ships 129 tools across 10 provider packages (Slack, Gmail, GitHub, Notion, Hu
 - It governs tool calls. It does not replace your own authentication, and you supply the credentials.
 - The audit log is tamper-evident, not tamper-proof: someone who can rewrite the whole file can rebuild the chain, so keep it where the agent host can't write.
 - A call that needs approval fails closed if nobody can answer. Send the prompt to a real person.
-- Agno support is Python-only. The [release notes](RELEASES) list the other differences between the SDKs.
+- Agno support is Python-only. The [release notes](RELEASES.md) list the other differences between the SDKs.
 
 ## Try it
 
@@ -51,4 +51,4 @@ npm install @matimo/core     # TypeScript
 pip install matimo           # Python
 ```
 
-Then follow the [Quick Start](getting-started/QUICK_START), or read [what changed in 0.2.0](blog/2026-10-01-matimo-0-2-0-tool-governance). To see approval and audit working with no API key, run `pnpm policy:approval-modes` and `pnpm policy:audit` from `typescript/examples/tools`.
+Then follow the [Quick Start](getting-started/QUICK_START.md), or read [what changed in 0.2.0](blog/2026-10-01-matimo-0-2-0-tool-governance.md). To see approval and audit working with no API key, run `pnpm policy:approval-modes` and `pnpm policy:audit` from `typescript/examples/tools`.

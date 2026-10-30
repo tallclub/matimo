@@ -17,7 +17,7 @@
 - [Content Chunking & Smart Context](#content-chunking--smart-context)
   - [getSkillContent() — Selective Loading](#getskillcontent--selective-loading)
   - [getSkillSections() — Section Inventory](#getskillsections--section-inventory)
-- [Semantic Search](#semantic-search)
+- [Skill Search (TF-IDF)](#skill-search-tf-idf)
   - [Built-in TF-IDF Search](#built-in-tf-idf-term-frequency---inverse-document-frequency-search)
   - [Custom Embedding Provider](#custom-embedding-provider)
 - [Agent Skill Lifecycle](#agent-skill-lifecycle)
@@ -324,7 +324,7 @@ Both are also agent-callable via the `matimo_get_skill_sections` and `matimo_get
 
 ---
 
-## Semantic Search
+## Skill Search (TF-IDF)
 
 Matimo provides embedding-based search across all registered skills, so agents can find relevant knowledge by meaning rather than exact keywords.
 
@@ -453,7 +453,7 @@ Validation checks:
 
 ### Searching and Loading Skills Selectively
 
-Three meta-tools wrap the programmatic [`semanticSearchSkills()`](#semantic-search), [`getSkillSections()`](#getskillsections--section-inventory), and [`getSkillContent()`](#getskillcontent--selective-loading) SDK APIs as agent-callable tools, so LangChain agents and MCP clients (Claude) can search and selectively load skills from their tool loop, not just from SDK code:
+Three meta-tools wrap the programmatic [`semanticSearchSkills()`](#skill-search-tf-idf), [`getSkillSections()`](#getskillsections--section-inventory), and [`getSkillContent()`](#getskillcontent--selective-loading) SDK APIs as agent-callable tools, so LangChain agents and MCP clients (Claude) can search and selectively load skills from their tool loop, not just from SDK code:
 
 ```typescript
 // Rank skills by meaning instead of exact name/keyword match
@@ -695,7 +695,7 @@ console.log(response.content);
 ```
 
 **The agent workflow:**
-1. LLM calls `matimo_list_skills` → gets names/descriptions of all 8 provider skills + 6 core skills
+1. LLM calls `matimo_list_skills` → gets names/descriptions of all 10 native provider skills + 6 core skills
 2. LLM calls `matimo_get_skill('slack')` → loads full Slack domain knowledge (channels, messages, threads, etc.)
 3. LLM now has context to correctly call `slack_send_channel_message` with the right parameters
 4. No skill content is wasted on providers the agent doesn't need
@@ -716,7 +716,7 @@ import { HumanMessage, SystemMessage } from '@langchain/core/messages';
 const meta = getSkillsMetadata(matimo);
 const metaBlock = meta.map((s) => `- **${s.name}**: ${s.description}`).join('\n');
 
-// Level 2 — per request via TF-IDF semantic search (loads only relevant skills)
+// Level 2, per request via TF-IDF keyword-relevance search (loads only relevant skills)
 const userMessage = 'How do I handle rate limits in Slack?';
 const skillContext = await buildRelevantSkillPrompt(matimo, userMessage, {
   topK: 2,       // load at most 2 skills

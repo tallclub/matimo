@@ -290,7 +290,7 @@ Full reference: `docs/api-reference/POLICY_AND_LIFECYCLE.md`.
 
 ## Release process
 
-Each SDK is lockstepped independently: every `typescript/packages/*/package.json` shares one version number, and every `python/packages/*/pyproject.toml` shares a separate one. TS and Python version numbers are not meant to match each other (e.g. TS core at `0.1.8` alongside Python core at `0.1.3` is expected, not drift).
+Both SDKs share one version number from v0.4.0 on: every `typescript/packages/*/package.json` and every `python/packages/*/pyproject.toml` (plus `__version__` in the Python `__init__.py` files and the `matimo-core>=X,<Y` pins) move together. Earlier releases versioned the two independently.
 
 1. Bump `version` in `typescript/package.json` and all `typescript/packages/*/package.json`
 2. `cd typescript && pnpm build && pnpm test` — must pass
@@ -329,6 +329,25 @@ Use the `release` skill for a guided flow with commit history summary and change
 | MCP server | `docs/MCP.md`, `docs/mcp/` |
 | LangChain / CrewAI integration | `docs/framework-integrations/` |
 | Architecture | `docs/architecture/OVERVIEW.md` |
+
+### Docs consolidation (decided, not yet done)
+
+There are two hand-kept copies of the docs: `docs/` (GitHub Markdown) and `website/src/content/docs/docs/` (Astro Starlight, matimo.dev). They drift. The 0.4.0 sweep found `docs/` still saying Node 18, a non-existent `validation:` YAML block and a fake `MATIMO_CWD` setting that the website had already fixed.
+
+**Decision: retire `docs/` and keep only the website as the source of truth.** The website was audited against the source more recently, has the diagrams, and its build runs a link validator (`starlight-links-validator`) that `docs/` lacks.
+
+Until the retirement lands:
+- Any docs change goes into **both** copies, in the same commit. Never edit only one.
+- Verify claims against the source, not against the other copy. Neither copy is reliable on its own.
+- The website uses `/docs/<section>/<slug>/` links, front-matter and `![..](..svg)` diagrams. `docs/` uses relative `.md` links and ASCII diagrams. Do not copy text between them without converting links, and check code fences afterwards (a missing closing fence silently swallows the next section).
+- Run `cd website && pnpm build` after website edits to run the link validator.
+
+Plan, as its own PR **after** 0.4.0 is published (not on the release branch):
+1. Inventory every reference to `docs/`: root and package READMEs (these show on npm and PyPI), CONTRIBUTING, SECURITY, `.github` skills and agents, CLI help text, `llms.txt`, `website/redirects`, the `.claude` rules and skills, and this file.
+2. Keep Colab working: the notebooks' badges point at `docs/notebooks/` on `main`. Keep the notebooks at that path or move them with a redirect plan.
+3. Decide a home for non-site content: dated audit reviews and compliance snapshots, `RELEASES.md`, the blog post, `PYTHON_SDK_PLAN.md`, and the `docs/mcp/` contributor guides (these are for contributors, so `.github/` or CONTRIBUTING fits better).
+4. Repoint links to matimo.dev URLs, keep website redirects for old URLs already shipped in published packages, and add a CI check that fails on any remaining `docs/` link.
+5. Update the "Where to look (docs)" table above to website paths.
 
 ---
 

@@ -1,4 +1,4 @@
-# Quick Start — 5 Minutes
+# Quick Start: 5 Minutes
 
 Get Matimo up and running in 5 minutes. Available in **TypeScript** and **Python**.
 
@@ -23,7 +23,6 @@ pip install matimo matimo-slack matimo-github
 ```
 
 ```python
-import asyncio
 from matimo import Matimo
 
 async def main():
@@ -40,14 +39,14 @@ async def main():
 asyncio.run(main())
 ```
 
-> **ℹ️ Tool Naming**  
+> **Tool Naming**  
 > You'll notice Matimo tools use both `kebab-case` (e.g., `slack-send-message`) and `snake_case` (e.g., `slack_send_channel_message`).  
-> Both work identically — legacy tools use kebab-case, newer tools use snake_case.  
+> Both work identically, legacy tools use kebab-case, newer tools use snake_case.  
 > **Recommended for new tools:** `snake_case` following `{provider}_{action}` (e.g., `notion_create_page`).
 
 **Build your own Python tool (5 min):**
 
-Most tools are a single YAML file that describes an HTTP call — no code. This one calls the public JSONPlaceholder test API.
+Most tools are a single YAML file that describes an HTTP call, no code. This one calls the public JSONPlaceholder test API.
 
 **1. Create `tools/get_user/definition.yaml`:**
 
@@ -79,15 +78,14 @@ output_schema:
 **2. Create `main.py`:**
 
 ```python
-import asyncio
 from matimo import Matimo
 
 async def main():
     matimo = await Matimo.init('./tools', log_level='warn')
-    print(f"📦 Loaded {len(matimo.list_tools())} tools")
+    print(f"Loaded {len(matimo.list_tools())} tools")
 
     user = await matimo.execute('get_user', {'id': 1})
-    print('✅', user['name'], '-', user['email'])
+    print('', user['name'], '-', user['email'])
 
 asyncio.run(main())
 ```
@@ -96,16 +94,16 @@ asyncio.run(main())
 
 ```bash
 python main.py
-# 📦 Loaded 1 tools
-# ✅ Leanne Graham - Sincere@april.biz
+# Loaded 1 tools
+# Leanne Graham - Sincere@april.biz
 ```
 
 A Python HTTP tool returns the parsed response body.
 
 **Python next steps:**
-- [SDK Patterns (Python)](../user-guide/SDK_PATTERNS.md#python-sdk) — factory, decorator, LangChain
+- [SDK Patterns (Python)](../user-guide/SDK_PATTERNS.md#python-sdk): factory, decorator, LangChain
 - [LangChain Integration](../framework-integrations/LANGCHAIN.md)
-- [Examples →](../../python/examples/)
+- [Examples →](https://github.com/tallclub/matimo/blob/main/python/examples/)
 
 ---
 
@@ -115,7 +113,7 @@ A Python HTTP tool returns the parsed response body.
 
 Not sure where to start? Pick one:
 
-### 🚀 **Path A: Use Pre-Built Tools** (Fastest — 2 mins)
+### **Path A: Use Pre-Built Tools** (Fastest: 2 mins)
 
 You want to execute existing tools (Slack, Gmail, GitHub, etc.) without building your own.
 
@@ -128,7 +126,6 @@ npm install matimo @matimo/slack @matimo/gmail
 **Use immediately:**
 
 ```typescript
-import { MatimoInstance } from 'matimo';
 
 const matimo = await MatimoInstance.init({ autoDiscover: true });
 
@@ -141,34 +138,34 @@ const result = await matimo.execute('slack-send-message', {
 console.log('Message sent!', result);
 ```
 
-> **ℹ️ Tool Naming**  
+> **Tool Naming**  
 > Matimo supports both `kebab-case` and `snake_case` tool names. Legacy tools (Gmail, GitHub, older Slack) use `kebab-case` (e.g., `slack-send-message`), while newer tools use `snake_case` (e.g., `bruno_run_request`, `matimo_create_tool`).  
 > **Recommended:** Use `snake_case` for new tools following `{provider}_{action}`.
 
-✅ Great for: Using existing integrations in your app
-📖 **[See All Available Tools →](../../README.md#whats-included)**
+Great for: Using existing integrations in your app
+**[See All Available Tools →](https://github.com/tallclub/matimo/blob/main/README.md#whats-included)**
 
 ---
 
-### 🛠️ **Path B: Build Your Own Tool** (Educational — 5 mins)
+### **Path B: Build Your Own Tool** (Educational: 5 mins)
 
 You want to understand how to create and execute custom tools.
 
 **[Continue below to create your first tool →](#1-installation-1-min)**
 
-✅ Great for: Learning how Matimo works
-📖 **[Build Your First Tool →](./YOUR_FIRST_TOOL.md)**
+Great for: Learning how Matimo works
+**[Build Your First Tool →](YOUR_FIRST_TOOL.md)**
 
 ---
 
-### 🤖 **Path C: Integrate with LangChain** (Advanced — 10 mins)
+### **Path C: Integrate with LangChain** (Advanced: 10 mins)
 
 You want to use Matimo tools with an AI agent (LangChain, CrewAI, etc.).
 
 **[See LangChain Integration →](../framework-integrations/LANGCHAIN.md)**
 
-✅ Great for: Building intelligent agents
-📖 **[Examples →](../../typescript/examples/README.md)**
+Great for: Building intelligent agents
+**[Examples →](https://github.com/tallclub/matimo/blob/main/typescript/examples/README.md)**
 
 ---
 
@@ -185,7 +182,6 @@ pnpm add matimo
 Create a file `demo.ts`:
 
 ```typescript
-import { MatimoInstance } from 'matimo';
 
 async function main() {
   // Initialize Matimo with your tools
@@ -193,14 +189,14 @@ async function main() {
 
   // List available tools
   const tools = matimo.listTools();
-  console.log(`📦 Loaded ${tools.length} tools`);
+  console.log(`Loaded ${tools.length} tools`);
 
   // Execute a tool
   const result = (await matimo.execute('get_user', { id: 1 })) as {
     data: { name: string; email: string };
   };
 
-  console.log('✅', result.data.name, '-', result.data.email);
+  console.log('', result.data.name, '-', result.data.email);
 }
 
 main().catch(console.error);
@@ -208,7 +204,7 @@ main().catch(console.error);
 
 ## 3. Create Your First Tool (1 min)
 
-Create `tools/get_user/definition.yaml` — an HTTP tool, Matimo's default kind, which needs no code:
+Create `tools/get_user/definition.yaml`, an HTTP tool, Matimo's default kind, which needs no code:
 
 ```yaml
 name: get_user
@@ -245,8 +241,8 @@ npx tsc demo.ts
 node demo.js
 
 # Output:
-# 📦 Loaded 1 tools
-# ✅ Leanne Graham - Sincere@april.biz
+# Loaded 1 tools
+# Leanne Graham - Sincere@april.biz
 ```
 
 A TypeScript HTTP tool returns `{ success, data, statusCode, headers }`, with the response body in `data`.
@@ -255,9 +251,13 @@ A TypeScript HTTP tool returns `{ success, data, statusCode, headers }`, with th
 
 ## What Just Happened?
 
-1. **MatimoInstance.init('./tools')** — Loaded every `definition.yaml` under `./tools`
-2. **matimo.listTools()** — Listed discovered tools
-3. **matimo.execute('get_user', { id: 1 })** — The policy engine classified the call (a GET is low risk, so it runs without asking), Matimo filled `{id}` into the URL, made the request and returned the result
+1. **MatimoInstance.init('./tools')**: Loaded every `definition.yaml` under `./tools`
+2. **matimo.listTools()**: Listed discovered tools
+3. **matimo.execute('get_user', { id: 1 })**: The policy engine classified the call (a GET is low risk, so it runs without asking), Matimo filled `{id}` into the URL, made the request and returned the result
+
+### The `MATIMO_APPROVAL_SECRET` warning
+
+On a first run both SDKs log `No MATIMO_APPROVAL_SECRET set`. It is a warning, not an error. Matimo signs approvals with that secret, and without one it makes a temporary secret for the process, so approvals do not survive a restart. For local experiments you can ignore it. Before you rely on approvals, set a long random value (`export MATIMO_APPROVAL_SECRET=...`). It is required when `NODE_ENV` or `MATIMO_ENV` is `production`.
 
 ### Tools that ask first
 
@@ -270,6 +270,13 @@ const matimo = await MatimoInstance.init({
 });
 ```
 
+```python
+async def on_approval(request) -> bool:
+    return await confirm_with_user(request.tool_name, request.params)
+
+matimo = await Matimo.init("./tools", on_approval=on_approval)
+```
+
 See [Approval System](../api-reference/APPROVAL-SYSTEM.md).
 
 ---
@@ -278,9 +285,9 @@ See [Approval System](../api-reference/APPROVAL-SYSTEM.md).
 
 ### Choose Your Pattern
 
-- **Factory Pattern** (you just used this) — Best for simple scripts and backends
-- **Decorator Pattern** — Best for class-based code
-- **LangChain** — Best for AI agents with automatic tool selection
+- **Factory Pattern** (you just used this), Best for simple scripts and backends
+- **Decorator Pattern**: Best for class-based code
+- **LangChain**: Best for AI agents with automatic tool selection
 
 See [SDK Usage Patterns](../user-guide/SDK_PATTERNS.md) for details.
 
@@ -291,14 +298,14 @@ Create more YAML files in `tools/`:
 ```
 tools/
 ├── get_user/
-│   └── definition.yaml      # Done ✅
+│   └── definition.yaml      # Done 
 ├── my-api/
 │   └── definition.yaml      # Create more
 └── slack/
     └── definition.yaml
 ```
 
-Each tool is just a YAML file — no code needed!
+Each tool is just a YAML file, no code needed!
 
 ### Use Provider Tools
 
@@ -320,19 +327,31 @@ const matimo = await MatimoInstance.init({
 });
 ```
 
+In Python, install the provider packages from PyPI and let auto-discovery find them, with your own folder alongside:
+
+```bash
+pip install matimo-slack matimo-gmail
+```
+
+```python
+matimo = await Matimo.init("./tools", auto_discover=True)
+```
+
 ---
 
 ## Further Reading
 
-- **[API Reference](../api-reference/SDK.md)** — Full SDK methods and types
-- **[Tool Specification](../tool-development/TOOL_SPECIFICATION.md)** — Write production tools
-- **[SDK Usage Patterns](../user-guide/SDK_PATTERNS.md)** — Factory, Decorator, LangChain patterns
-- **[Architecture Overview](../architecture/OVERVIEW.md)** — How Matimo works internally
-- **[Framework Integrations](../framework-integrations/LANGCHAIN.md)** — LangChain integration examples
+- **[API Reference](../api-reference/SDK.md)**: Full SDK methods and types
+- **[Tool Specification](../tool-development/TOOL_SPECIFICATION.md)**: Write production tools
+- **[SDK Usage Patterns](../user-guide/SDK_PATTERNS.md)**: Factory, Decorator, LangChain patterns
+- **[Architecture Overview](../architecture/OVERVIEW.md)**: How Matimo works internally
+- **[Framework Integrations](../framework-integrations/LANGCHAIN.md)**: LangChain integration examples
 
 ---
 
 ## Common Tasks
+
+Each task is shown in TypeScript, then Python.
 
 ### List All Loaded Tools
 
@@ -341,6 +360,11 @@ const tools = matimo.listTools();
 tools.forEach((tool) => {
   console.log(`${tool.name} - ${tool.description}`);
 });
+```
+
+```python
+for tool in matimo.list_tools():
+    print(f"{tool.name} - {tool.description}")
 ```
 
 ### Get Tool by Name
@@ -352,6 +376,12 @@ if (tool) {
 }
 ```
 
+```python
+tool = matimo.get_tool("get_user")
+if tool:
+    print("Parameters:", tool.parameters)
+```
+
 ### Search Tools
 
 ```typescript
@@ -360,6 +390,11 @@ console.log(
   'Found:',
   results.map((t) => t.name)
 );
+```
+
+```python
+results = matimo.search_tools("user")
+print("Found:", [t.name for t in results])
 ```
 
 ### Execute with Error Handling
@@ -381,6 +416,23 @@ try {
 }
 ```
 
+```python
+from matimo import MatimoError
+
+try:
+    result = await matimo.execute("get_user", {"id": 1})
+    print("Success:", result)
+except MatimoError as error:
+    if error.code == "TOOL_NOT_FOUND":
+        print("Tool not found:", error)
+    elif error.code == "INVALID_PARAMETER":
+        print("Invalid parameters:", error.details)
+    elif error.code == "POLICY_DENIED":
+        print("Refused by policy or by a reviewer:", error)
+    elif error.code == "EXECUTION_FAILED":
+        print("Execution failed:", error.details)
+```
+
 ---
 
 ## Example: Using Slack
@@ -388,7 +440,6 @@ try {
 After installing `@matimo/slack`:
 
 ```typescript
-import { MatimoInstance } from 'matimo';
 
 const matimo = await MatimoInstance.init({
   toolPaths: ['./tools', './node_modules/@matimo/slack/tools'],
@@ -403,6 +454,18 @@ const result = await matimo.execute('slack-send-message', {
 console.log(result);
 ```
 
+The same call in Python, after `pip install matimo-slack`:
+
+```python
+matimo = await Matimo.init("./tools", auto_discover=True)
+
+result = await matimo.execute("slack-send-message", {
+    "channel": "#general",
+    "text": "Hello from Matimo!",
+})
+print(result)
+```
+
 ---
 
 ## Troubleshooting
@@ -414,7 +477,8 @@ console.log(result);
 ls tools/*/definition.yaml
 
 # Validate YAML syntax
-pnpm validate-tools
+pnpm validate-tools     # TypeScript: from typescript/ in a clone of the repo
+make validate-tools     # Python: from python/ in a clone of the repo
 ```
 
 **Execution failing?**
@@ -428,6 +492,14 @@ try {
 }
 ```
 
+```python
+# Python: print the full error, including its details
+try:
+    result = await matimo.execute("tool-name", params)
+except MatimoError as error:
+    print(error.code, error, error.details)
+```
+
 **Type errors?**
 
 ```bash
@@ -439,7 +511,7 @@ npx tsc --noEmit
 
 ## Support
 
-- 📖 [Full Documentation](../)
-- 💬 [GitHub Discussions](https://github.com/tallclub/matimo/discussions)
-- 🐛 [Report Issues](https://github.com/tallclub/matimo/issues)
-- 🤝 [Contributing](https://github.com/tallclub/matimo/blob/main/CONTRIBUTING.md)
+- [Full Documentation](../index.md)
+- [GitHub Discussions](https://github.com/tallclub/matimo/discussions)
+- [Report Issues](https://github.com/tallclub/matimo/issues)
+- [Contributing](https://github.com/tallclub/matimo/blob/main/CONTRIBUTING.md)

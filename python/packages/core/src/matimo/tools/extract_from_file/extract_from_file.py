@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import csv
 import io
-import re
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -16,6 +15,8 @@ from docx import Document
 from pypdf import PdfReader
 
 from matimo.errors import ErrorCode, MatimoError
+from matimo.policy.file_roots import enforce_file_roots
+from matimo.policy.ssrf import is_blocked_url, ssrf_event_hooks
 
 SUPPORTED_FORMATS = ("pdf", "docx", "txt", "csv")
 DEFAULT_MAX_SIZE_BYTES = 25 * 1024 * 1024  # 25MB
@@ -26,28 +27,7 @@ def _resolve_local_path(file_path: str) -> Path:
     """Expand ~ and resolve relative paths, mirroring the `read` core tool."""
     if file_path.startswith("~"):
         file_path = str(Path.home()) + file_path[1:]
-    return Path(file_path).resolve()
-
-
-def _is_blocked_url(url: str) -> bool:
-    """SSRF guard mirroring is_blocked_url() in matimo.policy.default_policy.
-
-    Blocks localhost, loopback, link-local/AWS metadata, and RFC1918 private
-    ranges so a remote fileUrl fetch is held to the same bar Matimo's policy
-    engine applies to agent-proposed HTTP tools. Callers are expected to have
-    already validated that `url` parses cleanly (see `_load_remote_file`),
-    so a bare/empty host is the only remaining "can't verify — block it" case.
-    """
-    hostname = (urlparse(url).hostname or "").lower()
-    if not hostname:
-        return True
-    if hostname in ("localhost", "127.0.0.1", "::1"):
-        return True
-    if hostname.startswith("169.254."):
-        return True
-    if hostname.startswith("10.") or hostname.startswith("192.168."):
-        return True
-    return bool(re.match(r"^172\.(1[6-9]|2\d|3[01])\.", hostname))
+    return enforce_file_roots(Path(file_path).resolve())
 
 
 def _extension_format(name: str) -> str | None:
@@ -134,7 +114,7 @@ async def _load_remote_file(
             {"fileUrl": file_url, "scheme": parsed.scheme, "reason": "Only http and https URLs are supported"},
         )
 
-    if _is_blocked_url(file_url):
+    if is_blocked_url(file_url, fail_closed=True):
         raise MatimoError(
             "URL targets a blocked internal/metadata address",
             ErrorCode.INVALID_PARAMETER,
@@ -142,7 +122,9 @@ async def _load_remote_file(
         )
 
     try:
-        async with httpx.AsyncClient(follow_redirects=True, timeout=timeout_ms / 1000.0) as client:
+        async with httpx.AsyncClient(
+            follow_redirects=True, timeout=timeout_ms / 1000.0, event_hooks=ssrf_event_hooks()
+        ) as client:
             response = await client.get(
                 file_url, headers={"User-Agent": "Matimo/1.0 (AI Agent Tool SDK)"}
             )

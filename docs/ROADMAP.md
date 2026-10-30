@@ -2,402 +2,114 @@
 
 ## Current Status
 
-**Latest Release**: **0.3.0** (TypeScript; Python stays at 0.2.0). Requires Node 22.19+ and patches the open audit findings. Previous: **0.2.0** (TypeScript and Python): **🛡️ Secure by default** — DELETE and command tools ask a human, per-instance approval callbacks, MCP elicitation, a hash-chained audit log, and governance enforced identically by both SDKs. See [RELEASES.md](./RELEASES.md) and the [migration guide](./api-reference/POLICY_AND_LIFECYCLE.md#upgrading-to-020).
+| | TypeScript | Python |
+|---|---|---|
+| Latest release | **0.4.0** (2026-10-30) | **0.4.0** (2026-10-30) |
+| Install | `npm install matimo` | `pip install matimo` |
+| Runtime | Node 22.19+ | Python 3.11+ |
 
-### 🏆 Production Launch — General Availability
+0.4.0 puts both SDKs on one version number (Python has no 0.3.0) and hardens security: HTTP MCP servers bind `127.0.0.1` by default, the Python MCP server needs a bearer token, network tools refuse hostnames that resolve to internal addresses, redirects are re-checked on every hop, and `execute` takes `args` and an opt-in `shell` that always asks a human. 0.3.0 raised the Node floor to 22.19. **0.2.0** (both SDKs) made governance **secure by default**: HTTP DELETE and command tools ask a human, each instance has its own approval callback, MCP servers ask the client's user through elicitation, and a hash-chained audit log records every call. See [Release Notes](RELEASES.md) and the [migration guide](api-reference/POLICY_AND_LIFECYCLE.md#upgrading-to-020).
 
-Matimo 0.3.0 (TypeScript) and 0.2.0 (Python) are **production-ready** with full TypeScript and Python SDK support, 129 tools across 10 native provider packages plus a governed 449-tool `@matimo/composio` catalog, enterprise-grade security, and comprehensive framework integrations.
+### What ships today
 
-✅ **v0.1.0 Stable — Completed Features**:
+**Core SDK (TypeScript and Python)**
+- Tool execution for `http`, `command` and `function` tools, defined in YAML and loaded with Zod (TypeScript) or Pydantic v2 (Python)
+- Factory and decorator patterns, plus adapters for LangChain (both SDKs), and CrewAI and Agno (Python)
+- Policy engine with risk classification, content rules, human-in-the-loop approval, signed approval manifests, and an audit log
+- 15 meta-tools that let an agent create, validate, approve and hot-reload tools and skills
+- Skills system with TF-IDF keyword-relevance search
+- MCP server over stdio and Streamable HTTP, with secrets from the environment, `.env` files, Vault or AWS Secrets Manager
+- CLI: `install`, `list`, `search`, `mcp`, `mcp setup`, `doctor`, `review`, `help`, `version`
 
-**Core SDK (TypeScript + Python)**
-- OAuth2 authentication with multi-provider setup
-- Tool execution (function, command, and HTTP types)
-- YAML-based tool definitions + Zod (TS) / Pydantic v2 (Python) validation
-- **4 SDK patterns**: Factory, Decorator, LangChain, CrewAI
-- **15 meta-tools** for runtime tool and skill management
-- CLI: list, search, install, help, doctor, review, validate, mcp
-- MCP Server (stdio + Streamable HTTP, Claude Desktop compatible; approval through MCP elicitation)
-- Skills system with TF-IDF semantic search
-- Policy engine with risk classification + HITL workflows
-- Secret management (Env, Dotenv, Vault, AWS Secrets Manager)
+**Providers**
+- 129 tools across 10 native packages: Slack, GitHub, Gmail, Notion, HubSpot, Mailchimp, Postgres, Twilio, Bruno CLI and Microsoft Graph. Together with the 24 built-in core tools, an instance with every package installed loads 153 tools
+- `@matimo/composio`: 449 governed tools across 14 Composio toolkits (Jira, Linear, Asana, Google Workspace, Microsoft 365 and more). **TypeScript only today**
 
-**Provider Ecosystem** (129 native tools across 10 providers, plus a governed 449-tool Composio catalog)
-- **Slack**, **GitHub**, **Gmail**, **Notion**, **HubSpot**, **Mailchimp**, **Postgres**, **Twilio**
-- **Bruno CLI**, **Microsoft Graph** — Mail, Teams, calendar, SharePoint, OneDrive search
-- **Composio** (449) — Jira, Google Workspace, Microsoft 365, Asana, Linear, and more, routed through Composio and governed by Matimo's policy engine
-- All native providers ship with TypeScript + Python SDKs, LangChain/CrewAI examples (`@matimo/composio` is TypeScript-only today)
-
-**Bruno CLI Provider** (v0.1.0 — NEW)
-- ✅ 7 production tools: create, add, run, inspect, import OpenAPI
-- ✅ Full workflow examples in both SDKs
-- ✅ JSON reporter integration
-- ✅ Collection and request-level execution
-
-**Meta-Tools** (15 total)
-- ✅ Tool lifecycle: `create`, `validate`, `approve`, `reload`, `list_user_tools`, `get_tool_status`
-- ✅ Tool discovery: `get_tool`, `search_tools`
-- ✅ Skill management: `create_skill`, `get_skill`, `list_skills`, `validate_skill`, `search_skills`, `get_skill_sections`, `get_skill_content`
-- ✅ Full MCP + LangChain agent integration
-
-**HITL Enhancements** (v0.1.0 — NEW)
-- ✅ `hitlTimeoutMs` / `hitl_timeout_ms` — Configurable approval timeout
-- ✅ `approval_ttl_seconds` — Policy-level approval TTL
-- ✅ Production fail-fast if HITL handler not provided
-
-**Quality & Security** (v0.1.0 stable)
-- ✅ **4,600+ tests** across TypeScript and Python, plus shared conformance fixtures that both SDKs must pass
-- ✅ **95%+ test coverage** (both SDKs)
-- ✅ **Zero test pollution** (pytest-asyncio markers fixed)
-- ✅ **5 critical security patches** applied
-- ✅ **MCP 1.0 standards compliance**
-
-**Python SDK** (v0.1.0 stable)
-- ✅ 1,377 tests, 95%+ coverage
-- ✅ Python 3.11+ (asyncio-based)
-- ✅ `convert_tools_to_langchain()` — LangChain integration
-- ✅ `convert_tools_to_crewai()` — CrewAI integration
-- ✅ `create_mcp_server()` — MCP server support
-- ✅ Decorator + Factory patterns with 40+ examples
-- ✅ Complete type hints + documentation
-
-**TypeScript SDK** (v0.1.0 stable)
-- ✅ 2,412 tests, 95%+ coverage (branches: 87%, functions: 97%, lines: 95%)
-- ✅ Node.js 22.19+
-- ✅ `convertToolsToLangChain()` — LangChain integration
-- ✅ `MCPServer` — MCP stdio + HTTP server
-- ✅ pnpm workspaces, Jest, TypeScript strict mode
-- ✅ 40+ production examples
-
-**See [RELEASES.md](./RELEASES.md)** for the complete changelog and migration guides across all releases.
+**Quality**
+- About 5,100 tests pass across the two SDKs: 3,031 in TypeScript and 2,097 in Python (3 skipped), plus shared conformance fixtures that both must satisfy
+- CI enforces a 95% coverage floor on TypeScript core and on `matimo-core` (Python)
 
 ---
 
-## v0.1.1 — Next Patch Release
+## Release History
 
-> **Theme:** Skills Meta-Tools & Agent Call Ability — Expose skills discovery and content loading as first-class agent-callable meta-tools
+| Date | Release | Headline |
+|---|---|---|
+| 2026-02-04 to 02-27 | `0.1.0-alpha.1` to `alpha.11` | Core SDK. Postgres (alpha.7), GitHub (alpha.8), HubSpot (alpha.9), Notion (alpha.10), Twilio and Mailchimp (alpha.11) |
+| 2026-03-11 | `0.1.0-alpha.12` | MCP server over stdio and HTTP, secret resolvers, Claude Desktop setup |
+| 2026-03-22 | `0.1.0-alpha.13` | Skills system, policy engine, HITL quarantine |
+| 2026-04-12 | `0.1.0-alpha.14` | Python SDK |
+| 2026-05-01 | `0.1.0` | First stable release. Bruno CLI provider, `matimo_get_tool` and `matimo_search_tools` |
+| 2026-06-09 | Microsoft Graph provider | `@matimo/microsoft` and `matimo-microsoft` 0.1.0 |
+| 2026-08-11 | TypeScript `0.1.7` | Composio catalog grows from 342 to 449 tools across 14 toolkits |
+| 2026-08-30 | TypeScript `0.1.8`, Python `0.1.3` | A real policy engine is always on, and the self-extension approval flow works end to end |
+| 2026-10-04 | `0.2.0` (both) | Secure by default, per-instance approval, audit log, MCP elicitation |
+| 2026-10-13 | TypeScript `0.3.0` | Node 22.19+, security advisories patched, Composio toolkit version |
+| 2026-10-30 | `0.4.0` (both) | One version for both SDKs, security hardening, `execute` `args` and `shell`, `MATIMO_FILE_ROOTS` |
 
-### Skills Meta-Tools ✅ SHIPPED
-
-- [x] **`matimo_search_skills`** — Wraps `semanticSearchSkills()` as a meta-tool
-  - Allows LangChain agents and MCP clients to semantic-search skills by natural language query
-  - Backed by TF-IDF or custom embedding provider
-  - Returns: `{ success, query, results: Array<{ name, description, relevanceScore }>, total, message }`
-
-- [x] **`matimo_get_skill_sections`** — Exposes `getSkillSections()` as a meta-tool
-  - Enables agents to inventory a skill's sections and token costs before loading
-  - Progressive disclosure Level 2.5
-  - Returns: `{ success, name, sections: Array<{ path, level, tokenEstimate }>, total, message }`
-
-- [x] **`matimo_get_skill_content`** — Exposes `getSkillContent()` as a meta-tool
-  - Allows agents to load only specific sections of a skill (token-efficient)
-  - Replaces full-file loads with selective section retrieval
-  - Returns: `{ success, name, content, tokensUsed, message }`
-
-See [Searching and Loading Skills Selectively](./skills/SKILLS.md#searching-and-loading-skills-selectively) for full usage.
-
-### Context Window Tooling (Planned)
-
-- [ ] **Dynamic tool filtering** — When `autoDiscover` loads 146+ tools (at model API limits):
-  - Provide utility: `selectToolsByProvider(tools, providers)` to filter by provider/tag
-  - Prevents silent tool drops at API limit
-  - Example: `selectToolsByProvider(allTools, ['slack', 'github'])` returns only those provider tools
+Per-release details are in [Release Notes](RELEASES.md).
 
 ---
 
-## After 0.2.0 — What's Next
+## What's Next
 
-**Security hardening (0.2.x)**
-- [ ] SSRF checks on every redirect hop and on the resolved IP address, not only the URL
+These items are open today. Each was checked against the code when this page was last updated.
+
+**Security hardening**
 - [ ] Command tools run with a minimal environment instead of the parent process's
 - [ ] Function tools run out of process, with a timeout that stops them
 
-**Correctness and parity (0.2.x)**
-- [ ] `error_handling` retries applied by the HTTP executors (validated today, not yet used)
+**Correctness and parity**
+- [ ] `error_handling` retries applied by the HTTP executors (validated today, not used)
 - [ ] Parameter validation before execution, with every problem reported at once
-- [ ] Composio tools classified by the action they perform
-- [ ] Python: `get_tools_by_tag`, `get_required_credentials`, `reload_policy`, `set_hitl_callback`, `get_skill_resource`
+- [ ] Composio tools classified by the action they perform, not as HTTP POSTs
+- [ ] Python: `get_tools_by_tag`, `get_required_credentials`, `reload_policy`, `set_hitl_callback` and `get_skill_resource`, which TypeScript already has
 - [ ] One meaning for `allow_command_tools` / `allow_function_tools` on untrusted tools in both SDKs
 - [ ] A policy context passed through the LangChain and CrewAI adapters
+- [ ] Dynamic tool filtering helpers. With every provider installed, `autoDiscover` loads 153 tools, above OpenAI's limit of 128 per request, so pick a subset by provider, tag or search (see [Tool Discovery](user-guide/TOOL_DISCOVERY.md))
 
-**Builder features (0.3.0 →)**
-- [ ] Adapters for the OpenAI, Anthropic, Vercel AI and other agent SDKs
+**Builder features**
+- [ ] Adapters for the OpenAI, Anthropic, Vercel AI and other agent SDKs (see [Vercel AI SDK](framework-integrations/VERCEL_AI.md) for the current workaround)
 - [ ] YAML pagination, response field selection, caching and rate limits
 - [ ] Argument-level policy rules, budgets, and a dry-run `explain`
 - [ ] Connections: per-user token storage and refresh, `matimo connect`
 - [ ] Remote MCP with OAuth 2.1
 - [ ] OpenAPI import (`matimo import`)
+- [ ] An MCP server Docker image
 
-### Provider Expansion
+**Provider expansion**
+- [ ] Native packages for Stripe, Airtable, AWS and Azure
+- Jira and Linear are available today through the governed [Composio catalog](COMPOSIO.md), so they are not planned as native packages
 
-Expand provider ecosystem with real-world integrations:
-
-- [x] **GitHub** — Repositories, issues, pull requests, releases (v0.1.0-alpha.8)
-- [x] **HubSpot** — CRM, contacts, deals, tickets (v0.1.0-alpha.9)
-- [x] **Notion** — Databases, pages, blocks (v0.1.0-alpha.10)
-- [x] **Twilio** — SMS, MMS, messaging (v0.1.0-alpha.11)
-- [x] **Mailchimp** — Email campaigns, subscribers, lists (v0.1.0-alpha.11)
-- [x] **Bruno CLI** — API testing lifecycle (v0.1.0 stable) ✅
-- [ ] **Stripe** — Payments, invoices, customers, subscriptions
-- [ ] **Linear** — Issues, projects, milestones
-- [ ] **Airtable** — Tables, records, views
-- [ ] **Jira** — Issues, projects, workflows
-- [ ] **AWS** — EC2, S3, Lambda, and core services
-- [ ] **Azure** — VMs, Storage, Functions
-
-**Acceptance Criteria**:
-
-- Each provider has 5+ tools
-- OAuth2 or API key authentication working
-- Comprehensive examples for all patterns
-- Unit tests for parameter validation
-- Integration tests with mocked responses
-
-### Priority 1: Python SDK ✅ SHIPPED (v0.1.0-alpha.14)
-
-Full-featured Python implementation with feature parity — **delivered in v0.1.0-alpha.14**:
-
-- [x] **Python Core SDK** — asyncio-based, Pydantic v2 models (`matimo-core 0.1.0a14`)
-- [x] **YAML Tool Support** — Load same definitions as TypeScript SDK
-- [x] **LangChain Integration** — `convert_tools_to_langchain()` → `StructuredTool` list
-- [x] **CrewAI Integration** — `convert_tools_to_crewai()` → `BaseTool` list
-- [x] **Decorator Pattern** — `@tool('name')` decorators for Python classes
-- [x] **OAuth2 Handler** — Multi-provider authentication
-- [x] **Provider Packages** — `matimo-slack`, `matimo-github`, `matimo-gmail`, etc. (10 providers)
-- [x] **MCP Server** — `create_mcp_server()`, stdio + HTTP transport, Claude Desktop compatible
-- [x] **Skills System** — `get_skills_metadata()`, `semantic_search_skills()`, `build_relevant_skill_prompt()`
-- [x] **Policy Engine** — `DefaultPolicyEngine`, `classify_risk()`, `validate_tool_content()`, approval manifest
-- [x] **Meta-Tools** — 10 agent-callable tools (`matimo_create_tool`, `matimo_validate_tool`, etc.)
-- [x] **Advanced Examples** — 58 files: native (factory/decorator/advanced demos), LangChain, CrewAI
-- [x] **657 tests** — 97.38% coverage (exceeds 95% requirement)
-- [x] **Type hints throughout** — full mypy-compatible annotations
-- [x] **Published on PyPI** — `pip install matimo` or `uv add matimo`
-
-### Priority 3: MCP (Model Context Protocol) Server ✅ SHIPPED (v0.1.0-alpha.12)
-
-Enable Claude and other MCP clients to use Matimo tools:
-
-- [x] **MCP Server** — Dual-transport (stdio + Streamable HTTP) implementation (v0.1.0-alpha.12)
-- [x] **Tool Discovery** — Expose all loaded tools via MCP protocol (v0.1.0-alpha.12)
-- [x] **Tool Execution** — Execute tools through MCP interface with parameter templating (v0.1.0-alpha.12)
-- [x] **Session Management** — Handle MCP client lifecycle with graceful shutdown (v0.1.0-alpha.12)
-- [x] **Authentication** — Pluggable secret resolution (env, dotenv, Vault, AWS) + bearer token auth (v0.1.0-alpha.12)
-- [x] **Claude Integration** — Works with Claude Desktop via `matimo mcp setup` command (v0.1.0-alpha.12)
-- [x] **Comprehensive Examples** — Complete examples for stdio and HTTP transports (v0.1.0-alpha.12)
-- [ ] **Docker Container** — MCP server in Docker for easy deployment (Future)
-
-**Completed in v0.1.0-alpha.12**:
-
-- Dual-transport MCP server (stdio for Claude Desktop, HTTP for remote)
-- Pluggable secret resolution chain (env/dotenv/Vault/AWS)
-- New CLI commands: `matimo mcp` and `matimo mcp setup`
-- Full examples with LangChain integration
-- Comprehensive MCP documentation
-- Security fixes (ReDoS, TLS bypass, HTTP shutdown, flag validation, Zod ordering)
-
-### Priority 4: Logging & Monitoring ✅ SHIPPED (v0.1.0-alpha.14)
-
-- [x] **Structured Logging** — `setup_logger()`, `MatimoLogger`, Winston (TS) / stdlib logging (Python)
-- [x] **Log Levels** — `debug | info | warn | error | silent` with env override (`MATIMO_LOG_LEVEL`)
-- [x] **Log Formats** — Simple (development) and JSON (production) — `MATIMO_LOG_FORMAT`
-- [x] **Global singleton** — `get_global_matimo_logger()` / `set_global_matimo_logger()` (both SDKs)
-- [x] **Secret redaction** — Credentials never appear in logs
+Each new provider should have 5 or more tools, working API-key or OAuth2 authentication, examples for every pattern, and unit tests with mocked responses.
 
 ---
 
-### Priority 5: Skills System ✅ SHIPPED (v0.1.0-alpha.13)
+## Future Phases
 
-- [x] **Skill Registry** — SKILL.md-based skills loaded from `skill_paths`
-- [x] **Built-in SDK Skills** — 6 core skills shipped with `@matimo/core` / `matimo-core`
-- [x] **Provider skill bundles** — Each provider package ships a SKILL.md
-- [x] **TF-IDF semantic search** — `semanticSearchSkills()` / `semantic_search_skills()`
-- [x] **Progressive disclosure** — Level 1 (`getSkillsMetadata`) → Level 2 (`buildRelevantSkillPrompt`)
-- [x] **Agent meta-tools** — `matimo_list_skills`, `matimo_get_skill`, `matimo_create_skill`, `matimo_validate_skill`
-- [x] **MCP resource exposure** — Skills auto-registered as `skills://{name}` resources
+Longer-range ideas, with no committed dates. Treat them as direction, not promises.
 
----
+**Enterprise and DevOps**
+- A REST API server for tool execution, with async jobs, webhooks and multi-tenant support
+- A tool marketplace with publishing, versioning, ratings and usage analytics
+- Docker images, Helm charts, and CloudRun and Lambda deployment templates
 
-## Future Phases (Post-v0.1.0) / Not sure Yet - but trying to be ambitious.
-
-### Phase 2: Enterprise & DevOps (Q3-Q4 2026)
-
-**REST API Server**
-
-- [ ] HTTP API for tool execution
-- [ ] Async job execution and webhooks
-- [ ] OpenAPI/Swagger documentation
-- [ ] Authentication and authorization
-- [ ] Multi-tenant support
-
-**Tool Marketplace**
-
-- [ ] Distributed tool registry
-- [ ] Tool publishing and versioning
-- [ ] Community tool submissions
-- [ ] Tool ratings and reviews
-- [ ] Tool analytics and usage tracking
-
-**Container & Orchestration**
-
-- [ ] Docker images and containers
-- [ ] Kubernetes Helm charts
-- [ ] CloudRun/Lambda deployment templates
-- [ ] CI/CD integration guides
-
-### Phase 3: Ecosystem Maturity (2027+)
-
-**Advanced Features**
-
-- [ ] Schema auto-translation (OpenAPI ↔ Matimo YAML)
-- [ ] Tool auto-generation from specifications
-- [ ] Intelligent tool discovery and recommendations
-- [ ] Enterprise audit logging and compliance
-- [ ] Rate limiting and quota management
-
----
-
-## Timeline Overview
-
-```
-Alpha Phase (✅ Completed — Feb-Apr 2026)
-  v0.1.0-alpha.1  Feb 3, 2026
-  v0.1.0-alpha.2  Feb 4, 2026
-  v0.1.0-alpha.3  Feb 5, 2026
-  v0.1.0-alpha.4  Feb 10, 2026
-  v0.1.0-alpha.5  Feb 11, 2026
-  v0.1.0-alpha.6  Feb 13, 2026
-  v0.1.0-alpha.7  Feb 15, 2026  (Postgres tools)
-  v0.1.0-alpha.8  Feb 18, 2026  (GitHub tools, unified approval)
-  v0.1.0-alpha.9  Feb 19, 2026  (HubSpot tools)
-  v0.1.0-alpha.10 Feb 21, 2026  (Notion tools)
-  v0.1.0-alpha.11 Feb 27, 2026  (Twilio & Mailchimp tools)
-  v0.1.0-alpha.12   Mar 11, 2026  (🚀 MCP Server — stdio + HTTP, secrets, Claude integration)
-  v0.1.0-alpha.12.1 Mar 12, 2026  (🔑 Per-execution credential override, getRequiredCredentials(), Changesets release workflow)
-  v0.1.0-alpha.13   Mar 22, 2026  (🧠 Skills system, policy engine, 10 meta-tools, HITL quarantine, security hardening)
-  v0.1.0-alpha.14   Apr 10, 2026  (🐍 Python SDK — LangChain, CrewAI, MCP, 995 tests, 96.89% coverage)
-
-v0.1.0 Stable Release (✅ Released — May 1, 2026)
-  ✅ Production-Ready GA:
-    - 137+ tools across 10 providers
-    - Bruno CLI provider (7 new tools)
-    - 2 new meta-tools (matimo_get_tool, matimo_search_tools)
-    - HITL enhancements (timeout, TTL)
-    - 2996 total tests passing (2001 TS + 995 Python)
-    - 5 critical security patches
-    - Full TypeScript + Python SDK parity
-    - Comprehensive documentation and examples
-
-v0.1.1 Patch Release (📅 Planned — Q3 2026)
-  Priorities:
-    - Skills meta-tools (matimo_search_skills, matimo_get_skill_sections, matimo_get_skill_content) ✅ Shipped
-    - Dynamic tool filtering for context window management
-    - Additional provider enhancements
-
-  v0.1.0-rc.1     Late March 2026
-  v0.1.0          March 2026 ← Stable Release
-
-Post-Release (🎯 Future)
-  Phase 2: Enterprise             Q3-Q4 2026
-  Phase 3: Ecosystem Maturity     2027+
-```
-
-**Realistic Estimate**:
-
-- **3-4 weeks per priority** depending on scope
-- v0.1.0 stable release: **~6 weeks from now** (Late-March 2026)
-- Total from alpha.1 to v0.1.0: ~8 weeks in rapid iteration
-
----
+**Ecosystem maturity**
+- Schema auto-translation between OpenAPI and Matimo YAML, and tool generation from specifications
+- Intelligent tool discovery and recommendations
+- Enterprise audit logging and compliance reporting
+- Rate limiting and quota management
 
 ---
 
 ## How to Contribute
 
-We welcome contributions at any level!
+We welcome contributions at any level.
 
 - **Report Issues**: [GitHub Issues](https://github.com/tallclub/matimo/issues)
-- **Feature Requests**: [GitHub Discussions](https://github.com/tallclub/matimo/discussions)
-- **Submit Code**: [Contributing Guide](../CONTRIBUTING.md)
-- **Suggest Tools**: Propose new provider integrations you need
+- **Feature Requests and Questions**: [GitHub Discussions](https://github.com/tallclub/matimo/discussions)
+- **Submit Code**: [Contributing Guide](https://github.com/tallclub/matimo/blob/main/CONTRIBUTING.md)
+- **Suggest Tools**: Propose provider integrations you need
 - **Documentation**: Help improve guides and examples
-- **Testing**: Help test features and report edge cases
 
----
-
-## Questions & Feedback
-
-- **Technical Questions**: [GitHub Discussions](https://github.com/tallclub/matimo/discussions)
-- **Report Bugs**: [GitHub Issues](https://github.com/tallclub/matimo/issues)
-- **Feature Ideas**: [GitHub Discussions - Ideas](https://github.com/tallclub/matimo/discussions/categories/ideas)
-- **Contact**: Visit [tallclub/matimo](https://github.com/tallclub/matimo)
-
-### ✅ Core Features Implemented
-
-**Unified Core Tools Architecture**
-
-- **Function-based execution model** for all core tools (no subprocess spawning)
-- Eliminated `tsx` PATH dependency
-- All core tools use direct async function calls for better performance
-- Native exception throwing and error handling
-
-**Expanded Core Tools Suite**
-
-- `execute` — Shell command execution with timeout, cwd, and environment control
-- `read` — File reading with line range support and encoding detection
-- `edit` — File editing/replacement with backup support
-- `search` — File pattern searching with grep and context display
-- `web` — Web content fetching and parsing
-- `calculator` — Refactored to function-type for consistency
-
-**Execution Models**
-
-- Function-type tools (direct calls, recommended for SDK)
-- Command-type tools (still supported for external commands)
-- HTTP tools (powered by HttpExecutor with OAuth2)
-- Unified dispatcher for all execution types
-
-**Schema & Tool Loading**
-
-- Enhanced ToolDefinitionSchema with better validation
-- Default parameter support in YAML definitions
-- Improved tool caching for faster discovery
-- Provider auto-discovery with efficient lookup
-- Stricter schema validation (removed passthrough)
-
-**Examples & Integration Patterns**
-
-- Complete examples for all 6 core tools
-- Factory pattern examples (direct execution)
-- Decorator pattern examples (class-based @tool)
-- LangChain pattern examples (AI agent integration)
-- All patterns tested and working
-
-**Quality & Reliability**
-
-- 625+ test suite with 100% pass rate
-- Comprehensive unit tests for all core tools
-- Build and lint issues resolved
-- Full TypeScript strict mode
-- Zero external command dependencies
-
-**Developer Experience**
-
-- Cleaner tool structure under `packages/core/tools/`
-- commitlint support for 'example' commit type
-- Simplified error handling patterns
-- Better debugging with native exceptions
-
----
-
-## How to Use This Roadmap
-
-- **Current Version**: v0.1.0-alpha.13 (March 22, 2026)
-- **Future Releases**: See sections above for planned features
-- **Past Releases**: See [RELEASES.md](./RELEASES.md) for detailed release notes for all previous versions
-- **Contributing**: See [CONTRIBUTING.md](https://github.com/tallclub/matimo/blob/main/CONTRIBUTING.md) for how to help
-
----
-
-## Contributing to the Roadmap
-
-Have ideas? [Open a GitHub Discussion](https://github.com/tallclub/matimo/discussions) to propose features for future releases.
+Have an idea for the roadmap? [Open a GitHub Discussion](https://github.com/tallclub/matimo/discussions).

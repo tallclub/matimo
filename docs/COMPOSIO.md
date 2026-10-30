@@ -8,6 +8,8 @@ nav_order: 4
 
 `@matimo/composio` turns [Composio](https://composio.dev)'s 250+ integrations from "agent has raw API access" into "agent has governed, auditable, human-approvable API access" — same breadth, with Matimo's policy engine, risk classification, and human-in-the-loop (HITL) approval layered on top.
 
+> **TypeScript only.** `@matimo/composio` ships for the TypeScript SDK (`npm install @matimo/composio`). There is no Python package for it yet.
+
 > **Bring your own key.** Every tool here requires *your own* `COMPOSIO_API_KEY` and Composio connected accounts, supplied at runtime — Matimo does not hold a Composio account or route requests through Matimo-operated infrastructure. You're responsible for complying with [Composio's Terms of Service](https://composio.dev/terms) and [Privacy Policy](https://composio.dev/privacy) independently. Matimo is not affiliated with, endorsed by, or sponsored by Composio. See [`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md) for the full list of third-party providers Matimo can connect to.
 
 ---
@@ -70,7 +72,7 @@ Every generated tool is `type: http` — no custom executor code. `@matimo/compo
 | `googleforms` | `composio_googleforms_*` | 7 | `create_form`, `get_response`, `list_responses` |
 | `googlemeet` | `composio_googlemeet_*` | 9 | `create_meet`, `list_conference_records`, `get_transcripts_by_conference_record_id` |
 
-**Total: 449 tools** across 14 toolkits (as of v0.1.7). Add more toolkits by running the generator — see [Generating More Toolkits](#generating-more-toolkits).
+**Total: 449 tools** across 14 toolkits (as of 0.3.0). Add more toolkits by running the generator, see [Generating More Toolkits](#generating-more-toolkits).
 
 ---
 
@@ -87,6 +89,8 @@ All 449 tools share the same three required inputs:
 `composio_connected_account_id` is obtained when a user completes the Composio OAuth flow ("Connect Jira", "Connect Google Drive", etc.). Your application is responsible for storing and retrieving the correct account ID per user per toolkit — this is out of scope for `@matimo/composio`.
 
 ---
+
+Every tool also takes an optional `composio_toolkit_version` (default `latest`, new in 0.3.0). It is sent to Composio as `version`. Without it Composio v3 runs the stale base version `00000000_00`, which can call upstream APIs that no longer exist. Pass a dated version such as `20251027_00` to pin one.
 
 ## Quick Start
 

@@ -26,12 +26,12 @@ jobs:
         working-directory: python
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@caf0cab7a618c569241d31dcd442f54681755d39  # v3
         with:
-          version: "latest"
+          version: "0.11.33"
 
       - name: Set up Python ${{ matrix.python-version }}
         run: uv python install ${{ matrix.python-version }}
@@ -53,7 +53,7 @@ jobs:
 
       - name: Upload coverage
         if: matrix.python-version == '3.11'
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238  # v4
         with:
           files: python/coverage.xml
           flags: python-sdk

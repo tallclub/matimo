@@ -6,6 +6,53 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
+## [0.4.0] - 2026-10-30
+
+TypeScript and Python now share one version number: TypeScript moves from 0.3.0 and Python from 0.2.0, both to 0.4.0. Python has no 0.3.0. Security hardening from a repository audit. Read the behaviour changes before upgrading.
+
+### ⚠️ Behaviour changes
+- MCP HTTP servers (both SDKs) bind `127.0.0.1` by default instead of all interfaces. Containers and remote clients need `--host 0.0.0.0` (`host` / `host=` option) and should use HTTPS
+- Python's MCP HTTP server now requires a bearer token like the TypeScript one: it reads `MATIMO_MCP_TOKEN`, or generates a token and prints it to stderr. It used to run unauthenticated when no token was passed
+- TypeScript `execute` runs the command without a shell (`execFile`), as the Python tool already did. Shell builtins such as `dir` and `echo` are not available on Windows. Newline, CR and NUL are rejected
+- Network tools (`web`, `web_scraper`, `extract_from_file`) and HTTP tools refuse hostnames that resolve to internal addresses. Set `MATIMO_ALLOW_PRIVATE_DNS=true` if a tool must reach an internal service by DNS name
+- A function tool's `execution.code` must stay inside the tool's directory
+- Python MCP server now requires `mcp>=2.0` (the `matimo[mcp]` extra, `matimo-cli` and `matimo-core` pins moved from `>=1.28.1`). The mcp 1.x decorator-based code path is removed. Run `pip install -U "mcp>=2.0"` if you installed `mcp` 1.x yourself. The TypeScript server is unchanged (`@modelcontextprotocol/sdk` has no 2.x release)
+
+### 🔒 Security
+- SSRF check: blocks all of `127.0.0.0/8`, IPv4-mapped and NAT64 IPv6, unique-local and link-local IPv6 (including `fd00:ec2::254`), `100.64.0.0/10`, `[::]`, trailing-dot hosts and legacy numeric hosts. The four separate copies of the check now share one classifier
+- Redirects are re-validated on every hop; TypeScript also pins the connection to the address it checked
+- The `web` tool had no SSRF check at all; it has one now
+- Python `postgres-execute-sql` interpolated `schema` into `SET search_path`; it is now a bound parameter
+- Approval is now requested for SQL that reaches files, the OS or other servers (`COPY`, `pg_read_file`, `lo_export`, `dblink`, `DO $$`, `CALL`, ...)
+- Dependencies: `undici` override raised from an exact `8.11.2` to `>=8.12.2`, plus `body-parser`, `zod`, `@azure/msal-node`; `python/examples/mcp` lockfile upgraded (`aiohttp`, `mcp`, `pillow`, `pyjwt`, `pypdf`, `urllib3`, ...)
+- CodeQL findings fixed: a ReDoS in SSRF host normalisation and unescaped quotes in diagram attributes
+- Python: `certifi` bumped to 2026.10.23 (PYSEC-2026-4320)
+- Known and unfixed: `chromadb` (via `crewai`, optional extra only) has advisories with no fixed release
+
+### ✨ Features
+- `MATIMO_FILE_ROOTS` confines `read`, `edit`, `search`, `convert_to_file` and `extract_from_file` to listed directories, resolving symlinks. Off unless set
+- `MATIMO_POSTGRES_SSL` (`disable`, `require`, `verify-ca`, `verify-full`) for the Postgres tool
+- `matimo mcp --host`
+
+### 🐛 Fixes
+- `pnpm validate-tools` no longer fails when pnpm hoists js-yaml 5.x (#196)
+- TypeScript approval manifest: saving could fail on Windows with `EPERM` when two writers renamed over `.matimo-approvals.json` at once. Temp names are now unique, the rename retries on `EPERM`/`EBUSY`/`EACCES`, and a failed save removes its temp file
+- TypeScript examples `policy:demo`, `skills:demo` and `meta:flow` sent all 153 tools to OpenAI on Windows (limit 128) because their provider-tool filter only matched `/` in paths. It now matches both `/` and `\` separators
+
+- `execute` (both SDKs) ignored its declared `args`, so `{command: 'node', args: ['-v']}` ran bare `node` until the timeout. `args` is now appended to the command, one argument each. The declared `shell` parameter was never read; it now works as an explicit opt-in. `execute` still runs without a shell by default. With `shell` set, the command runs through that shell (`-c`, `/c` for `cmd`, `-Command` for PowerShell), `args` become `$1`, `$2`, ... for POSIX shells, and the metacharacter filter does not apply. **Every call with a `shell` needs a human decision**: `MATIMO_AUTO_APPROVE`, `MATIMO_APPROVED_PATTERNS` (even `*`), and the `approved` flag (including the MCP server's `trustClientApproval`) are ignored for it, and with no approval callback configured the call is refused
+- Python `execute` now matches TypeScript: output is trimmed, a spawn failure reports exit code 1, the quote-aware splitter is shared in behaviour, newline/CR/NUL are rejected, and errors are `MatimoError(INVALID_PARAMETER)` instead of `ValueError`
+- TypeScript `extract_from_file` could not read PDFs written by `convert_to_file` ("bad XRef entry"): `pdf-parse` 1.1.4's bundled pdf.js rejects pdfkit output on every pdfkit version. PDF text is now read with `unpdf`
+- Python `matimo_list_skills` returned 0 skills unless the caller registered the instance with `set_global_matimo_instance`. A function tool now sees the instance that is executing it, which also fixes the other skill meta-tools, `matimo_reload_tools`, `matimo_search_tools` and the approval tools
+- `@matimo/bruno` no longer depends on `@usebruno/cli`, which it never imported (it runs the `bru` binary on PATH, documented as a global install). This removes the 13 `npm audit` findings (9 high) that installing the package pulled in. Install the CLI yourself with `npm install -g @usebruno/cli`
+
+### 🔧 Maintenance
+- matimo.dev and the docs are rebuilt as one Astro Starlight site, with use-case guides, a privacy notice and opt-in analytics
+- HubSpot: the OAuth token endpoint points at the real token URL and every tool declares its auth env var notes
+- Docs, website pages, READMEs, examples and Colab notebooks checked against the source and updated: the `execute` `args`/`shell` behaviour and its mandatory approval, Python meta-tools no longer needing `set_global_matimo_instance`, the Bruno CLI no longer being bundled, the MCP `127.0.0.1` default and `mcp>=2.0`, and the 0.4.0 safeguards (`MATIMO_FILE_ROOTS`, `MATIMO_ALLOW_PRIVATE_DNS`, `MATIMO_POSTGRES_SSL`, broader SQL approval). Corrected tool counts (153 with every native provider, 24 core), test counts and version references; removed a non-existent Python MCP class, tool names, environment variables and a `validation:` YAML block from the docs; documented that `error_handling` retries are not applied yet; and brought `docs/` level with the more recent website pages. Notebook install cells now require `matimo>=0.4.0`
+- Python MCP tests run against the real mcp 2.x SDK (in-memory client), and the legacy mcp 1.x tests are gone
+- Every GitHub Action pinned to a commit SHA; `tool-validation.yml` brought off v2/v3 actions; CI fails on high-severity `pnpm audit` and `pip-audit` findings
+
+---
 ## [typescript/v0.3.0] - 2026-10-13
 
 Node 22.19 or newer is now required. Node 18 and 20 are no longer supported.

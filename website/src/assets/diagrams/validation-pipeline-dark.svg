@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 740 690" width="740" height="690" role="img" aria-label="Validation pipeline: parse the YAML, validate against the Zod schema, validate authentication, execution and parameters, and produce a validated ToolDefinition.">
+  <title>Validation pipeline: parse the YAML, validate against the Zod schema, validate authentication, execution and parameters, and produce a validated ToolDefinition.</title>
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1 L9 5 L1 9 z" fill="#9a9aa8"/></marker>
+    <style>
+      .bg { fill: #0b0b10; }
+      .box { fill: #14141b; stroke: #2a2a35; stroke-width: 1.2; }
+      .box.accent { fill: #1a0f15; stroke: #ff3d7f; stroke-width: 1.4; }
+      .box.ok { fill: #0f1a15; stroke: #3ddc97; stroke-width: 1.3; }
+      .box.bad { fill: #1a1010; stroke: #ff5c5c; stroke-width: 1.3; }
+      .chip { fill: #1b1b24; stroke: #2a2a35; stroke-width: 1; }
+      .pill { fill: #1b1b24; stroke: #2a2a35; stroke-width: 1; }
+      .pill.ok { stroke: #3ddc97; } .pill.bad { stroke: #ff5c5c; }
+      .h { font: 650 15.5px 'Inter Variable', Inter, system-ui, 'Segoe UI', sans-serif; fill: #ececf1; }
+      .h.accent { fill: #ff7aa8; } .h.ok { fill: #7ae7b9; } .h.bad { fill: #ff8a8a; }
+      .hs { font: 650 14px 'Inter Variable', Inter, system-ui, 'Segoe UI', sans-serif; fill: #ececf1; }
+      .t { font: 400 13.5px 'Inter Variable', Inter, system-ui, 'Segoe UI', sans-serif; fill: #c4c4d0; }
+      .sub { fill: #9a9aa8; }
+      .m { font: 400 12.5px 'JetBrains Mono Variable', ui-monospace, Menlo, Consolas, monospace; fill: #c4c4d0; }
+      .pt { font: 600 12px 'Inter Variable', Inter, system-ui, 'Segoe UI', sans-serif; fill: #c4c4d0; }
+      .pt.ok { fill: #7ae7b9; } .pt.bad { fill: #ff8a8a; }
+      .ln { stroke: #9a9aa8; stroke-width: 1.5; fill: none; }
+    </style>
+  </defs>
+  <rect class="bg" width="740" height="690" rx="18"/>
+  <rect class="box" x="20" y="20" width="700" height="48" rx="12"/><text class="h" x="38" y="49">YAML file</text><path class="ln" d="M370 68 V94" marker-end="url(#ar)"/><rect class="box" x="20" y="94" width="700" height="48" rx="12"/><text class="h" x="38" y="123">Parse YAML</text><path class="ln" d="M370 142 V168" marker-end="url(#ar)"/><rect class="box" x="20" y="168" width="700" height="67" rx="12"/><text class="h" x="38" y="197">Validate against the Zod schema</text><text class="t" x="38" y="220">Required fields, types, enums</text><path class="ln" d="M370 235 V261" marker-end="url(#ar)"/><rect class="box" x="20" y="261" width="700" height="88" rx="12"/><text class="h" x="38" y="290">Validate authentication (if OAuth2)</text><text class="t" x="38" y="313">Provider exists</text><text class="t" x="38" y="334">Endpoints are URLs</text><path class="ln" d="M370 349 V375" marker-end="url(#ar)"/><rect class="box" x="20" y="375" width="700" height="88" rx="12"/><text class="h" x="38" y="404">Validate execution</text><text class="t" x="38" y="427">Type is 'http', 'function' or 'command'</text><text class="t" x="38" y="448">Required fields for the type</text><path class="ln" d="M370 463 V489" marker-end="url(#ar)"/><rect class="box" x="20" y="489" width="700" height="88" rx="12"/><text class="h" x="38" y="518">Validate parameters</text><text class="t" x="38" y="541">Types match</text><text class="t" x="38" y="562">Required fields present</text><path class="ln" d="M370 577 V603" marker-end="url(#ar)"/><rect class="box ok" x="20" y="603" width="700" height="67" rx="12"/><text class="h ok" x="38" y="632">ToolDefinition</text><text class="t" x="38" y="655">validated</text>
+</svg>

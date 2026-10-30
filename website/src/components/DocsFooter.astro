@@ -1,0 +1,22 @@
+---
+import Default from '@astrojs/starlight/components/Footer.astro';
+---
+<Default {...Astro.props}><slot /></Default>
+<p class="legal-links" data-consent-footer hidden>
+  <a href="/privacy/">Privacy</a>
+  <button type="button" data-consent-open>Analytics settings</button>
+</p>
+<script>
+  // Shown only when analytics is configured for this build (the consent script defines matimoAnalytics).
+  const w = window as unknown as { matimoAnalytics?: { open: () => void } };
+  const box = document.querySelector<HTMLElement>('[data-consent-footer]');
+  if (box && w.matimoAnalytics) {
+    box.hidden = false;
+    box.querySelector('[data-consent-open]')?.addEventListener('click', () => w.matimoAnalytics?.open());
+  }
+</script>
+<style>
+  .legal-links { display: flex; gap: 1.2rem; justify-content: center; margin-top: 1rem; font-size: var(--sl-text-sm); color: var(--sl-color-gray-3); }
+  .legal-links a, .legal-links button { color: inherit; background: none; border: 0; padding: 0; font: inherit; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+  .legal-links a:hover, .legal-links button:hover { color: var(--sl-color-white); }
+</style>

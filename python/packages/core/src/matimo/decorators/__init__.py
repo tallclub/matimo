@@ -13,6 +13,7 @@ Usage:
 from __future__ import annotations
 
 import asyncio
+import contextvars
 import functools
 import inspect
 import logging
@@ -25,6 +26,11 @@ if TYPE_CHECKING:
 logger = logging.getLogger("matimo")
 
 _global_instance: Matimo | None = None
+# The instance currently dispatching a function tool; lets meta-tools reach their
+# owner without the caller registering it globally.
+_executing_instance: contextvars.ContextVar[Matimo | None] = contextvars.ContextVar(
+    "matimo_executing_instance", default=None
+)
 
 
 def set_global_matimo_instance(instance: Matimo) -> None:
@@ -34,8 +40,11 @@ def set_global_matimo_instance(instance: Matimo) -> None:
 
 
 def get_global_matimo_instance() -> Matimo | None:
-    """Return the current global Matimo instance."""
-    return _global_instance
+    """
+    Return the Matimo instance in effect: the one executing the current function
+    tool if any, otherwise the instance registered via set_global_matimo_instance().
+    """
+    return _executing_instance.get() or _global_instance
 
 
 def tool(tool_name: str) -> Callable[[Callable[..., Any]], Callable[..., Any]]:

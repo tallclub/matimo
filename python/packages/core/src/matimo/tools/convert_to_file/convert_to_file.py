@@ -27,6 +27,7 @@ from reportlab.platypus import ListFlowable, ListItem, SimpleDocTemplate, Spacer
 from reportlab.platypus import Paragraph as PdfParagraph
 
 from matimo.errors import ErrorCode, MatimoError
+from matimo.policy.file_roots import enforce_file_roots
 
 SOURCE_FORMATS = ("json", "csv", "markdown", "text")
 TARGET_FORMATS = ("pdf", "docx", "csv", "json", "txt")
@@ -56,7 +57,7 @@ def _resolve_local_path(file_path: str) -> Path:
     """Expand ~ and resolve relative paths, mirroring the `read` / `extract_from_file` core tools."""
     if file_path.startswith("~"):
         file_path = str(Path.home()) + file_path[1:]
-    return Path(file_path).resolve()
+    return enforce_file_roots(Path(file_path).resolve())
 
 
 # ── CSV helpers (stdlib csv module — mirrors extract_from_file's approach of

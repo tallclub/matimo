@@ -721,4 +721,54 @@ describe('FunctionExecutor', () => {
       expect((result as Record<string, unknown>).input).toEqual({ test: 'data' });
     });
   });
+
+  describe('code path confinement', () => {
+    const base = {
+      name: 'escape-test',
+      description: 'Tries to load code outside its directory',
+      version: '1.0.0',
+      parameters: {},
+    };
+
+    it.each(['../outside.ts', './../../outside.js', '../../../etc/passwd.js'])(
+      'refuses relative escape %s',
+      async (code) => {
+        const executor = new FunctionExecutor();
+        const tool = {
+          ...base,
+          _definitionPath: '/tools/escape-test/definition.yaml',
+          execution: { type: 'function', code, timeout: 5000 },
+        } as ToolDefinition;
+        const result = (await executor.execute(tool, {})) as Record<string, unknown>;
+        expect(result.success).toBe(false);
+        expect(String(result.error)).toContain('must stay inside the tool directory');
+      }
+    );
+
+    it('refuses an absolute path outside the tool directory', async () => {
+      const executor = new FunctionExecutor();
+      const outside = process.platform === 'win32' ? 'C:/Windows/evil.js' : '/tmp/evil.js';
+      const tool = {
+        ...base,
+        _definitionPath: '/tools/escape-test/definition.yaml',
+        execution: { type: 'function', code: outside, timeout: 5000 },
+      } as ToolDefinition;
+      const result = (await executor.execute(tool, {})) as Record<string, unknown>;
+      expect(result.success).toBe(false);
+      expect(String(result.error)).toContain('must stay inside the tool directory');
+    });
+
+    it('still allows a file inside the tool directory', async () => {
+      const executor = new FunctionExecutor();
+      const tool = {
+        ...base,
+        _definitionPath: '/tools/escape-test/definition.yaml',
+        execution: { type: 'function', code: './index.ts', timeout: 5000 },
+      } as ToolDefinition;
+      const result = (await executor.execute(tool, {})) as Record<string, unknown>;
+      // Fails on import (file does not exist), not on confinement.
+      expect(result.success).toBe(false);
+      expect(String(result.error)).not.toContain('must stay inside');
+    });
+  });
 });

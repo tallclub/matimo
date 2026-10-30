@@ -36,7 +36,7 @@ Expose your Matimo tools to AI assistants via the [Model Context Protocol](https
 
 ## SDK Selection: TypeScript vs Python
 
-**Both TypeScript and Python SDKs are fully supported with 100% feature parity.**
+**Both TypeScript and Python SDKs serve MCP; the known differences are listed in the release notes.**
 
 | Feature | TypeScript | Python |
 |---------|-----------|--------|
@@ -60,7 +60,7 @@ Expose your Matimo tools to AI assistants via the [Model Context Protocol](https
 Both have identical capabilities and security features. Choose based on your language preference.
 
 **Implementation details:**
-- **TypeScript:** `typescript/packages/core/mcp/` — see [mcp-server.ts](https://github.com/tallclub/matimo/blob/main/typescript/packages/core/src/mcp/mcp-server.ts)
+- **TypeScript:** `typescript/packages/core/src/mcp/`, see [mcp-server.ts](https://github.com/tallclub/matimo/blob/main/typescript/packages/core/src/mcp/mcp-server.ts)
 - **Python:** `python/packages/core/src/matimo/mcp/` — see [README.md](../python/packages/core/src/matimo/mcp/README.md)
 
 ---
@@ -216,16 +216,12 @@ export NOTION_API_KEY=ntn_your-key
 export MATIMO_HUBSPOT_API_KEY=pat-your-key
 
 # PostgreSQL
-export MATIMO_POSTGRES_HOST=localhost
-export MATIMO_POSTGRES_PORT=5432
-export MATIMO_POSTGRES_USER=your-user
-export MATIMO_POSTGRES_PASSWORD=your-password
-export MATIMO_POSTGRES_DB=your-database
+export MATIMO_POSTGRES_URL=postgresql://your-user:your-password@localhost:5432/your-database
+# or MATIMO_POSTGRES_HOST, _PORT, _USER, _PASSWORD and _DB
 
 # Twilio
 export TWILIO_ACCOUNT_SID=AC...
 export TWILIO_AUTH_TOKEN=your-auth-token
-export TWILIO_FROM_NUMBER=+1234567890
 
 # Mailchimp
 export MAILCHIMP_API_KEY=your-key-us1
@@ -246,17 +242,17 @@ Sample output:
 
 Scanning for installed tool packages...
 
-Found 21 tools across 2 package(s):
+Found 22 tools across 2 package(s):
 
-  📦 slack (15 tools)
+  📦 slack (16 tools)
      • slack_send_channel_message
-     • slack_list_channels
+     • slack-list-channels
      • slack_get_channel_history
      • slack_search_messages
      • slack_send_dm
-     ... and 10 more
+     ... and 11 more
 
-  📦 gmail (4 tools)
+  📦 gmail (6 tools)
      • gmail-send-email
      • gmail-list-messages
      • gmail-get-message
@@ -311,7 +307,7 @@ Found 21 tools across 2 package(s):
 4. Restart Claude Desktop
 5. Look for the 🔨 tools icon in the chat — your Matimo tools should appear
 
-> **Important:** Claude Desktop runs commands from the root directory (`/`), not your project folder. If your tools aren't detected, add `"MATIMO_CWD": "/path/to/your/project"` to the `env` block to tell Matimo where to find your `node_modules`.
+> **Important:** Claude Desktop can start commands from the root directory (`/`), not your project folder. Matimo looks for `@matimo/*` packages in the `node_modules` above the working directory first, then above where `@matimo/core` itself is installed, so install `@matimo/cli` and the tool packages in the same project and it will still find them. If tools still aren't detected, point at your own tool folders with `"args": ["matimo", "mcp", "--tool-paths", "/path/to/your/tools"]`. There is no `MATIMO_CWD` setting.
 
 ### Cursor
 
@@ -512,9 +508,12 @@ Configure your MCP client:
 | `@matimo/gmail` | Send email, list messages, read messages, create drafts, delete | `GMAIL_ACCESS_TOKEN` |
 | `@matimo/notion` | Pages, databases, blocks, search | `NOTION_API_KEY` |
 | `@matimo/hubspot` | Contacts, companies, deals, tickets, engagements | `MATIMO_HUBSPOT_API_KEY` |
-| `@matimo/postgres` | Execute SQL queries (read + write) | `MATIMO_POSTGRES_HOST`, `_PORT`, `_USER`, `_PASSWORD`, `_DB` |
-| `@matimo/twilio` | Send SMS/MMS, manage messages | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER` |
+| `@matimo/postgres` | Execute SQL queries (read + write) | `MATIMO_POSTGRES_URL`, or `MATIMO_POSTGRES_HOST`, `_PORT`, `_USER`, `_PASSWORD`, `_DB` |
+| `@matimo/twilio` | Send SMS/MMS, manage messages | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` |
 | `@matimo/mailchimp` | Audiences, subscribers, campaigns | `MAILCHIMP_API_KEY` |
+| `@matimo/microsoft` | Graph search, files, mail, Teams, calendar, SharePoint | `MICROSOFT_GRAPH_ACCESS_TOKEN` |
+| `@matimo/bruno` | Create, import and run Bruno API collections | none, but the `bru` CLI must be on PATH (`npm install -g @usebruno/cli`) |
+| `@matimo/composio` | 449 governed Composio tools across 14 toolkits | `COMPOSIO_API_KEY`, plus a Composio user or connected account per call |
 
 ### Auto-Discovery Mechanism
 
@@ -532,17 +531,21 @@ When you call `MatimoInstance.init(autoDiscover: true)` or `Matimo.init(auto_dis
 
 | Provider | Tool Count | Status |
 |----------|-----------|--------|
-| **Core** | 136 | Included by default |
+| **Core** (9 built-in + 15 meta-tools) | 24 | Included by default |
 | `@matimo/slack` (or `matimo-slack`) | 16 | Requires `@matimo/slack` package + `SLACK_BOT_TOKEN` |
 | `@matimo/github` (or `matimo-github`) | 22 | Requires `@matimo/github` package + `GITHUB_TOKEN` |
-| `@matimo/gmail` (or `matimo-gmail`) | 5 | Requires `@matimo/gmail` package + `GMAIL_ACCESS_TOKEN` |
+| `@matimo/gmail` (or `matimo-gmail`) | 6 | Requires `@matimo/gmail` package + `GMAIL_ACCESS_TOKEN` |
 | `@matimo/notion` (or `matimo-notion`) | 7 | Requires `@matimo/notion` package + `NOTION_API_KEY` |
-| `@matimo/postgres` (or `matimo-postgres`) | 1 | Requires `@matimo/postgres` package + `MATIMO_POSTGRES_*` |
-| `@matimo/twilio` (or `matimo-twilio`) | 4 | Requires `@matimo/twilio` package + `TWILIO_*` |
+| `@matimo/postgres` (or `matimo-postgres`) | 1 | Requires `@matimo/postgres` package + `MATIMO_POSTGRES_URL` or `MATIMO_POSTGRES_*` |
+| `@matimo/twilio` (or `matimo-twilio`) | 4 | Requires `@matimo/twilio` package + `TWILIO_ACCOUNT_SID` and `TWILIO_AUTH_TOKEN` |
 | `@matimo/hubspot` (or `matimo-hubspot`) | 50 | Requires `@matimo/hubspot` package + `MATIMO_HUBSPOT_API_KEY` |
 | `@matimo/mailchimp` (or `matimo-mailchimp`) | 7 | Requires `@matimo/mailchimp` package + `MAILCHIMP_API_KEY` |
-| **Total (all providers installed)** | **248** | — |
-| **Total (default, core only)** | **136** | — |
+| `@matimo/microsoft` (or `matimo-microsoft`) | 9 | Requires `@matimo/microsoft` package + `MICROSOFT_GRAPH_ACCESS_TOKEN` |
+| `@matimo/bruno` (or `matimo-bruno`) | 7 | Requires `@matimo/bruno` package and the `bru` CLI on PATH |
+| **Total (all native providers installed)** | **153** | 129 provider tools + 24 core |
+| **Total (default, core only)** | **24** | n/a |
+
+`@matimo/composio` adds another 449 tools when installed. That is too many to expose to most clients, so use `--tools` to pick a subset.
 
 #### TypeScript Example
 
@@ -626,6 +629,7 @@ matimo mcp setup              Run the setup wizard
 |------|-------|---------|-------------|
 | `--transport` | `-t` | `stdio` | Transport mode: `stdio` or `http` |
 | `--port` | `-p` | `3000` | HTTP port (only with `--transport http`) |
+| `--host` | | `127.0.0.1` | Interface to bind (only with `--transport http`). Use `0.0.0.0` in containers or for remote clients, and then use HTTPS |
 | `--tools` | | all | Comma-separated allowlist of tool names |
 | `--exclude` | | none | Comma-separated denylist of tool names |
 | `--token` | | auto | Bearer token for HTTP mode. Auto-generated if not set. Also reads `MATIMO_MCP_TOKEN` env var. |
@@ -638,6 +642,7 @@ matimo mcp setup              Run the setup wizard
 | `--vault-path` | | `secret/data/matimo` | Vault KV v2 path (with `--secrets vault`) |
 | `--aws-secret-id` | | `matimo/credentials` | AWS Secrets Manager ID (with `--secrets aws`) |
 | `--tool-paths` | | auto | Comma-separated paths to tool directories |
+| `--skill-paths` | | auto | Comma-separated paths to skill directories |
 
 ### Examples
 
@@ -649,10 +654,10 @@ npx matimo mcp
 npx matimo mcp --transport http --port 8080
 
 # Only expose specific tools
-npx matimo mcp --tools slack_send_channel_message,slack_list_channels
+npx matimo mcp --tools slack_send_channel_message,slack-list-channels
 
 # Expose everything except Postgres tools
-npx matimo mcp --exclude postgres_execute_sql
+npx matimo mcp --exclude postgres-execute-sql
 
 # HTTP with explicit bearer token
 npx matimo mcp --transport http --token my-secret-token
@@ -738,7 +743,6 @@ Known gaps against the spec (tracked for a future release):
 | Gap | Spec requirement | Impact |
 |-----|-----------------|--------|
 | `Origin` header not validated | [Spec §2.0.1](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#security-warning): servers **MUST** validate `Origin` to prevent DNS rebinding | Local-only servers using `--self-signed` are lower risk; production servers behind a reverse proxy should add `Origin` validation at the proxy layer |
-| Binds to all interfaces (`0.0.0.0`) | Spec §2.0.1: servers **SHOULD** bind to `127.0.0.1` when running locally | Avoid exposing the port publicly without a firewall rule or reverse proxy |
 | `MCP-Protocol-Version` header not enforced | [Spec §2.7](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#protocol-version-header): invalid version must return `400` | No impact with current MCP SDK clients; all known clients send a valid version |
 
 ### HTTPS
@@ -790,7 +794,8 @@ RUN npm install -g @matimo/core @matimo/cli @matimo/slack @matimo/github
 
 EXPOSE 3000
 
-CMD ["matimo", "mcp", "--transport", "http", "--port", "3000", "--self-signed"]
+# Bind all interfaces inside the container; the default is loopback only
+CMD ["matimo", "mcp", "--transport", "http", "--host", "0.0.0.0", "--port", "3000", "--self-signed"]
 ```
 
 ```bash
@@ -902,19 +907,19 @@ npx matimo mcp --secrets env,aws
 ### Allowlist — only expose specific tools
 
 ```bash
-npx matimo mcp --tools slack_send_channel_message,slack_list_channels
+npx matimo mcp --tools slack_send_channel_message,slack-list-channels
 ```
 
 ### Denylist — expose everything except certain tools
 
 ```bash
-npx matimo mcp --exclude postgres_execute_sql
+npx matimo mcp --exclude postgres-execute-sql
 ```
 
 ### Both — allowlist first, then denylist filters the result
 
 ```bash
-npx matimo mcp --tools slack_send_channel_message,slack_delete_message --exclude slack_delete_message
+npx matimo mcp --tools slack_send_channel_message,slack_send_dm --exclude slack_send_dm
 ```
 
 ---
@@ -1060,7 +1065,7 @@ MCPServer
   │    │    └─ Finds installed tool provider packages via package.json or pkg_resources
   │    ├─ Filesystem scan → Recursively scans toolPaths directories
   │    │    └─ Finds YAML + JavaScript/Python tool definitions
-  │    └─ Registry → Registers all discovered tools (248 max with all providers)
+  │    └─ Registry → Registers all discovered tools (153 with every native provider installed)
   ├─ Filters tools (allow/deny lists)
   ├─ Registers each tool on McpServer (MCP SDK)
   │    └─ Converts YAML params → Zod schemas (TS) / Pydantic models (PY) → MCP input schemas
@@ -1103,11 +1108,11 @@ The Python MCP implementation mirrors TypeScript with full feature parity:
 
 | Aspect | TypeScript | Python | Status |
 |--------|-----------|--------|--------|
-| Entry points scanner | `@oclif/core` entry points | `importlib.metadata` entry points | ✅ Identical |
+| Package discovery | Scans `node_modules/@matimo/*` | `importlib.metadata` entry points (`matimo.providers`) | ✅ Same result, different mechanism |
 | Filesystem traversal | `fs.readdirSync()` recursive scan | `os.walk()` recursive scan | ✅ Identical |
 | YAML loading | `js-yaml` + Zod validation | PyYAML + Pydantic validation | ✅ Identical |
 | Caching | In-memory Map | In-memory dict | ✅ Identical |
-| Tools loaded (all providers) | 248 | 248 | ✅ 100% Parity |
+| Tools loaded (core + all native providers) | 153 | 153 | ✅ Same set |
 | Discovery mechanism | Same | Same | ✅ Identical |
 
 **Key locations:**
@@ -1141,13 +1146,7 @@ For full implementation details, see [python/packages/core/src/matimo/mcp/README
 
 1. **Check your config path:** On macOS it's `~/Library/Application Support/Claude/claude_desktop_config.json`
 2. **Restart Claude Desktop** after editing the config
-3. **Add `MATIMO_CWD`** to the env block if your tools aren't detected:
-   ```json
-   "env": {
-     "MATIMO_CWD": "/Users/you/your-project",
-     "SLACK_BOT_TOKEN": "xoxb-..."
-   }
-   ```
+3. **Install the tool packages next to `@matimo/cli`.** Claude Desktop can start the server from `/`; Matimo then finds packages relative to where it is installed. If your tools still aren't detected, pass their folder: `"args": ["matimo", "mcp", "--tool-paths", "/Users/you/your-project/tools"]`
 4. **Run the setup wizard** to verify packages are installed:
    ```bash
    npx matimo mcp setup
@@ -1302,10 +1301,12 @@ Error: `MatimoError(EXECUTION_FAILED): MCP Python SDK not installed. Install wit
 **Solution:**
 
 ```bash
-pip install matimo[mcp]
+pip install "matimo[mcp]"
 # or explicitly
-pip install mcp>=1.0
+pip install "mcp>=2.0"
 ```
+
+The Python MCP server requires `mcp` 2.0 or newer. If you installed `mcp` 1.x, upgrade it with `pip install -U "mcp>=2.0"`.
 
 ### No tools discovered
 

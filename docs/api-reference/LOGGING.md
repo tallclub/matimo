@@ -66,7 +66,7 @@ logger.warn('Rate limit approaching', {
 });
 
 logger.error('Tool execution failed', {
-  toolName: 'slack_send_message',
+  toolName: 'slack_send_channel_message',
   error: 'Authentication failed',
 });
 ```
@@ -310,7 +310,7 @@ logger = get_global_matimo_logger()
 logger.info('Processing request', user='u123')
 logger.debug('Cache hit', key='tools_list')
 logger.warn('Rate limit near', remaining=5)
-logger.error('Tool failed', tool='slack_send')
+logger.error('Tool failed', tool='slack_send_channel_message')
 ```
 
 ### Environment Variables

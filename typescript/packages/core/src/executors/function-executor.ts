@@ -138,9 +138,11 @@ export class FunctionExecutor {
 
           // Resolve relative to the tool definition file location
           let absolutePath: string;
+          let baseDir: string;
           if (tool._definitionPath) {
             // Use the definition file directory as the base for relative paths
             const definitionDir = path.dirname(tool._definitionPath);
+            baseDir = definitionDir;
             absolutePath = path.resolve(definitionDir, code);
           } else {
             // Fallback: use the old logic (for backward compatibility)
@@ -154,7 +156,19 @@ export class FunctionExecutor {
             } else {
               toolDir = path.join(this.toolsPath, toolName);
             }
+            baseDir = toolDir;
             absolutePath = path.resolve(toolDir, code);
+          }
+
+          // A tool may only load code from its own directory. Without this, a YAML with
+          // `code: ../../anywhere.js` (or an absolute path) imports arbitrary files.
+          const relativeToBase = path.relative(baseDir, absolutePath);
+          if (relativeToBase.startsWith('..') || path.isAbsolute(relativeToBase)) {
+            throw new MatimoError(
+              `Tool '${tool.name}': execution.code must stay inside the tool directory`,
+              ErrorCode.EXECUTION_FAILED,
+              { toolName: tool.name, code }
+            );
           }
 
           const fileUrl = pathToFileURL(absolutePath).href;

@@ -20,9 +20,9 @@ pnpm add @matimo/core
 `@matimo/core` contains:
 
 - `MatimoInstance` - initialization, discovery, registry, and execution API
-- **Executors** - Command (shell), HTTP (REST with object/array embedding), Function (JS/TS)
+- **Executors** - Command (spawned process, no shell), HTTP (REST with object/array embedding), Function (JS/TS)
 - **Policy Engine** - content validation, risk classification, RBAC, integrity tracking
-- **Meta-Tools** - 9 built-in tools for tool lifecycle management (create, validate, approve, reload, list, skill)
+- **Meta-Tools** - 15 tools for tool and skill lifecycle management (create, validate, approve, reload, list, search, load)
 - **Approval System** - human-in-the-loop approval with interactive, auto-approve, and MCP patterns
 - **MCP Server** - Model Context Protocol server with HTTP and stdio transports
 - Decorator utilities (`@tool`, `setGlobalMatimoInstance`)
@@ -49,10 +49,10 @@ await matimo.execute('calculator', { operation: 'add', a: 1, b: 2 });
 
 ## 🛠 Included Core Tools
 
-`@matimo/core` includes 21 built-in tools:
+`@matimo/core` includes 24 built-in tools: 9 utility tools and 15 meta-tools.
 
 ### Utility Tools
-- **`execute`** - Run shell commands with output capture, timeout, and working directory control
+- **`execute`** - Run a command with output capture, timeout, and working directory control. It runs without a shell by default (`args` are appended to the command); pass `shell` to run a full shell line, which always needs a human approval that auto-approve and approved patterns cannot skip
 - **`read`** - Read files with line range support and encoding detection
 - **`edit`** - Edit/replace content in files with backup
 - **`search`** - Search files with grep patterns and context
@@ -75,7 +75,7 @@ await matimo.execute('calculator', { operation: 'add', a: 1, b: 2 });
 - **`matimo_list_skills`** - List skills in a directory with name, description, and path
 - **`matimo_get_skill`** - Read a skill's full content by name for agent context
 - **`matimo_validate_skill`** - Validate a skill against the Agent Skills specification
-- **`matimo_search_skills`** - Semantically rank skills by relevance to a query (TF-IDF)
+- **`matimo_search_skills`** - Rank skills by keyword relevance to a query (TF-IDF)
 - **`matimo_get_skill_sections`** - Inventory a skill's sections and token costs without loading it
 - **`matimo_get_skill_content`** - Load only specific sections of a skill (token-efficient)
 
@@ -194,7 +194,7 @@ HTTP-sourced errors also carry `details.retryable` (`true` for 429, 5xx, timeout
 The optional `cause` field preserves the original error for debugging:
 ```typescript
 throw new MatimoError('HTTP request failed', ErrorCode.EXECUTION_FAILED, {
-  toolName: 'slack_send',
+  toolName: 'slack_send_channel_message',
   statusCode: 500,
   details: { originalError: axiosError }
 });

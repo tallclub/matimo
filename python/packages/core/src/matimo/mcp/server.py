@@ -5,10 +5,8 @@ Mirrors: packages/core/src/mcp/mcp-server.ts
 Exposes Matimo tools over the MCP protocol so Claude and other MCP-compatible
 clients can discover and call them.
 
-Dependencies: mcp>=1.0  (install with: pip install matimo[mcp])
-Supports both the mcp>=1.0,<2.0 decorator-based Server API and the mcp>=2.0
-constructor-callback Server API (see _mcp_major_version() / _build_server_v1()
-/ _build_server_v2() below).
+Dependencies: mcp>=2.0  (install with: pip install matimo[mcp])
+Uses the mcp 2.x constructor-callback Server API (see _build_server() below).
 """
 from __future__ import annotations
 
@@ -16,6 +14,9 @@ import fnmatch
 import hmac
 import json as _json
 import logging
+import os
+import secrets
+import sys
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
@@ -37,23 +38,6 @@ def bearer_token_matches(auth_header: str, token: str) -> bool:
     return hmac.compare_digest(auth_header.encode("utf-8"), f"Bearer {token}".encode())
 
 
-def _mcp_major_version() -> int:
-    """Return the installed `mcp` SDK's major version, defaulting to 1 if unknown.
-
-    mcp 2.0 replaced Server's decorator-based handler registration
-    (@server.list_tools(), etc.) with constructor callables (on_list_tools=,
-    etc.) — the decorator methods don't exist on Server in 2.x at all, so this
-    must be checked before constructing the server, not discovered by trying
-    and catching AttributeError.
-    """
-    try:
-        from importlib.metadata import version
-
-        return int(version("mcp").split(".")[0])
-    except Exception:
-        return 1
-
-
 @dataclass
 class MCPServerOptions:
     """
@@ -64,6 +48,9 @@ class MCPServerOptions:
     # Transport: 'stdio' (default for Claude Desktop) or 'http'
     transport: str = "stdio"
     port: int = 3100
+    # Interface to bind in HTTP mode. Default loopback only; set "0.0.0.0" (or a
+    # specific address) to accept remote connections, and then use HTTPS.
+    host: str = "127.0.0.1"
 
     # Tool filtering
     tools: list[str] | None = None          # allowlist; None = all
@@ -72,7 +59,8 @@ class MCPServerOptions:
     # Secret resolution
     secret_resolver: Any | None = None      # SecretResolverChain instance
 
-    # HTTP mode auth token (Bearer)
+    # HTTP mode auth token (Bearer). Also reads MATIMO_MCP_TOKEN. If neither is set,
+    # a random token is generated: HTTP mode is never unauthenticated.
     mcp_token: str | None = None
 
     # Matimo instance paths (if creating the server standalone)
@@ -121,6 +109,11 @@ class MCPServer:
         # Resolved auth secrets held in memory — never written to process.env.
         # Populated by _seed_environment_secrets() during start().
         self._resolved_secrets: dict[str, str] = {}
+        self._active_token: str | None = None
+
+    def get_active_token(self) -> str | None:
+        """The bearer token in force in HTTP mode (available once serving starts)."""
+        return self._active_token
 
     async def start(self) -> None:
         """Start the MCP server on the configured transport."""
@@ -142,16 +135,7 @@ class MCPServer:
         from matimo.decorators import set_global_matimo_instance
         set_global_matimo_instance(self._matimo)
 
-        # mcp>=2.0 replaced Server's post-construction @server.list_tools()/
-        # @server.call_tool()/@server.list_resources()/@server.read_resource()
-        # decorators with on_list_tools=/on_call_tool=/... constructor callables
-        # (the decorator methods no longer exist on Server at all). Branch on the
-        # installed SDK's major version so matimo[mcp] keeps working across both
-        # mcp 1.x and 2.x without pinning either extras/... consumer to one side.
-        if _mcp_major_version() >= 2:
-            server = self._build_server_v2(mcp_types)
-        else:
-            server = self._build_server_v1(mcp_types)
+        server = self._build_server(mcp_types)
         self._server = server
 
         # Pre-resolve all auth secrets once at startup.
@@ -165,39 +149,14 @@ class MCPServer:
         else:
             await self._run_http(server)
 
-    def _build_server_v1(self, mcp_types: Any) -> Any:  # noqa: ANN401
-        """Build a Server using the mcp<2.0 decorator-based registration API."""
-        from mcp.server import Server
-
-        server = Server("matimo")
-
-        @server.list_tools()  # type: ignore[no-untyped-call, untyped-decorator]
-        async def handle_list_tools() -> list[mcp_types.Tool]:
-            return self._get_mcp_tools()
-
-        @server.call_tool()  # type: ignore[untyped-decorator]
-        async def handle_call_tool(
-            name: str, arguments: dict[str, Any]
-        ) -> list[mcp_types.TextContent] | mcp_types.CallToolResult:
-            ctx = server.request_context
-            return await self._call_tool(
-                name, arguments, session=ctx.session, request_id=ctx.request_id
-            )
-
-        # Register skill resources (skills://name) so MCP clients can read them.
-        # Mirrors registerSkillResources() in mcp-server.ts.
-        self._register_skill_resources_v1(server)
-
-        return server
-
-    def _build_server_v2(self, mcp_types: Any) -> Any:  # noqa: ANN401
-        """Build a Server using the mcp>=2.0 constructor-callback registration API.
+    def _build_server(self, mcp_types: Any) -> Any:  # noqa: ANN401
+        """Build a Server using the mcp 2.x constructor-callback registration API.
 
         The Server constructor takes on_list_tools/on_call_tool/on_list_resources/
         on_read_resource callables directly — there is no post-construction
         decorator to register them with, and the callbacks' wrapped return types
         (ListToolsResult, CallToolResult, ListResourcesResult, ReadResourceResult)
-        replace the bare list/str returns the mcp<2.0 decorators accepted.
+        are the wrapped result types mcp 2.x requires.
         """
         from mcp.server import Server
 
@@ -222,7 +181,7 @@ class MCPServer:
 
         skills = self._matimo.list_skills()
         if skills:
-            on_list_resources, on_read_resource = self._build_skill_resource_handlers_v2(mcp_types)
+            on_list_resources, on_read_resource = self._build_skill_resource_handlers(mcp_types)
             kwargs["on_list_resources"] = on_list_resources
             kwargs["on_read_resource"] = on_read_resource
 
@@ -263,7 +222,24 @@ class MCPServer:
             StreamableHTTPSessionManager,
         )
 
-        mcp_token = self._options.mcp_token
+        mcp_token = (
+            self._options.mcp_token
+            or os.environ.get("MATIMO_MCP_TOKEN")
+            or secrets.token_urlsafe(32)
+        )
+        self._active_token = mcp_token
+        if not self._options.mcp_token and not os.environ.get("MATIMO_MCP_TOKEN"):
+            # The user needs this to connect, so it goes to stderr rather than the log.
+            print(
+                f"Matimo MCP: auto-generated bearer token: {mcp_token}",
+                file=sys.stderr,
+            )
+        if self._options.host not in ("127.0.0.1", "localhost", "::1"):
+            logger.warning(
+                "MCP server is binding %s: the bearer token and tool traffic are readable "
+                "on the network unless you terminate TLS in front of it.",
+                self._options.host,
+            )
         session_manager = StreamableHTTPSessionManager(server, stateless=True)
 
         # Pure-ASGI handler: no Starlette required for the routing layer, which
@@ -304,7 +280,7 @@ class MCPServer:
                 return
 
             # Bearer token auth (health endpoint is exempt)
-            if path != "/health" and mcp_token:
+            if path != "/health":
                 headers = {
                     k.decode("latin-1").lower(): v.decode("latin-1")
                     for k, v in scope.get("headers", [])
@@ -365,7 +341,7 @@ class MCPServer:
 
         config = uvicorn.Config(
             asgi_app,
-            host="0.0.0.0",  # noqa: S104
+            host=self._options.host,
             port=self._options.port,
             log_level="info",
             timeout_keep_alive=65,
@@ -396,7 +372,7 @@ class MCPServer:
                     name=tool.name,
                     title=registration["title"],
                     description=registration["description"],
-                    inputSchema=registration["inputSchema"],
+                    input_schema=registration["inputSchema"],
                     annotations=mcp_types.ToolAnnotations(**registration["annotations"]),
                 )
             )
@@ -513,54 +489,16 @@ class MCPServer:
             # Also store with MATIMO_ prefix for env-var compatibility
             self._resolved_secrets[f"MATIMO_{key}"] = value
 
-    def _register_skill_resources_v1(self, server: Any) -> None:  # noqa: ANN401
-        """Register Matimo skills as MCP resources (skills://name) — mcp<2.0.
-
-        Mirrors registerSkillResources() in mcp-server.ts, allowing MCP clients
-        (Claude Desktop, Cursor, etc.) to attach skill context from the resource
-        picker without extra tool calls.
-
-        server: Any because the MCP Server type is from an optional dependency (mcp).
-        """
-        try:
-            import mcp.types as mcp_types
-        except ImportError:
-            return
-
-        skills = self._matimo.list_skills()
-        if not skills:
-            return
-
-        @server.list_resources()  # type: ignore[untyped-decorator]
-        async def handle_list_resources() -> list[mcp_types.Resource]:
-            from pydantic import AnyUrl
-            return [
-                mcp_types.Resource(
-                    uri=AnyUrl(f"skills://{s.name}"),
-                    name=s.name,
-                    description=getattr(s, "description", None),
-                    mimeType="text/markdown",
-                )
-                for s in skills
-            ]
-
-        @server.read_resource()  # type: ignore[untyped-decorator]
-        async def handle_read_resource(uri: Any) -> str:  # noqa: ANN401
-            skill_name = str(uri).removeprefix("skills://")
-            content = self._matimo.get_skill_content(skill_name)
-            return content or f'Skill "{skill_name}" content unavailable'
-
-    def _build_skill_resource_handlers_v2(
+    def _build_skill_resource_handlers(
         self, mcp_types: Any  # noqa: ANN401
     ) -> tuple[Any, Any]:
-        """Build on_list_resources/on_read_resource callables — mcp>=2.0.
+        """Build on_list_resources/on_read_resource callables (skills://name resources).
 
-        Same skills://name resource mapping as _register_skill_resources_v1,
-        but mcp 2.0's Server takes these as constructor callables instead of
-        post-construction decorators, and their return types are the wrapped
-        ListResourcesResult/ReadResourceResult rather than a bare list/str.
-        Also, mcp 2.0 typed Resource.uri/TextResourceContents.uri as plain str
-        instead of pydantic.AnyUrl.
+        Mirrors registerSkillResources() in mcp-server.ts, letting MCP clients
+        (Claude Desktop, Cursor, etc.) attach skill context from the resource
+        picker without extra tool calls. mcp 2.x takes these as Server
+        constructor callables returning ListResourcesResult/ReadResourceResult;
+        Resource.uri/TextResourceContents.uri are plain str.
         """
 
         async def on_list_resources(ctx: Any, params: Any) -> Any:  # noqa: ANN401, ARG001
@@ -570,7 +508,7 @@ class MCPServer:
                         uri=f"skills://{s.name}",
                         name=s.name,
                         description=getattr(s, "description", None),
-                        mimeType="text/markdown",
+                        mime_type="text/markdown",
                     )
                     for s in self._matimo.list_skills()
                 ]
@@ -583,7 +521,7 @@ class MCPServer:
                 contents=[
                     mcp_types.TextResourceContents(
                         uri=params.uri,
-                        mimeType="text/markdown",
+                        mime_type="text/markdown",
                         text=content or f'Skill "{skill_name}" content unavailable',
                     )
                 ]

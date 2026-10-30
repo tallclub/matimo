@@ -20,7 +20,7 @@ Meta-tools are built-in tools that live in `packages/core/tools/` and provide to
 | [`matimo_list_skills`](#matimo_list_skills) | List skills in a directory with metadata | No |
 | [`matimo_get_skill`](#matimo_get_skill) | Read a skill's full content by name | No |
 | [`matimo_validate_skill`](#matimo_validate_skill) | Validate a skill against the Agent Skills spec | No |
-| [`matimo_search_skills`](#matimo_search_skills) | Semantically search skills by relevance (TF-IDF) | No |
+| [`matimo_search_skills`](#matimo_search_skills) | Search skills by keyword relevance (TF-IDF) | No |
 | [`matimo_get_skill_sections`](#matimo_get_skill_sections) | List a skill's section inventory with token estimates | No |
 | [`matimo_get_skill_content`](#matimo_get_skill_content) | Load a skill's content, optionally scoped to specific sections | No |
 
@@ -423,7 +423,7 @@ const result = await matimo.execute(
    pre-mutation content. Hashing before the `status` mutation would make the stored approval unable
    to ever validate against the tool's own post-approval file, since `isApproved()` checks the hash
    against what's currently on disk.
-8. Record the approval (name, hash, HMAC signature, timestamp) in the approval manifest of the instance that owns the call — the instance passed to `setGlobalMatimoInstance()` — so its next reload sees it. That manifest lives in the instance's `approvalDir` and signs with `MATIMO_APPROVAL_SECRET`, or an ephemeral secret (with a warning) when unset. With no global instance, the tool writes its own manifest in `tool_dir`.
+8. Record the approval (name, hash, HMAC signature, timestamp) in the approval manifest of the instance that owns the call, the instance passed to `setGlobalMatimoInstance()` (in Python, the instance executing the call), so its next reload sees it. That manifest lives in the instance's `approvalDir` and signs with `MATIMO_APPROVAL_SECRET`, or an ephemeral secret (with a warning) when unset. With no global instance, the tool writes its own manifest in `tool_dir`.
 
 ### Approval Manifest File
 
@@ -744,7 +744,7 @@ const result = await matimo.execute('matimo_search_tools', {
 
 ### Internal Flow
 
-1. If a global Matimo instance is registered (normal runtime case), search its in-memory tool registry directly — covers every loaded tool across all packages.
+1. If a global Matimo instance is registered, or in Python the instance executing the call (normal runtime case), search its in-memory tool registry directly, covers every loaded tool across all packages.
 2. If no global instance is available (e.g. called standalone), fall back to scanning `./matimo-tools` on disk the same way `matimo_list_user_tools` does, matching each tool's `definition.yaml` against the query.
 3. Results are capped at `limit` in both paths.
 
@@ -915,7 +915,7 @@ List all skills (SKILL.md files) in a directory. Returns each skill's name, desc
 |-----------|------|:--------:|---------|-------------|
 | `skills_dir` | string | No | — | Extra directory to scan; its skills are added to the ones below |
 
-Which skills are listed: the global instance's skills (everything it loaded, plus any registered with `registerSkill()`); with no instance, the skills shipped in installed `@matimo/*` packages. Skills in `skills_dir` are always added.
+Which skills are listed: the global instance's skills (in Python, the instance executing the call), which is everything it loaded plus any registered with `registerSkill()`; with no instance, the skills shipped in installed `@matimo/*` packages. Skills in `skills_dir` are always added.
 
 ### Response
 
@@ -1071,7 +1071,7 @@ if (result.valid) {
 
 ## matimo_search_skills
 
-Semantic search across all loaded skills by natural language query. Ranks skills by meaning (TF-IDF by default, or a custom embedding provider if one is configured) rather than exact keyword match. Use this to discover which skill to load before calling `matimo_get_skill` or `matimo_get_skill_content`.
+Relevance search across all loaded skills by natural language query. Ranks skills by keyword overlap (TF-IDF by default, or a custom embedding provider if one is configured). Use this to discover which skill to load before calling `matimo_get_skill` or `matimo_get_skill_content`.
 
 **Does not require approval** — read-only operation.
 
@@ -1109,7 +1109,7 @@ const result = await matimo.execute('matimo_search_skills', {
 
 ### Internal Flow
 
-1. Requires an active global Matimo instance (via `setGlobalMatimoInstance`/`set_global_matimo_instance`, same as the `@tool` decorator) — returns a clear failure message if none is registered.
+1. Requires an active global Matimo instance (via `setGlobalMatimoInstance`/`set_global_matimo_instance`, same as the `@tool` decorator; in Python the instance executing the call counts, so `matimo.execute('matimo_search_skills', ...)` needs no registration), returns a clear failure message if none is available.
 2. Delegates to `MatimoInstance.semanticSearchSkills()` / `Matimo.semantic_search_skills()`, which ranks by TF-IDF cosine similarity over each skill's `name` + `description` **only** — the skill `body` is not indexed for ranking.
 3. Flattens each `{ skill, score }` hit into `{ name, description, relevanceScore }` and truncates to `limit`.
 
@@ -1244,7 +1244,8 @@ from matimo import Matimo, PolicyContext, set_global_matimo_instance
 
 # matimo_create_tool, matimo_approve_tool and matimo_reload_tools need approval.
 matimo = await Matimo.init('./tools', auto_discover=True, on_approval=ask_reviewer)
-set_global_matimo_instance(matimo)  # meta-tools act on this instance
+set_global_matimo_instance(matimo)  # optional: a meta-tool run through matimo.execute() already acts on that instance;
+                                    # register it for the @tool decorator or calls made outside execute()
 
 # Validate a tool definition
 result = await matimo.execute('matimo_validate_tool', {'yaml_content': '...'})

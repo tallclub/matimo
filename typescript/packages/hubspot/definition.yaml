@@ -41,7 +41,7 @@ provider:
   # Standard HubSpot OAuth2 endpoints - change only if using custom proxy
   endpoints:
     authorizationUrl: https://app.hubspot.com/oauth/authorize
-    tokenUrl: https://api.hubapi.com/crm/v3/oauth
+    tokenUrl: https://api.hubapi.com/oauth/v1/token
     revokeUrl: https://api.hubapi.com/crm/v3/oauth/tokens/revoke
 
   # Standard scopes for HubSpot CRM access

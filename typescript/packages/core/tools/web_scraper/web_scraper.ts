@@ -21,7 +21,17 @@ import axios from 'axios';
 import { JSDOM } from 'jsdom';
 import { Readability } from '@mozilla/readability';
 import TurndownService from 'turndown';
-import { MatimoError, ErrorCode, getGlobalMatimoLogger } from '@matimo/core/runtime';
+import {
+  MatimoError,
+  ErrorCode,
+  getGlobalMatimoLogger,
+  isBlockedUrl as isBlockedHostUrl,
+  ssrfHttpAgent,
+  ssrfHttpsAgent,
+} from '@matimo/core/runtime';
+
+/** Unparseable URLs are refused here: this tool is about to fetch them. */
+const isBlockedUrl = (url: string): boolean => isBlockedHostUrl(url, true);
 
 type OutputFormat = 'text' | 'markdown' | 'both';
 type Logger = ReturnType<typeof getGlobalMatimoLogger>;
@@ -87,34 +97,6 @@ const MAX_REQUEST_DELAY_MS = 5000;
 const DEFAULT_MAX_DURATION_MS = 120000;
 const MAX_MAX_DURATION_MS = 600000;
 const ROBOTS_USER_AGENT = 'matimo';
-
-/**
- * SSRF guard. Mirrors isBlockedUrl() in packages/core/src/policy/default-policy.ts
- * (and the identical guard in extract_from_file.ts) so this tool's outbound
- * fetches are held to the same bar Matimo's policy engine uses for agent-proposed
- * HTTP tools (blocks localhost, loopback, link-local/AWS metadata, and RFC1918
- * private ranges).
- */
-function isBlockedUrl(url: string): boolean {
-  let hostname: string;
-  try {
-    hostname = new URL(url).hostname.toLowerCase();
-  } catch {
-    return true;
-  }
-  if (hostname.startsWith('[') && hostname.endsWith(']')) {
-    hostname = hostname.slice(1, -1);
-  }
-  return (
-    hostname === 'localhost' ||
-    hostname === '127.0.0.1' ||
-    hostname === '::1' ||
-    hostname.startsWith('169.254.') ||
-    hostname.startsWith('10.') ||
-    hostname.startsWith('192.168.') ||
-    /^172\.(1[6-9]|2\d|3[01])\./.test(hostname)
-  );
-}
 
 function validateUrl(url: string): URL {
   let parsed: URL;
@@ -264,6 +246,8 @@ async function fetchRobotsRules(
       responseType: 'text',
       timeout: Math.min(timeout, 5000),
       validateStatus: isRobotsOkStatus,
+      httpAgent: ssrfHttpAgent,
+      httpsAgent: ssrfHttpsAgent,
       headers: { 'User-Agent': `Matimo/1.0 (AI Agent Tool SDK; ${ROBOTS_USER_AGENT})` },
     });
     return parseRobotsTxt(response.data, ROBOTS_USER_AGENT);
@@ -308,6 +292,8 @@ async function fetchPage(
         Accept: 'text/html,application/xhtml+xml',
       },
       validateStatus: isSuccessStatus,
+      httpAgent: ssrfHttpAgent,
+      httpsAgent: ssrfHttpsAgent,
       // Guard against a redirect chain landing on a blocked/internal address.
       beforeRedirect: (redirectOptions) => {
         const redirectTarget = `${redirectOptions.protocol}//${redirectOptions.hostname}${redirectOptions.path}`;

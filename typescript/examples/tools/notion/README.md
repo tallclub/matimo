@@ -193,7 +193,6 @@ All patterns have access to these core Notion tools:
 ### Page Operations
 - `notion_create_page` - Create new page in a database or as child page
 - `notion_update_page` - Update page properties and icon
-- `notion_get_page` - Retrieve page details
 
 ### Comments
 - `notion_create_comment` - Add comments to pages

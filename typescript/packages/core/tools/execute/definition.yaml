@@ -15,7 +15,7 @@ parameters:
     type: array
     items:
       type: string
-    description: Command arguments as array of strings (optional, can also embed in command)
+    description: Extra arguments appended to the command, each passed as one argument (optional, can also embed in command). The command runs without a shell.
     required: false
     example: ['--verbose', '--color']
 
@@ -33,7 +33,13 @@ parameters:
 
   shell:
     type: string
-    description: Shell to use (e.g. '/bin/bash', '/bin/zsh'). Defaults to system shell.
+    description: >-
+      Shell executable to run the command through (e.g. '/bin/bash', 'cmd', 'pwsh').
+      Omit it (the default) to run the command directly without a shell. When set,
+      the command is a full shell line, so pipes, redirection and expansion are live,
+      and every call requires explicit human approval: MATIMO_AUTO_APPROVE, approved
+      patterns and caller-supplied approval flags do not apply. 'args' become positional
+      parameters ($1, $2, ...) for POSIX shells and are not supported for cmd or PowerShell.
     required: false
     example: '/bin/bash'
 
@@ -84,6 +90,11 @@ examples:
     params:
       command: 'git status'
       cwd: '/project'
+  - name: 'Run through a shell (always needs human approval)'
+    description: 'Opt-in shell line; pipes and redirection work, auto-approve does not apply'
+    params:
+      command: 'ls | wc -l'
+      shell: '/bin/bash'
   - name: 'Long running command with timeout'
     description: 'Execute with custom timeout'
     params:

@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 741" width="660" height="741" role="img" aria-label="MCP tool call flow: the client sends tools/call, the MCPServer handler calls matimo.execute, which injects auth, runs the executor, validates the response, applies the size guardrail and returns MCP content.">
+  <title>MCP tool call flow: the client sends tools/call, the MCPServer handler calls matimo.execute, which injects auth, runs the executor, validates the response, applies the size guardrail and returns MCP content.</title>
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1 L9 5 L1 9 z" fill="#5c5c6a"/></marker>
+    <style>
+      .bg { fill: #f4f4f8; }
+      .box { fill: #ffffff; stroke: #d4d4de; stroke-width: 1.2; }
+      .box.accent { fill: #fff1f6; stroke: #d6205f; stroke-width: 1.4; }
+      .box.ok { fill: #effaf5; stroke: #168a60; stroke-width: 1.3; }
+      .box.bad { fill: #fff1f1; stroke: #d93a3a; stroke-width: 1.3; }
+      .chip { fill: #ececf2; stroke: #d4d4de; stroke-width: 1; }
+      .pill { fill: #ececf2; stroke: #d4d4de; stroke-width: 1; }
+      .pill.ok { stroke: #168a60; } .pill.bad { stroke: #d93a3a; }
+      .h { font: 650 15.5px 'Inter Variable', Inter, system-ui, 'Segoe UI', sans-serif; fill: #14141a; }
+      .h.accent { fill: #b3124f; } .h.ok { fill: #0f6b4a; } .h.bad { fill: #a32424; }
+      .hs { font: 650 14px 'Inter Variable', Inter, system-ui, 'Segoe UI', sans-serif; fill: #14141a; }
+      .t { font: 400 13.5px 'Inter Variable', Inter, system-ui, 'Segoe UI', sans-serif; fill: #2c2c38; }
+      .sub { fill: #5c5c6a; }
+      .m { font: 400 12.5px 'JetBrains Mono Variable', ui-monospace, Menlo, Consolas, monospace; fill: #2c2c38; }
+      .pt { font: 600 12px 'Inter Variable', Inter, system-ui, 'Segoe UI', sans-serif; fill: #2c2c38; }
+      .pt.ok { fill: #0f6b4a; } .pt.bad { fill: #a32424; }
+      .ln { stroke: #5c5c6a; stroke-width: 1.5; fill: none; }
+    </style>
+  </defs>
+  <rect class="bg" width="660" height="741" rx="18"/>
+  <rect class="box" x="20" y="20" width="620" height="67" rx="12"/><text class="h" x="38" y="49">Client</text><text class="m" x="38" y="72">tools/call</text><path class="ln" d="M330 87 V113" marker-end="url(#ar)"/><rect class="box" x="20" y="113" width="620" height="48" rx="12"/><text class="h" x="38" y="142">MCPServer handler</text><path class="ln" d="M330 161 V187" marker-end="url(#ar)"/><rect class="box" x="20" y="187" width="620" height="48" rx="12"/><text class="h" x="38" y="216">matimo.execute(toolName, args)</text><path class="ln" d="M330 235 V261" marker-end="url(#ar)"/><rect class="box" x="20" y="261" width="620" height="67" rx="12"/><text class="h" x="38" y="290">Auth injection</text><text class="t" x="38" y="313">from process.env</text><path class="ln" d="M330 328 V354" marker-end="url(#ar)"/><rect class="box" x="20" y="354" width="620" height="67" rx="12"/><text class="h" x="38" y="383">Executor</text><text class="t" x="38" y="406">HTTP, command or function</text><path class="ln" d="M330 421 V447" marker-end="url(#ar)"/><rect class="box" x="20" y="447" width="620" height="67" rx="12"/><text class="h" x="38" y="476">Validate the response</text><text class="t" x="38" y="499">against output_schema</text><path class="ln" d="M330 514 V540" marker-end="url(#ar)"/><rect class="box" x="20" y="540" width="620" height="88" rx="12"/><text class="h" x="38" y="569">Response-size guardrail</text><text class="t" x="38" y="592">truncates oversized results</text><text class="t" x="38" y="613">see Tool Execution Flow in the architecture overview</text><path class="ln" d="M330 628 V654" marker-end="url(#ar)"/><rect class="box ok" x="20" y="654" width="620" height="67" rx="12"/><text class="h ok" x="38" y="683">Return as MCP content</text><text class="t" x="38" y="706">errors return isError: true with structuredContent</text>
+</svg>

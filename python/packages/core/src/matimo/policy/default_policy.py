@@ -16,6 +16,7 @@ from matimo.policy.risk_classifier import (
     lowest_risk,
     meets_risk_threshold,
 )
+from matimo.policy.ssrf import is_blocked_url
 from matimo.policy.types import (
     PolicyAllowed,
     PolicyConfig,
@@ -38,10 +39,6 @@ logger = logging.getLogger("matimo")
 _DEFAULT_PROTECTED_NAMESPACES = ["matimo_"]
 _AUTH_KEYWORDS = ("token", "key", "secret", "password", "credential", "auth", "bearer", "api_key")
 _PLACEHOLDER_RE = re.compile(r"\{(\w+)\}")
-_PRIVATE_HOST_RE = re.compile(
-    r"^(localhost|127\.0\.0\.1|::1|169\.254\.|10\.|192\.168\.|"
-    r"172\.(1[6-9]|2[0-9]|3[01])\.)"
-)
 
 
 def get_tier_for_tool(
@@ -86,16 +83,8 @@ def get_tier_for_tool(
 
 
 def _is_blocked_url(url: str) -> bool:
-    """Return True if the URL targets a private/localhost address (SSRF defence)."""
-    if not url:
-        return False
-    try:
-        from urllib.parse import urlparse
-
-        hostname = (urlparse(url).hostname or "").lower()
-        return bool(_PRIVATE_HOST_RE.match(hostname))
-    except Exception:
-        return False
+    """Return True if the URL targets an internal/metadata address (SSRF defence)."""
+    return is_blocked_url(url)
 
 
 def _has_auth_placeholders(tool: ToolDefinition) -> bool:

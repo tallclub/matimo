@@ -28,10 +28,11 @@ This is a **monorepo** with independent packages managed by `uv` workspaces:
 ```
 python/
   packages/
-    core/              # Core SDK (tool loading, execution, policy engine)
+    matimo/            # "matimo" meta-package on PyPI: pulls in matimo-core and matimo-cli
+    core/              # matimo-core: tool loading, execution, policy engine
       src/matimo/
       tests/
-    cli/               # CLI tool manager
+    cli/               # matimo-cli: the `matimo` command
       src/matimo_cli/
     bruno/             # Bruno CLI provider (7 tools)
     github/            # GitHub provider (22 tools)
@@ -48,6 +49,8 @@ python/
     langchain/         # LangChain integration examples
     crewai/            # CrewAI integration examples
     agno/              # Agno integration examples
+    bruno/             # Bruno collection examples
+    mcp/               # MCP server and agent examples (own uv project)
   scripts/
     build_providers.py # Build all provider packages
     validate_tools.py  # Validate all YAML tool definitions
@@ -55,13 +58,13 @@ python/
   pyproject.toml       # Workspace config + shared dev dependencies
 ```
 
-Each package has independent versioning and dependencies. The core package is the base; providers depend on it.
+From 0.4.0 every package shares one version number, matching the TypeScript SDK. The core package is the base; providers depend on it.
 
 ---
 
 ## Installation
 
-### From PyPI (when published)
+### From PyPI
 
 ```bash
 pip install matimo
@@ -106,7 +109,7 @@ async def main():
         "a": 5,
         "b": 3,
     })
-    print(result)  # {"result": 8, "operation": "add"}
+    print(result)  # {'result': 8.0, 'operation': 'add', 'original_operation': 'add', 'operands': {'a': 5.0, 'b': 3.0}}
 
 asyncio.run(main())
 ```
@@ -279,12 +282,12 @@ matimo = await Matimo.init("./tools", policy_config=config, on_hitl=approve)
 
 ```python
 from matimo import Matimo
-from matimo.mcp.server import MatimoMCPServer
+from matimo.mcp.server import MCPServer, MCPServerOptions
 
 async def main():
     matimo = await Matimo.init(auto_discover=True)
-    server = MatimoMCPServer(matimo, name="my-agent")
-    await server.run()  # stdio MCP transport
+    server = MCPServer(matimo, MCPServerOptions(transport="stdio"))
+    await server.start()  # stdio MCP transport; pass transport="http" for HTTP with a bearer token
 
 asyncio.run(main())
 ```

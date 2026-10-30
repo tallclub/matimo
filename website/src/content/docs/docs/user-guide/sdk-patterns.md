@@ -1,0 +1,729 @@
+---
+title: "SDK Usage Patterns"
+description: "The three main ways to use the Matimo SDK, from the simple factory to decorators and framework integrations, in TypeScript and Python."
+---
+Learn the three main ways to use Matimo SDK, from simplest to most powerful. Both **TypeScript** and **Python** SDKs support all three patterns.
+
+- [Python SDK Patterns](#python-sdk)
+- [TypeScript SDK Patterns](#typescript-sdk)
+
+---
+
+## Python SDK
+
+### Pattern 1: Factory Pattern
+
+The simplest way, initialise once, call `execute()` anywhere.
+
+#### Basic Setup
+
+```python
+import asyncio
+from matimo import Matimo
+
+async def main():
+    # Built-in tools plus every installed matimo-* provider package
+    matimo = await Matimo.init(auto_discover=True)
+    # Your own tools as well:
+    # matimo = await Matimo.init('./tools', auto_discover=True)
+```
+
+#### Execute a Tool
+
+```python
+result = await matimo.execute('calculator', {
+    'operation': 'add',
+    'a': 5,
+    'b': 3,
+})
+print(result)  # {'result': 8}
+```
+
+#### Discover Tools
+
+```python
+# List all tools
+all_tools = matimo.list_tools()
+print(f"Loaded {len(all_tools)} tools")
+
+# Get a specific tool
+tool = matimo.get_tool('calculator')
+print(f"Tool: {tool.name} - {tool.description}")
+
+# Search tools
+results = matimo.search_tools('slack')
+for t in results:
+    print(f"Found: {t.name}")
+```
+
+#### Handle Errors
+
+```python
+from matimo.errors import MatimoError, ErrorCode
+
+try:
+    result = await matimo.execute('slack_send_channel_message', {
+        'channel': '#general',
+        'text': 'Hello',
+    })
+except MatimoError as e:
+    if e.code == ErrorCode.TOOL_NOT_FOUND:
+        print(f"Tool not available: {e}")
+    elif e.code == ErrorCode.POLICY_DENIED:
+        print(f"Blocked by policy: {e.details.get('reason')}")
+    elif e.code == ErrorCode.AUTH_FAILED:
+        print("Check SLACK_BOT_TOKEN")
+    else:
+        print(f"{e.code}: {e} {e.details}")
+```
+
+#### Multi-Tenant: Per-Call Credentials
+
+```python
+# Pass credentials per call instead of environment variables
+result = await matimo.execute(
+    'slack_send_channel_message',
+    {'channel': '#general', 'text': 'Hello'},
+    credentials={'SLACK_BOT_TOKEN': user_token},
+)
+```
+
+#### Complete Example
+
+```python
+import asyncio
+from matimo import Matimo
+
+async def main():
+    # 1. Initialise
+    matimo = await Matimo.init(auto_discover=True)
+
+    # 2. List available tools
+    tools = matimo.list_tools()
+    print(f"Loaded {len(tools)} tools")
+
+    # 3. Execute tool
+    result = await matimo.execute('slack_send_channel_message', {
+        'channel': '#general',
+        'text': 'Hello from Matimo!',
+    })
+    print('Message sent:', result)
+
+asyncio.run(main())
+```
+
+**Best for:** Scripts, CLI tools, async backends, cron jobs, webhooks
+
+---
+
+### Pattern 2: Decorator Pattern
+
+Ideal for class-based agents, bind tools directly to method signatures.
+
+#### Basic Setup
+
+```python
+from matimo import Matimo
+from matimo.decorators import tool, set_global_matimo_instance
+
+async def setup():
+    matimo = await Matimo.init(auto_discover=True)
+    # Make instance available to all @tool decorators
+    set_global_matimo_instance(matimo)
+    return matimo
+```
+
+#### Define Methods with @tool
+
+```python
+class EmailBot:
+    @tool('slack_send_channel_message')
+    async def send_message(self, channel: str, text: str):
+        ...  # Body is ignored, decorator executes the tool
+
+    @tool('slack-list-channels')
+    async def list_channels(self):
+        ...
+```
+
+#### How the Decorator Works
+
+```
+1. Call: bot.send_message('#general', 'Hello!')
+2. Decorator maps positional/keyword args to tool params:
+       → {'channel': '#general', 'text': 'Hello!'}
+3. Calls: await matimo.execute('slack_send_channel_message', {...})
+4. Returns result to caller
+```
+
+#### Advanced: Multi-Tool Orchestration
+
+```python
+from matimo import Matimo
+from matimo.decorators import tool, set_global_matimo_instance
+
+class SmartAssistant:
+    @tool('calculator')
+    async def calculate(self, operation: str, a: float, b: float):
+        ...
+
+    @tool('slack_send_channel_message')
+    async def notify_slack(self, channel: str, text: str):
+        ...
+
+    # Orchestration method: not decorated
+    async def run_daily_report(self, channel: str):
+        result = await self.calculate('add', 100, 50)
+        await self.notify_slack(channel, f"Daily total: {result['result']}")
+
+# Usage
+async def main():
+    matimo = await Matimo.init(auto_discover=True)
+    set_global_matimo_instance(matimo)
+
+    assistant = SmartAssistant()
+    await assistant.run_daily_report('#reports')
+```
+
+**Best for:** Class-based agents, frameworks using method dispatch
+
+---
+
+### Pattern 3: LangChain / Framework Integration
+
+Convert Matimo tools to LangChain `StructuredTool` objects in one call.
+
+```python
+import asyncio
+import os
+
+from langchain.agents import create_agent           # LangChain 1.x
+from langchain_openai import ChatOpenAI
+
+from matimo import ApprovalRequest, Matimo
+from matimo.integrations.langchain import convert_tools_to_langchain
+
+
+async def confirm(request: ApprovalRequest) -> bool:
+    return input(f"Allow {request.tool_name} {request.params}? [y/N] ").strip().lower() == "y"
+
+
+async def main() -> None:
+    # 1. Load Matimo tools; writes that need approval ask confirm()
+    matimo = await Matimo.init(auto_discover=True, on_approval=confirm)
+
+    # 2. Convert only the tools this agent needs (OpenAI accepts at most 128)
+    slack_tools = [t for t in matimo.list_tools() if t.name.startswith("slack")]
+    lc_tools = convert_tools_to_langchain(
+        slack_tools,
+        matimo,
+        credentials={"SLACK_BOT_TOKEN": os.environ["SLACK_BOT_TOKEN"]},
+    )
+
+    # 3. Build and run the agent
+    agent = create_agent(ChatOpenAI(model="gpt-4o-mini"), tools=lc_tools)
+    result = await agent.ainvoke({"messages": [("user", "List all Slack channels")]})
+    print(result["messages"][-1].content)
+
+
+asyncio.run(main())
+```
+
+**Install:**
+
+```bash
+pip install "matimo[langchain]" langchain-openai
+```
+
+**Best for:** AI agents with automatic tool selection (LangChain, CrewAI)
+
+See [LangChain Integration Guide](/docs/framework-integrations/langchain/) for the full reference.
+
+---
+
+## TypeScript SDK
+
+## Pattern 1: Factory Pattern (Recommended for Simple Use Cases)
+
+The factory pattern is the simplest and most ergonomic way to use Matimo.
+
+### Basic Setup
+
+```typescript
+import { MatimoInstance } from 'matimo';
+
+// Built-in tools plus every installed @matimo/* provider package
+const matimo = await MatimoInstance.init({ autoDiscover: true });
+// Your own tools as well: MatimoInstance.init({ autoDiscover: true, toolPaths: ['./tools'] })
+// A path alone (init('./tools')) loads only that directory, without the built-in tools.
+```
+
+### Execute a Tool
+
+```typescript
+const result = await matimo.execute('calculator', {
+  operation: 'add',
+  a: 5,
+  b: 3,
+});
+
+console.log(result); // { result: 8 }
+```
+
+### Discover Tools
+
+```typescript
+// List all tools
+const allTools = matimo.listTools();
+console.log(`Loaded ${allTools.length} tools`);
+
+// Get specific tool
+const tool = matimo.getTool('calculator');
+console.log(`Tool: ${tool.name} - ${tool.description}`);
+
+// Search tools
+const results = matimo.searchTools('email');
+results.forEach((t) => console.log(`Found: ${t.name}`));
+```
+
+### Handle Errors
+
+A call can fail in two ways: Matimo **throws** a `MatimoError` (unknown tool, policy denial, refused approval, HTTP error), or the tool **returns** `{ success: false, error, code }` (TypeScript's built-in tools report bad input this way; Python's raise `EXECUTION_FAILED` instead).
+
+```typescript
+import { MatimoError } from '@matimo/core';
+
+try {
+  const result = (await matimo.execute('calculator', {
+    operation: 'divide',
+    a: 10,
+    b: 0,
+  })) as { success?: boolean; error?: string; code?: string };
+
+  if (result.success === false) {
+    // → { success: false, error: 'Division by zero', code: 'EXECUTION_FAILED', ... }
+    console.error(`Tool reported ${result.code}: ${result.error}`);
+  }
+} catch (error) {
+  if (error instanceof MatimoError) {
+    if (error.code === 'TOOL_NOT_FOUND') {
+      console.error('Tool not available:', error.message);
+    } else if (error.code === 'POLICY_DENIED') {
+      console.error('Blocked by policy:', error.details?.reason);
+    } else {
+      console.error(`${error.code}:`, error.message);
+    }
+  }
+}
+```
+
+### Complete Example
+
+```typescript
+import { MatimoInstance } from 'matimo';
+
+async function main() {
+  try {
+    // 1. Initialize
+    const matimo = await MatimoInstance.init({ autoDiscover: true });
+
+    // 2. List available tools
+    const tools = matimo.listTools();
+    console.log(`Loaded ${tools.length} tools`);
+
+    // 3. Execute tool
+    const result = await matimo.execute('slack-send-message', {
+      channel: '#general',
+      text: 'Hello from Matimo!',
+    });
+
+    console.log('Message sent:', result);
+  } catch (error) {
+    console.error('Error:', error.message);
+  }
+}
+
+main();
+```
+
+**Best for:** Scripts, CLI tools, backend services, cron jobs, webhooks
+
+---
+
+## Pattern 2: Decorator Pattern (Recommended for Class-Based Code)
+
+The decorator pattern is ideal for class-based agents and applications with automatic method-to-tool binding.
+
+### Basic Setup
+
+```typescript
+import { tool, MatimoInstance, setGlobalMatimoInstance } from 'matimo';
+
+// Initialize Matimo
+const matimo = await MatimoInstance.init({ autoDiscover: true });
+
+// Set global instance for decorators to use
+setGlobalMatimoInstance(matimo);
+
+// Create agent class
+class EmailBot {
+  @tool('slack-send-message')
+  async sendMessage(channel: string, text: string) {
+    // Decorator intercepts this call
+    // Arguments map to tool parameters: channel, text
+    // Method body is optional - decorator does the execution
+  }
+
+  @tool('slack-list-channels')
+  async listChannels() {
+    // Decorator handles execution
+    // Returns the tool result directly
+  }
+}
+
+// Use it
+const bot = new EmailBot();
+
+// When you call bot.sendMessage(), the decorator:
+// 1. Maps arguments to parameters: { channel: '#general', text: '...' }
+// 2. Calls matimo.execute('slack_send_channel_message', {...})
+// 3. Returns the result
+await bot.sendMessage('#general', 'Hello from decorator!');
+const channels = await bot.listChannels();
+```
+
+### How @tool Decorator Works
+
+**Step 1:** Define method with @tool decorator
+
+```typescript
+@tool('slack-send-message')
+async sendMessage(channel: string, text: string) {
+  // Method body is optional (decorator replaces execution)
+}
+```
+
+**Step 2:** Call the method naturally
+
+```typescript
+await bot.sendMessage('#general', 'Hello!');
+```
+
+**Step 3:** Decorator intercepts and executes
+
+```
+1. Intercept call: sendMessage('#general', 'Hello!')
+2. Map args to params: { channel: '#general', text: 'Hello!' }
+3. Call matimo.execute('slack_send_channel_message', {...})
+4. Return result to caller
+```
+
+### Advanced: Multi-Tool Orchestration
+
+```typescript
+import { tool, MatimoInstance, setGlobalMatimoInstance } from 'matimo';
+
+class SmartAssistant {
+  constructor(private matimo: MatimoInstance) {}
+
+  @tool('calculator')
+  async calculate(operation: string, a: number, b: number) {
+    // Decorated method for math
+  }
+
+  @tool('slack-send-message')
+  async notifySlack(channel: string, text: string) {
+    // Decorated method for Slack
+  }
+
+  // Custom orchestration method (not decorated)
+  async runDailyReport(channel: string) {
+    // Custom logic using decorated tools
+    const result = await this.calculate('add', 100, 50);
+    await this.notifySlack(channel, `Daily calculation complete: ${result}`);
+  }
+}
+
+// Usage
+const matimo = await MatimoInstance.init({ autoDiscover: true });
+setGlobalMatimoInstance(matimo);
+
+const assistant = new SmartAssistant(matimo);
+await assistant.runDailyReport('#reports');
+```
+
+**Best for:** Class-based agents, object-oriented design, multi-tool orchestration
+
+---
+
+## Pattern 3: LangChain Integration (Recommended for AI Agents)
+
+For intelligent tool orchestration where the LLM automatically decides which tool to use.
+
+### Basic Setup with convertToolsToLangChain
+
+```typescript
+import { MatimoInstance, convertToolsToLangChain } from '@matimo/core';
+import { ChatOpenAI } from '@langchain/openai';
+import { createAgent } from 'langchain';
+
+// 1. Load Matimo tools; writes that need approval ask the callback
+const matimo = await MatimoInstance.init({
+  autoDiscover: true,
+  onApproval: async (request) => confirmWithUser(request),
+});
+
+// 2. Convert only the tools this agent needs (OpenAI accepts at most 128)
+const slackTools = matimo.listTools().filter((t) => t.name.startsWith('slack'));
+const langchainTools = await convertToolsToLangChain(slackTools, matimo, {
+  SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN!,
+});
+
+// 3. Create and run the agent
+const agent = createAgent({
+  model: new ChatOpenAI({ model: 'gpt-4o-mini' }),
+  tools: langchainTools,
+});
+
+const result = await agent.invoke({
+  messages: [{ role: 'user', content: 'Send a Slack message to #general saying "Hello!"' }],
+});
+console.log(result.messages[result.messages.length - 1].content);
+```
+
+### Complete LangChain Example
+
+```typescript
+import { MatimoInstance, convertToolsToLangChain } from '@matimo/core';
+import { ChatOpenAI } from '@langchain/openai';
+import { createAgent } from 'langchain';
+
+async function runSlackAgent() {
+  // Initialize; sending a message asks confirmWithUser() only if the tool requires approval
+  const matimo = await MatimoInstance.init({
+    autoDiscover: true,
+    onApproval: async (request) => confirmWithUser(request),
+  });
+
+  // Get Slack tools only
+  const slackTools = matimo.listTools().filter((t) => t.name.startsWith('slack-') || t.name.startsWith('slack_'));
+
+  console.log(`Loaded ${slackTools.length} Slack tools`);
+
+  // Convert to LangChain
+  const langchainTools = await convertToolsToLangChain(slackTools, matimo, {
+    SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN!,
+  });
+
+  // Create agent
+  const agent = createAgent({
+    model: new ChatOpenAI({ model: 'gpt-4o-mini', temperature: 0 }),
+    tools: langchainTools,
+  });
+
+  // Example queries
+  const queries = [
+    'List all Slack channels',
+    'Send a message to #general saying hello',
+    'Get user info for john',
+  ];
+
+  for (const query of queries) {
+    console.log(`\nUser: "${query}"`);
+    const result = await agent.invoke({ messages: [{ role: 'user', content: query }] });
+    console.log(`Agent: ${result.messages[result.messages.length - 1].content}`);
+  }
+}
+
+runSlackAgent().catch(console.error);
+```
+
+**Best for:** AI agents with automatic tool selection, natural language interfaces, intelligent workflows
+
+---
+
+## Comparison: All Three Patterns
+
+| Feature              | Factory           | Decorator           | LangChain       |
+| -------------------- | ----------------- | ------------------- | --------------- |
+| **Simplicity**       | Simple     | Medium         | Medium     |
+| **Best For**         | Scripts, backends | Classes, multi-tool | AI agents       |
+| **Tool Selection**   | Manual (code)     | Manual (code)       | Automatic (LLM) |
+| **Type Safety**      | Good              | Excellent           | Good            |
+| **Framework**        | Any               | Class-based         | LangChain+      |
+| **Learning Curve**   | Low               | Medium              | Medium          |
+| **Production Ready** | Yes            | Yes              | Yes          |
+
+---
+
+## Real-World Examples
+
+### Example 1: Backend API (Factory)
+
+```typescript
+// Express.js route handler
+import express from 'express';
+import { MatimoInstance } from 'matimo';
+
+const app = express();
+const matimo = await MatimoInstance.init({ autoDiscover: true });
+
+app.post('/api/send-slack', async (req, res) => {
+  try {
+    const result = await matimo.execute('slack-send-message', {
+      channel: req.body.channel,
+      text: req.body.text,
+    });
+    res.json({ success: true, result });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.listen(3000);
+```
+
+### Example 2: Class-Based Service (Decorator)
+
+```typescript
+// NestJS-style service
+import { tool, MatimoInstance, setGlobalMatimoInstance } from 'matimo';
+
+export class NotificationService {
+  @tool('slack-send-message')
+  async sendSlack(channel: string, message: string) {}
+
+  @tool('gmail-send-email')
+  async sendEmail(to: string, subject: string, body: string) {}
+
+  async notifyUser(userId: string, message: string) {
+    // Use decorated methods naturally
+    await this.sendSlack('#notifications', `User ${userId}: ${message}`);
+    await this.sendEmail('admin@example.com', 'Notification', message);
+  }
+}
+
+// Usage
+const matimo = await MatimoInstance.init({ autoDiscover: true });
+setGlobalMatimoInstance(matimo);
+const service = new NotificationService();
+await service.notifyUser('user123', 'Important update');
+```
+
+### Example 3: AI Agent (LangChain)
+
+```typescript
+// ChatGPT-powered agent
+import { MatimoInstance, convertToolsToLangChain } from '@matimo/core';
+import { ChatOpenAI } from '@langchain/openai';
+import { createAgent } from 'langchain';
+
+const matimo = await MatimoInstance.init({
+  autoDiscover: true,
+  onApproval: async (request) => confirmWithUser(request),
+});
+
+// Give the agent the tools for this job, not all ~150
+const picked = matimo
+  .listTools()
+  .filter((t) => t.name.startsWith('gmail') || t.name.startsWith('slack'));
+const tools = await convertToolsToLangChain(picked, matimo);
+
+const agent = createAgent({ model: new ChatOpenAI({ model: 'gpt-4o-mini' }), tools });
+
+// Agent picks tools based on user intent
+const result = await agent.invoke({
+  messages: [{ role: 'user', content: 'Send an email and post to Slack about the Q4 report' }],
+});
+```
+
+---
+
+## Error Handling Best Practices
+
+```typescript
+import { MatimoError, ErrorCode } from '@matimo/core';
+
+try {
+  const result = await matimo.execute('calculator', {
+    operation: 'add',
+    a: 5,
+    b: 3,
+  });
+} catch (error) {
+  if (error instanceof MatimoError) {
+    // Handle Matimo-specific errors
+    switch (error.code) {
+      case ErrorCode.TOOL_NOT_FOUND:
+        console.error(`Tool "${error.details?.toolName}" not found`);
+        break;
+      case ErrorCode.POLICY_DENIED:
+        console.error(`Blocked by policy:`, error.details?.reason);
+        break;
+      case ErrorCode.EXECUTION_FAILED:
+        console.error(`Execution failed:`, error.details);
+        break;
+      case ErrorCode.AUTH_FAILED:
+        console.error(`Authentication failed:`, error.message);
+        break;
+      default:
+        console.error(`Unknown error:`, error.message);
+    }
+  } else {
+    // Handle unexpected errors
+    console.error('Unexpected error:', error);
+  }
+}
+```
+
+---
+
+## Debugging Tips
+
+### Log Available Tools
+
+```typescript
+const matimo = await MatimoInstance.init({ autoDiscover: true });
+const tools = matimo.listTools();
+
+console.log('Available tools:');
+tools.forEach((t) => {
+  console.log(`  - ${t.name}: ${t.description}`);
+  console.log(`    Parameters:`, Object.keys(t.parameters || {}));
+});
+```
+
+### Validate Tool Before Executing
+
+```typescript
+const toolName = 'calculator';
+const tool = matimo.getTool(toolName);
+
+if (!tool) {
+  console.error(`Tool "${toolName}" not found`);
+  return;
+}
+
+console.log('Tool definition:', tool);
+```
+
+### Enable Detailed Error Messages
+
+```typescript
+try {
+  await matimo.execute('tool-name', params);
+} catch (error) {
+  console.error('Full error:', JSON.stringify(error, null, 2));
+}
+```
+
+---
+
+## Next Steps
+
+- **[Framework Integrations](/docs/framework-integrations/langchain/)**: LangChain details & examples
+- **[Tool Discovery Guide](/docs/user-guide/tool-discovery/)**: Finding and managing tools
+- **[API Reference](/docs/api-reference/sdk/)**: Complete SDK documentation
+- **[Examples](https://github.com/tallclub/matimo/blob/main/typescript/examples/)**: Working code for all patterns
+
+See [examples/tools/](https://github.com/tallclub/matimo/blob/main/typescript/examples/tools/) for complete, runnable examples.

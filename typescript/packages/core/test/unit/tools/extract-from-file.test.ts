@@ -2,7 +2,7 @@ import path from 'path';
 import fs from 'fs';
 import os from 'os';
 import axios from 'axios';
-import pdfParse from 'pdf-parse';
+import { extractText } from 'unpdf';
 import mammoth from 'mammoth';
 import { ToolLoader } from '../../../src/core/tool-loader';
 import type { Parameter } from '../../../src/core/types';
@@ -10,14 +10,17 @@ import { MatimoError, ErrorCode } from '../../../src/errors/matimo-error';
 import extractFromFileTool from '../../../tools/extract_from_file/extract_from_file';
 
 jest.mock('axios');
-jest.mock('pdf-parse');
+jest.mock('unpdf', () => ({
+  getDocumentProxy: jest.fn().mockResolvedValue({}),
+  extractText: jest.fn(),
+}));
 jest.mock('mammoth', () => ({
   __esModule: true,
   default: { extractRawText: jest.fn() },
 }));
 
 const mockedAxios = axios as jest.Mocked<typeof axios>;
-const mockedPdfParse = pdfParse as unknown as jest.Mock;
+const mockedPdfParse = extractText as unknown as jest.Mock;
 const mockedMammoth = mammoth as unknown as { extractRawText: jest.Mock };
 
 describe('Extract From File Tool', () => {
@@ -254,8 +257,8 @@ describe('Extract From File Tool', () => {
   // ── Local file: pdf / docx (mocked parsers) ─────────────────────────────
 
   describe('Local pdf extraction', () => {
-    it('extracts text and page count via pdf-parse', async () => {
-      mockedPdfParse.mockResolvedValue({ text: 'Hello PDF world', numpages: 3 });
+    it('extracts text and page count via unpdf', async () => {
+      mockedPdfParse.mockResolvedValue({ text: 'Hello PDF world', totalPages: 3 });
 
       const filePath = path.join(tmpDir, 'report.pdf');
       fs.writeFileSync(filePath, Buffer.from('%PDF-1.4 fake content'));
@@ -274,7 +277,7 @@ describe('Extract From File Tool', () => {
     });
 
     it('auto-detects pdf via magic bytes with no extension', async () => {
-      mockedPdfParse.mockResolvedValue({ text: 'Sniffed', numpages: 1 });
+      mockedPdfParse.mockResolvedValue({ text: 'Sniffed', totalPages: 1 });
       const filePath = path.join(tmpDir, 'no-extension-pdf');
       fs.writeFileSync(filePath, Buffer.from('%PDF-1.7 rest of file'));
 
@@ -285,8 +288,8 @@ describe('Extract From File Tool', () => {
       expect(result.format_detected).toBe('pdf');
     });
 
-    it('defaults extracted text to empty string when pdf-parse returns no text', async () => {
-      mockedPdfParse.mockResolvedValue({ numpages: 2 });
+    it('defaults extracted text to empty string when unpdf returns no text', async () => {
+      mockedPdfParse.mockResolvedValue({ totalPages: 2 });
       const filePath = path.join(tmpDir, 'blank.pdf');
       fs.writeFileSync(filePath, Buffer.from('%PDF-1.4'));
 

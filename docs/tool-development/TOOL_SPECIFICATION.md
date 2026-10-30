@@ -47,20 +47,19 @@ error_handling: # Optional
 
 ### name
 
-Unique tool identifier. Use lowercase, kebab-case.
+Unique tool identifier.
 
 ```yaml
-name: github-create-issue
-name: slack-send-message
+name: slack_send_channel_message   # newer packages: snake_case
+name: github-create-issue          # older packages: kebab-case
 name: calculator
 ```
 
 **Rules:**
 
-- Lowercase only
-- Kebab-case (hyphens, no spaces)
-- Globally unique
-- 3-50 characters
+- Lowercase, no spaces
+- Globally unique among the tools a `MatimoInstance` loads
+- New tools use `snake_case`. The GitHub, Gmail, HubSpot, Mailchimp, Twilio and Postgres packages and `slack-send-message` predate that and use kebab-case. Neither style is enforced by the loader, so keep the convention of the package you're adding to
 
 ### description
 
@@ -121,9 +120,9 @@ description: Number of items to fetch
 description: Enable verbose logging
 ```
 
-#### required (required)
+#### required (optional)
 
-Whether parameter is mandatory.
+Whether the parameter is mandatory. Defaults to optional, so say `required: true` for anything the tool cannot run without.
 
 ```yaml
 required: true   # Must be provided
@@ -152,27 +151,15 @@ enum:
   - divide
 ```
 
-#### validation (optional)
+#### examples, items, properties (optional)
 
-Constraints on parameter values.
+`examples` lists sample values. `items` describes the element type of an `array` parameter, and `properties` describes the fields of an `object` parameter. Both nest.
 
-```yaml
-# For strings:
-validation:
-  minLength: 1
-  maxLength: 100
-  pattern: "^[a-z]+$"  # Regex pattern
+#### No min, max or pattern keys
 
-# For numbers:
-validation:
-  min: 0
-  max: 100
+There is no `validation:` block. A key Matimo doesn't know, such as `minLength`, `min` or `pattern`, is ignored when the YAML loads, so it enforces nothing. State limits in the `description` instead, and enforce them in the API the tool calls.
 
-# For arrays:
-validation:
-  minItems: 1
-  maxItems: 10
-```
+`MatimoInstance.execute()` does not check arguments against `type`, `required` or `enum` either (only a missing `{placeholder}` in an HTTP URL is rejected). Those fields describe the tool to the model: the LangChain adapter turns them into a Zod schema, and the MCP server publishes them as the tool's `inputSchema`. `default` is applied only by the LangChain adapter.
 
 ### Examples
 
@@ -182,25 +169,19 @@ validation:
 parameters:
   message:
     type: string
-    description: Message to send
+    description: Message to send (1 to 1000 characters)
     required: true
-    validation:
-      minLength: 1
-      maxLength: 1000
 ```
 
-#### Number Parameter with Constraints
+#### Number Parameter with a Default
 
 ```yaml
 parameters:
   count:
     type: number
-    description: Number of items to fetch
+    description: Number of items to fetch (1 to 100)
     required: false
     default: 10
-    validation:
-      min: 1
-      max: 100
 ```
 
 #### Choice Parameter
@@ -389,7 +370,7 @@ requires_approval: true   # ask a human before every call
 risk: high                # low | medium | high | critical
 status: approved          # draft | approved | deprecated
 deprecated: false
-deprecation_message: 'Use slack_send_message instead'
+deprecation_message: 'Use slack_send_channel_message instead'
 ```
 
 | Field | Effect |
@@ -543,61 +524,62 @@ See [Tool Execution Flow](../architecture/OVERVIEW.md#tool-execution-flow) for w
 
 ## Authentication
 
-Define how to authenticate (optional).
+Describe how the tool authenticates (optional).
 
 ```yaml
 authentication:
-  type: api_key|bearer|oauth2|basic
+  type: none|api_key|basic|bearer|oauth2|custom
   location: header|query|body
   name: header_name
-  secret_env_var: MATIMO_SECRET_NAME
+  provider: provider_name   # oauth2 only
+  required: true
+  username_env: ENV_NAME    # basic only
+  password_env: ENV_NAME    # basic only
 ```
 
-### Type: API Key
+There is no `secret_env_var` field. Apart from `basic`, the `authentication` block describes the scheme and is not what injects the secret. The secret reaches the request through a `{PLACEHOLDER}` in `headers`, `query_params`, `url` or `body`:
 
 ```yaml
-authentication:
-  type: api_key
-  location: header
-  name: X-API-Key
-  secret_env_var: MATIMO_API_KEY
-```
-
-Environment variable: `MATIMO_API_KEY=your-api-key`
-
-### Type: Bearer Token
-
-```yaml
+execution:
+  type: http
+  method: GET
+  url: 'https://api.example.com/items'
+  headers:
+    Authorization: 'Bearer {EXAMPLE_API_KEY}'
 authentication:
   type: bearer
-  secret_env_var: MATIMO_API_TOKEN
+  location: header
+  name: Authorization
 ```
 
-Environment variable: `MATIMO_API_TOKEN=your-token`
+Only a placeholder whose name contains `token`, `key`, `secret`, `password`, `credential`, `auth` or `bearer` is treated as a credential, so name yours that way. At call time Matimo fills `{EXAMPLE_API_KEY}` from the first of these that is set (see [Authentication](../user-guide/AUTHENTICATION.md)):
 
-Automatically adds header: `Authorization: Bearer your-token`
+1. The call's `credentials`: `EXAMPLE_API_KEY`, then `MATIMO_EXAMPLE_API_KEY`
+2. The environment variable `MATIMO_EXAMPLE_API_KEY`
+3. The environment variable `EXAMPLE_API_KEY`
 
 ### Type: Basic Auth
+
+`basic` is the one scheme the HTTP executor handles itself. Name the two variables that hold the username and password, and it builds the `Authorization: Basic ...` header:
 
 ```yaml
 authentication:
   type: basic
-  secret_env_var: MATIMO_CREDENTIALS
+  username_env: TWILIO_ACCOUNT_SID
+  password_env: TWILIO_AUTH_TOKEN
 ```
 
-Environment variable: `MATIMO_CREDENTIALS=username:password`
-
-Automatically creates Basic auth header.
+If either variable is unset (and not passed in `credentials`) the call fails with an error naming both.
 
 ### Type: OAuth2
 
 ```yaml
 authentication:
   type: oauth2
-  secret_env_var: MATIMO_OAUTH_TOKEN
+  provider: github
 ```
 
-(Full OAuth2 implementation in Phase 2)
+`provider` names a provider definition that holds the authorization and token URLs. Matimo does not run the browser flow or refresh tokens for you: your application obtains the token (see [OAuth2 and credentials](../architecture/OAUTH.md)) and supplies it as the placeholder value.
 
 ---
 
@@ -610,15 +592,15 @@ Retry settings (optional).
 ```yaml
 error_handling:
   retry: 3
-  backoff_type: exponential|linear|constant
+  backoff_type: exponential|linear|fixed
   initial_delay_ms: 1000
   max_delay_ms: 30000
 ```
 
 **Fields:**
 
-- `retry` (number, default: 0) — Number of retry attempts
-- `backoff_type` (string) — Backoff strategy
+- `retry` (number), Number of retry attempts
+- `backoff_type` (string), `exponential`, `linear` or `fixed`
 - `initial_delay_ms` (number) — Initial delay between retries
 - `max_delay_ms` (number) — Maximum delay between retries
 
@@ -649,12 +631,12 @@ initial_delay_ms: 1000
 
 Delays: 1s, 2s, 3s, 4s
 
-#### constant
+#### fixed
 
 Wait time = initial_delay
 
 ```yaml
-backoff_type: constant
+backoff_type: fixed
 initial_delay_ms: 2000
 ```
 
@@ -664,23 +646,19 @@ Delays: 2s, 2s, 2s, 2s
 
 ## Complete Examples
 
-### Calculator Tool
+### Add Two Numbers (command tool)
+
+A minimal `type: command` tool. Arguments are passed to the process as separate `args` entries, never through a shell, so a parameter value cannot inject extra commands. `{placeholder}` only substitutes values; it does not evaluate expressions.
 
 ```yaml
-name: calculator
-description: Perform basic math calculations
+name: add_numbers
+description: Add two numbers
 version: '1.0.0'
 
+risk: low
+requires_approval: false # command tools ask a human before every call unless they opt out
+
 parameters:
-  operation:
-    type: string
-    description: Math operation to perform
-    required: true
-    enum:
-      - add
-      - subtract
-      - multiply
-      - divide
   a:
     type: number
     description: First number
@@ -695,8 +673,7 @@ execution:
   command: node
   args:
     - -e
-    - 'console.log(JSON.stringify({ result: eval(`${process.argv[1]} ${process.argv[2]} ${process.argv[3]}`) }))'
-    - "{operation === 'add' ? '+' : operation === 'subtract' ? '-' : operation === 'multiply' ? '*' : '/'}"
+    - 'console.log(JSON.stringify({ result: Number(process.argv[1]) + Number(process.argv[2]) }))'
     - '{a}'
     - '{b}'
 
@@ -705,8 +682,7 @@ output_schema:
   properties:
     result:
       type: number
-  required:
-    - result
+The built-in `calculator` is a `type: function` tool with a sandboxed expression parser (`typescript/packages/core/tools/calculator/definition.yaml`). It is a better model for anything beyond arithmetic.
 ```
 
 ### GitHub Create Issue
@@ -844,33 +820,29 @@ tools/
 Example:
 
 ```
+typescript/packages/gmail/
+├── definition.yaml                  # Provider manifest (OAuth2 endpoints), not a tool
 tools/
-├── github/
-│   └── definition.yaml
-├── slack/
-│   └── definition.yaml
-├── gmail/
 │   ├── send-email/
 │   │   └── definition.yaml
 │   ├── create-draft/
 │   │   └── definition.yaml
 │   ├── list-messages/
 │   │   └── definition.yaml
-│   └── definition.yaml              # Optional: shared config
+typescript/packages/core/tools/
 ├── calculator/
 │   └── definition.yaml
-└── examples/
-    ├── http-client.yaml
-    └── echo-tool.yaml
+    └── calculator.ts                # Implementation for a `type: function` tool
 ```
 
 **Naming conventions:**
 
-- Provider directories: lowercase, kebab-case (`github`, `slack`, `gmail`)
-- Tool subdirectories: lowercase, kebab-case (`send-email`, `create-draft`)
+- Tool subdirectories hold one tool each and are named after it (`send-email`, `slack_send_channel_message`)
 - Files: Always `definition.yaml` for tool definitions
 
 ---
+
+- A `definition.yaml` at a provider's root is the provider manifest, not a tool, and is not counted among its tools
 
 ## See Also
 

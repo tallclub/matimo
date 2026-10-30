@@ -84,12 +84,18 @@ export MATIMO_POSTGRES_USER="myuser"
 export MATIMO_POSTGRES_PASSWORD="mypassword"
 ```
 
+**Encrypted connections (TLS)**
+```bash
+export MATIMO_POSTGRES_SSL="verify-full"   # disable (default), require, verify-ca or verify-full
+```
+`require` encrypts but does not verify the server certificate. Use `verify-ca` or `verify-full` for any database that is not on the same host. An unknown value is rejected.
+
 ---
 
 ## Security Notes
 
 - All SQL queries go through Matimo's **content validator** - SSRF and injection patterns are detected
-- The tool itself does not require approval - use a policy file if you want writes gated
+- The tool's YAML does not set `requires_approval`, but the approval handler asks before SQL that writes, changes the schema, or reaches files, the OS or other servers (`COPY`, `pg_read_file`, `lo_export`, `dblink`, `DO`, `CALL`, ...). Without an `on_approval` callback those queries are refused
 - Use a **read-only database user** for agent workloads when possible
 - Consider a [policy file](https://docs.matimo.dev/api-reference/POLICY_AND_LIFECYCLE) to restrict allowed SQL patterns
 

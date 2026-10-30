@@ -21,6 +21,7 @@ class McpArgs:
     vault_path: str | None = None
     aws_secret_id: str | None = None
     token: str | None = None
+    host: str = "127.0.0.1"
     tool_paths: list[str] | None = None
     skill_paths: list[str] | None = None
     https: bool = False
@@ -50,6 +51,8 @@ def _parse_args(params: list[str]) -> McpArgs:
                     print('❌ --transport must be "stdio" or "http"', file=sys.stderr)
                     sys.exit(1)
                 args.transport = val
+            case "--host":
+                args.host = require_value("--host")
             case "--port" | "-p":
                 val = require_value("--port")
                 try:
@@ -179,6 +182,7 @@ async def _mcp_command_async(params: list[str]) -> None:
     options = MCPServerOptions(
         transport=args.transport,
         port=args.port,
+        host=args.host,
         tools=args.tools,
         exclude_tools=args.exclude_tools,
         secret_resolver=_build_resolver_config(args),

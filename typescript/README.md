@@ -118,7 +118,7 @@ const result = await matimo.execute('slack_send_channel_message', {
 - **Matimo CLI**: Tool discovery, setup wizard, MCP config generation
 - **OAuth2 Support**: Provider-agnostic authorization for Slack, Gmail, GitHub, etc.
 - **Framework Support**: Factory pattern, Decorator pattern, LangChain
-- **Agent Skills System**: [SKILL.md](https://agentskills.io) knowledge files with semantic search, content chunking, and progressive disclosure
+- **Agent Skills System**: [SKILL.md](https://agentskills.io) knowledge files with TF-IDF keyword-relevance search, content chunking, and progressive disclosure
 - **Policy Engine**: 9 content rules for agent-written tools, per-call approval (`onApproval`), risk-based HITL quarantine, hot-reload, HMAC approvals, events and a hash-chained JSONL audit log
 
 ---
@@ -215,7 +215,7 @@ const content = matimo.getSkillContent('postgres', {
   maxTokens: 500,
 });
 
-// Semantic search across all skills
+// Relevance search (TF-IDF) across all skills
 const results = await matimo.semanticSearchSkills('How do I handle rate limiting?');
 ```
 

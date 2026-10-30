@@ -166,7 +166,7 @@ Tools use environment variables for credentials. Bruno CLI manages environment s
 
 ## 📖 Prerequisites
 
-- **Bruno CLI** installed globally: `pnpm install -g @usebruno/cli`
+- **Bruno CLI** installed globally: `pnpm install -g @usebruno/cli`. `matimo-bruno` only calls the `bru` on your PATH and does not bundle it
 - **Python** 3.11+
 - Bruno collections in `.bru` format or OpenAPI specs
 

@@ -279,7 +279,7 @@ The token is automatically injected into all API requests.
 
 ## 🔄 Versioning
 
-- **Version 0.2.0** - 16 tools implemented
+- **16 tools** implemented; the package version tracks the Matimo release (0.4.0)
 - **Modern APIs** - All tools use current Slack API (as of Feb 2026)
 - **No Deprecated Tools** - Replaced deprecated files.upload with modern API
 

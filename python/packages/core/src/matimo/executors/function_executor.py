@@ -17,6 +17,7 @@ Example tool definition (definition.yaml):
 from __future__ import annotations
 
 import asyncio
+import contextvars
 import importlib.util
 import inspect
 import logging
@@ -124,9 +125,11 @@ class FunctionExecutor:
             if inspect.iscoroutinefunction(run_fn):
                 result = await asyncio.wait_for(run_fn(*args), timeout=timeout_s)
             else:
-                # Run sync function in executor to avoid blocking the event loop
+                # Run sync function in executor to avoid blocking the event loop;
+                # copy_context keeps the executing-instance context var visible.
+                ctx = contextvars.copy_context()
                 result = await asyncio.wait_for(
-                    asyncio.get_running_loop().run_in_executor(None, run_fn, *args),
+                    asyncio.get_running_loop().run_in_executor(None, ctx.run, run_fn, *args),
                     timeout=timeout_s,
                 )
         except TimeoutError:

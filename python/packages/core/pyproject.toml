@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "matimo-core"
-version = "0.2.0"
+version = "0.4.0"
 description = "Matimo core — framework-agnostic SDK: pre-built providers, skills layer, MCP, and a policy engine you control"
 readme = "README.md"
 license = { text = "MIT" }
@@ -41,7 +41,7 @@ dependencies = [
 langchain = ["langchain-core>=0.3"]
 crewai = ["crewai>=0.80"]
 agno = ["agno>=3.0"]
-mcp = ["mcp>=1.28.1"]
+mcp = ["mcp>=2.0"]
 vault = ["hvac>=2.0"]
 aws = ["boto3>=1.34"]
 dotenv = ["python-dotenv>=1.0"]
@@ -49,7 +49,7 @@ all = [
     "langchain-core>=0.3",
     "crewai>=0.80",
     "agno>=3.0",
-    "mcp>=1.28.1",
+    "mcp>=2.0",
     "hvac>=2.0",
     "python-dotenv>=1.0",
 ]
@@ -64,7 +64,7 @@ dev = [
     "langchain-core>=0.3",
     "crewai>=0.80",
     "agno>=3.0",
-    "mcp>=1.28.1",
+    "mcp>=2.0",
     "hvac>=2.0",
     "boto3>=1.34",
     "python-dotenv>=1.0",

@@ -278,3 +278,18 @@ class TestToolDecoratorSyncEdgeCases:
         result = agent.run("hello")  # type: ignore[call-arg]
         assert result == {"ok": True}
         mock_matimo.execute.assert_called_once_with("my_tool", {"val": "hello"})
+
+
+@pytest.mark.asyncio
+async def test_meta_tool_sees_executing_instance_without_global_registration() -> None:
+    """matimo_list_skills must find its owning instance even if nothing is registered globally."""
+    from matimo import Matimo
+
+    set_global_matimo_instance(None)  # type: ignore[arg-type]
+    m = await Matimo.init(auto_discover=True)
+    expected = len(m.list_skills())
+    assert expected > 0
+    result = await m.execute("matimo_list_skills", {})
+    assert result["total"] == expected
+    # the executing-instance context is cleared once the call returns
+    assert get_global_matimo_instance() is None

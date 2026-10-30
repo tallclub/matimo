@@ -24,6 +24,7 @@ interface McpArgs {
   vaultPath?: string;
   awsSecretId?: string;
   token?: string;
+  host?: string;
   toolPaths?: string[];
   skillPaths?: string[];
   https?: boolean;
@@ -61,6 +62,11 @@ function parseArgs(params: string[]): McpArgs {
           console.error('❌ --transport must be "stdio" or "http"');
           process.exit(1);
         }
+        break;
+
+      case '--host':
+        args.host = next;
+        i++;
         break;
 
       case '--port':
@@ -203,6 +209,7 @@ export async function mcpCommand(params: string[]): Promise<void> {
   const server = new MCPServer({
     transport: args.transport,
     port: args.port,
+    host: args.host,
     tools: args.tools,
     excludeTools: args.excludeTools,
     secretResolver: buildResolverConfig(args),

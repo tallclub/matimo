@@ -3,12 +3,14 @@ import * as readline from 'readline';
 
 /**
  * Example: Execute tool using factory pattern
- * Demonstrates running shell commands and capturing output
+ * Demonstrates running commands and capturing output
  *
- * The built-in `execute` tool runs commands through a real shell
- * (cmd.exe on Windows, sh on Unix/macOS — see tools/execute/execute.ts),
- * so the commands below are picked per-platform rather than assuming
- * POSIX-only tools like `ls`/`pwd` exist.
+ * By default the built-in `execute` tool runs the command directly, with no
+ * shell (see tools/execute/execute.ts), so shell built-ins such as `ls`/`dir`/
+ * `echo` are not available everywhere and the commands below are picked
+ * per-platform. Pass `args` to append arguments one by one, or `shell` to opt
+ * in to a full shell line (Example 5); a call with `shell` ALWAYS asks a
+ * human, even with MATIMO_AUTO_APPROVE or MATIMO_APPROVED_PATTERNS set.
  */
 const isWindows = process.platform === 'win32';
 
@@ -18,7 +20,12 @@ const isWindows = process.platform === 'win32';
  * MATIMO_APPROVED_PATTERNS="execute" instead.
  */
 async function approveCommand(request: ApprovalRequest): Promise<boolean> {
-  console.info(`🔒 Approval required — ${request.toolName}: ${String(request.params.command)}`);
+  const shell = request.params.shell
+    ? ` (through shell: ${String(request.params.shell)}; this call always asks)`
+    : '';
+  console.info(
+    `🔒 Approval required: ${request.toolName}: ${String(request.params.command)}${shell}`
+  );
   if (!process.stdin.isTTY) {
     console.info(
       '   ❌ Rejected: no terminal. Pre-approve with MATIMO_APPROVED_PATTERNS="execute"'
@@ -41,7 +48,8 @@ async function executeExample() {
 
   try {
     // Example 1: List files in current directory
-    const listCommand = isWindows ? 'dir' : 'ls';
+    // The execute tool runs without a shell, so `dir`/`cd` (cmd built-ins) do not exist on Windows.
+    const listCommand = isWindows ? `node -p "fs.readdirSync('.').join(' ')"` : 'ls';
     console.info(`1. Running: ${listCommand}\n`);
     const lsResult = await matimo.execute('execute', {
       command: listCommand,
@@ -52,7 +60,7 @@ async function executeExample() {
     console.info('---\n');
 
     // Example 2: Get current working directory
-    const pwdCommand = isWindows ? 'cd' : 'pwd';
+    const pwdCommand = isWindows ? 'node -p process.cwd()' : 'pwd';
     console.info(`2. Running: ${pwdCommand}\n`);
     const pwdResult = await matimo.execute('execute', {
       command: pwdCommand,
@@ -61,16 +69,43 @@ async function executeExample() {
     console.info('Output:', (pwdResult as any).stdout);
     console.info('---\n');
 
-    // Example 3: Echo command (unquoted — cmd.exe's `echo` does not strip
-    // quotes the way POSIX sh does, so a quoted string would print the
-    // literal quotes on Windows).
-    console.info('3. Running: echo Hello from Matimo\n');
+    // Example 3: Print a message. `echo` is a shell built-in on Windows, so use node,
+    // which exists on every platform where this example runs.
+    console.info('3. Running: node -p "\'Hello from Matimo\'"\n');
     const echoResult = await matimo.execute('execute', {
-      command: 'echo Hello from Matimo',
+      command: 'node -p "\'Hello from Matimo\'"',
     });
     console.info('Success:', (echoResult as any).success);
     console.info('Output:', (echoResult as any).stdout);
     console.info('---\n');
+
+    // Example 4: `args` are appended to the command, one argument each, so a value
+    // with spaces or quotes needs no escaping.
+    console.info('4. Running: node -e <script> with args\n');
+    const argsResult = await matimo.execute('execute', {
+      command: 'node',
+      args: ['-e', 'console.log(process.argv.slice(1).join(" | "))', 'first arg', 'second arg'],
+    });
+    console.info('Success:', (argsResult as any).success);
+    console.info('Output:', (argsResult as any).stdout);
+    console.info('---\n');
+
+    // Example 5: opt in to a shell for a pipe. The command is a full shell line, so this
+    // call ALWAYS asks a human: MATIMO_AUTO_APPROVE, MATIMO_APPROVED_PATTERNS and
+    // `approved` do not apply, and with no approval callback it is rejected.
+    if (process.stdin.isTTY) {
+      const shell = isWindows ? 'cmd' : '/bin/sh';
+      const line = isWindows ? 'echo one two | findstr two' : 'echo one two | tr a-z A-Z';
+      console.info(`5. Running through ${shell}: ${line}\n`);
+      try {
+        const shellResult = await matimo.execute('execute', { command: line, shell });
+        console.info('Success:', (shellResult as any).success);
+        console.info('Output:', (shellResult as any).stdout);
+      } catch (error: any) {
+        console.info('Example 5 not run:', error.message);
+      }
+      console.info('---\n');
+    }
   } catch (error: any) {
     console.error('Error executing command:', error.message);
   }

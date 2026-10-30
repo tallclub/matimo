@@ -15,15 +15,15 @@ jobs:
       matrix:
         node-version: [22.x, 24.x]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
 
       - name: Setup Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
         with:
           node-version: ${{ matrix.node-version }}
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1  # v4
         with:
           version: 8
 
@@ -33,7 +33,7 @@ jobs:
         run: |
           echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
         name: Setup pnpm cache
         with:
           path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
@@ -43,6 +43,10 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+        working-directory: typescript
+
+      - name: Audit production dependencies
+        run: pnpm audit --prod --audit-level=high
         working-directory: typescript
 
       - name: Lint
@@ -58,7 +62,7 @@ jobs:
         working-directory: typescript
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238  # v4
         with:
           files: ./typescript/coverage/lcov.info
           flags: typescript
@@ -72,18 +76,27 @@ jobs:
       matrix:
         python-version: ['3.11', '3.12']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@caf0cab7a618c569241d31dcd442f54681755d39  # v3
         with:
-          version: "latest"
+          version: "0.11.33"
 
       - name: Setup Python ${{ matrix.python-version }}
         run: uv python install ${{ matrix.python-version }}
 
       - name: Install dependencies
         run: uv sync --group dev
+        working-directory: python
+
+      # Audits what ships (matimo-core runtime deps), not optional framework extras:
+      # crewai -> chromadb has advisories with no fixed release and is dev/extra only.
+      - name: Audit runtime dependencies
+        if: matrix.python-version == '3.12'
+        run: |
+          uv export --no-dev --no-hashes --frozen --no-emit-workspace --package matimo-core -o runtime-requirements.txt
+          uvx pip-audit -r runtime-requirements.txt --no-deps --disable-pip
         working-directory: python
 
       - name: Lint
@@ -103,7 +116,7 @@ jobs:
         working-directory: python
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238  # v4
         with:
           files: ./python/coverage.xml
           flags: python

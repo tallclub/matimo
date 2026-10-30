@@ -180,7 +180,7 @@ Tools use environment variables for credentials. Bruno CLI manages environment s
 
 ## 📖 Prerequisites
 
-- **Bruno CLI** installed globally: `npm install -g @usebruno/cli` (or `pnpm install -g @usebruno/cli`)
+- **Bruno CLI** installed globally: `npm install -g @usebruno/cli` (or `pnpm install -g @usebruno/cli`). `@matimo/bruno` only calls the `bru` on your PATH and does not bundle it
 - **Node.js** 22.19+ required
 - Bruno collections in `.bru` format or OpenAPI specs
 

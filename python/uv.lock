@@ -556,11 +556,11 @@ wheels = [
 
 [[package]]
 name = "certifi"
-version = "2026.7.22"
+version = "2026.10.23"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/a3/c2/24167ea9858356b47a87a50d39908bfdb72ceeefe0041586e704e5376b3a/certifi-2026.7.22.tar.gz", hash = "sha256:741e2c3b351ddf169a738da9f2c048608ff7f2c5cc02f1ebc6b118bb090d5d55", size = 138112, upload-time = "2026-07-22T03:35:12.644Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/fd/11/b524cbd9bbdaca58608e4cf4053fd463417549e1959fa8d3aa18319f9555/certifi-2026.10.23.tar.gz", hash = "sha256:a9895e6e2758b371e0545e321a3a8fd1fcfd9829ada8824a936dfb16aaaf36cd", size = 136225, upload-time = "2026-10-23T11:36:16.478Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0b/a7/71ac2cff56fec219ed242bb11b8efb69fcc4bec75db06fb7bfe35de520e6/certifi-2026.7.22-py3-none-any.whl", hash = "sha256:62f22742b58a1a33014a2b6b706588a8d7e2a88ae7bd1a6ebe8c992928483775", size = 136983, upload-time = "2026-07-22T03:35:11.276Z" },
+    { url = "https://files.pythonhosted.org/packages/32/d1/a3652fe2c19134d0d15922177821d863cbd7e842d53a21bbe7e8e3a1b5ac/certifi-2026.10.23-py3-none-any.whl", hash = "sha256:e9b54de76e530bb6cf0ccd036787103acb58fd42ba930ea8bf948ddbaa2f61d1", size = 135082, upload-time = "2026-10-23T11:36:14.763Z" },
 ]
 
 [[package]]
@@ -1501,15 +1501,6 @@ http2 = [
 ]
 
 [[package]]
-name = "httpx-sse"
-version = "0.4.3"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/0f/4c/751061ffa58615a32c31b2d82e8482be8dd4a89154f003147acee90f2be9/httpx_sse-0.4.3.tar.gz", hash = "sha256:9b1ed0127459a66014aec3c56bebd93da3c1bc8bb6618c8082039a44889a755d", size = 15943, upload-time = "2025-10-10T21:48:22.271Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/d2/fd/6668e5aec43ab844de6fc74927e155a3b37bf40d7c3790e49fc0406b6578/httpx_sse-0.4.3-py3-none-any.whl", hash = "sha256:0ac1c9fe3c0afad2e0ebb25a934a59f4c7823b60792691f779fad2c5568830fc", size = 8960, upload-time = "2025-10-10T21:48:21.158Z" },
-]
-
-[[package]]
 name = "httpx2"
 version = "2.13.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1869,16 +1860,16 @@ wheels = [
 
 [[package]]
 name = "langchain-mcp-adapters"
-version = "0.3.2"
+version = "0.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "langchain-core" },
     { name = "mcp" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/05/49/f3b8497b64024ab50d10011f27e94d149668fef754da74c1c2ce6ebe4a30/langchain_mcp_adapters-0.3.2.tar.gz", hash = "sha256:61cd1a09597adb619a9bafb0642938ffc2a9463d699a753f7af0420ea46c381a", size = 47129, upload-time = "2026-08-06T06:15:04.094Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5a/5d/1f43b6a14cf448ea47bceb2860e9a6e3b0a911de0719aba43ed3eb927195/langchain_mcp_adapters-0.3.1.tar.gz", hash = "sha256:e08d4a74a0934d558ddb807ecbb8f89466c93a0d06c1fb58974b93b4703de01c", size = 47140, upload-time = "2026-07-27T18:36:45.792Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a3/5e/4f117d2500a661079a1895a6eb18954a906e458b1e45fa04a301fcdabd61/langchain_mcp_adapters-0.3.2-py3-none-any.whl", hash = "sha256:094e6b3096dbcc408417d5722f6915f164772e50c502ae3d8989405bf12c3c84", size = 28879, upload-time = "2026-08-06T06:15:02.832Z" },
+    { url = "https://files.pythonhosted.org/packages/22/8d/934946caf18559158678099ac00e6eed67d78e68c4e73c7afd01e19d31ec/langchain_mcp_adapters-0.3.1-py3-none-any.whl", hash = "sha256:1e354d9466db9fab9e30f24419adffbd39a84229e7f452927f99ea799e1937f9", size = 28877, upload-time = "2026-07-27T18:36:44.762Z" },
 ]
 
 [[package]]
@@ -2412,7 +2403,7 @@ wheels = [
 
 [[package]]
 name = "matimo"
-version = "0.2.0"
+version = "0.4.0"
 source = { editable = "packages/matimo" }
 dependencies = [
     { name = "matimo-cli" },
@@ -2462,7 +2453,7 @@ provides-extras = ["langchain", "crewai", "agno", "mcp", "dotenv", "vault", "aws
 
 [[package]]
 name = "matimo-bruno"
-version = "0.2.0"
+version = "0.4.0"
 source = { editable = "packages/bruno" }
 dependencies = [
     { name = "matimo-core" },
@@ -2473,7 +2464,7 @@ requires-dist = [{ name = "matimo-core", editable = "packages/core" }]
 
 [[package]]
 name = "matimo-cli"
-version = "0.2.0"
+version = "0.4.0"
 source = { editable = "packages/cli" }
 dependencies = [
     { name = "matimo-core", extra = ["mcp"] },
@@ -2484,13 +2475,13 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "matimo-core", extras = ["mcp"], editable = "packages/core" },
-    { name = "mcp", specifier = ">=1.28.1" },
+    { name = "mcp", specifier = ">=2.0" },
     { name = "pyyaml", specifier = ">=6.0" },
 ]
 
 [[package]]
 name = "matimo-core"
-version = "0.2.0"
+version = "0.4.0"
 source = { editable = "packages/core" }
 dependencies = [
     { name = "anyio" },
@@ -2575,9 +2566,9 @@ requires-dist = [
     { name = "langchain-core", marker = "extra == 'langchain'", specifier = ">=0.3" },
     { name = "lxml-html-clean", specifier = ">=0.4.5" },
     { name = "markdownify", specifier = ">=1.2.3" },
-    { name = "mcp", marker = "extra == 'all'", specifier = ">=1.28.1" },
-    { name = "mcp", marker = "extra == 'dev'", specifier = ">=1.28.1" },
-    { name = "mcp", marker = "extra == 'mcp'", specifier = ">=1.28.1" },
+    { name = "mcp", marker = "extra == 'all'", specifier = ">=2.0" },
+    { name = "mcp", marker = "extra == 'dev'", specifier = ">=2.0" },
+    { name = "mcp", marker = "extra == 'mcp'", specifier = ">=2.0" },
     { name = "mistune", specifier = ">=3.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.10" },
     { name = "pydantic", specifier = ">=2.0" },
@@ -2658,7 +2649,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "matimo-github"
-version = "0.2.0"
+version = "0.4.0"
 source = { editable = "packages/github" }
 dependencies = [
     { name = "matimo-core" },
@@ -2669,7 +2660,7 @@ requires-dist = [{ name = "matimo-core", editable = "packages/core" }]
 
 [[package]]
 name = "matimo-gmail"
-version = "0.2.0"
+version = "0.4.0"
 source = { editable = "packages/gmail" }
 dependencies = [
     { name = "matimo-core" },
@@ -2680,7 +2671,7 @@ requires-dist = [{ name = "matimo-core", editable = "packages/core" }]
 
 [[package]]
 name = "matimo-hubspot"
-version = "0.2.0"
+version = "0.4.0"
 source = { editable = "packages/hubspot" }
 dependencies = [
     { name = "matimo-core" },
@@ -2691,7 +2682,7 @@ requires-dist = [{ name = "matimo-core", editable = "packages/core" }]
 
 [[package]]
 name = "matimo-mailchimp"
-version = "0.2.0"
+version = "0.4.0"
 source = { editable = "packages/mailchimp" }
 dependencies = [
     { name = "matimo-core" },
@@ -2702,7 +2693,7 @@ requires-dist = [{ name = "matimo-core", editable = "packages/core" }]
 
 [[package]]
 name = "matimo-microsoft"
-version = "0.2.0"
+version = "0.4.0"
 source = { editable = "packages/microsoft" }
 dependencies = [
     { name = "matimo-core" },
@@ -2713,7 +2704,7 @@ requires-dist = [{ name = "matimo-core", editable = "packages/core" }]
 
 [[package]]
 name = "matimo-notion"
-version = "0.2.0"
+version = "0.4.0"
 source = { editable = "packages/notion" }
 dependencies = [
     { name = "matimo-core" },
@@ -2724,7 +2715,7 @@ requires-dist = [{ name = "matimo-core", editable = "packages/core" }]
 
 [[package]]
 name = "matimo-postgres"
-version = "0.2.0"
+version = "0.4.0"
 source = { editable = "packages/postgres" }
 dependencies = [
     { name = "asyncpg" },
@@ -2739,7 +2730,7 @@ requires-dist = [
 
 [[package]]
 name = "matimo-slack"
-version = "0.2.0"
+version = "0.4.0"
 source = { editable = "packages/slack" }
 dependencies = [
     { name = "matimo-core" },
@@ -2750,7 +2741,7 @@ requires-dist = [{ name = "matimo-core", editable = "packages/core" }]
 
 [[package]]
 name = "matimo-twilio"
-version = "0.2.0"
+version = "0.4.0"
 source = { editable = "packages/twilio" }
 dependencies = [
     { name = "matimo-core" },
@@ -2765,7 +2756,7 @@ requires-dist = [
 
 [[package]]
 name = "matimo-workspace"
-version = "0.1.1"
+version = "0.4.0"
 source = { virtual = "." }
 dependencies = [
     { name = "matimo-bruno" },
@@ -2825,7 +2816,7 @@ dev = [
     { name = "crewai", specifier = ">=0.80" },
     { name = "hvac", specifier = ">=2.0" },
     { name = "langchain-core", specifier = ">=1.3.3" },
-    { name = "mcp", specifier = ">=1.28.1" },
+    { name = "mcp", specifier = ">=2.0" },
     { name = "mypy", specifier = ">=1.10" },
     { name = "pytest", specifier = ">=8.0" },
     { name = "pytest-asyncio", specifier = ">=0.24" },
@@ -2840,15 +2831,15 @@ dev = [
 
 [[package]]
 name = "mcp"
-version = "1.30.0"
+version = "2.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
-    { name = "httpx" },
-    { name = "httpx-sse" },
+    { name = "httpx2" },
     { name = "jsonschema" },
+    { name = "mcp-types" },
+    { name = "opentelemetry-api" },
     { name = "pydantic" },
-    { name = "pydantic-settings" },
     { name = "pyjwt", extra = ["crypto"] },
     { name = "python-multipart" },
     { name = "pywin32", marker = "sys_platform == 'win32'" },
@@ -2858,9 +2849,22 @@ dependencies = [
     { name = "typing-inspection" },
     { name = "uvicorn", marker = "sys_platform != 'emscripten'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ba/93/0142dc84a666daf8ad51a34268f34c12fd6fda4f3810c4be2504eecc8212/mcp-1.30.0.tar.gz", hash = "sha256:445414625fce5c295faa505bb11bacece661ab6f4028d57c935db57820b7a3e4", size = 680511, upload-time = "2026-09-07T14:34:15.845Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/9d/8d/e0d339616f4810e9051d4aba6887afab289ab1f81875fe908b606cdfd0e3/mcp-2.3.0.tar.gz", hash = "sha256:8b147a50441cf059dc88c684e0aeed3687f0aa0f39c6cde7b90330effd2b34d8", size = 4171955, upload-time = "2026-10-02T22:06:56.091Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f5/f4/e58bc33317c92a0203664daaf00bf6f41166cc0149e5d6870a03f7cd004a/mcp-1.30.0-py3-none-any.whl", hash = "sha256:666edb5009503e1047c9d60346a756f94b261f05cc2625f23d41c728ffc484d0", size = 234581, upload-time = "2026-09-07T14:34:14.266Z" },
+    { url = "https://files.pythonhosted.org/packages/20/d7/4a2878f128df729db3ca04e71bfce26405cc2e0c9ebe19c592feeb4c61b9/mcp-2.3.0-py3-none-any.whl", hash = "sha256:dd0c44c089d16453e8ae31a3877a0054d7a2314caaa81f5e0541b9b1734b2377", size = 368664, upload-time = "2026-10-02T22:06:52.119Z" },
+]
+
+[[package]]
+name = "mcp-types"
+version = "2.3.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pydantic" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/9e/2d/7c251e34207f6c51000312fc8839111ac45cfe02023f90b44e7f1051dd8e/mcp_types-2.3.0.tar.gz", hash = "sha256:d1e46549edb35ee19a94940fcee6d1addd7e589ab7ea92dda83f5d84781fc362", size = 65898, upload-time = "2026-10-02T22:06:57.863Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ce/48/32583066b155bb5d4507e7887dc88ee23118cc4de8e2a12870c49719e2a8/mcp_types-2.3.0-py3-none-any.whl", hash = "sha256:968efdbdaedfab06adae40d378a34395f1090c5921d4be3c9cde283aaf76d91d", size = 69108, upload-time = "2026-10-02T22:06:54.099Z" },
 ]
 
 [[package]]

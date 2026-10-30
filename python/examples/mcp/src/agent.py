@@ -70,7 +70,7 @@ except ImportError:
     pass
 
 
-# MCP auto-discovers every installed matimo-* provider package (150+ tools
+# MCP auto-discovers every installed matimo-* provider package (153 tools
 # across the example workspace), but LangChain/OpenAI rejects requests with
 # more than 128 bound tools. This demo's task only touches Slack, Gmail,
 # GitHub, and database tools — keep those first, then fill any remaining

@@ -33,14 +33,15 @@ Every tool call — built-in, provider package, or agent-created — goes throug
 |---------|--------------|
 | **Risk classification** | Every tool is `low`, `medium`, `high` or `critical`, from its method, execution type and declared `risk` |
 | **Content rules** | Nine deterministic rules check agent-created and untrusted tools: no function or command execution, no SSRF targets, no unauthorized credential placeholders, no reserved `matimo_` namespace, forced approval, blocked HTTP methods, blocked domains, forced draft status |
-| **SSRF check at execution** | The fully resolved URL is checked against private, loopback, link-local and metadata addresses before the request is sent |
+| **SSRF check at execution** | The fully resolved URL is checked against private, loopback, link-local, carrier-grade NAT, IPv4-mapped and unique-local IPv6 and metadata addresses before the request is sent. The connection is refused if the hostname resolves to one (`MATIMO_ALLOW_PRIVATE_DNS=true` opts out), and every redirect hop is re-checked |
 | **Approval** | HTTP `DELETE`, `type: command` and `requires_approval: true` tools, and SQL with destructive keywords, ask the instance's `onApproval` / `on_approval` callback before running. With no callback, the call is rejected |
 | **HITL quarantine** | Tools at or above `hitlMinRiskLevel` can be held for a human decision (`onHITL`) |
 | **Draft gate** | Draft tools never run in an environment containing `prod`, and elsewhere only for an `admin` caller; `matimo_approve_tool` requires `admin` and refuses the tool's creator |
 | **Approval manifest** | Approvals are HMAC-signed with `MATIMO_APPROVAL_SECRET`; an edited tool file loses its approval |
 | **Credentials outside parameters** | Secrets come from `credentials` or the environment and are filled into credential placeholders at call time; they never reach the model, approval callbacks or events |
 | **Audit trail** | Every call emits events; `JsonlFileSink` writes a hash-chained log with secret-looking fields redacted, and `verifyAuditLog` finds the first altered line |
-| **MCP** | HTTP servers accept an optional bearer token (compared in constant time); approvals are asked of the client's user through elicitation, and the model cannot approve its own call |
+| **MCP** | HTTP servers require a bearer token (`MATIMO_MCP_TOKEN`, or a generated one) compared in constant time, and bind `127.0.0.1` unless you set `--host`; approvals are asked of the client's user through elicitation, and the model cannot approve its own call |
+| **File roots** | With `MATIMO_FILE_ROOTS` set, the file tools refuse any path outside the listed directories, symlinks resolved. Off by default |
 | **Embedded code** | Inline `code` in YAML is off unless `MATIMO_ALLOW_EMBEDDED_CODE=true` (TypeScript) |
 | **Response size** | Large responses are truncated before they reach the model |
 
@@ -53,9 +54,12 @@ Plan around these; they are tracked on the [roadmap](./docs/ROADMAP.md).
 - **No parameter validation.** Parameters are not checked against the YAML types, `enum` or `required` before execution. Validate in your app or in function-tool code.
 - **Function tools run in-process.** `type: function` code runs with the host's permissions; the static code check is not a sandbox. Load function tools only from sources you trust, and keep agent-written tools in `untrustedPaths`.
 - **Command tools inherit the environment.** A `type: command` tool sees the process environment (plus per-call credentials). Every call asks for approval, but run them only where that environment holds nothing the command shouldn't read.
-- **SSRF via redirects and DNS.** The SSRF check covers the URL Matimo builds; it does not re-check redirect targets or the address a hostname resolves to.
+- **SSRF is best effort in Python.** TypeScript pins the connection to the address it checked. Python checks resolution before each request and redirect hop, so a resolver that changes its answer between the check and the connect can still win a narrow race. Route outbound traffic through an egress proxy for a hard guarantee.
+- **File tools are unconfined unless you set `MATIMO_FILE_ROOTS`.** `read`, `edit` and `search` otherwise reach anything the process can. Approval is the only other control.
+- **SQL approval is keyword based.** Statements and functions that touch files, the OS or other servers are listed, but a keyword list cannot be complete. Give the database role only the privileges the agent needs.
+- **`execute` has no shell, not a sandbox.** It runs any program the process can, with its environment.
 - **Composio and Bruno write tools** don't declare `requires_approval`; use `hitlMinRiskLevel: 'high'` or approval patterns to gate them.
-- **The example MCP HTTP server** (`python/examples/mcp/src/server_http.py`) sets no token and listens on all interfaces. Set `mcpToken` / `mcp_token` and use HTTPS before exposing any MCP server.
+- **MCP over plain HTTP.** The server now binds loopback and requires a token, but the token and tool traffic are readable on the network if you bind a wider address without HTTPS. Use `--https` or terminate TLS in front of it. `Origin` is not validated, so keep the token secret.
 
 ---
 
@@ -68,6 +72,8 @@ Plan around these; they are tracked on the [roadmap](./docs/ROADMAP.md).
 - [ ] The policy's `environment` names production as such (it contains `prod`)
 - [ ] MCP over HTTP uses a bearer token and HTTPS
 - [ ] An `auditSink` is configured and the log is kept where agents can't write
+- [ ] `MATIMO_FILE_ROOTS` lists the only directories the file tools may reach
+- [ ] `MATIMO_POSTGRES_SSL` is `verify-full` for any database that is not on the same host
 - [ ] Dependencies audited (`pnpm audit`, `pip-audit`)
 
 ---
