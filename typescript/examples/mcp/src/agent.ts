@@ -241,7 +241,7 @@ const userRequests = [
 const OPENAI_MAX_TOOLS = 128;
 
 /**
- * MCP auto-discovers every installed @matimo/* provider package (150+ tools
+ * MCP auto-discovers every installed @matimo/* provider package (153 tools
  * across the example workspace), but LangChain/OpenAI rejects requests with
  * more than 128 bound tools. This demo's tasks only touch calculator, Slack,
  * and Gmail — keep those first, then fill any remaining budget with whatever
