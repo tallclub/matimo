@@ -330,6 +330,25 @@ Use the `release` skill for a guided flow with commit history summary and change
 | LangChain / CrewAI integration | `docs/framework-integrations/` |
 | Architecture | `docs/architecture/OVERVIEW.md` |
 
+### Docs consolidation (decided, not yet done)
+
+There are two hand-kept copies of the docs: `docs/` (GitHub Markdown) and `website/src/content/docs/docs/` (Astro Starlight, matimo.dev). They drift. The 0.4.0 sweep found `docs/` still saying Node 18, a non-existent `validation:` YAML block and a fake `MATIMO_CWD` setting that the website had already fixed.
+
+**Decision: retire `docs/` and keep only the website as the source of truth.** The website was audited against the source more recently, has the diagrams, and its build runs a link validator (`starlight-links-validator`) that `docs/` lacks.
+
+Until the retirement lands:
+- Any docs change goes into **both** copies, in the same commit. Never edit only one.
+- Verify claims against the source, not against the other copy. Neither copy is reliable on its own.
+- The website uses `/docs/<section>/<slug>/` links, front-matter and `![..](..svg)` diagrams. `docs/` uses relative `.md` links and ASCII diagrams. Do not copy text between them without converting links, and check code fences afterwards (a missing closing fence silently swallows the next section).
+- Run `cd website && pnpm build` after website edits to run the link validator.
+
+Plan, as its own PR **after** 0.4.0 is published (not on the release branch):
+1. Inventory every reference to `docs/`: root and package READMEs (these show on npm and PyPI), CONTRIBUTING, SECURITY, `.github` skills and agents, CLI help text, `llms.txt`, `website/redirects`, the `.claude` rules and skills, and this file.
+2. Keep Colab working: the notebooks' badges point at `docs/notebooks/` on `main`. Keep the notebooks at that path or move them with a redirect plan.
+3. Decide a home for non-site content: dated audit reviews and compliance snapshots, `RELEASES.md`, the blog post, `PYTHON_SDK_PLAN.md`, and the `docs/mcp/` contributor guides (these are for contributors, so `.github/` or CONTRIBUTING fits better).
+4. Repoint links to matimo.dev URLs, keep website redirects for old URLs already shipped in published packages, and add a CI check that fails on any remaining `docs/` link.
+5. Update the "Where to look (docs)" table above to website paths.
+
 ---
 
 ## Don't
