@@ -1207,7 +1207,7 @@ wheels = [
 
 [[package]]
 name = "matimo-bruno"
-version = "0.2.0"
+version = "0.4.0"
 source = { editable = "../../packages/bruno" }
 dependencies = [
     { name = "matimo-core" },
@@ -1218,7 +1218,7 @@ requires-dist = [{ name = "matimo-core", editable = "../../packages/core" }]
 
 [[package]]
 name = "matimo-cli"
-version = "0.2.0"
+version = "0.4.0"
 source = { editable = "../../packages/cli" }
 dependencies = [
     { name = "matimo-core", extra = ["mcp"] },
@@ -1235,7 +1235,7 @@ requires-dist = [
 
 [[package]]
 name = "matimo-core"
-version = "0.2.0"
+version = "0.4.0"
 source = { editable = "../../packages/core" }
 dependencies = [
     { name = "anyio" },
@@ -1305,7 +1305,7 @@ provides-extras = ["langchain", "crewai", "agno", "mcp", "vault", "aws", "dotenv
 
 [[package]]
 name = "matimo-github"
-version = "0.2.0"
+version = "0.4.0"
 source = { editable = "../../packages/github" }
 dependencies = [
     { name = "matimo-core" },
@@ -1316,7 +1316,7 @@ requires-dist = [{ name = "matimo-core", editable = "../../packages/core" }]
 
 [[package]]
 name = "matimo-gmail"
-version = "0.2.0"
+version = "0.4.0"
 source = { editable = "../../packages/gmail" }
 dependencies = [
     { name = "matimo-core" },
@@ -1327,7 +1327,7 @@ requires-dist = [{ name = "matimo-core", editable = "../../packages/core" }]
 
 [[package]]
 name = "matimo-hubspot"
-version = "0.2.0"
+version = "0.4.0"
 source = { editable = "../../packages/hubspot" }
 dependencies = [
     { name = "matimo-core" },
@@ -1338,7 +1338,7 @@ requires-dist = [{ name = "matimo-core", editable = "../../packages/core" }]
 
 [[package]]
 name = "matimo-mailchimp"
-version = "0.2.0"
+version = "0.4.0"
 source = { editable = "../../packages/mailchimp" }
 dependencies = [
     { name = "matimo-core" },
@@ -1349,7 +1349,7 @@ requires-dist = [{ name = "matimo-core", editable = "../../packages/core" }]
 
 [[package]]
 name = "matimo-notion"
-version = "0.2.0"
+version = "0.4.0"
 source = { editable = "../../packages/notion" }
 dependencies = [
     { name = "matimo-core" },
@@ -1360,7 +1360,7 @@ requires-dist = [{ name = "matimo-core", editable = "../../packages/core" }]
 
 [[package]]
 name = "matimo-postgres"
-version = "0.2.0"
+version = "0.4.0"
 source = { editable = "../../packages/postgres" }
 dependencies = [
     { name = "asyncpg" },
@@ -1467,7 +1467,7 @@ provides-extras = ["slack", "http", "all", "dev"]
 
 [[package]]
 name = "matimo-slack"
-version = "0.2.0"
+version = "0.4.0"
 source = { editable = "../../packages/slack" }
 dependencies = [
     { name = "matimo-core" },
@@ -1478,7 +1478,7 @@ requires-dist = [{ name = "matimo-core", editable = "../../packages/core" }]
 
 [[package]]
 name = "matimo-twilio"
-version = "0.2.0"
+version = "0.4.0"
 source = { editable = "../../packages/twilio" }
 dependencies = [
     { name = "matimo-core" },

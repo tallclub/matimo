@@ -290,7 +290,7 @@ Full reference: `docs/api-reference/POLICY_AND_LIFECYCLE.md`.
 
 ## Release process
 
-Each SDK is lockstepped independently: every `typescript/packages/*/package.json` shares one version number, and every `python/packages/*/pyproject.toml` shares a separate one. TS and Python version numbers are not meant to match each other (e.g. TS core at `0.1.8` alongside Python core at `0.1.3` is expected, not drift).
+Both SDKs share one version number from v0.4.0 on: every `typescript/packages/*/package.json` and every `python/packages/*/pyproject.toml` (plus `__version__` in the Python `__init__.py` files and the `matimo-core>=X,<Y` pins) move together. Earlier releases versioned the two independently.
 
 1. Bump `version` in `typescript/package.json` and all `typescript/packages/*/package.json`
 2. `cd typescript && pnpm build && pnpm test` — must pass

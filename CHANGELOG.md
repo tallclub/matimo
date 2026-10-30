@@ -6,9 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
-## [Unreleased]
+## [0.4.0] - 2026-10-30
 
-Security hardening from a repository audit. Read the behaviour changes before upgrading.
+TypeScript and Python now share one version number: TypeScript moves from 0.3.0 and Python from 0.2.0, both to 0.4.0. Python has no 0.3.0. Security hardening from a repository audit. Read the behaviour changes before upgrading.
 
 ### ⚠️ Behaviour changes
 - MCP HTTP servers (both SDKs) bind `127.0.0.1` by default instead of all interfaces. Containers and remote clients need `--host 0.0.0.0` (`host` / `host=` option) and should use HTTPS
@@ -25,6 +25,8 @@ Security hardening from a repository audit. Read the behaviour changes before up
 - Python `postgres-execute-sql` interpolated `schema` into `SET search_path`; it is now a bound parameter
 - Approval is now requested for SQL that reaches files, the OS or other servers (`COPY`, `pg_read_file`, `lo_export`, `dblink`, `DO $$`, `CALL`, ...)
 - Dependencies: `undici` override raised from an exact `8.11.2` to `>=8.12.2`, plus `body-parser`, `zod`, `@azure/msal-node`; `python/examples/mcp` lockfile upgraded (`aiohttp`, `mcp`, `pillow`, `pyjwt`, `pypdf`, `urllib3`, ...)
+- CodeQL findings fixed: a ReDoS in SSRF host normalisation and unescaped quotes in diagram attributes
+- Python: `certifi` bumped to 2026.10.23 (PYSEC-2026-4320)
 - Known and unfixed: `chromadb` (via `crewai`, optional extra only) has advisories with no fixed release
 
 ### ✨ Features
@@ -38,6 +40,8 @@ Security hardening from a repository audit. Read the behaviour changes before up
 - TypeScript examples `policy:demo`, `skills:demo` and `meta:flow` sent all 153 tools to OpenAI on Windows (limit 128) because their provider-tool filter only matched `/` in paths. It now matches both `/` and `\` separators
 
 ### 🔧 Maintenance
+- matimo.dev and the docs are rebuilt as one Astro Starlight site, with use-case guides, a privacy notice and opt-in analytics
+- HubSpot: the OAuth token endpoint points at the real token URL and every tool declares its auth env var notes
 - Python MCP tests run against the real mcp 2.x SDK (in-memory client), and the legacy mcp 1.x tests are gone
 - Every GitHub Action pinned to a commit SHA; `tool-validation.yml` brought off v2/v3 actions; CI fails on high-severity `pnpm audit` and `pip-audit` findings
 

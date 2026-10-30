@@ -1,3 +1,52 @@
+## v0.4.0 (TypeScript and Python) - Security Hardening and Version Parity 🔒
+
+> **Release**: Closes the findings from a repository audit in both SDKs and puts TypeScript and Python on the same version number. Several defaults are stricter, so read the table below before upgrading.
+
+**Released**: October 30, 2026
+**Scope**: `typescript/` - all 14 packages `0.3.0` → `0.4.0`. `python/` - all 14 packages `0.2.0` → `0.4.0` (there is no Python 0.3.0); provider packages require `matimo-core>=0.4.0,<0.5.0`.
+**Severity**: 🔴 **Minor bump with behaviour changes** - MCP defaults, `execute`, DNS-based SSRF checks and the Python `mcp` requirement all change.
+
+---
+
+### ⚠️ **What changes when you upgrade**
+
+| Before | 0.4.0 |
+|--------|-------|
+| MCP HTTP servers listened on all interfaces | They bind `127.0.0.1`. Containers and remote clients need `--host 0.0.0.0` and should use HTTPS |
+| Python's MCP HTTP server ran without a token if none was passed | It reads `MATIMO_MCP_TOKEN`, or generates one and prints it to stderr |
+| TypeScript `execute` ran through a shell | It runs without one (`execFile`). Shell builtins such as `dir` and `echo` are not available on Windows |
+| Hostnames resolving to internal addresses were reachable | Network and HTTP tools refuse them. Set `MATIMO_ALLOW_PRIVATE_DNS=true` to allow a specific case |
+| A function tool's `execution.code` could point anywhere | It must stay inside the tool's directory |
+| Python accepted `mcp>=1.28.1` | Python needs `mcp>=2.0`; the mcp 1.x path is removed. Run `pip install -U "mcp>=2.0"` |
+
+The TypeScript MCP server keeps `@modelcontextprotocol/sdk` 1.x, which has no 2.x release.
+
+### 🔒 **Security**
+
+- One shared SSRF classifier replaces four copies. It blocks all of `127.0.0.0/8`, IPv4-mapped and NAT64 IPv6, unique-local and link-local IPv6, `100.64.0.0/10`, trailing-dot hosts and legacy numeric hosts. Redirects are re-checked on every hop, and the `web` tool now has an SSRF check at all.
+- Python `postgres-execute-sql` binds `schema` as a parameter instead of interpolating it. SQL that reaches files, the OS or other servers (`COPY`, `pg_read_file`, `lo_export`, `dblink`, `DO $$`, `CALL`) now asks for approval.
+- Patched dependencies: `undici`, `body-parser`, `zod`, `@azure/msal-node`, Python `certifi`, and the `python/examples/mcp` lockfile. Two CodeQL findings are fixed.
+- Still reported: `chromadb` (optional `crewai` extra only) has no fixed release.
+
+### ✨ **New options**
+
+- `MATIMO_FILE_ROOTS` confines the file tools to listed directories, resolving symlinks. Off unless set.
+- `MATIMO_POSTGRES_SSL` (`disable`, `require`, `verify-ca`, `verify-full`) for the Postgres tool.
+- `matimo mcp --host`.
+
+### 🐛 **Fixes**
+
+- `pnpm validate-tools` no longer breaks when pnpm hoists js-yaml 5.x.
+- The TypeScript approval manifest no longer fails with `EPERM` when two writers save at once on Windows.
+- Provider-tool filters in the TypeScript examples now match Windows path separators.
+- HubSpot uses the real OAuth token endpoint.
+
+### 🌐 **matimo.dev**
+
+The site and docs are now one Astro Starlight site, with use-case guides, a privacy notice and opt-in analytics.
+
+---
+
 ## v0.3.0 (TypeScript) - Node 22.19+ and Security Patches 🔒
 
 > **Release**: Raises the minimum Node version to 22.19 and clears the open `pnpm audit` findings, including three criticals. Python is unchanged and stays at `0.2.0`.
