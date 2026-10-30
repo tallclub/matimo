@@ -37,6 +37,22 @@ DEFAULT_DESTRUCTIVE_KEYWORDS: list[str] = [
 NEVER_PRE_APPROVED_TOOLS: frozenset[str] = frozenset({"matimo_approve_tool"})
 
 
+def requires_mandatory_human_approval(
+    tool_name: str, params: dict[str, Any] | None = None
+) -> bool:
+    """
+    Whether this particular call needs a human decision that nothing may skip:
+    neither MATIMO_AUTO_APPROVE, an approved pattern (not even "*"), nor a
+    caller-supplied `approved=True`. `execute` with a `shell` runs its command
+    through that shell, where metacharacters are live, so every such call is
+    shown to a human. Mirrors requiresMandatoryHumanApproval() in approval-handler.ts.
+    """
+    if tool_name != "execute" or not params:
+        return False
+    shell = params.get("shell")
+    return shell is not None and shell != ""
+
+
 def definition_requires_approval(tool: ToolDefinition, mode: GovernanceMode = "secure") -> bool:
     """
     Whether a tool's definition alone makes every call need approval.
@@ -116,10 +132,12 @@ class ApprovalHandler:
             return any(kw in upper for kw in self.destructive_keywords)
         return False
 
-    def is_pre_approved(self, tool_name: str) -> bool:
+    def is_pre_approved(self, tool_name: str, params: dict[str, Any] | None = None) -> bool:
         """True when MATIMO_AUTO_APPROVE is on or the tool matches an approved pattern.
-        Never for NEVER_PRE_APPROVED_TOOLS."""
-        if tool_name in NEVER_PRE_APPROVED_TOOLS:
+        Never for NEVER_PRE_APPROVED_TOOLS or a call needing mandatory human approval."""
+        if tool_name in NEVER_PRE_APPROVED_TOOLS or requires_mandatory_human_approval(
+            tool_name, params
+        ):
             return False
         return self.auto_approve or self._matches_approved_pattern(tool_name)
 
@@ -135,7 +153,7 @@ class ApprovalHandler:
         callback = callback if callback is not None else self._callback
         # 1-2. MATIMO_AUTO_APPROVE (CI / testing) or an approved pattern —
         # never for NEVER_PRE_APPROVED_TOOLS
-        if self.is_pre_approved(request.tool_name):
+        if self.is_pre_approved(request.tool_name, request.params):
             logger.debug(
                 "Tool '%s' is pre-approved (MATIMO_AUTO_APPROVE or approved pattern)",
                 request.tool_name,

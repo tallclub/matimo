@@ -29,6 +29,7 @@ import {
   ApprovalHandler,
   definitionRequiresApproval,
   getGlobalApprovalHandler,
+  requiresMandatoryHumanApproval,
   type ApprovalCallback,
 } from './approval/approval-handler.js';
 import type { ExecuteOptions } from './core/types.js';
@@ -556,18 +557,25 @@ export class MatimoInstance {
         if (parts.length > 0) scanContent = parts.join(' ');
       }
 
-      const requiresApproval = this.approvalHandler.requiresApproval(
-        definitionRequiresApproval(tool, this.getGovernanceMode()),
-        scanContent
-      );
+      // Some calls (execute with a shell) always need a human, whatever the YAML
+      // or the pre-approval settings say.
+      const mandatoryHuman = requiresMandatoryHumanApproval(toolName, params);
+
+      const requiresApproval =
+        mandatoryHuman ||
+        this.approvalHandler.requiresApproval(
+          definitionRequiresApproval(tool, this.getGovernanceMode()),
+          scanContent
+        );
 
       // Skip approval prompt if options.approved=true (e.g., MCP pre-confirmed approval).
-      // This avoids mutating global state in concurrent scenarios.
-      const skipApprovalPrompt = options?.approved === true;
+      // This avoids mutating global state in concurrent scenarios. Never honoured
+      // for a call that needs mandatory human approval.
+      const skipApprovalPrompt = options?.approved === true && !mandatoryHuman;
 
       if (
         requiresApproval &&
-        !this.approvalHandler.isPreApproved(toolName) &&
+        !this.approvalHandler.isPreApproved(toolName, params) &&
         !skipApprovalPrompt
       ) {
         this.logger.debug(`Approval required for: ${toolName}`, { toolName });

@@ -12,6 +12,21 @@ import type { GovernanceMode } from '../policy/types.js';
 export const NEVER_PRE_APPROVED_TOOLS: ReadonlySet<string> = new Set(['matimo_approve_tool']);
 
 /**
+ * Whether this particular call needs a human decision that nothing may skip:
+ * neither MATIMO_AUTO_APPROVE, an approved pattern (not even `*`), nor a
+ * caller-supplied `approved` flag. `execute` with a `shell` runs its command
+ * through that shell, where metacharacters are live, so every such call is
+ * shown to a human. Mirrors requires_mandatory_human_approval() in the Python SDK.
+ */
+export function requiresMandatoryHumanApproval(
+  toolName: string,
+  params?: Record<string, unknown>
+): boolean {
+  const shell = params?.shell;
+  return toolName === 'execute' && shell !== undefined && shell !== null && shell !== '';
+}
+
+/**
  * Whether a tool's definition alone makes every call need approval.
  * An explicit `requires_approval` in the YAML always wins, so a developer can
  * opt a tool out with `requires_approval: false`. When it is absent, in
@@ -248,8 +263,8 @@ export class ApprovalHandler {
   /**
    * Check if operation is pre-approved via env vars
    */
-  isPreApproved(toolName: string): boolean {
-    if (NEVER_PRE_APPROVED_TOOLS.has(toolName)) {
+  isPreApproved(toolName: string, params?: Record<string, unknown>): boolean {
+    if (NEVER_PRE_APPROVED_TOOLS.has(toolName) || requiresMandatoryHumanApproval(toolName, params)) {
       return false;
     }
 

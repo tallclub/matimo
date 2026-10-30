@@ -33,6 +33,7 @@ from matimo.approval.handler import (
     ApprovalRequest,
     definition_requires_approval,
     get_global_approval_handler,
+    requires_mandatory_human_approval,
 )
 from matimo.auth.injection import inject_auth_parameters
 from matimo.core.loader import ToolLoader
@@ -1044,12 +1045,15 @@ class Matimo:
         decides, and with no callback the call fails closed.
         """
         handler = self._approval_handler
-        if not handler.requires_approval(
+        # Some calls (execute with a shell) always need a human, whatever the YAML,
+        # the pre-approval settings or the caller's `approved` flag say.
+        mandatory_human = requires_mandatory_human_approval(tool.name, params)
+        if not mandatory_human and not handler.requires_approval(
             definition_requires_approval(tool, self.get_governance_mode()),
             _approval_scan_content(tool, params),
         ):
             return
-        if skip_prompt or handler.is_pre_approved(tool.name):
+        if (skip_prompt and not mandatory_human) or handler.is_pre_approved(tool.name, params):
             return
 
         agent_id = context.agent_id if context else None
