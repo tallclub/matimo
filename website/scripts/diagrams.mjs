@@ -17,7 +17,7 @@ const F = (cols) => ({ k: 'f', cols });
 const G = (title, chips, tone) => ({ k: 'g', title, chips, tone });
 const GAP = (h = 12) => ({ k: 'gap', h });
 
-const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const nb = (s) => s.replace(/^ +/, (m) => ' '.repeat(m.length));
 const lineText = (l) => (typeof l === 'string' ? l : l.m);
 let warnName = '';

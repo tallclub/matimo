@@ -121,7 +121,9 @@ export function isBlockedAddress(ip: string): boolean {
 export function isBlockedHostname(hostname: string): boolean {
   let host = hostname.toLowerCase();
   if (host.startsWith('[') && host.endsWith(']')) host = host.slice(1, -1);
-  host = host.replace(/\.+$/, '');
+  let end = host.length;
+  while (end > 0 && host.charCodeAt(end - 1) === 46) end--; // trailing dots
+  host = host.slice(0, end);
 
   if (net.isIP(host)) return isBlockedAddress(host);
   if (host === 'localhost') return true;
