@@ -39,7 +39,7 @@ Complete documentation for Matimo **0.4.0** (TypeScript `@matimo/core` and Pytho
 - **[Start with TypeScript](#typescript-getting-started)**
 
 ### 🐍 **Python** 🎉 *Stable Release*
-- Python 3.11+, pip/uv
+- Python 3.11.5+, pip/uv
 - Native asyncio, full type hints (mypy strict)
 - LangChain, CrewAI, MCP support
 - **[Start with Python](#python-getting-started)**
@@ -66,7 +66,7 @@ Complete documentation for Matimo **0.4.0** (TypeScript `@matimo/core` and Pytho
 ### 📦 **Installation & Requirements**
 
 - **[Installation](./getting-started/installation.md)** — Detailed setup for both SDKs
-  - TypeScript (Node.js 22.19+) and Python (3.11+) requirements
+  - TypeScript (Node.js 22.19+) and Python (3.11.5+) requirements
   - From npm/pip (recommended) or from source
   - Troubleshooting & environment setup
   - Provider authentication via OAuth2

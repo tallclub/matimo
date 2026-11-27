@@ -8,7 +8,7 @@ version = "0.4.1"
 description = "Matimo provider — Gmail tools (send, list, read, delete emails)"
 readme = "README.md"
 license = { text = "MIT" }
-requires-python = ">=3.11"
+requires-python = ">=3.11.5"
 keywords = ["ai", "tools", "agents", "matimo", "gmail"]
 classifiers = [
     "Development Status :: 4 - Beta",

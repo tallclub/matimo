@@ -8,7 +8,7 @@ version = "0.4.1"
 description = "Matimo provider — Bruno API testing tools (collections, requests, imports, reports)"
 readme = "README.md"
 license = { text = "MIT" }
-requires-python = ">=3.11"
+requires-python = ">=3.11.5"
 keywords = ["ai", "tools", "agents", "matimo", "bruno", "api-testing"]
 classifiers = [
     "Development Status :: 4 - Beta",

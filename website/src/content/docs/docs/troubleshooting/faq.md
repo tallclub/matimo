@@ -82,7 +82,7 @@ source venv/bin/activate  # or 'venv\Scripts\activate' on Windows
 **Solution**:
 
 ```bash
-# Make sure you're using Python 3.11+
+# Make sure you're using Python 3.11.5+
 python --version
 
 # Try with uv (faster):

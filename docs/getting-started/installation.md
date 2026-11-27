@@ -7,7 +7,7 @@ Matimo is available for both **TypeScript/Node.js** and **Python**. Pick the lan
 | SDK | Package manager | Min version |
 |-----|----------------|-------------|
 | TypeScript | npm / pnpm | Node.js ≥ 22.19, pnpm ≥ 8.15 |
-| Python | pip / uv | Python ≥ 3.11 |
+| Python | pip / uv | Python ≥ 3.11.5 |
 
 ---
 
@@ -169,10 +169,10 @@ npx tsx test-install.ts
 ### Python: Version Error
 
 ```bash
-python --version  # Should be 3.11+
+python --version  # Should be 3.11.5+
 ```
 
-If lower, install Python 3.11+ from [python.org](https://python.org) or via pyenv:
+If lower, install Python 3.11.5+ from [python.org](https://python.org) or via pyenv:
 
 ```bash
 pyenv install 3.11
@@ -242,7 +242,7 @@ If issues persist, check [Troubleshooting Guide](../troubleshooting/FAQ.md)
 
 | Component  | Requirement      |
 | ---------- | ---------------- |
-| Python     | ≥ 3.11           |
+| Python     | ≥ 3.11.5         |
 | uv         | Latest (recommended) |
 | Disk Space | ~200MB (with venv) |
 | Memory     | ≥ 256MB          |
