@@ -72,7 +72,7 @@ async function main() {
         sql: `
           SELECT 
             schemaname, 
-            tablename, 
+            relname AS tablename, 
             n_live_tup as row_count
           FROM pg_stat_user_tables
           WHERE schemaname = 'public'

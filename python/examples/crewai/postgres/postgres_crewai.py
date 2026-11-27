@@ -77,10 +77,10 @@ async def run(task: str) -> None:
         print("❌  OPENAI_API_KEY not set in .env")
         sys.exit(1)
 
-    pg_vars = ["POSTGRES_CONNECTION_STRING", "POSTGRES_HOST"]
+    pg_vars = ["MATIMO_POSTGRES_URL", "MATIMO_POSTGRES_HOST"]
     if not any(os.environ.get(v) for v in pg_vars):
         print("❌  No PostgreSQL connection configured in .env")
-        print("    Set POSTGRES_CONNECTION_STRING or POSTGRES_HOST/DB/USER/PASSWORD")
+        print("    Set MATIMO_POSTGRES_URL or MATIMO_POSTGRES_HOST/PORT/DB/USER/PASSWORD")
         sys.exit(1)
 
     # ── 1. Initialise Matimo with PostgreSQL tools ────────────────────────────

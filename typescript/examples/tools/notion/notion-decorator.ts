@@ -97,13 +97,14 @@ class NotionManager {
   }
 
   /**
-   * Create a new page with markdown content
-   * Simplest way to add content - works with any database
+   * Create a new page.
+   * Positional arguments map to the tool's parameters in YAML order:
+   * parent, properties, icon. A page in a database needs its title property.
    */
   @tool('notion_create_page')
   async createPage(
     parent: Record<string, string>,
-    markdown?: string,
+    properties?: Record<string, unknown>,
     icon?: Record<string, string>
   ): Promise<any> {
     // Decorator intercepts → auto-executes via matimo.execute()
@@ -114,7 +115,12 @@ class NotionManager {
    * Update an existing page (icon, status, etc.)
    */
   @tool('notion_update_page')
-  async updatePage(page_id: string, icon?: Record<string, string>): Promise<any> {
+  // Positional arguments follow the tool's YAML order: page_id, properties, icon.
+  async updatePage(
+    page_id: string,
+    properties?: Record<string, unknown>,
+    icon?: Record<string, string>
+  ): Promise<any> {
     // Method body ignored - @tool decorator handles execution
     throw new Error('Should not be called - decorator handles execution');
   }
@@ -123,8 +129,10 @@ class NotionManager {
    * Add a comment to a page
    */
   @tool('notion_create_comment')
+  // Positional arguments follow the tool's YAML order: parent, discussion_id, rich_text.
   async addComment(
     parent: Record<string, string>,
+    discussion_id?: string,
     rich_text?: Array<Record<string, any>>
   ): Promise<any> {
     // Method body ignored - @tool decorator handles execution
@@ -193,28 +201,41 @@ async function demonstrateDecoratorPattern() {
         // Test 3: Try creating a page
         const timestamp = new Date().toLocaleTimeString();
         console.info('3️⃣  Testing @tool("notion_create_page") decorator...');
-        console.info('    → Calling: manager.createPage({...}, markdown, icon)');
+        console.info('    → Calling: manager.createPage({...}, properties, icon)');
         console.info(
           '    → Note: Structured params (objects/arrays) are properly embedded in HTTP body'
         );
         console.info('           as JSON, not stringified—this is handled by HttpExecutor\n');
 
         try {
+          // A database page needs a value for the database's title property,
+          // whose name varies per database (often "Name" or "Title").
+          const titleProperty =
+            Object.entries(foundDatabase.properties ?? {}).find(
+              ([, prop]: [string, any]) => prop?.type === 'title'
+            )?.[0] ?? 'Name';
           const createResult = await manager.createPage(
-            { database_id: foundDatabase.id }, // Object param → embedded as JSON
-            `# Decorator Test Page\n\nCreated at ${timestamp}`, // String param
+            // Prefer the database id from a queried page's parent, as the factory
+            // example does: search can return an id the create endpoint rejects.
+            { database_id: queryPages[0]?.parent?.database_id ?? foundDatabase.id },
+            {
+              [titleProperty]: {
+                title: [{ text: { content: `Decorator Test Page ${timestamp}` } }],
+              },
+            },
             { type: 'emoji', emoji: '🔧' } // Object param → embedded as JSON
           );
           console.info(`   ✅ Create decorator executed`);
           console.info(`   📨 Got response: ${JSON.stringify(createResult).substring(0, 100)}...`);
 
-          if (createResult.id) {
-            console.info(`   ✅ Successfully created page: ${createResult.id}\n`);
+          const createdId = createResult.id ?? createResult.data?.id;
+          if (createdId) {
+            console.info(`   ✅ Successfully created page: ${createdId}\n`);
 
             // Try updating
             console.info('4️⃣  Testing @tool("notion_update_page") decorator...');
             try {
-              const updateResult = await manager.updatePage(createResult.id, {
+              const updateResult = await manager.updatePage(createdId, undefined, {
                 type: 'emoji',
                 emoji: '✨',
               });
@@ -231,7 +252,8 @@ async function demonstrateDecoratorPattern() {
             );
             try {
               const commentResult = await manager.addComment(
-                { page_id: createResult.id }, // Object param → embedded as JSON
+                { page_id: createdId }, // Object param → embedded as JSON
+                undefined, // discussion_id: not replying to a thread
                 [
                   // Array param → embedded as JSON array
                   { type: 'text', text: { content: `Added at ${timestamp} via decorator!` } },

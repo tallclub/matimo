@@ -124,7 +124,7 @@ async def main():
         if run_result.get("success"):
             print("   ✅ Collection Execution Summary:")
             summary = run_result.get('summary', {})
-            print(f"      Total: {summary.get('total', 0)}")
+            print(f"      Total: {summary.get('total_requests', 0)}")
             print(f"      Passed: {summary.get('passed', 0)}")
             print(f"      Failed: {summary.get('failed', 0)}")
             print(f"      Duration: {summary.get('duration_ms', 0)}ms")
@@ -150,8 +150,9 @@ async def main():
         
         if req_result.get("success"):
             print("   ✅ Request Execution:")
-            print(f"      Name: {req_result.get('request', {}).get('name', 'Unknown')}")
-            print(f"      Status: {req_result.get('response', {}).get('status', 0)}")
+            print(f"      Name: {req_result.get('request', 'Unknown')}")
+            print(f"      Status: {req_result.get('status', 0)}")
+            print(f"      Duration: {req_result.get('duration_ms', 0)}ms")
         else:
             errors = req_result.get('errors', [])
             if errors and "bru" in str(errors).lower():
