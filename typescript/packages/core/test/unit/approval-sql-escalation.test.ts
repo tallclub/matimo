@@ -13,7 +13,7 @@ describe('ApprovalHandler SQL escalation paths', () => {
     "SELECT * FROM dblink('host=evil', 'select 1') AS t(x int)",
     "SELECT set_config('role', 'postgres', false)",
     'SELECT pg_terminate_backend(42)',
-    "DO $$ BEGIN PERFORM 1; END $$",
+    'DO $$ BEGIN PERFORM 1; END $$',
     "do language plpgsql 'begin end'",
     'CALL cleanup()',
     'VACUUM FULL',

@@ -264,7 +264,10 @@ export class ApprovalHandler {
    * Check if operation is pre-approved via env vars
    */
   isPreApproved(toolName: string, params?: Record<string, unknown>): boolean {
-    if (NEVER_PRE_APPROVED_TOOLS.has(toolName) || requiresMandatoryHumanApproval(toolName, params)) {
+    if (
+      NEVER_PRE_APPROVED_TOOLS.has(toolName) ||
+      requiresMandatoryHumanApproval(toolName, params)
+    ) {
       return false;
     }
 

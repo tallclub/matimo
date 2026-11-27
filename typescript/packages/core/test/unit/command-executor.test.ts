@@ -371,7 +371,11 @@ describe('CommandExecutor', () => {
 
     it('treats parameter keys literally, never as a regular expression', async () => {
       // A model-chosen key such as ".*" must not match every placeholder.
-      const result = await run(['-e', ECHO_ARGS_SCRIPT, '{a}{b}'], { '.*': 'BOOM', a: '1', b: '2' });
+      const result = await run(['-e', ECHO_ARGS_SCRIPT, '{a}{b}'], {
+        '.*': 'BOOM',
+        a: '1',
+        b: '2',
+      });
       expect(result.stdout).toBe('12');
     });
 

@@ -526,8 +526,7 @@ describe('Web Scraper Tool', () => {
           throw Object.assign(new Error('404'), { response: { status: 404 } });
         }
         const beforeRedirect = (config as Record<string, unknown> | undefined)?.beforeRedirect as
-          | ((opts: Record<string, string>) => void)
-          | undefined;
+          ((opts: Record<string, string>) => void) | undefined;
         expect(beforeRedirect).toBeDefined();
         beforeRedirect!({ protocol: 'http:', hostname: '169.254.169.254', path: '/' });
         return htmlResponse(NON_ARTICLE_HTML);
