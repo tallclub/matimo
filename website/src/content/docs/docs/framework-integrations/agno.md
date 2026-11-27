@@ -28,7 +28,7 @@ The difference from a plain tool list: Agno keeps deciding *which* tool to call,
 
 ### Requirements
 
-- Python 3.11+
+- Python 3.11.5+
 - Agno >= 3.0
 - Matimo >= 0.2.0 (the Agno integration is new in 0.2.0)
 

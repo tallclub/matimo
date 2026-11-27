@@ -310,4 +310,3 @@ export function getTierForTool(tool: ToolDefinition, config?: PolicyConfig): Pol
 function isProductionEnvironment(environment?: string): boolean {
   return (environment ?? '').toLowerCase().includes('prod');
 }
-

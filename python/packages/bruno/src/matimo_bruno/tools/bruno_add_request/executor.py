@@ -92,7 +92,7 @@ def _generate_bru_content(
 
     # Method and URL
     body_type = "json" if body else "none"
-    lines.append(f"{method} {{")
+    lines.append(f"{method.lower()} {{")  # the .bru grammar only accepts lower case
     lines.append(f"  url: {url}")
     lines.append(f"  body: {body_type}")
     lines.append("  auth: inherit")

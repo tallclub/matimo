@@ -8,7 +8,7 @@ Execute your first Matimo tool in 5 minutes.
 
 - Matimo installed, see [Installation](/docs/getting-started/installation/):
   - **TypeScript**: `npm install matimo` and Node.js v22.19+
-  - **Python**: `pip install matimo` and Python 3.11+
+  - **Python**: `pip install matimo` and Python 3.11.5+
 
 Every step shows both SDKs. Pick one and follow it through.
 

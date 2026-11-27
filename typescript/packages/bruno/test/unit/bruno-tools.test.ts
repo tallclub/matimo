@@ -669,6 +669,93 @@ describe('bruno_run_collection executor', () => {
     expect(summary.total_requests).toBe(3);
     expect(summary.passed).toBe(2);
   });
+
+  it('reads a bru 3 report (array of iterations) from disk', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (mockExec as jest.Mock).mockImplementation((...allArgs: any[]) => {
+      const args: string[] = allArgs[1] ?? [];
+      const idx = args.indexOf('--reporter-json');
+      if (idx !== -1) {
+        fs.writeFileSync(
+          args[idx + 1],
+          JSON.stringify([
+            {
+              iterationIndex: 0,
+              summary: { totalRequests: 1, passedRequests: 1, failedRequests: 0 },
+              results: [{ name: 'r', status: 'pass', response: { status: 200 }, runDuration: 0.1 }],
+            },
+          ])
+        );
+      }
+      return '';
+    });
+    const result = await execute({ collection_path: tmpDir });
+    expect(result.success).toBe(true);
+    expect(result.summary).toEqual({
+      total_requests: 1,
+      passed: 1,
+      failed: 0,
+      execution_time_ms: 100,
+    });
+    expect(result.results).toEqual([{ name: 'r', success: true, status: 200 }]);
+  });
+});
+
+describe('bruno_run_collection parseReport', () => {
+  const { parseReport } = require('../../tools/bruno_run_collection/index') as {
+    parseReport: (r: unknown) => {
+      totalRequests: number;
+      passed: number;
+      failed: number;
+      executionTimeMs: number;
+      results: Array<{ name: unknown; success: boolean; status: unknown }>;
+    };
+  };
+
+  it('sums bru 3 iterations and counts errorRequests as failed', () => {
+    const parsed = parseReport([
+      {
+        summary: { totalRequests: 2, passedRequests: 1, failedRequests: 0, errorRequests: 1 },
+        results: [
+          { name: 'a', status: 'pass', response: { status: 200 }, runDuration: 0.25 },
+          {
+            test: { filename: 'req/b.bru' },
+            status: 'error',
+            response: { status: 500 },
+            runDuration: 0.5,
+          },
+        ],
+      },
+      {
+        summary: { totalRequests: 1, passedRequests: 1, failedRequests: 0 },
+        results: [{ suitename: 'c', status: 'pass', response: { status: 201 }, runDuration: 0.25 }],
+      },
+    ]);
+    expect([parsed.totalRequests, parsed.passed, parsed.failed, parsed.executionTimeMs]).toEqual([
+      3, 2, 1, 1000,
+    ]);
+    expect(parsed.results.map((r) => r.name)).toEqual(['a', 'req/b.bru', 'c']);
+    expect(parsed.results.map((r) => r.success)).toEqual([true, false, true]);
+  });
+
+  it('uses totalTime from a bru 2 object report', () => {
+    const parsed = parseReport({
+      summary: { totalRequests: 1, passedRequests: 1, failedRequests: 0, totalTime: 42 },
+      results: [{ suiteName: 'x', status: 'pass' }],
+    });
+    expect(parsed.executionTimeMs).toBe(42);
+    expect(parsed.results).toEqual([{ name: 'x', success: true, status: 0 }]);
+  });
+
+  it('tolerates empty and malformed reports', () => {
+    const empty = { totalRequests: 0, passed: 0, failed: 0, executionTimeMs: 0, results: [] };
+    expect(parseReport({})).toEqual(empty);
+    expect(parseReport([])).toEqual(empty);
+    expect(parseReport('nope')).toEqual(empty);
+    expect(parseReport([1, { results: ['x', { name: 'ok' }] }]).results).toEqual([
+      { name: 'ok', success: false, status: 0 },
+    ]);
+  });
 });
 
 // ─── bruno_run_request ───────────────────────────────────────────────────────

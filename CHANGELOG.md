@@ -6,6 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
+## [0.4.1] - 2026-11-27
+
+Dependency security patch. No API changes. The Python packages now need Python 3.11.5 or later (see below); their code is unchanged.
+
+### ⚠️ Behaviour changes
+- Python packages now require Python 3.11.5 or later (`requires-python = ">=3.11.5"`, was `>=3.11`). The fixed soupsieve needs 3.11.5, and no fixed release exists for 3.11.0 to 3.11.4. Python 3.11.0 to 3.11.4 date from 2022 and early 2023; `uv python install 3.11` and `pyenv install 3.11` already install a newer 3.11
+
+### 🔒 Security
+- Update glob to resolve GHSA-3g3m-2fjr-6pw4 and GHSA-g3hv-75wg-m249. `@matimo/core` now depends on `glob ^14.0.3` (was `^10.5.0`), which requires `minimatch ^11.0.2`. Every package that depends on `@matimo/core` (`@matimo/cli`, `matimo` and all tool packages) picks this up
+- Workspace dev tooling (jest, test-exclude, typescript-eslint) is pinned off the vulnerable glob and minimatch ranges with pnpm overrides
+- TypeScript: `follow-redirects` override `>=1.16.2` (GHSA-mrwp-f3q8-3g9p, reached through axios)
+- Python: `matimo-core` requires `pypdf>=6.21.4` (was `>=6.15.0`), fixing CVE-2026-119203 to CVE-2026-119209. The lockfile moves `soupsieve` (via beautifulsoup4) to 4.1.3 (CVE-2026-126190, -126191, -126193)
+- Python examples (`python/examples/mcp`): `soupsieve` 4.1.3, `pypdf` 6.21.4, `opentelemetry-api` 1.45.2 (CVE-2026-126360)
+
+### 🐛 Fixes
+- `@matimo/bruno` / `matimo-bruno`: `bruno_run_collection` now reads bru 3 JSON reports (a list with one entry per iteration). Python crashed with `'list' object has no attribute 'get'` and TypeScript reported 0 requests. Python `bruno_add_request` now writes the method block in lower case (`get {`), which bru 3 requires; it wrote `GET {`, so bru skipped the request
+- Examples: Postgres (wrong `pg_stat_user_tables` column, `%s` instead of `$1` placeholders, a non-existent tool name and wrong env var names), the Notion decorator example (positional arguments did not match the tool's parameter order) and the Python Bruno workflow example
+
+---
 ## [0.4.0] - 2026-10-30
 
 TypeScript and Python now share one version number: TypeScript moves from 0.3.0 and Python from 0.2.0, both to 0.4.0. Python has no 0.3.0. Security hardening from a repository audit. Read the behaviour changes before upgrading.

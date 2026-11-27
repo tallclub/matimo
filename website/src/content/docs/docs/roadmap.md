@@ -8,7 +8,7 @@ description: "What Matimo OSS has shipped and what is planned next, with links t
 |---|---|---|
 | Latest release | **0.4.0** (2026-10-30) | **0.4.0** (2026-10-30) |
 | Install | `npm install matimo` | `pip install matimo` |
-| Runtime | Node 22.19+ | Python 3.11+ |
+| Runtime | Node 22.19+ | Python 3.11.5+ |
 
 0.4.0 puts both SDKs on one version number (Python has no 0.3.0) and hardens security: HTTP MCP servers bind `127.0.0.1` by default, the Python MCP server needs a bearer token, network tools refuse hostnames that resolve to internal addresses, redirects are re-checked on every hop, and `execute` takes `args` and an opt-in `shell` that always asks a human. 0.3.0 raised the Node floor to 22.19. **0.2.0** (both SDKs) made governance **secure by default**: HTTP DELETE and command tools ask a human, each instance has its own approval callback, MCP servers ask the client's user through elicitation, and a hash-chained audit log records every call. See [Release Notes](/docs/releases/) and the [migration guide](/docs/api-reference/policy-and-lifecycle/#upgrading-to-020).
 

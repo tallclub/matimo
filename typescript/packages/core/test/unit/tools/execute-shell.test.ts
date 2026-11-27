@@ -15,9 +15,9 @@ describe('execute: args', () => {
   });
 
   it('rejects non-string args', async () => {
-    await expect(
-      executeTool({ command: 'node', args: [1 as unknown as string] })
-    ).rejects.toThrow('Invalid args');
+    await expect(executeTool({ command: 'node', args: [1 as unknown as string] })).rejects.toThrow(
+      'Invalid args'
+    );
   });
 });
 

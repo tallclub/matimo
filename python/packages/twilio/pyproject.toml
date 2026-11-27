@@ -4,11 +4,11 @@ build-backend = "hatchling.build"
 
 [project]
 name = "matimo-twilio"
-version = "0.4.0"
+version = "0.4.1"
 description = "Matimo provider — Twilio tools (SMS, MMS, message history)"
 readme = "README.md"
 license = { text = "MIT" }
-requires-python = ">=3.11"
+requires-python = ">=3.11.5"
 keywords = ["ai", "tools", "agents", "matimo", "twilio"]
 classifiers = [
     "Development Status :: 4 - Beta",

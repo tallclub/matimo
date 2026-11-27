@@ -9,7 +9,8 @@ from matimo.approval.handler import ApprovalHandler, requires_mandatory_human_ap
 from matimo.errors import ErrorCode, MatimoError
 from matimo.tools.execute.execute import _split_command, run
 
-PY = sys.executable
+# `command` is split like a shell, so an interpreter path with spaces must be quoted.
+PY = f'"{sys.executable}"'
 
 
 @pytest.mark.asyncio
@@ -21,7 +22,7 @@ async def test_args_are_appended_to_command() -> None:
 
 @pytest.mark.asyncio
 async def test_embedded_args_still_work() -> None:
-    result = await run({"command": f'"{PY}" -c "print(1)"'})
+    result = await run({"command": f'{PY} -c "print(1)"'})
     assert result["stdout"] == "1"
 
 

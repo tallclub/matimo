@@ -167,7 +167,9 @@ class TestAddRequest:
         bru_path = Path(result["request_path"])
         assert bru_path.exists()
         content = bru_path.read_text()
-        assert "GET" in content
+        # bru 3's parser only accepts a lower-case method block (`get {`).
+        assert "\nget {\n" in content
+        assert "GET {" not in content
         assert "https://api.example.com/users" in content
 
     def test_with_headers(self, tmp_path: Path) -> None:
@@ -749,3 +751,71 @@ class TestBruUtils:
              patch("subprocess.run", side_effect=OSError("permission denied")):
             self._check()  # must not raise — best-effort
 
+
+
+# ─── bru JSON report parsing (bru 2 object vs bru 3 list) ─────────────────────
+
+
+def test_parse_report_bru3_list_sums_iterations() -> None:
+    from matimo_bruno.tools.bruno_run_collection.executor import _parse_report
+    report = [
+        {
+            "iterationIndex": 0,
+            "summary": {"totalRequests": 2, "passedRequests": 1, "failedRequests": 0, "errorRequests": 1},
+            "results": [
+                {"name": "a", "status": "pass", "response": {"status": 200}, "runDuration": 0.25},
+                {"test": {"filename": "req/b.bru"}, "status": "error", "response": {"status": 500},
+                 "runDuration": 0.5},
+            ],
+        },
+        {
+            "iterationIndex": 1,
+            "summary": {"totalRequests": 1, "passedRequests": 1, "failedRequests": 0},
+            "results": [{"suitename": "c", "status": "pass", "response": {"status": 201}, "runDuration": 0.25}],
+        },
+    ]
+    total, passed, failed, time_ms, results = _parse_report(report)
+    assert (total, passed, failed, time_ms) == (3, 2, 1, 1000)
+    assert [r["name"] for r in results] == ["a", "req/b.bru", "c"]
+    assert [r["success"] for r in results] == [True, False, True]
+    assert [r["status"] for r in results] == [200, 500, 201]
+
+
+def test_parse_report_bru2_object_uses_total_time() -> None:
+    from matimo_bruno.tools.bruno_run_collection.executor import _parse_report
+    report = {
+        "summary": {"totalRequests": 3, "passedRequests": 2, "failedRequests": 1, "totalTime": 100},
+        "results": [{"suiteName": "Test 1", "status": "pass"}, {"name": "Test 2", "passed": False}],
+    }
+    total, passed, failed, time_ms, results = _parse_report(report)
+    assert (total, passed, failed, time_ms) == (3, 2, 1, 100)
+    assert [r["name"] for r in results] == ["Test 1", "Test 2"]
+    assert results[0]["status"] == 0
+
+
+def test_parse_report_tolerates_empty_and_malformed() -> None:
+    from matimo_bruno.tools.bruno_run_collection.executor import _parse_report
+    assert _parse_report({}) == (0, 0, 0, 0, [])
+    assert _parse_report([]) == (0, 0, 0, 0, [])
+    assert _parse_report("nope") == (0, 0, 0, 0, [])
+    assert _parse_report([1, {"results": ["x", {"name": "ok"}]}])[4] == [
+        {"name": "ok", "success": False, "status": 0}
+    ]
+
+
+def test_run_collection_reads_bru3_list_report(tmp_path: Path) -> None:
+    from matimo_bruno.tools.bruno_run_collection.executor import execute
+    report = [{"summary": {"totalRequests": 1, "passedRequests": 1, "failedRequests": 0},
+               "results": [{"name": "r", "status": "pass", "response": {"status": 200}, "runDuration": 0.1}]}]
+
+    def fake_run(args: list[str], **kwargs: Any) -> MagicMock:  # noqa: ANN401
+        if "--reporter-json" in args:
+            Path(args[args.index("--reporter-json") + 1]).write_text(json.dumps(report))
+        return _run_ok()
+
+    with patch("shutil.which", return_value="/usr/bin/bru"), \
+         patch("subprocess.run", side_effect=fake_run):
+        result = execute({"collection_path": str(tmp_path)})
+    assert result["success"] is True
+    assert result["summary"] == {"total_requests": 1, "passed": 1, "failed": 0, "execution_time_ms": 100}
+    assert result["results"] == [{"name": "r", "success": True, "status": 200}]

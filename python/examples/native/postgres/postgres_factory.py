@@ -66,7 +66,7 @@ async def main():
                 'sql': '''
                     SELECT 
                         schemaname, 
-                        tablename, 
+                        relname AS tablename, 
                         n_live_tup as row_count
                     FROM pg_stat_user_tables
                     WHERE schemaname = 'public'
@@ -101,7 +101,7 @@ async def main():
                         is_nullable,
                         column_default
                     FROM information_schema.columns 
-                    WHERE table_name = %s
+                    WHERE table_name = $1
                     ORDER BY ordinal_position;
                 ''',
                 'params': [first_table]

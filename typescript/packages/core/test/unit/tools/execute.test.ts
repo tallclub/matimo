@@ -232,7 +232,9 @@ describe('Injection Detection', () => {
     });
 
     it('rejects an unterminated quote', async () => {
-      await expect(executeCommand({ command: `node -p "'oops` })).rejects.toThrow('Unterminated quote');
+      await expect(executeCommand({ command: `node -p "'oops` })).rejects.toThrow(
+        'Unterminated quote'
+      );
     });
 
     it('should allow commands with quotes', async () => {
