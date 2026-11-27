@@ -89,21 +89,8 @@ def execute(params: dict[str, Any]) -> dict[str, Any]:
         except Exception as e:
             logger.warning(f"Could not read/parse JSON report: {e}")
         
-        # Map Bruno report fields to schema-declared keys
-        summary_raw = report_data.get("summary", {})
-        total_requests = summary_raw.get("totalRequests", 0)
-        passed = summary_raw.get("passedRequests", 0)
-        failed = summary_raw.get("failedRequests", 0)
-        execution_time_ms = summary_raw.get("totalTime", 0)
-        
-        results = []
-        for r in report_data.get("results", []):
-            results.append({
-                "name": r.get("suiteName") or r.get("name", "unknown"),
-                "success": r.get("status") == "pass" or r.get("passed") is True,
-                "status": (r.get("response") or {}).get("status", 0)
-            })
-        
+        total_requests, passed, failed, execution_time_ms, results = _parse_report(report_data)
+
         logger.info("Collection execution completed")
         
         return {
@@ -139,3 +126,42 @@ def execute(params: dict[str, Any]) -> dict[str, Any]:
 def run(params: dict[str, Any]) -> dict[str, Any]:
     """Entry point called by Matimo's FunctionExecutor."""
     return execute(params)
+
+
+def _parse_report(report: Any) -> tuple[int, int, int, int, list[dict[str, Any]]]:
+    """Map a bru JSON report to (total, passed, failed, time_ms, results).
+
+    bru 1.x/2.x write one object ``{summary, results}``. bru 3.x writes a list
+    with one such object per iteration; counts are summed across iterations.
+    """
+    if isinstance(report, dict):
+        iterations = [report] if report else []
+    elif isinstance(report, list):
+        iterations = [it for it in report if isinstance(it, dict)]
+    else:
+        iterations = []
+
+    total = passed = failed = 0
+    time_ms = 0.0
+    results: list[dict[str, Any]] = []
+    for iteration in iterations:
+        summary = iteration.get("summary") or {}
+        total += int(summary.get("totalRequests", 0) or 0)
+        passed += int(summary.get("passedRequests", 0) or 0)
+        failed += int(summary.get("failedRequests", 0) or 0) + int(summary.get("errorRequests", 0) or 0)
+        iteration_results = [r for r in iteration.get("results") or [] if isinstance(r, dict)]
+        if "totalTime" in summary:
+            time_ms += float(summary.get("totalTime") or 0)
+        else:
+            # bru 3 has no totalTime; runDuration is per request, in seconds.
+            time_ms += sum(float(r.get("runDuration") or 0) for r in iteration_results) * 1000
+        for r in iteration_results:
+            raw_test = r.get("test")
+            test: dict[str, Any] = raw_test if isinstance(raw_test, dict) else {}
+            results.append({
+                "name": r.get("suitename") or r.get("suiteName") or r.get("name")
+                or test.get("filename") or "unknown",
+                "success": r.get("status") == "pass" or r.get("passed") is True,
+                "status": (r.get("response") or {}).get("status", 0),
+            })
+    return total, passed, failed, int(round(time_ms)), results

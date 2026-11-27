@@ -22,7 +22,10 @@ export default async function execute(params: Record<string, unknown>): Promise<
   checkBruVersion();
 
   const absolutePath = path.resolve(collectionPath);
-  const reportPath = path.resolve((params.report_path as string | undefined) ?? path.join(os.tmpdir(), `bru-report-${Date.now()}.json`));
+  const reportPath = path.resolve(
+    (params.report_path as string | undefined) ??
+      path.join(os.tmpdir(), `bru-report-${Date.now()}.json`)
+  );
 
   try {
     logger.info(`Running Bruno collection: ${absolutePath}`);
@@ -49,38 +52,30 @@ export default async function execute(params: Record<string, unknown>): Promise<
     } catch (execError) {
       // bru exits non-zero when tests fail — that's OK, we still read the report
       exitCode = 1;
-      logger.warn(`bru run exited with non-zero status: ${execError instanceof Error ? execError.message : String(execError)}`);
+      logger.warn(
+        `bru run exited with non-zero status: ${execError instanceof Error ? execError.message : String(execError)}`
+      );
     }
 
     // Read JSON report written by --reporter-json
-    let reportData: Record<string, unknown> = {};
+    let reportData: unknown = {};
     try {
       const raw = await fs.readFile(reportPath, 'utf-8');
-      reportData = JSON.parse(raw) as Record<string, unknown>;
+      reportData = JSON.parse(raw) as unknown;
     } catch {
       logger.warn('Could not read/parse JSON report');
     }
 
-    // Map Bruno report fields to schema-declared keys
-    const summaryRaw = (reportData.summary as Record<string, number> | undefined) ?? {};
-    const totalRequests = (summaryRaw.totalRequests ?? 0) as number;
-    const passed = (summaryRaw.passedRequests ?? 0) as number;
-    const failed = (summaryRaw.failedRequests ?? 0) as number;
-    const executionTimeMs = (summaryRaw.totalTime ?? 0) as number;
-
-    const rawResults = (reportData.results as unknown[]) ?? [];
-    const results = rawResults.map((r) => {
-      const req = r as Record<string, unknown>;
-      return {
-        name: req.suiteName ?? req.name ?? 'unknown',
-        success: req.status === 'pass' || req.passed === true,
-        status: (req.response as Record<string, unknown> | undefined)?.status ?? 0,
-      };
-    });
+    const { totalRequests, passed, failed, executionTimeMs, results } = parseReport(reportData);
 
     return {
       success: exitCode === 0,
-      summary: { total_requests: totalRequests, passed, failed, execution_time_ms: executionTimeMs },
+      summary: {
+        total_requests: totalRequests,
+        passed,
+        failed,
+        execution_time_ms: executionTimeMs,
+      },
       results,
       report_path: reportPath,
       errors: [],
@@ -96,4 +91,54 @@ export default async function execute(params: Record<string, unknown>): Promise<
       errors: [error instanceof Error ? error.message : String(error)],
     };
   }
+}
+
+type Row = Record<string, unknown>;
+
+/**
+ * Map a bru JSON report to the schema's summary and results.
+ * bru 1.x/2.x write one object `{ summary, results }`. bru 3.x writes an array
+ * with one such object per iteration; counts are summed across iterations.
+ */
+export function parseReport(report: unknown): {
+  totalRequests: number;
+  passed: number;
+  failed: number;
+  executionTimeMs: number;
+  results: Array<{ name: unknown; success: boolean; status: unknown }>;
+} {
+  const isRow = (v: unknown): v is Row => typeof v === 'object' && v !== null && !Array.isArray(v);
+  const iterations: Row[] = Array.isArray(report)
+    ? report.filter(isRow)
+    : isRow(report) && Object.keys(report).length > 0
+      ? [report]
+      : [];
+  const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
+
+  let totalRequests = 0;
+  let passed = 0;
+  let failed = 0;
+  let timeMs = 0;
+  const results: Array<{ name: unknown; success: boolean; status: unknown }> = [];
+  for (const iteration of iterations) {
+    const summary = isRow(iteration.summary) ? iteration.summary : {};
+    totalRequests += num(summary.totalRequests);
+    passed += num(summary.passedRequests);
+    failed += num(summary.failedRequests) + num(summary.errorRequests);
+    const rows = (Array.isArray(iteration.results) ? iteration.results : []).filter(isRow);
+    // bru 3 has no totalTime; runDuration is per request, in seconds.
+    timeMs +=
+      'totalTime' in summary
+        ? num(summary.totalTime)
+        : rows.reduce((sum, r) => sum + num(r.runDuration), 0) * 1000;
+    for (const r of rows) {
+      const test = isRow(r.test) ? r.test : {};
+      results.push({
+        name: r.suitename ?? r.suiteName ?? r.name ?? test.filename ?? 'unknown',
+        success: r.status === 'pass' || r.passed === true,
+        status: (isRow(r.response) ? r.response.status : undefined) ?? 0,
+      });
+    }
+  }
+  return { totalRequests, passed, failed, executionTimeMs: Math.round(timeMs), results };
 }
