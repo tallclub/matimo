@@ -27,8 +27,8 @@ load_dotenv(Path(__file__).parent.parent.parent / ".env")
 class PostgresService:
     """PostgreSQL operations via the @tool decorator pattern."""
 
-    @tool("postgres-execute-query")
-    async def execute_query(self, query: str):
+    @tool("postgres-execute-sql")
+    async def execute_sql(self, sql: str):
         ...
 
 
@@ -51,8 +51,8 @@ async def run() -> None:
     svc = PostgresService()
 
     print("🗄️   Listing tables…")
-    result = await svc.execute_query(
-        query="SELECT table_name FROM information_schema.tables WHERE table_schema='public' LIMIT 5"
+    result = await svc.execute_sql(
+        sql="SELECT table_name FROM information_schema.tables WHERE table_schema='public' LIMIT 5"
     )
     data = (result or {}).get("data", result) or {}
     rows = data.get("rows", data if isinstance(data, list) else [])
