@@ -13,6 +13,8 @@ Dependency security patch. No API or behaviour changes. Python packages move to 
 ### 🔒 Security
 - Update glob to resolve GHSA-3g3m-2fjr-6pw4 and GHSA-g3hv-75wg-m249. `@matimo/core` now depends on `glob ^14.0.3` (was `^10.5.0`), which requires `minimatch ^11.0.2`. Every package that depends on `@matimo/core` (`@matimo/cli`, `matimo` and all tool packages) picks this up
 - Workspace dev tooling (jest, test-exclude, typescript-eslint) is pinned off the vulnerable glob and minimatch ranges with pnpm overrides
+- TypeScript: `follow-redirects` override `>=1.16.2` (GHSA-mrwp-f3q8-3g9p, reached through axios)
+- Python: `matimo-core` requires `pypdf>=6.21.4` (was `>=6.15.0`), fixing CVE-2026-119203 to CVE-2026-119209. The lockfile moves `soupsieve` (via beautifulsoup4) to 4.1.3 (CVE-2026-126190, -126191, -126193). soupsieve 4 needs Python 3.11.5 or later, so on Python 3.11.0 to 3.11.4 the resolver still installs soupsieve 2.10, which has no fixed release for those versions
 
 ---
 ## [0.4.0] - 2026-10-30
