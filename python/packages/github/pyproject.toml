@@ -8,7 +8,7 @@ version = "0.4.1"
 description = "Matimo provider — GitHub tools (repos, issues, PRs, releases)"
 readme = "README.md"
 license = { text = "MIT" }
-requires-python = ">=3.11"
+requires-python = ">=3.11.5"
 keywords = ["ai", "tools", "agents", "matimo", "github"]
 classifiers = [
     "Development Status :: 4 - Beta",

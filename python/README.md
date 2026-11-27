@@ -3,7 +3,7 @@
 > **Write YAML once. Run your tools everywhere.**
 
 [![PyPI](https://img.shields.io/pypi/v/matimo)](https://pypi.org/project/matimo/)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/)
+[![Python 3.11.5+](https://img.shields.io/badge/python-3.11.5+-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](../LICENSE)
 [![Tests](https://github.com/tallclub/matimo/actions/workflows/test-python.yml/badge.svg)](https://github.com/tallclub/matimo/actions)
 
