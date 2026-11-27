@@ -2,6 +2,89 @@
 title: "Release Notes"
 description: "Release notes for Matimo OSS, TypeScript and Python: what changed, breaking changes, upgrade steps and known differences between the SDKs."
 ---
+## v0.4.1 (TypeScript and Python) - Dependency Security Patch 
+
+> **Release**: Patches vulnerable dependencies in both SDKs and fixes the Bruno tools for bru 3. No API changes. The Python packages now need Python 3.11.5 or later.
+
+**Released**: November 27, 2026
+**Scope**: `typescript/` - every package `0.4.0` → `0.4.1`. `python/` - every package `0.4.0` → `0.4.1`; provider packages still require `matimo-core>=0.4.0,<0.5.0`.
+**Severity**: **Patch with one requirement change** - Python 3.11.0 to 3.11.4 are no longer supported.
+
+---
+
+### **What changes when you upgrade**
+
+| Before | 0.4.1 |
+|--------|-------|
+| Python packages accepted `>=3.11` | They need `>=3.11.5`. The fixed `soupsieve` requires it, and no fixed release exists for 3.11.0 to 3.11.4 |
+
+Python 3.11.0 to 3.11.4 date from 2022 and early 2023. `uv python install 3.11` and `pyenv install 3.11` already install a newer 3.11. Nothing in the tool, policy or approval APIs changed.
+
+### **Security**
+
+- `@matimo/core` depends on `glob ^14.0.3` (was `^10.5.0`), which requires `minimatch ^11.0.2`. This resolves GHSA-3g3m-2fjr-6pw4 and GHSA-g3hv-75wg-m249. Every package that depends on `@matimo/core` picks it up.
+- Workspace dev tooling (jest, test-exclude, typescript-eslint) is pinned off the vulnerable `glob` and `minimatch` ranges with pnpm overrides.
+- TypeScript: `follow-redirects` override `>=1.16.2` (GHSA-mrwp-f3q8-3g9p, reached through axios).
+- Python: `matimo-core` requires `pypdf>=6.21.4` (was `>=6.15.0`), fixing CVE-2026-119203 to CVE-2026-119209. The lockfile moves `soupsieve` (via beautifulsoup4) to 4.1.3 (CVE-2026-126190, -126191, -126193).
+- Python examples (`python/examples/mcp`): `soupsieve` 4.1.3, `pypdf` 6.21.4, `opentelemetry-api` 1.45.2 (CVE-2026-126360).
+
+### **Fixes**
+
+- `bruno_run_collection` (both SDKs) reads bru 3 JSON reports, which are a list with one entry per iteration. Python crashed with `'list' object has no attribute 'get'` and TypeScript reported 0 requests.
+- Python `bruno_add_request` writes the method block in lower case (`get {`), which bru 3 requires. It wrote `GET {`, so bru skipped the request.
+- Examples: the Postgres examples (a wrong `pg_stat_user_tables` column, `%s` instead of `$1` placeholders, a non-existent tool name and wrong env var names), the Notion decorator example (positional arguments did not match the tool's parameter order) and the Python Bruno workflow example.
+
+---
+
+## v0.4.0 (TypeScript and Python) - Security Hardening and Version Parity 
+
+> **Release**: Closes the findings from a repository audit in both SDKs and puts TypeScript and Python on the same version number. Several defaults are stricter, so read the table below before upgrading.
+
+**Released**: October 30, 2026
+**Scope**: `typescript/` - all 14 packages `0.3.0` → `0.4.0`. `python/` - all 14 packages `0.2.0` → `0.4.0` (there is no Python 0.3.0); provider packages require `matimo-core>=0.4.0,<0.5.0`.
+**Severity**: **Minor bump with behaviour changes** - MCP defaults, `execute`, DNS-based SSRF checks and the Python `mcp` requirement all change.
+
+---
+
+### **What changes when you upgrade**
+
+| Before | 0.4.0 |
+|--------|-------|
+| MCP HTTP servers listened on all interfaces | They bind `127.0.0.1`. Containers and remote clients need `--host 0.0.0.0` and should use HTTPS |
+| Python's MCP HTTP server ran without a token if none was passed | It reads `MATIMO_MCP_TOKEN`, or generates one and prints it to stderr |
+| TypeScript `execute` ran through a shell | It runs without one (`execFile`). Shell builtins such as `dir` and `echo` are not available on Windows |
+| Hostnames resolving to internal addresses were reachable | Network and HTTP tools refuse them. Set `MATIMO_ALLOW_PRIVATE_DNS=true` to allow a specific case |
+| A function tool's `execution.code` could point anywhere | It must stay inside the tool's directory |
+| Python accepted `mcp>=1.28.1` | Python needs `mcp>=2.0`; the mcp 1.x path is removed. Run `pip install -U "mcp>=2.0"` |
+
+The TypeScript MCP server keeps `@modelcontextprotocol/sdk` 1.x, which has no 2.x release.
+
+### **Security**
+
+- One shared SSRF classifier replaces four copies. It blocks all of `127.0.0.0/8`, IPv4-mapped and NAT64 IPv6, unique-local and link-local IPv6, `100.64.0.0/10`, trailing-dot hosts and legacy numeric hosts. Redirects are re-checked on every hop, and the `web` tool now has an SSRF check at all.
+- Python `postgres-execute-sql` binds `schema` as a parameter instead of interpolating it. SQL that reaches files, the OS or other servers (`COPY`, `pg_read_file`, `lo_export`, `dblink`, `DO $$`, `CALL`) now asks for approval.
+- Patched dependencies: `undici`, `body-parser`, `zod`, `@azure/msal-node`, Python `certifi`, and the `python/examples/mcp` lockfile. Two CodeQL findings are fixed.
+- Still reported: `chromadb` (optional `crewai` extra only) has no fixed release.
+
+### **New options**
+
+- `MATIMO_FILE_ROOTS` confines the file tools to listed directories, resolving symlinks. Off unless set.
+- `MATIMO_POSTGRES_SSL` (`disable`, `require`, `verify-ca`, `verify-full`) for the Postgres tool.
+- `matimo mcp --host`.
+
+### **Fixes**
+
+- `pnpm validate-tools` no longer breaks when pnpm hoists js-yaml 5.x.
+- The TypeScript approval manifest no longer fails with `EPERM` when two writers save at once on Windows.
+- Provider-tool filters in the TypeScript examples now match Windows path separators.
+- HubSpot uses the real OAuth token endpoint.
+
+### **matimo.dev**
+
+The site and docs are now one Astro Starlight site, with use-case guides, a privacy notice and opt-in analytics.
+
+---
+
 ## v0.3.0 (TypeScript) - Node 22.19+ and Security Patches 
 
 > **Release**: Raises the minimum Node version to 22.19 and clears the open `pnpm audit` findings, including three criticals. Python is unchanged and stays at `0.2.0`.
