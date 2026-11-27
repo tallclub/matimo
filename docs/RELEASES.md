@@ -1,3 +1,37 @@
+## v0.4.1 (TypeScript and Python) - Dependency Security Patch 🔒
+
+> **Release**: Patches vulnerable dependencies in both SDKs and fixes the Bruno tools for bru 3. No API changes. The Python packages now need Python 3.11.5 or later.
+
+**Released**: November 27, 2026
+**Scope**: `typescript/` - every package `0.4.0` → `0.4.1`. `python/` - every package `0.4.0` → `0.4.1`; provider packages still require `matimo-core>=0.4.0,<0.5.0`.
+**Severity**: 🟡 **Patch with one requirement change** - Python 3.11.0 to 3.11.4 are no longer supported.
+
+---
+
+### ⚠️ **What changes when you upgrade**
+
+| Before | 0.4.1 |
+|--------|-------|
+| Python packages accepted `>=3.11` | They need `>=3.11.5`. The fixed `soupsieve` requires it, and no fixed release exists for 3.11.0 to 3.11.4 |
+
+Python 3.11.0 to 3.11.4 date from 2022 and early 2023. `uv python install 3.11` and `pyenv install 3.11` already install a newer 3.11. Nothing in the tool, policy or approval APIs changed.
+
+### 🔒 **Security**
+
+- `@matimo/core` depends on `glob ^14.0.3` (was `^10.5.0`), which requires `minimatch ^11.0.2`. This resolves GHSA-3g3m-2fjr-6pw4 and GHSA-g3hv-75wg-m249. Every package that depends on `@matimo/core` picks it up.
+- Workspace dev tooling (jest, test-exclude, typescript-eslint) is pinned off the vulnerable `glob` and `minimatch` ranges with pnpm overrides.
+- TypeScript: `follow-redirects` override `>=1.16.2` (GHSA-mrwp-f3q8-3g9p, reached through axios).
+- Python: `matimo-core` requires `pypdf>=6.21.4` (was `>=6.15.0`), fixing CVE-2026-119203 to CVE-2026-119209. The lockfile moves `soupsieve` (via beautifulsoup4) to 4.1.3 (CVE-2026-126190, -126191, -126193).
+- Python examples (`python/examples/mcp`): `soupsieve` 4.1.3, `pypdf` 6.21.4, `opentelemetry-api` 1.45.2 (CVE-2026-126360).
+
+### 🐛 **Fixes**
+
+- `bruno_run_collection` (both SDKs) reads bru 3 JSON reports, which are a list with one entry per iteration. Python crashed with `'list' object has no attribute 'get'` and TypeScript reported 0 requests.
+- Python `bruno_add_request` writes the method block in lower case (`get {`), which bru 3 requires. It wrote `GET {`, so bru skipped the request.
+- Examples: the Postgres examples (a wrong `pg_stat_user_tables` column, `%s` instead of `$1` placeholders, a non-existent tool name and wrong env var names), the Notion decorator example (positional arguments did not match the tool's parameter order) and the Python Bruno workflow example.
+
+---
+
 ## v0.4.0 (TypeScript and Python) - Security Hardening and Version Parity 🔒
 
 > **Release**: Closes the findings from a repository audit in both SDKs and puts TypeScript and Python on the same version number. Several defaults are stricter, so read the table below before upgrading.
