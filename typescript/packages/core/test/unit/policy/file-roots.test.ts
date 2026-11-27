@@ -35,7 +35,9 @@ describe('MATIMO_FILE_ROOTS confinement', () => {
     expect(getFileRoots()).toBeNull();
     process.env[FILE_ROOTS_ENV] = '   ';
     expect(getFileRoots()).toBeNull();
-    expect(resolveToolPath(path.join(outside, 'secret.txt'))).toBe(path.join(outside, 'secret.txt'));
+    expect(resolveToolPath(path.join(outside, 'secret.txt'))).toBe(
+      path.join(outside, 'secret.txt')
+    );
   });
 
   it('allows paths inside a root, including files that do not exist yet', () => {
@@ -88,7 +90,9 @@ describe('MATIMO_FILE_ROOTS confinement', () => {
   });
 
   it('search tool refuses a directory outside the root', async () => {
-    await expect(searchTool({ query: 'SECRET', directory: outside } as never)).rejects.toMatchObject({
+    await expect(
+      searchTool({ query: 'SECRET', directory: outside } as never)
+    ).rejects.toMatchObject({
       code: ErrorCode.POLICY_DENIED,
     });
   });

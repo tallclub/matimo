@@ -73,10 +73,7 @@ export interface AwsSecretsManagerResolverConfig {
 
 /** Union of all resolver configs */
 export type SecretResolverConfig =
-  | EnvResolverConfig
-  | DotenvResolverConfig
-  | VaultResolverConfig
-  | AwsSecretsManagerResolverConfig;
+  EnvResolverConfig | DotenvResolverConfig | VaultResolverConfig | AwsSecretsManagerResolverConfig;
 
 /**
  * Configuration for the resolver chain.
