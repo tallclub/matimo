@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
+## [0.4.1] - 2026-11-27
+
+Dependency security patch. No API or behaviour changes. Python packages move to 0.4.1 only to keep the shared version number; their code is unchanged (the Python SDK does not use glob).
+
+### 🔒 Security
+- Update glob to resolve GHSA-3g3m-2fjr-6pw4 and GHSA-g3hv-75wg-m249. `@matimo/core` now depends on `glob ^14.0.3` (was `^10.5.0`), which requires `minimatch ^11.0.2`. Every package that depends on `@matimo/core` (`@matimo/cli`, `matimo` and all tool packages) picks this up
+- Workspace dev tooling (jest, test-exclude, typescript-eslint) is pinned off the vulnerable glob and minimatch ranges with pnpm overrides
+
+---
 ## [0.4.0] - 2026-10-30
 
 TypeScript and Python now share one version number: TypeScript moves from 0.3.0 and Python from 0.2.0, both to 0.4.0. Python has no 0.3.0. Security hardening from a repository audit. Read the behaviour changes before upgrading.
