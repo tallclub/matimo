@@ -20,6 +20,10 @@ Dependency security patch. No API changes. The Python packages now need Python 3
 - Python: `matimo-core` requires `pypdf>=6.21.4` (was `>=6.15.0`), fixing CVE-2026-119203 to CVE-2026-119209. The lockfile moves `soupsieve` (via beautifulsoup4) to 4.1.3 (CVE-2026-126190, -126191, -126193)
 - Python examples (`python/examples/mcp`): `soupsieve` 4.1.3, `pypdf` 6.21.4, `opentelemetry-api` 1.45.2 (CVE-2026-126360)
 
+### 🐛 Fixes
+- `@matimo/bruno` / `matimo-bruno`: `bruno_run_collection` now reads bru 3 JSON reports (a list with one entry per iteration). Python crashed with `'list' object has no attribute 'get'` and TypeScript reported 0 requests. Python `bruno_add_request` now writes the method block in lower case (`get {`), which bru 3 requires; it wrote `GET {`, so bru skipped the request
+- Examples: Postgres (wrong `pg_stat_user_tables` column, `%s` instead of `$1` placeholders, a non-existent tool name and wrong env var names), the Notion decorator example (positional arguments did not match the tool's parameter order) and the Python Bruno workflow example
+
 ---
 ## [0.4.0] - 2026-10-30
 
